@@ -21,7 +21,7 @@ vi.mock('@/lib/supabase', () => ({
       const data =
         name === 'chat_my_threads'
           ? [{ id: 'thread', kind: 'direct' }]
-          : name === 'chat_topics_for'
+          : name === 'chat_topic_for'
             ? [state.topic]
             : null;
       return {
@@ -66,6 +66,9 @@ describe('a topic’s views on a first visit', () => {
       expect(result.current.loading).toBe(false);
     });
     expect(result.current.topic?.viewCount).toBe(3);
+    // The one topic, never the whole room's list.
+    expect(state.sent).toHaveBeenCalledWith('chat_topic_for', { topic: 'topic' });
+    expect(state.rpc).not.toHaveBeenCalledWith('chat_topics_for', expect.anything());
   });
 
   it('never counts the author’s own', async () => {

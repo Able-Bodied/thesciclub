@@ -11,6 +11,7 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
+import { useCoalesced } from '@/lib/use-coalesced';
 import { ChatBreadcrumb } from '@/routes/chat/breadcrumb';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { QuickAsk } from '@/routes/chat/quick-ask';
@@ -70,7 +71,15 @@ export default function RoomPage() {
   const { rooms, loading: roomsLoading } = useChatRooms();
   // Home's pill, when the room was opened from a card's room name there.
   const location = useLocation();
-  const { topics, loading: topicsLoading, error, reload } = useRoomTopics(roomId);
+  const {
+    topics,
+    loading: topicsLoading,
+    error,
+    reload,
+    hasMore,
+    loadingMore,
+    showMore,
+  } = useRoomTopics(roomId);
   const { stats, reload: reloadStats } = useRoomStats(roomId);
   const { byTopic: openingPosts, reload: reloadOpeners } = useTopicOpeningPosts(
     topics.map((topic) => topic.id),
@@ -81,16 +90,17 @@ export default function RoomPage() {
   // topic is an INSERT, and a reply to an existing one is an UPDATE, because
   // the chat_posts trigger moves last_post_at and reply_count on the topic row.
   // One subscription rather than a second on chat_posts, which cannot be
-  // filtered by room anyway.
+  // filtered by room anyway. At most once per 1.5 s, the last change kept.
+  const reloadAll = useCoalesced(() => {
+    reload();
+    reloadStats();
+    likes.reload();
+    reloadOpeners();
+  });
   useRealtimeRows({
     table: 'chat_topics',
     filter: roomId ? `room_id=eq.${roomId}` : undefined,
-    onChange: () => {
-      reload();
-      reloadStats();
-      likes.reload();
-      reloadOpeners();
-    },
+    onChange: reloadAll,
     enabled: Boolean(roomId),
   });
   const [sort, setSort] = useState<RoomSort>('activity');
@@ -260,6 +270,19 @@ export default function RoomPage() {
               );
             })
           )}
+          {/* Newest activity first, 40 at a time; a sort orders those shown. */}
+          {!topicsLoading && !error && hasMore ? (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={showMore}
+                disabled={loadingMore}
+                className="min-h-[44px] rounded-[10px] bg-tint px-4 py-2 font-semibold text-[0.8125rem] text-emphasis transition-colors hover:bg-line"
+              >
+                {loadingMore ? 'Loading…' : 'Show more topics'}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

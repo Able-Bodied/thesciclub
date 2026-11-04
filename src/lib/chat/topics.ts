@@ -194,18 +194,61 @@ export function firstUnreadThread(
   return index === -1 ? 0 : index;
 }
 
+/** Topics a room shows at first, and adds with each Show more. */
+export const TOPIC_PAGE = 40;
+/** The most chat_topics_page returns in one call. */
+const MAX_TOPIC_PAGE = 200;
+
+/** Where the next page starts: the last row's time, exactly as sent, and id. */
+export interface TopicCursor {
+  at: string;
+  id: string;
+}
+
+/**
+ * The first `want` topics, newest activity first, a page at a time, plus
+ * whether there are more. Asks for one extra row to know.
+ */
+export async function readTopicPages(
+  page: (size: number, before: TopicCursor | null) => PromiseLike<Result<TopicRow[]>>,
+  want: number,
+): Promise<{ rows: TopicRow[]; more: boolean; error: Failure | null }> {
+  const rows: TopicRow[] = [];
+  let before: TopicCursor | null = null;
+  while (rows.length <= want) {
+    const size = Math.min(MAX_TOPIC_PAGE, want + 1 - rows.length);
+    const result = await page(size, before);
+    if (result.error) return { rows: [], more: false, error: result.error };
+    const batch = result.data ?? [];
+    rows.push(...batch);
+    const last = batch.at(-1);
+    if (batch.length < size || !last) break;
+    before = { at: last.last_post_at, id: last.id };
+  }
+  return { rows: rows.slice(0, want), more: rows.length > want, error: null };
+}
+
 export interface RoomTopicsState {
   topics: ChatTopic[];
   loading: boolean;
   error: string | null;
   reload: () => void;
+  /** More topics than are shown. */
+  hasMore: boolean;
+  /** Reading the next page. */
+  loadingMore: boolean;
+  showMore: () => void;
 }
 
 export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
   const [topics, setTopics] = useState<ChatTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const inFlight = useRef<AbortController | null>(null);
+  // How many the list holds; a reload reads that many again.
+  const want = useRef(TOPIC_PAGE);
 
   const load = useCallback(async () => {
     if (!roomId) {
@@ -217,30 +260,53 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
     const controller = new AbortController();
     inFlight.current = controller;
     const aborted = () => controller.signal.aborted;
+    const supabase = getSupabase();
 
     try {
-      const { data, error: failure } = (await getSupabase()
-        .rpc('chat_topics_for', { room: roomId })
-        .abortSignal(controller.signal)) as Result<TopicRow[]>;
+      let read = await readTopicPages(
+        (size, before) =>
+          supabase
+            .rpc('chat_topics_page', {
+              room: roomId,
+              max_rows: size,
+              before_at: before?.at ?? null,
+              before_id: before?.id ?? null,
+            })
+            .abortSignal(controller.signal) as PromiseLike<Result<TopicRow[]>>,
+        want.current,
+      );
+      // A database before 20261104010000: the whole list, as before.
+      if (missingFunction(read.error)) {
+        const all = (await supabase
+          .rpc('chat_topics_for', { room: roomId })
+          .abortSignal(controller.signal)) as Result<TopicRow[]>;
+        read = { rows: all.data ?? [], more: false, error: all.error };
+      }
       if (aborted()) return;
-      if (failure) {
+      setLoadingMore(false);
+      if (read.error) {
         setTopics([]);
-        setError(describeError(failure, 'Could not load the topics.'));
+        setHasMore(false);
+        setError(describeError(read.error, 'Could not load the topics.'));
         setLoading(false);
         return;
       }
-      setTopics((data ?? []).map(toTopic));
+      setTopics(read.rows.map(toTopic));
+      setHasMore(read.more);
       setError(null);
       setLoading(false);
     } catch (e) {
       if (aborted()) return;
       setTopics([]);
+      setHasMore(false);
+      setLoadingMore(false);
       setError(describeThrown(e, 'Could not load the topics.'));
       setLoading(false);
     }
   }, [roomId]);
 
   useEffect(() => {
+    want.current = TOPIC_PAGE;
     void load();
     return () => {
       inFlight.current?.abort();
@@ -251,7 +317,30 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
     void load();
   }, [load]);
 
-  return { topics, loading, error, reload };
+  const showMore = useCallback(() => {
+    want.current += TOPIC_PAGE;
+    setLoadingMore(true);
+    void load();
+  }, [load]);
+
+  return { topics, loading, error, reload, hasMore, loadingMore, showMore };
+}
+
+/** One topic's row (20261104010000), or the room's list on an older database. */
+async function readOneTopic(
+  topicId: string,
+  roomId: string,
+  signal: AbortSignal,
+): Promise<Result<TopicRow | null>> {
+  const supabase = getSupabase();
+  const one = (await supabase
+    .rpc('chat_topic_for', { topic: topicId })
+    .abortSignal(signal)) as Result<TopicRow[]>;
+  if (!missingFunction(one.error)) return { data: one.data?.[0] ?? null, error: one.error };
+  const all = (await supabase
+    .rpc('chat_topics_for', { room: roomId })
+    .abortSignal(signal)) as Result<TopicRow[]>;
+  return { data: all.data?.find((row) => row.id === topicId) ?? null, error: all.error };
 }
 
 export interface TopicPostsState {
@@ -275,9 +364,8 @@ export interface TopicPostsState {
  *
  * Three reads rather than one, and each is a different question:
  *
- *  - `chat_topics_for(room)`, filtered down to this topic, for the title, the
- *    reply count and the view count. The view count only exists inside that
- *    function.
+ *  - `chat_topic_for(topic)`, for the title, the reply count and the view
+ *    count. The view count only exists inside that function.
  *  - `chat_posts`, for the posts.
  *  - the reader's own `chat_topic_reads` row, read *before* it is overwritten,
  *    so the screen knows where the reader had got to.
@@ -313,7 +401,7 @@ export function useTopicPosts(
 
     try {
       const [topics, postRows, reads, seen] = (await Promise.all([
-        supabase.rpc('chat_topics_for', { room: roomId }).abortSignal(controller.signal),
+        readOneTopic(topicId, roomId, controller.signal),
         readPages<PostRow>((from, to) =>
           supabase
             .from('chat_posts')
@@ -341,7 +429,7 @@ export function useTopicPosts(
               .abortSignal(controller.signal)
           : Promise.resolve({ data: null, error: null }),
       ])) as [
-        Result<TopicRow[]>,
+        Result<TopicRow | null>,
         Result<PostRow[]>,
         Result<{ last_read_at: string }>,
         Result<boolean | null>,
@@ -355,7 +443,8 @@ export function useTopicPosts(
         return;
       }
 
-      const found = (topics.data ?? []).find((row) => row.id === topicId) ?? null;
+      // In another room: moved, which the check below tells apart.
+      const found = topics.data?.room_id === roomId ? topics.data : null;
       if (!found) {
         // Not in this room: moved since the address was made, or gone.
         const where = (await supabase
