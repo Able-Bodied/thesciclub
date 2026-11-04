@@ -17,7 +17,8 @@ import { getSupabase } from '@/lib/supabase';
  * `chat_unread_count()` is built on `chat_my_threads()` in the database, so
  * there is still only one definition of "new" — somebody else's words, newer
  * than you last looked. Two definitions is how a nav dot ends up pointing at a
- * list with nothing bold in it.
+ * list with nothing bold in it. One difference, the other way: a muted
+ * conversation is bold in the list but leaves the dot (20261103200000).
  *
  * ---------------------------------------------------------------------------
  * What makes it re-ask

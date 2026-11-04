@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { unreadChanged } from '@/lib/chat/unread';
 import { describeError } from '@/lib/describe-error';
 import { notificationsOffered } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
@@ -47,6 +48,17 @@ export async function readMuted(target: MuteTarget, userId: string): Promise<boo
 }
 
 export async function setMuted(
+  target: MuteTarget,
+  userId: string,
+  muted: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await writeMuted(target, userId, muted);
+  // A muted conversation leaves the Chat dot (20261103200000).
+  if (result.ok && target.kind === 'thread') unreadChanged();
+  return result;
+}
+
+async function writeMuted(
   target: MuteTarget,
   userId: string,
   muted: boolean,
