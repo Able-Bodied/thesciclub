@@ -22,6 +22,8 @@ export function viewDevice(): ViewDevice {
  * PostgREST's answer when no function has the arguments sent: the database
  * is older than the app, so the caller retries without the device.
  */
-export function missingFunction(error: { code?: string } | null): boolean {
+export function missingFunction(
+  error: { code?: string | number | null | undefined } | null,
+): boolean {
   return error?.code === 'PGRST202';
 }

@@ -15,6 +15,7 @@ import {
   type ChatSegment,
   type ChatThread,
 } from '@/lib/chat/types';
+import { useCoalesced } from '@/lib/use-coalesced';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { RoomCard, RoomCategoryLabel } from '@/routes/chat/room-card';
 import { ThreadRow } from '@/routes/chat/thread-row';
@@ -88,7 +89,9 @@ export default function ChatPage() {
   // them at once, and a subscription per row would be a socket per
   // conversation.
   useRealtimeRows({ table: 'chat_messages', onChange: reloadThreads });
-  useRealtimeRows({ table: 'chat_topics', onChange: reloadStats });
+  // Every reply in every room changes a topic: recount at most once per 1.5 s.
+  const reloadStatsSoon = useCoalesced(reloadStats);
+  useRealtimeRows({ table: 'chat_topics', onChange: reloadStatsSoon });
   // And the rooms themselves, since a member can start one. A room appearing on
   // everybody's list the moment it is started is the point of letting members
   // start them, and chat_rooms carries nothing private — the select policy is
@@ -97,7 +100,7 @@ export default function ChatPage() {
     table: 'chat_rooms',
     onChange: () => {
       reloadRooms();
-      reloadStats();
+      reloadStatsSoon();
     },
   });
 

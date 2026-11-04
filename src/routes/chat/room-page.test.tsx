@@ -20,6 +20,8 @@ const db = vi.hoisted(() => ({
   stats: new Map<string, RoomStats>(),
   isAdmin: false,
   liked: [] as string[],
+  hasMore: false,
+  showMore: vi.fn(),
 }));
 
 vi.mock('@/lib/chat/opening-posts', () => ({
@@ -75,6 +77,9 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     loading: false,
     error: null,
     reload: () => undefined,
+    hasMore: db.hasMore,
+    loadingMore: false,
+    showMore: db.showMore,
   }),
 }));
 
@@ -122,6 +127,8 @@ beforeEach(() => {
   db.topics = [];
   db.stats = new Map();
   db.isAdmin = false;
+  db.hasMore = false;
+  db.showMore.mockClear();
 });
 
 describe('a discussion room', () => {
@@ -215,6 +222,16 @@ describe('a discussion room', () => {
     db.rooms = [];
     renderRoom();
     expect(screen.getByText(/There is no such room, or it is not open yet/)).toBeInTheDocument();
+  });
+
+  it('offers more topics only when there are more, and asks for them', async () => {
+    db.topics = [topic({ id: '1', title: 'One' })];
+    renderRoom();
+    expect(screen.queryByRole('button', { name: 'Show more topics' })).toBeNull();
+    db.hasMore = true;
+    renderRoom();
+    await userEvent.click(screen.getByRole('button', { name: 'Show more topics' }));
+    expect(db.showMore).toHaveBeenCalledTimes(1);
   });
 
   it('labels the sort row as a sort, for sight and for screen readers', () => {
