@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SegmentPills } from '@/components/segment-pills';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { ONE_VISIT_IN } from '@/lib/page-speed';
 import { getSupabase } from '@/lib/supabase';
 import {
   RequestBars,
@@ -278,8 +279,9 @@ export function PageSpeedSection() {
         </>
       )}
       <p className="mt-2 text-[0.75rem] text-grey leading-[1.45]">
-        Measured on people’s own devices, not tied to anybody, and kept 30 days. Typical (p50) is
-        the middle time; the slow end (p90) is where one in ten took longer.
+        Measured on people’s own devices, not tied to anybody, and kept 30 days. One visit in{' '}
+        {ONE_VISIT_IN} is measured, so visits are about 1/{ONE_VISIT_IN} of the real number. Typical
+        (p50) is the middle time; the slow end (p90) is where one in ten took longer.
       </p>
     </section>
   );

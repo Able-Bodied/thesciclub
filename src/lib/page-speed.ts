@@ -106,6 +106,12 @@ interface Sample {
   connection: string | null;
 }
 
+/**
+ * One visit in this many is measured (the owner, 2026-11-04). Raise it as the
+ * club grows: 5 past about 500 members, 10 past about 2,000.
+ */
+export const ONE_VISIT_IN = 3;
+
 /** Enough to see a pattern; past it, a long visit stops reporting requests. */
 const MAX_REQUESTS_PER_VISIT = 300;
 const BATCH = 50;
@@ -118,6 +124,7 @@ let sender: Sender | null = null;
 let queue: Sample[] = [];
 let requestsSeen = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
+let skipped = false;
 const visit = randomId();
 
 function randomId(): string {
@@ -147,6 +154,7 @@ function context(): Pick<Sample, 'installed' | 'mobile' | 'connection'> {
 }
 
 function push(sample: Omit<Sample, 'visit' | 'installed' | 'mobile' | 'connection'>) {
+  if (skipped) return;
   if (!Number.isFinite(sample.ms) || sample.ms < 0) return;
   queue.push({ ...sample, ms: Math.round(sample.ms), visit, ...context() });
   if (queue.length >= BATCH) {
@@ -195,7 +203,7 @@ export function timedFetch(base: typeof fetch = (...args) => fetch(...args)): ty
 }
 
 function record(endpoint: string, ms: number, ok: boolean) {
-  if (requestsSeen >= MAX_REQUESTS_PER_VISIT) return;
+  if (skipped || requestsSeen >= MAX_REQUESTS_PER_VISIT) return;
   requestsSeen += 1;
   push({ kind: 'request', screen: screenOf(window.location.pathname), metric: endpoint, ms, ok });
 }
@@ -204,8 +212,14 @@ function record(endpoint: string, ms: number, ok: boolean) {
  * Starts reporting: the load's own timings once it has settled, and every
  * request from then on. `send` is the club's log call; it is given rather
  * than imported so the club's client can use timedFetch without a cycle.
+ * Most visits are not measured (ONE_VISIT_IN), and send nothing.
  */
-export function startPageSpeed(send: Sender): void {
+export function startPageSpeed(send: Sender, measured = Math.random() * ONE_VISIT_IN < 1): void {
+  if (!measured) {
+    skipped = true;
+    queue = [];
+    return;
+  }
   sender = send;
   const screen = screenOf(window.location.pathname);
 
@@ -263,6 +277,7 @@ export function resetPageSpeed(): void {
   sender = null;
   queue = [];
   requestsSeen = 0;
+  skipped = false;
   if (timer) clearTimeout(timer);
   timer = null;
 }
