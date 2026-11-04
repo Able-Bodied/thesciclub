@@ -4,8 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import App, { preloadScreen } from '@/App';
 import { startDeviceCheck } from '@/lib/device-check';
 import { takeHandoff } from '@/lib/home-screen-handoff';
+import { startPageSpeed } from '@/lib/page-speed';
 import { registerWorker } from '@/lib/register-worker';
 import { stayCurrent } from '@/lib/stay-current';
+import { getSupabase } from '@/lib/supabase';
 import '@/index.css';
 
 stayCurrent();
@@ -28,6 +30,8 @@ window.addEventListener('vite:preloadError', (event) => {
 
 registerWorker();
 startDeviceCheck();
+// How long this load and each request take, for administrators (page-speed.ts).
+startPageSpeed((samples) => Promise.resolve(getSupabase().rpc('log_page_speed', { samples })));
 
 preloadScreen(window.location.pathname);
 
