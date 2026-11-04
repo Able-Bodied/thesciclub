@@ -33,3 +33,15 @@ export function onCalendarChanged(listener: () => void): void {
 export function calendarChanged(): void {
   for (const listener of changeListeners) listener();
 }
+
+const directoryListeners = new Set<() => void>();
+
+/** For a read of the directory, to let go when who is in it may have changed. */
+export function onDirectoryChanged(listener: () => void): void {
+  directoryListeners.add(listener);
+}
+
+/** This device blocked or unblocked someone, or changed its own profile. */
+export function directoryChanged(): void {
+  for (const listener of directoryListeners) listener();
+}

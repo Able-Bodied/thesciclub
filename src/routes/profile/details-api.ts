@@ -1,6 +1,7 @@
 import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { thumbPath, uploadPhoto } from '@/lib/photos';
+import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import {
   type Completeness,
@@ -252,6 +253,7 @@ export async function saveDetails(
       // `MemberDetails` because Me reads it through `loadDetails`.
     })
     .eq('id', userId);
+  if (!error) directoryChanged();
   return error ? { ok: false, error: describeError(error, DETAILS_REFUSAL) } : { ok: true };
 }
 
@@ -277,6 +279,7 @@ export async function setShowInBrowse(
     .from('members')
     .update({ show_in_browse: showInBrowse })
     .eq('id', userId);
+  if (!error) directoryChanged();
   return error ? { ok: false, error: describeError(error, 'That was not changed.') } : { ok: true };
 }
 
@@ -289,6 +292,7 @@ export async function setShowOnMap(
     .from('members')
     .update({ show_on_map: showOnMap })
     .eq('id', userId);
+  if (!error) directoryChanged();
   return error ? { ok: false, error: describeError(error, 'That was not changed.') } : { ok: true };
 }
 
@@ -319,6 +323,7 @@ export async function savePhoto(
     .from('members')
     .update({ photo_path: path, photo_alt: null })
     .eq('id', userId);
+  if (!error) directoryChanged();
   if (error) return { ok: false, error: describeError(error, PHOTO_REFUSAL) };
   return { ok: true, path };
 }
@@ -349,6 +354,7 @@ export async function removePhoto(userId: string): Promise<{ ok: boolean; error?
     .from('members')
     .update({ photo_path: null, photo_alt: null })
     .eq('id', userId);
+  if (!error) directoryChanged();
   return error
     ? { ok: false, error: describeError(error, 'The photograph was not removed.') }
     : { ok: true };

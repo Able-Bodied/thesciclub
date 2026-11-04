@@ -1,4 +1,5 @@
 import { describeError } from '@/lib/describe-error';
+import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import { type Answers, canDecline, QUESTIONS } from '@/routes/profile/questions';
 
@@ -138,6 +139,7 @@ export async function saveDeclined(
 ): Promise<{ ok: boolean; error?: string }> {
   const keys = [...declined].filter(canDecline);
   const { error } = await getSupabase().from('members').update({ declined: keys }).eq('id', userId);
+  if (!error) directoryChanged();
   return error ? { ok: false, error: describeError(error, ANSWER_REFUSAL) } : { ok: true };
 }
 
@@ -165,5 +167,6 @@ export async function saveAnswers(
   if (Object.keys(patch).length === 0) return { ok: true };
 
   const { error } = await getSupabase().from('members').update(patch).eq('id', userId);
+  if (!error) directoryChanged();
   return error ? { ok: false, error: describeError(error, ANSWER_REFUSAL) } : { ok: true };
 }

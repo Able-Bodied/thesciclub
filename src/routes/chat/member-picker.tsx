@@ -48,7 +48,7 @@ export function MemberPicker({
   /** What to say when nobody is left to offer. */
   emptyNote: string;
 }) {
-  const { members, loading, error } = useBrowseMembers();
+  const { members, loading, error } = useBrowseMembers('names');
   const [filter, setFilter] = useState('');
 
   const offered = useMemo(() => {

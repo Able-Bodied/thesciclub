@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { AccountContext } from '@/lib/account-context';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
+import { onDirectoryChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { BrowseMember, InjuryType, MemberType, RepresentedOrganization } from '@/types/domain';
 import { memberType } from '@/types/domain';
@@ -25,7 +27,7 @@ export interface BrowseMemberRow {
   username?: string | null;
   photo_path: string | null;
   photo_alt: string | null;
-  avatar_color: string | null;
+  avatar_color?: string | null;
   city: string | null;
   state: string;
   level_range: string;
@@ -38,23 +40,23 @@ export interface BrowseMemberRow {
   injury_date_precision: string | null;
   region: string;
   age: number | null;
-  /** Not in the list's read (LIST_COLUMNS). */
+  /** This and the other optional answers: not in a list's read (DECK_COLUMNS). */
   how_injured?: string | null;
   bio?: string | null;
   detail?: string | null;
-  gender: string | null;
-  languages: string[] | null;
-  independence: string | null;
-  employment: string | null;
+  gender?: string | null;
+  languages?: string[] | null;
+  independence?: string | null;
+  employment?: string | null;
   field_of_work: string | null;
-  education: string | null;
-  education_when: string | null;
-  marital_status: string | null;
-  has_children: boolean | null;
-  children_when: string | null;
+  education?: string | null;
+  education_when?: string | null;
+  marital_status?: string | null;
+  has_children?: boolean | null;
+  children_when?: string | null;
   interests: string[] | null;
   topics: string[] | null;
-  self_care: string[] | null;
+  self_care?: string[] | null;
   /** Optional: absent from a database before 20261011040000. */
   sports_equipment?: string | null;
   grants?: string | null;
@@ -68,8 +70,8 @@ export interface BrowseMemberRow {
       }[]
     | null;
   mentor_organizations?: OrganizationRow[] | null;
-  wants_to_mentor: boolean | null;
-  is_seed: boolean;
+  wants_to_mentor?: boolean | null;
+  is_seed?: boolean;
   is_admin: boolean;
   created_at: string;
 }
@@ -86,16 +88,22 @@ export function toOrganizationMark(row: OrganizationRow): RepresentedOrganizatio
   return { id: row.id, name: row.name, shortCode: row.short_code, logoPath: row.logo_path };
 }
 
-/** The one row -> domain mapping. Exported so nothing writes a second one. */
 /**
- * Every column but the long ones in the member's own words (how they were
- * injured, bio, detail, equipment, grants), which only their own page draws,
- * and it reads them by id. A list read them for every member: most of the
- * bytes of Peers and Home (2026-10-14). Search, filters and cards use none.
+ * What a screen reads (the owner's speed report, 2026-11-03). The long
+ * answers in a member's own words, and the profile's other answers, are left
+ * to their own page, which reads them by id.
+ *
+ * A deck (Peers, Home, the map) draws cards, ranks, searches and filters:
+ * these columns and no others are used there.
  */
-const LIST_COLUMNS =
-  'id, type, display_name, username, photo_path, photo_alt, avatar_color, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, region, age, gender, languages, independence, employment, field_of_work, education, education_when, marital_status, has_children, children_when, interests, topics, self_care, affiliations, wants_to_mentor, is_seed, is_admin, created_at, represented_organizations, mentor_organizations';
+const DECK_COLUMNS =
+  'id, type, display_name, username, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, region, age, field_of_work, interests, topics, affiliations, is_admin, created_at, represented_organizations, mentor_organizations';
 
+/** A picker (new message, groups, share) draws a face, a name and a line. */
+const NAMES_COLUMNS =
+  'id, type, display_name, username, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name';
+
+/** The one row -> domain mapping. Exported so nothing writes a second one. */
 export function toMember(row: BrowseMemberRow): BrowseMember {
   return {
     id: row.id,
@@ -104,7 +112,7 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     username: row.username ?? null,
     photoPath: row.photo_path,
     photoAlt: row.photo_alt,
-    avatarColor: row.avatar_color,
+    avatarColor: row.avatar_color ?? null,
     city: row.city,
     state: row.state,
     levelRange: row.level_range as BrowseMember['levelRange'],
@@ -119,16 +127,16 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     howInjured: row.how_injured ?? null,
     bio: row.bio ?? null,
     detail: row.detail ?? null,
-    gender: row.gender,
+    gender: row.gender ?? null,
     languages: row.languages ?? [],
-    independence: row.independence as BrowseMember['independence'],
-    employment: row.employment as BrowseMember['employment'],
+    independence: (row.independence ?? null) as BrowseMember['independence'],
+    employment: (row.employment ?? null) as BrowseMember['employment'],
     fieldOfWork: row.field_of_work,
-    education: row.education,
-    educationWhen: row.education_when as BrowseMember['educationWhen'],
-    maritalStatus: row.marital_status as BrowseMember['maritalStatus'],
-    hasChildren: row.has_children,
-    childrenWhen: row.children_when as BrowseMember['childrenWhen'],
+    education: row.education ?? null,
+    educationWhen: (row.education_when ?? null) as BrowseMember['educationWhen'],
+    maritalStatus: (row.marital_status ?? null) as BrowseMember['maritalStatus'],
+    hasChildren: row.has_children ?? null,
+    childrenWhen: (row.children_when ?? null) as BrowseMember['childrenWhen'],
     interests: row.interests ?? [],
     topics: row.topics ?? [],
     selfCare: row.self_care ?? [],
@@ -137,8 +145,9 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     affiliations: row.affiliations ?? [],
     representedOrganizations: (row.represented_organizations ?? []).map(toOrganizationMark),
     mentorOrganizations: (row.mentor_organizations ?? []).map(toOrganizationMark),
-    wantsToMentor: row.wants_to_mentor,
-    isSeed: row.is_seed,
+    wantsToMentor: row.wants_to_mentor ?? null,
+    // Read on a member's own page only.
+    isSeed: row.is_seed ?? false,
     isAdmin: row.is_admin,
     createdAt: row.created_at,
   };
@@ -157,69 +166,146 @@ export interface MembersState {
   signedOut: boolean;
 }
 
-export function useBrowseMembers(): MembersState {
-  const [state, setState] = useState<MembersState>({
-    members: [],
-    loading: true,
-    error: null,
-    signedOut: false,
+/** Which screen asks: a deck's columns, or a picker's names. */
+export type DirectoryUse = 'deck' | 'names';
+
+/** A kept read older than this is read again, behind it, when a screen opens. */
+export const DIRECTORY_FRESH_MS = 60_000;
+
+type DirectoryRead = { members: BrowseMember[]; error: null } | { members: null; error: string };
+
+/**
+ * The directory, read once and shared by every screen, for one signed-in
+ * member. Forgotten at sign-out and on a switch (shared-reads.ts), and when
+ * this device changes who it may see (a block, its own profile).
+ */
+interface HeldDirectory {
+  userId: string;
+  use: DirectoryUse;
+  read: Promise<DirectoryRead>;
+  reading: boolean;
+  value?: BrowseMember[];
+  at?: number;
+}
+let heldDirectory: HeldDirectory | null = null;
+
+function forgetDirectory() {
+  heldDirectory = null;
+}
+onForgetSharedReads(forgetDirectory);
+onDirectoryChanged(forgetDirectory);
+
+/** A deck's read serves a picker too; not the other way round. */
+const covers = (held: HeldDirectory, use: DirectoryUse) => held.use === 'deck' || use === 'names';
+
+async function fetchDirectory(use: DirectoryUse): Promise<DirectoryRead> {
+  try {
+    const supabase = getSupabase();
+    // One type for both: a names read leaves the deck's other columns unset.
+    const columns = (use === 'deck' ? DECK_COLUMNS : NAMES_COLUMNS) as typeof DECK_COLUMNS;
+    // Every page: the API stops at 1,000 rows without saying so. `id`
+    // breaks ties so two members with one name are not skipped or doubled.
+    const { data, error } = await readPages<BrowseMemberRow>((from, to) =>
+      supabase
+        .from('browse_members')
+        .select(columns)
+        .order('display_name')
+        .order('id')
+        .range(from, to),
+    );
+    if (error) return { members: null, error: describeError(error, 'Could not load members.') };
+    return { members: (data ?? []).map(toMember), error: null };
+  } catch (e) {
+    return { members: null, error: describeThrown(e, 'Could not load members.') };
+  }
+}
+
+/** `again`: a fresh read, the last answer kept until it lands. */
+function readDirectory(userId: string, use: DirectoryUse, again: boolean): Promise<DirectoryRead> {
+  const held = heldDirectory?.userId === userId ? heldDirectory : null;
+  if (held && covers(held, use) && (!again || held.reading)) return held.read;
+  const wanted: DirectoryUse = held?.use === 'deck' ? 'deck' : use;
+  const entry: HeldDirectory = { userId, use: wanted, read: fetchDirectory(wanted), reading: true };
+  if (held?.value && held.use === wanted) {
+    entry.value = held.value;
+    entry.at = held.at ?? 0;
+  }
+  heldDirectory = entry;
+  void entry.read.then((result) => {
+    entry.reading = false;
+    if (result.error === null) {
+      entry.value = result.members;
+      entry.at = Date.now();
+    } else if (heldDirectory === entry) {
+      // A failed refresh keeps the last answer; a failed first read is not kept.
+      if (entry.value) entry.read = Promise.resolve({ members: entry.value, error: null });
+      else heldDirectory = null;
+    }
   });
+  return entry.read;
+}
+
+function keptFor(userId: string | null, use: DirectoryUse): MembersState | null {
+  const held = userId !== null && heldDirectory?.userId === userId ? heldDirectory : null;
+  return held?.value && covers(held, use)
+    ? { members: held.value, loading: false, error: null, signedOut: false }
+    : null;
+}
+
+const isFresh = (userId: string) =>
+  heldDirectory?.userId === userId && Date.now() - (heldDirectory.at ?? 0) <= DIRECTORY_FRESH_MS;
+
+const LOADING: MembersState = { members: [], loading: true, error: null, signedOut: false };
+
+/**
+ * The members Peers shows, from the read shared between screens. A screen
+ * opened within a minute of the last read draws it as it is; later, it draws
+ * it and reads again behind it.
+ */
+export function useBrowseMembers(use: DirectoryUse = 'deck'): MembersState {
+  const knownUser = useContext(AccountContext)?.userId ?? null;
+  const [state, setState] = useState<MembersState>(() => keptFor(knownUser, use) ?? LOADING);
 
   useEffect(() => {
-    // An AbortController rather than a `let cancelled` flag: the flag reads as
-    // always-false to the type checker after its first check, since it cannot
-    // see the cleanup closure mutate it across an await. This also genuinely
-    // cancels the request instead of discarding its result.
-    const controller = new AbortController();
-    const { signal } = controller;
-    // Read through a call, not a property: the type checker narrows
-    // `signal.aborted` to false after the first check and then flags every
-    // later one as dead code. A call result cannot be narrowed.
-    const aborted = () => signal.aborted;
+    let cancelled = false;
+    // A call, so the type checker does not narrow it to false after an await.
+    const gone = () => cancelled;
+    const settle = (next: MembersState) => {
+      setState((now) =>
+        now.members === next.members &&
+        now.loading === next.loading &&
+        now.error === next.error &&
+        now.signedOut === next.signedOut
+          ? now
+          : next,
+      );
+    };
 
     async function load() {
       try {
-        const supabase = getSupabase();
-
         // Ask before knocking. Without this, a signed-out visitor gets the
         // database's refusal rendered at them verbatim.
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (aborted()) return;
-        if (!sessionData.session) {
-          setState({ members: [], loading: false, error: null, signedOut: true });
+        const { data: sessionData } = await getSupabase().auth.getSession();
+        if (gone()) return;
+        const session = sessionData.session;
+        if (!session) {
+          settle({ members: [], loading: false, error: null, signedOut: true });
           return;
         }
-
-        // Every page: the API stops at 1,000 rows without saying so. `id`
-        // breaks ties so two members with one name are not skipped or doubled.
-        const { data, error } = await readPages<BrowseMemberRow>((from, to) =>
-          supabase
-            .from('browse_members')
-            .select(LIST_COLUMNS)
-            .order('display_name')
-            .order('id')
-            .range(from, to)
-            .abortSignal(signal),
-        );
-        if (aborted()) return;
-        if (error) {
-          setState({
-            members: [],
-            loading: false,
-            error: describeError(error, 'Could not load members.'),
-            signedOut: false,
-          });
-          return;
+        const userId = session.user.id;
+        const kept = keptFor(userId, use);
+        if (kept) settle(kept);
+        if (kept && isFresh(userId)) return;
+        const result = await readDirectory(userId, use, kept !== null);
+        if (gone()) return;
+        if (result.error === null) {
+          settle({ members: result.members, loading: false, error: null, signedOut: false });
+        } else if (!kept) {
+          settle({ members: [], loading: false, error: result.error, signedOut: false });
         }
-        setState({
-          members: (data ?? []).map(toMember),
-          loading: false,
-          error: null,
-          signedOut: false,
-        });
       } catch (e) {
-        if (aborted()) return;
-        setState({
+        if (gone()) return;
+        settle({
           members: [],
           loading: false,
           error: describeThrown(e, 'Could not load members.'),
@@ -230,9 +316,9 @@ export function useBrowseMembers(): MembersState {
 
     void load();
     return () => {
-      controller.abort();
+      cancelled = true;
     };
-  }, []);
+  }, [use]);
 
   return state;
 }

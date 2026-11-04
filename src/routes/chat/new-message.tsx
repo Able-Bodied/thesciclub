@@ -23,7 +23,7 @@ export default function NewMessagePage() {
   const navigate = useNavigate();
   const account = useAccount();
   const viewerId = account.status === 'member' ? account.userId : null;
-  const { members, loading, error } = useBrowseMembers();
+  const { members, loading, error } = useBrowseMembers('names');
   const [filter, setFilter] = useState('');
   const [opening, setOpening] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
