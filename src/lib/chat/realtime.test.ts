@@ -21,7 +21,7 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 interface Handler {
   event: string;
   filter: string | undefined;
-  fire: () => void;
+  fire: (payload?: { new?: Record<string, unknown> }) => void;
 }
 
 interface FakeChannel {
@@ -29,7 +29,11 @@ interface FakeChannel {
   handlers: Handler[];
   /** The callback `subscribe` was given, so a test can push a state at it. */
   status: (state: string) => void;
-  on: (kind: string, config: { event: string; filter?: string }, fire: () => void) => FakeChannel;
+  on: (
+    kind: string,
+    config: { event: string; filter?: string },
+    fire: Handler['fire'],
+  ) => FakeChannel;
   subscribe: (callback: (state: string) => void) => FakeChannel;
 }
 
@@ -128,6 +132,19 @@ describe('useRealtimeRows', () => {
     });
     for (const handler of only().handlers) handler.fire();
     expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('hands a changed row to onRow, and keeps onChange for reconnects', () => {
+    const onChange = vi.fn();
+    const onRow = vi.fn();
+    renderHook(() => {
+      useRealtimeRows({ table: 'chat_messages', onChange, onRow });
+    });
+    only().handlers[0]?.fire({ new: { id: 'm1' } });
+    expect(onRow).toHaveBeenCalledWith({ id: 'm1' });
+    expect(onChange).not.toHaveBeenCalled();
+    only().status('SUBSCRIBED');
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it('subscribes to nothing while there is nothing to watch', () => {

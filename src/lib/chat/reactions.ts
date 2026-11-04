@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { announcePostViewsChanged } from '@/lib/chat/views';
@@ -34,9 +34,9 @@ export interface ReactionsState {
 }
 
 /** One read/subscription per screen, shared by all its posts or messages.
- * Writes are serialized per target and counts move only after confirmation.
- * Scope changes discard old reads and write results rather than leaking them
- * into another conversation or account. */
+ * Each target is read once; a longer list reads only the new ones, and a live
+ * change updates just its row. Writes are serialized per target and counts
+ * move only after confirmation. A new kind or account starts empty. */
 export function useReactions(
   kind: ReactionKind,
   ids: readonly string[],
@@ -46,47 +46,45 @@ export function useReactions(
   { live = true }: { live?: boolean } = {},
 ): ReactionsState {
   const key = [...new Set(ids)].sort().join(',');
-  const scope = `${kind}:${memberId}:${key}`;
+  const wanted = useMemo(() => (key ? key.split(',') : []), [key]);
+  const scope = `${kind}:${memberId}`;
   const currentScope = useRef(scope);
   currentScope.current = scope;
+  const wantedNow = useRef(wanted);
+  wantedNow.current = wanted;
   const table = kind === 'post' ? 'chat_post_reactions' : 'chat_message_reactions';
   const announce = useAnnounce();
-  const [snapshot, setSnapshot] = useState<{ scope: string; rows: ReactionRow[] }>({
-    scope,
-    rows: [],
-  });
-  const [loading, setLoading] = useState(false);
+  const [store, setStore] = useState<{
+    scope: string;
+    byTarget: ReadonlyMap<string, ReactionRow[]>;
+  }>({ scope, byTarget: new Map() });
   const [error, setError] = useState<string | null>(null);
   const [failure, setFailure] = useState<ReactionsState['failure']>(null);
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const busy = useRef(new Set<string>());
-  const version = useRef(0);
-  // Read again for the same posts (a kept tab showing), the counts stay up.
-  const shown = useRef<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const reload = useCallback(() => {
-    setAttempt((n) => n + 1);
-  }, []);
-  useRealtimeRows({ table, onChange: reload, enabled: live && Boolean(memberId && key) });
+  // Targets read or being read in this scope, and writes per target, so a
+  // read that overlapped a write does not overwrite it.
+  const asked = useRef({ scope, ids: new Set<string>() });
+  const written = useRef(new Map<string, number>());
+  const controllers = useRef(new Set<AbortController>());
 
-  useEffect(() => {
-    if (attempt < 0) return;
-    setError(null);
-    if (!memberId || !key) {
-      setSnapshot({ scope, rows: [] });
-      setLoading(false);
-      return;
-    }
-    const controller = new AbortController();
-    const readVersion = version.current;
-    if (shown.current !== scope) setLoading(true);
-    async function load() {
+  const read = useCallback(
+    async (targets: readonly string[]) => {
+      if (!memberId || targets.length === 0) return;
+      const readScope = scope;
+      for (const target of targets) asked.current.ids.add(target);
+      const versions = new Map(targets.map((t) => [t, written.current.get(t) ?? 0]));
+      const controller = new AbortController();
+      controllers.current.add(controller);
+      const forget = () => {
+        if (asked.current.scope === readScope)
+          for (const target of targets) asked.current.ids.delete(target);
+      };
       try {
-        // Supabase caps a response at 1,000 rows. Stable key order and pages
-        // keep a busy conversation's counts from silently truncating; a
-        // hundred targets at a time keeps each URL short enough to send.
+        // Supabase caps a response at 1,000 rows, and a hundred targets at a
+        // time keeps each URL short enough to send.
         const { data: rows, error: failed } = await readInBatches<ReactionRow>(
-          key.split(','),
+          targets,
           async (batch) => {
             const found: ReactionRow[] = [];
             for (let offset = 0; ; offset += 1000) {
@@ -107,34 +105,94 @@ export function useReactions(
             }
           },
         );
-        if (controller.signal.aborted || readVersion !== version.current) return;
+        if (controller.signal.aborted || currentScope.current !== readScope) return;
         if (failed) {
-          setSnapshot({ scope, rows: [] });
+          forget();
           setError(describeError(failed, 'Could not load reactions.'));
           return;
         }
-        shown.current = scope;
-        setSnapshot({ scope, rows: rows ?? [] });
+        setError(null);
+        setStore((old) => {
+          if (old.scope !== readScope) return old;
+          const next = new Map(old.byTarget);
+          const fresh = targets.filter((t) => (written.current.get(t) ?? 0) === versions.get(t));
+          for (const target of fresh) next.set(target, []);
+          for (const row of rows ?? []) next.get(row.target_id)?.push(row);
+          return { scope: readScope, byTarget: next };
+        });
       } catch (e) {
-        if (controller.signal.aborted || readVersion !== version.current) return;
-        setSnapshot({ scope, rows: [] });
+        if (controller.signal.aborted || currentScope.current !== readScope) return;
+        forget();
         setError(describeThrown(e, 'Could not load reactions.'));
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        controllers.current.delete(controller);
       }
+    },
+    [memberId, scope, table],
+  );
+
+  // Only targets not yet read; a new scope drops everything first.
+  useEffect(() => {
+    if (asked.current.scope !== scope) {
+      for (const controller of controllers.current) controller.abort();
+      controllers.current.clear();
+      asked.current = { scope, ids: new Set() };
+      written.current = new Map();
+      setStore({ scope, byTarget: new Map() });
+      setError(null);
     }
-    void load();
-    return () => {
-      controller.abort();
-    };
-  }, [scope, memberId, key, table, attempt]);
+    void read(wanted.filter((t) => !asked.current.ids.has(t)));
+  }, [scope, wanted, read]);
+
+  useEffect(
+    () => () => {
+      for (const controller of controllers.current) controller.abort();
+    },
+    [],
+  );
+
+  // Retry, reconnect or focus: read the current targets again, quietly.
+  const reload = useCallback(() => {
+    void read(wantedNow.current);
+  }, [read]);
+
+  // A live change is applied as its row; one that is not shaped as expected
+  // is read again instead.
+  const onRow = useCallback(
+    (raw: Record<string, unknown>) => {
+      const target = raw.target_id;
+      const member = raw.member_id;
+      if (typeof target !== 'string' || !wantedNow.current.includes(target)) return;
+      const emoji = raw.emoji ?? null;
+      const valid =
+        typeof member === 'string' && (emoji === null || REACTIONS.some((r) => r.emoji === emoji));
+      if (!valid || busy.current.has(`${scope}:${target}`)) {
+        void read([target]);
+        return;
+      }
+      setStore((old) => {
+        if (old.scope !== scope || !old.byTarget.has(target)) return old;
+        const next = new Map(old.byTarget);
+        next.set(target, [
+          ...(old.byTarget.get(target) ?? []).filter((r) => r.member_id !== member),
+          { target_id: target, member_id: member, emoji: emoji as ReactionEmoji | null },
+        ]);
+        return { scope, byTarget: next };
+      });
+    },
+    [scope, read],
+  );
+  useRealtimeRows({ table, onChange: reload, onRow, enabled: live && Boolean(memberId && key) });
 
   const choose = useCallback(
     async (target: string, emoji: ReactionEmoji | null) => {
       const token = `${scope}:${target}`;
-      if (!memberId || !key.split(',').includes(target) || busy.current.has(token)) return false;
+      if (!memberId || !wanted.includes(target) || busy.current.has(token)) return false;
       busy.current.add(token);
-      version.current += 1;
+      const bump = () => {
+        written.current.set(target, (written.current.get(target) ?? 0) + 1);
+      };
+      bump();
       setPending(new Set(busy.current));
       setFailure(null);
       try {
@@ -143,28 +201,26 @@ export function useReactions(
           target,
           reaction: emoji,
         });
-        version.current += 1;
-        if (currentScope.current !== scope) {
-          reload();
-          return false;
-        }
+        bump();
+        if (currentScope.current !== scope) return false;
         if (failed) {
           setFailure({ target, message: describeError(failed, 'Your reaction was not saved.') });
+          void read([target]);
           return false;
         }
-        setSnapshot((old) => ({
-          scope,
-          rows: [
-            ...(old.scope === scope ? old.rows : []).filter(
-              (r) => r.target_id !== target || r.member_id !== memberId,
-            ),
+        setStore((old) => {
+          if (old.scope !== scope) return old;
+          const next = new Map(old.byTarget);
+          next.set(target, [
+            ...(old.byTarget.get(target) ?? []).filter((r) => r.member_id !== memberId),
             { target_id: target, member_id: memberId, emoji },
-          ],
-        }));
+          ]);
+          return { scope, byTarget: next };
+        });
         announce(emoji ? 'Reaction saved.' : 'Reaction removed.');
         // A reaction to a post is a view (20261019000000).
         if (kind === 'post') announcePostViewsChanged();
-        reload();
+        void read([target]);
         return true;
       } catch (e) {
         if (currentScope.current === scope)
@@ -175,11 +231,15 @@ export function useReactions(
         setPending(new Set(busy.current));
       }
     },
-    [scope, memberId, key, kind, announce, reload],
+    [scope, memberId, wanted, kind, announce, read],
   );
+
+  const own = store.scope === scope ? store.byTarget : null;
+  const rows = useMemo(() => (own ? wanted.flatMap((t) => own.get(t) ?? []) : []), [own, wanted]);
   return {
-    rows: snapshot.scope === scope ? snapshot.rows : [],
-    loading: loading || snapshot.scope !== scope,
+    rows,
+    // Some target not read yet. Nothing waits on this: React stays usable.
+    loading: Boolean(memberId) && error === null && wanted.some((t) => !own?.has(t)),
     error,
     failure,
     pending: new Set(

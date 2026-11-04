@@ -79,13 +79,17 @@ describe('a topic’s views on a first visit', () => {
 });
 
 describe('long conversations and topics', () => {
-  it('delivers every message and marks only through the last delivered ID', async () => {
+  // A conversation reads its newest page only (the owner's speed report,
+  // 2026-11-03); Show earlier brings the rest. thread-paging.test.ts has more.
+  it('reads the newest page and marks through the newest message', async () => {
     const { result } = renderHook(() => useThreadMessages('thread'));
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
     expect(result.current.error).toBeNull();
-    expect(result.current.messages).toHaveLength(1005);
+    expect(result.current.messages).toHaveLength(100);
+    expect(result.current.hasEarlier).toBe(true);
+    expect(result.current.messages[0]?.body).toBe('Message 905');
     expect(result.current.messages.at(-1)?.body).toBe('Message 1004');
     await waitFor(() => {
       expect(state.sent).toHaveBeenCalledWith('chat_mark_thread_read_through', {
