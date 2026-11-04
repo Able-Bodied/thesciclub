@@ -112,6 +112,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     messages,
     loading,
     error,
+    stale,
     hasEarlier,
     loadingEarlier,
     earlierError,
@@ -411,7 +412,9 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     );
   }
 
-  if (error || !thread) {
+  // Only when there is nothing to show: a later failed read keeps the
+  // conversation and the message box, and says so below the header.
+  if (!thread) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-[720px]">
@@ -487,6 +490,23 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
           </div>
         </div>
       </header>
+
+      {stale ? (
+        <p
+          role="status"
+          className="flex-none border-line border-b bg-tint px-4 py-1.5 text-center text-[0.78125rem] text-ink2 leading-[1.45]"
+        >
+          Could not refresh this conversation.{' '}
+          <button
+            type="button"
+            onClick={reload}
+            data-target="small"
+            className="font-semibold text-emphasis underline"
+          >
+            Try again
+          </button>
+        </p>
+      ) : null}
 
       <div
         ref={scroller}

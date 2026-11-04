@@ -424,6 +424,36 @@ describe('a conversation', () => {
     renderThread();
     expect(screen.getByText('This conversation cannot be shown.')).toBeInTheDocument();
   });
+
+  it('says why when the first read fails', () => {
+    db.thread = null;
+    db.error = 'Could not load the conversation.';
+    renderThread();
+    expect(screen.getByText('This conversation cannot be shown.')).toBeInTheDocument();
+    expect(screen.getByText('Could not load the conversation.')).toBeInTheDocument();
+  });
+
+  // Bug A (2026-11-03): a failed background read swapped the screen for the
+  // error, and the words being typed went with the message box.
+  it('keeps the message box and what is typed when a later read fails', async () => {
+    db.messages = [message({ id: 'm1', body: 'Which frame?' })];
+    const view = renderThread();
+    const box = screen.getByLabelText('Message Jan');
+    await userEvent.type(box, 'Half a sent');
+    db.stale = 'Could not load the conversation.';
+    view.rerender(
+      <MemoryRouter initialEntries={['/chat/t/th1']}>
+        <Routes>
+          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Could not refresh this conversation.');
+    expect(screen.queryByText('This conversation cannot be shown.')).toBeNull();
+    expect(screen.getByLabelText('Message Jan')).toBe(box);
+    expect(box).toHaveValue('Half a sent');
+    expect(screen.getByText('Which frame?')).toBeInTheDocument();
+  });
 });
 
 describe('a long conversation', () => {
