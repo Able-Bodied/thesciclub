@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   forgetPendingRegistration,
   type Guest,
@@ -6,7 +6,13 @@ import {
   keepPendingRegistration,
   pendingRegistration,
   publicEventUrl,
+  registerForEvent,
 } from '@/lib/event-audience';
+
+const rpc = vi.hoisted(() => ({ error: null as { code: string; message: string } | null }));
+vi.mock('@/lib/supabase', () => ({
+  getSupabase: () => ({ rpc: () => Promise.resolve({ data: null, error: rpc.error }) }),
+}));
 
 const guest = (o: Partial<Guest> = {}): Guest => ({
   name: 'Maria Lopez',
@@ -73,4 +79,22 @@ describe('the registration kept on this device', () => {
 
 it('shares a public event at thesciclub.com/e/', () => {
   expect(publicEventUrl('abc')).toBe('https://thesciclub.com/e/abc');
+});
+
+describe('a refused registration (20261103180000)', () => {
+  const registration = {
+    eventId: 'gone',
+    status: 'going' as const,
+    name: 'Maria',
+    email: 'maria@example.com',
+    phone: '',
+  };
+
+  it.each([
+    ['22023', 'This event is not taking registrations.'],
+    ['P0001', 'Too many registrations just now. Try again in a minute.'],
+  ])('says the database’s own sentence for %s', async (code, message) => {
+    rpc.error = { code, message };
+    await expect(registerForEvent(registration)).resolves.toEqual({ ok: false, error: message });
+  });
 });
