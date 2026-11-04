@@ -83,6 +83,8 @@ describe('the bar on a scroll', () => {
     Object.defineProperty(box, 'scrollHeight', { value: 2000 });
     Object.defineProperty(box, 'clientHeight', { value: 600 });
     Object.defineProperty(box, 'scrollTop', { value: 300 });
+    // The reader's own scroll: only that moves the bar (hide-on-scroll.ts).
+    fireEvent.touchStart(box);
     fireEvent.scroll(box);
     return nav;
   }

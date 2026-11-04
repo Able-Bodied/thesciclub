@@ -22,6 +22,13 @@ const state = (extra: Partial<ReactionsState> = {}): ReactionsState => ({
   ...extra,
 });
 describe('reaction controls', () => {
+  // Phones saw React greyed out for over 30 s under load (2026-11-03).
+  it('keeps React usable while counts are still loading', () => {
+    render(
+      <ReactionBar target="m1" what="the message" readerId="me" state={state({ loading: true })} />,
+    );
+    expect(screen.getByRole('button', { name: 'React to “the message”' })).toBeEnabled();
+  });
   it('shows React and Reply directly while keeping Edit in the menu', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'other', emoji: '❤️' }] });
     render(

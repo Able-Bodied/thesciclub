@@ -12,10 +12,18 @@ const db = vi.hoisted(() => ({
   hold: null as Promise<void> | null,
   pages: [] as number[],
   changed: null as (() => void) | null,
+  row: null as ((row: Record<string, unknown>) => void) | null,
 }));
 vi.mock('@/lib/chat/realtime', () => ({
-  useRealtimeRows: ({ onChange }: { onChange: () => void }) => {
+  useRealtimeRows: ({
+    onChange,
+    onRow,
+  }: {
+    onChange: () => void;
+    onRow?: (row: Record<string, unknown>) => void;
+  }) => {
     db.changed = onChange;
+    db.row = onRow ?? null;
   },
 }));
 vi.mock('@/lib/supabase', () => ({
@@ -166,6 +174,31 @@ describe('emoji reactions', () => {
     await waitFor(() => {
       expect(result.current.rows).toEqual(db.rows);
     });
+  });
+  // The owner's speed report, 2026-11-03: every new message re-read every
+  // message's reactions.
+  it('reads only the targets it has not read when the list grows', async () => {
+    db.rows = [{ target_id: 'm2', member_id: 'other', emoji: '👍' }];
+    const { result, rerender } = renderHook(({ ids }) => useReactions('message', ids, 'me'), {
+      initialProps: { ids: ['m1'] },
+    });
+    await loaded(result);
+    rerender({ ids: ['m1', 'm2'] });
+    await loaded(result);
+    expect(result.current.rows).toEqual(db.rows);
+    expect(db.reads).toEqual([
+      { table: 'chat_message_reactions', ids: ['m1'] },
+      { table: 'chat_message_reactions', ids: ['m2'] },
+    ]);
+  });
+  it('applies a live reaction as its row, with no read', async () => {
+    const { result } = renderHook(() => useReactions('message', ['m1'], 'me'));
+    await loaded(result);
+    db.reads = [];
+    act(() => db.row?.({ target_id: 'm1', member_id: 'other', emoji: '🎉' }));
+    act(() => db.row?.({ target_id: 'elsewhere', member_id: 'other', emoji: '🎉' }));
+    expect(result.current.rows).toEqual([{ target_id: 'm1', member_id: 'other', emoji: '🎉' }]);
+    expect(db.reads).toEqual([]);
   });
   it('never carries private rows into another conversation', async () => {
     db.rows = [{ target_id: 'm1', member_id: 'other', emoji: '❤️' }];

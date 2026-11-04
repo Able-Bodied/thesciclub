@@ -58,7 +58,8 @@ export function ReactionBar({
   const rows = state.rows.filter((r) => r.target_id === target && r.emoji !== null);
   const mine = rows.find((r) => r.member_id === readerId)?.emoji ?? null;
   const pending = state.pending.has(target);
-  const disabled = !readerId || pending || state.loading;
+  // Not while counts load: a slow read must not grey out React.
+  const disabled = !readerId || pending;
   const trigger = (
     <button
       type="button"

@@ -31,6 +31,10 @@ const db = vi.hoisted(() => ({
   messages: [] as ChatMessage[],
   loading: false,
   error: null as string | null,
+  stale: null as string | null,
+  hasEarlier: false,
+  loadEarlier: vi.fn(() => Promise.resolve()),
+  reveal: vi.fn((_id: string) => Promise.resolve(false)),
   authors: new Map<string, ChatAuthor>(),
   isAdmin: false,
   sent: [] as [string, string | null][],
@@ -123,7 +127,14 @@ vi.mock('@/lib/chat/threads', async (importOriginal) => ({
     messages: db.messages,
     loading: db.loading,
     error: db.error,
+    stale: db.stale,
+    hasEarlier: db.hasEarlier,
+    loadingEarlier: false,
+    earlierError: null,
+    loadEarlier: db.loadEarlier,
+    reveal: db.reveal,
     reload: () => undefined,
+    changed: () => undefined,
     send: (body: string, _attachments: string[] = [], replyTo: string | null = null) => {
       db.sent.push([body, replyTo]);
       return Promise.resolve(db.sendFailure);
@@ -250,6 +261,10 @@ beforeEach(() => {
   db.messages = [];
   db.loading = false;
   db.error = null;
+  db.stale = null;
+  db.hasEarlier = false;
+  db.loadEarlier = vi.fn(() => Promise.resolve());
+  db.reveal = vi.fn((_id: string) => Promise.resolve(false));
   db.authors = new Map([['jan', jan]]);
   db.isAdmin = false;
   db.sent = [];
@@ -408,6 +423,62 @@ describe('a conversation', () => {
     db.thread = null;
     renderThread();
     expect(screen.getByText('This conversation cannot be shown.')).toBeInTheDocument();
+  });
+
+  it('says why when the first read fails', () => {
+    db.thread = null;
+    db.error = 'Could not load the conversation.';
+    renderThread();
+    expect(screen.getByText('This conversation cannot be shown.')).toBeInTheDocument();
+    expect(screen.getByText('Could not load the conversation.')).toBeInTheDocument();
+  });
+
+  // Bug A (2026-11-03): a failed background read swapped the screen for the
+  // error, and the words being typed went with the message box.
+  it('keeps the message box and what is typed when a later read fails', async () => {
+    db.messages = [message({ id: 'm1', body: 'Which frame?' })];
+    const view = renderThread();
+    const box = screen.getByLabelText('Message Jan');
+    await userEvent.type(box, 'Half a sent');
+    db.stale = 'Could not load the conversation.';
+    view.rerender(
+      <MemoryRouter initialEntries={['/chat/t/th1']}>
+        <Routes>
+          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Could not refresh this conversation.');
+    expect(screen.queryByText('This conversation cannot be shown.')).toBeNull();
+    expect(screen.getByLabelText('Message Jan')).toBe(box);
+    expect(box).toHaveValue('Half a sent');
+    expect(screen.getByText('Which frame?')).toBeInTheDocument();
+  });
+});
+
+describe('a long conversation', () => {
+  it('offers Show earlier while older messages exist, and asks for them', async () => {
+    db.messages = [message({ id: 'm1' })];
+    db.hasEarlier = true;
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Show earlier messages' }));
+    expect(db.loadEarlier).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers nothing once the whole conversation is loaded', () => {
+    db.messages = [message({ id: 'm1' })];
+    renderThread();
+    expect(screen.queryByRole('button', { name: 'Show earlier messages' })).toBeNull();
+  });
+
+  it('reads back to a linked message older than the newest page', async () => {
+    db.messages = [message({ id: 'm2' })];
+    db.hasEarlier = true;
+    renderThread('/chat/t/th1?message=m1');
+    await waitFor(() => {
+      expect(db.reveal).toHaveBeenCalledWith('m1');
+    });
+    expect(db.reveal).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -107,8 +107,23 @@ export default function ThreadPage() {
 
 function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   const account = useAccount();
-  const { thread, messages, loading, error, reload, send, edit, remove } =
-    useThreadMessages(threadId);
+  const {
+    thread,
+    messages,
+    loading,
+    error,
+    stale,
+    hasEarlier,
+    loadingEarlier,
+    earlierError,
+    loadEarlier,
+    reveal,
+    reload,
+    changed,
+    send,
+    edit,
+    remove,
+  } = useThreadMessages(threadId);
   const reactions = useReactions(
     'message',
     messages.filter((m) => !m.pending && !m.notice && m.removedAt === null).map((m) => m.id),
@@ -121,14 +136,13 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     messages,
   );
 
-  // Live. The reload also re-marks the thread read, which is right: the reader
-  // is looking at it. Removal arrives here as an UPDATE, so a message taken
-  // back turns into "Removed by…" under somebody who is mid-conversation
-  // rather than staying on their screen.
+  // Live: a changed row fetches just that message (a removal arrives as an
+  // UPDATE); a reconnect reads the newest page again. Either marks it read.
   useRealtimeRows({
     table: 'chat_messages',
     filter: threadId ? `thread_id=eq.${threadId}` : undefined,
     onChange: reload,
+    onRow: changed,
     enabled: Boolean(threadId),
   });
 
@@ -187,7 +201,9 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   const scroller = useRef<HTMLDivElement | null>(null);
   const log = useRef<HTMLDivElement | null>(null);
   const opened = useRef(false);
-  const seen = useRef(0);
+  // The newest message seen, so earlier ones put in front are not "new".
+  const seen = useRef<string | undefined>(undefined);
+  const newestId = messages.at(-1)?.id;
   // Held at the bottom while photographs load, until the reader scrolls; see
   // lib/hold-scroll.ts. Taken up again whenever they come back down.
   const pin = useHoldScroll(scroller, log, !loading && thread !== null);
@@ -229,13 +245,30 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   const { key: navigationKey } = useLocation();
   const wantedNavigation = wantedMessage ? `${wantedMessage}:${navigationKey}` : null;
   const shownFor = useRef<string | null>(null);
+  // A linked message older than the newest page is read back to, once.
+  const [seeking, setSeeking] = useState<string | null>(null);
+  const sought = useRef<string | null>(null);
   useEffect(() => {
-    if (loading || !thread) return;
+    if (loading || !thread || seeking) return;
     if (opened.current && wantedNavigation === shownFor.current) return;
+    if (
+      wantedMessage &&
+      wantedNavigation &&
+      sought.current !== wantedNavigation &&
+      hasEarlier &&
+      !messages.some((m) => m.id === wantedMessage)
+    ) {
+      sought.current = wantedNavigation;
+      setSeeking(wantedNavigation);
+      void reveal(wantedMessage).finally(() => {
+        setSeeking(null);
+      });
+      return;
+    }
     const first = !opened.current;
     opened.current = true;
     shownFor.current = wantedNavigation;
-    seen.current = messages.length;
+    seen.current = newestId;
     const target = wantedMessage ? document.getElementById(`message-${wantedMessage}`) : null;
     if (target) {
       pin.hold(() => {
@@ -248,14 +281,25 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
       return;
     }
     if (first) toBottom('auto');
-  }, [loading, thread, messages.length, toBottom, wantedMessage, wantedNavigation, pin]);
+  }, [
+    loading,
+    thread,
+    messages,
+    newestId,
+    hasEarlier,
+    seeking,
+    reveal,
+    toBottom,
+    wantedMessage,
+    wantedNavigation,
+    pin,
+  ]);
 
-  // Afterwards, follow only if the reader was already there.
+  // Afterwards, follow a new newest message only if the reader was already there.
   useEffect(() => {
-    if (!opened.current || messages.length === seen.current) return;
-    const grew = messages.length > seen.current;
-    seen.current = messages.length;
-    if (!grew) return;
+    if (!opened.current || newestId === seen.current) return;
+    seen.current = newestId;
+    if (!newestId) return;
     const element = scroller.current;
     if (!element) return;
     // Held means the reader is at the bottom, whatever the arithmetic says now
@@ -263,7 +307,26 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
     if (pin.holding() || shouldFollowScroll(distance)) toBottom('smooth');
     else setBehind(true);
-  }, [messages.length, toBottom, pin]);
+  }, [newestId, toBottom, pin]);
+
+  // Show earlier keeps what the reader was looking at where it was: the
+  // distance from the bottom is put back once the earlier messages are drawn.
+  const keepFromBottom = useRef<number | null>(null);
+  const oldestId = messages[0]?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new oldest message is why it runs.
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    const kept = keepFromBottom.current;
+    if (!element || kept === null) return;
+    keepFromBottom.current = null;
+    element.scrollTop = element.scrollHeight - kept;
+  }, [oldestId]);
+  function showEarlier() {
+    const element = scroller.current;
+    if (element) keepFromBottom.current = element.scrollHeight - element.scrollTop;
+    pin.release();
+    void loadEarlier();
+  }
 
   /**
    * Coming back down to the newest message takes the hold up again, without a
@@ -349,7 +412,9 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     );
   }
 
-  if (error || !thread) {
+  // Only when there is nothing to show: a later failed read keeps the
+  // conversation and the message box, and says so below the header.
+  if (!thread) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-[720px]">
@@ -426,6 +491,23 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
         </div>
       </header>
 
+      {stale ? (
+        <p
+          role="status"
+          className="flex-none border-line border-b bg-tint px-4 py-1.5 text-center text-[0.78125rem] text-ink2 leading-[1.45]"
+        >
+          Could not refresh this conversation.{' '}
+          <button
+            type="button"
+            onClick={reload}
+            data-target="small"
+            className="font-semibold text-emphasis underline"
+          >
+            Try again
+          </button>
+        </p>
+      ) : null}
+
       <div
         ref={scroller}
         onScroll={onScroll}
@@ -445,6 +527,24 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
           aria-live="polite"
           aria-label={`Messages with ${title}`}
         >
+          {hasEarlier ? (
+            <div className="mb-2.5 flex flex-col items-center gap-1">
+              <button
+                type="button"
+                onClick={showEarlier}
+                disabled={loadingEarlier}
+                className="min-h-11 rounded-full border border-line px-4 font-bold text-[0.78125rem] text-emphasis disabled:opacity-50"
+              >
+                {loadingEarlier ? 'Loading…' : 'Show earlier messages'}
+              </button>
+              {earlierError ? (
+                <p role="alert" className="text-[0.78125rem] text-destructive">
+                  {earlierError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {removalFailure ? (
             <p
               role="alert"

@@ -60,6 +60,11 @@ export interface RealtimeRowsOptions {
   onChange: () => void;
   /** False while the screen has nothing to watch yet (no id in the URL). */
   enabled?: boolean;
+  /**
+   * Given, a changed row goes here instead of to `onChange`, so a long list
+   * can fetch just that row. Reconnects and focus still call `onChange`.
+   */
+  onRow?: (row: Record<string, unknown>) => void;
 }
 
 /**
@@ -72,12 +77,20 @@ export interface RealtimeRowsOptions {
  */
 let channelCount = 0;
 
-export function useRealtimeRows({ table, filter, onChange, enabled = true }: RealtimeRowsOptions) {
+export function useRealtimeRows({
+  table,
+  filter,
+  onChange,
+  enabled = true,
+  onRow,
+}: RealtimeRowsOptions) {
   // The callback is a new function on every render of the caller. Held in a ref
   // so that the effect below depends on what it is watching — the table and the
   // filter — and does not tear the socket down and rebuild it every render.
   const latest = useRef(onChange);
   latest.current = onChange;
+  const latestRow = useRef(onRow);
+  latestRow.current = onRow;
 
   useEffect(() => {
     if (!enabled) return;
@@ -88,6 +101,11 @@ export function useRealtimeRows({ table, filter, onChange, enabled = true }: Rea
 
     const fire = () => {
       latest.current();
+    };
+    const changed = (payload?: { new?: Record<string, unknown> }) => {
+      const row = payload?.new;
+      if (latestRow.current && row && typeof row === 'object') latestRow.current(row);
+      else latest.current();
     };
 
     channel
@@ -101,12 +119,12 @@ export function useRealtimeRows({ table, filter, onChange, enabled = true }: Rea
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table, ...(filter ? { filter } : {}) },
-        fire,
+        changed,
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table, ...(filter ? { filter } : {}) },
-        fire,
+        changed,
       )
       .subscribe((status) => {
         // The first subscribe and every reconnection. See the header: this is

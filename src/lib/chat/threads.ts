@@ -295,13 +295,122 @@ export function useMyThreads(): MyThreadsState {
   return { threads, loading, error, reload };
 }
 
+/** How many messages a conversation reads at a time, newest first. */
+export const MESSAGE_PAGE = 100;
+
+/** The server's order: oldest first, by time and then id. */
+export function messageOrder(a: ChatMessage, b: ChatMessage): number {
+  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+  if (a.id === b.id) return 0;
+  return a.id < b.id ? -1 : 1;
+}
+
+/** What is on screen: a run of the newest messages, and whether more lie before it. */
+export interface LoadedMessages {
+  messages: ChatMessage[];
+  earlier: boolean;
+}
+
+function split(messages: readonly ChatMessage[]) {
+  return {
+    confirmed: messages.filter((m) => !m.pending),
+    pending: messages.filter((m) => m.pending),
+  };
+}
+
+/**
+ * The newest page laid over what is loaded. Older messages already loaded stay
+ * when the page reaches back to them; with a gap between (a long time
+ * offline) only the page stays. Bubbles still sending are kept at the end.
+ */
+export function mergeNewest(
+  current: LoadedMessages,
+  page: readonly ChatMessage[],
+  more: boolean,
+): LoadedMessages {
+  const { confirmed, pending } = split(current.messages);
+  const oldest = page[0];
+  if (!oldest || !more) return { messages: [...page, ...pending], earlier: false };
+  const newest = confirmed.at(-1);
+  if (!newest || messageOrder(newest, oldest) < 0) {
+    return { messages: [...page, ...pending], earlier: true };
+  }
+  const older = confirmed.filter((m) => messageOrder(m, oldest) < 0);
+  return { messages: [...older, ...page, ...pending], earlier: current.earlier };
+}
+
+/**
+ * Earlier messages put in front, if the list still starts where they were read
+ * back from (`before`); otherwise the list changed meanwhile and they wait.
+ */
+export function mergeEarlier(
+  current: LoadedMessages,
+  page: readonly ChatMessage[],
+  more: boolean,
+  before: string | null,
+): LoadedMessages {
+  const { confirmed } = split(current.messages);
+  if ((confirmed[0]?.id ?? null) !== before) return current;
+  const have = new Set(current.messages.map((m) => m.id));
+  return {
+    messages: [...page.filter((m) => !have.has(m.id)), ...current.messages],
+    earlier: more,
+  };
+}
+
+/**
+ * One message added or replaced in place. One older than the loaded run is
+ * left for Show earlier to bring.
+ */
+export function upsertMessage(current: LoadedMessages, message: ChatMessage): LoadedMessages {
+  if (current.messages.some((m) => m.id === message.id)) {
+    return {
+      ...current,
+      messages: current.messages.map((m) => (m.id === message.id ? message : m)),
+    };
+  }
+  const { confirmed, pending } = split(current.messages);
+  const first = confirmed[0];
+  if (current.earlier && first && messageOrder(message, first) < 0) return current;
+  const at = confirmed.findIndex((m) => messageOrder(message, m) < 0);
+  const next = [...confirmed];
+  next.splice(at === -1 ? next.length : at, 0, message);
+  return { ...current, messages: [...next, ...pending] };
+}
+
+/** A message the reader can no longer see (a block, a removal from view). */
+export function dropMessage(current: LoadedMessages, id: string): LoadedMessages {
+  return current.messages.some((m) => m.id === id)
+    ? { ...current, messages: current.messages.filter((m) => m.id !== id) }
+    : current;
+}
+
+/** PostgREST's "strictly before this message", in server order. */
+export function beforeFilter(message: Pick<ChatMessage, 'createdAt' | 'id'>): string {
+  const at = `"${message.createdAt}"`;
+  return `created_at.lt.${at},and(created_at.eq.${at},id.lt.${message.id})`;
+}
+
 export interface ThreadMessagesState {
   /** The thread itself, or null while loading and when it cannot be read. */
   thread: ChatThread | null;
   messages: ChatMessage[];
   loading: boolean;
+  /** Only when the first read fails: there is nothing to show. */
   error: string | null;
+  /** A later read failed; what is on screen stays. */
+  stale: string | null;
+  /** Older messages exist than the ones loaded. */
+  hasEarlier: boolean;
+  loadingEarlier: boolean;
+  earlierError: string | null;
+  /** Read the page before the oldest loaded. */
+  loadEarlier: () => Promise<void>;
+  /** Load back to one message (a link to it); false if it cannot be found. */
+  reveal: (messageId: string) => Promise<boolean>;
   reload: () => void;
+  /** A live change to one row: fetch just that message. */
+  changed: (row: Record<string, unknown>) => void;
   /**
    * Append a bubble, write it, and take it back out if it is refused. Words,
    * the paths of photographs already uploaded under this thread, and the
@@ -315,111 +424,276 @@ export interface ThreadMessagesState {
 }
 
 /**
- * One conversation and everything said in it.
+ * One conversation: its row out of `chat_my_threads` (the other member, a
+ * group's size and name) and its newest MESSAGE_PAGE messages, with Show
+ * earlier for the rest. A live change fetches only that message; a reconnect
+ * or a return reads the newest page again and lays it over what is loaded.
+ * Then it marks the thread read, by the server's clock.
  *
- * Two reads: the thread's own row out of `chat_my_threads` — which is where the
- * other member, the size of a group and the name live — and the messages. Then
- * it marks the thread read, which is a function and sets the server's clock, so
- * nothing here sends a timestamp.
- *
- * A thread the viewer is not in comes back as `thread: null` with no error,
- * because that is what it looks like to them: not a refusal, an absence. The
- * screen says the conversation cannot be shown rather than printing a policy
- * failure at somebody.
+ * A thread the viewer is not in comes back as `thread: null` with no error:
+ * to them it is an absence, not a refusal.
  */
 export function useThreadMessages(threadId: string | undefined): ThreadMessagesState {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
 
   const [thread, setThread] = useState<ChatThread | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loaded, setLoaded] = useState<LoadedMessages>({ messages: [], earlier: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const inFlight = useRef<AbortController | null>(null);
+  const [stale, setStale] = useState<string | null>(null);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [earlierError, setEarlierError] = useState<string | null>(null);
+  // Latest list for reads that need it outside a setState.
+  const now = useRef(loaded);
+  now.current = loaded;
+  // Aborted when the conversation changes or the screen goes.
+  const life = useRef<AbortController | null>(null);
+  const shown = useRef(false);
+  const refreshing = useRef<Promise<void> | null>(null);
+  const again = useRef(false);
+  const marked = useRef<string | null>(null);
+  const fetches = useRef(new Map<string, number>());
   // Only ever incremented, so two pending bubbles cannot collide on a key.
   const pendingCount = useRef(0);
 
-  const load = useCallback(async () => {
+  // Silent on failure: unread is a convenience. The tab bar's dot is told.
+  const markThrough = useCallback(
+    (through: string | undefined) => {
+      if (!threadId || !through || document.visibilityState !== 'visible') return;
+      if (marked.current === through) return;
+      marked.current = through;
+      void getSupabase()
+        .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
+        .then(() => {
+          unreadChanged();
+          // Its notifications are seen now, so the icon drops by them.
+          announceNotificationsChanged();
+        });
+    },
+    [threadId],
+  );
+
+  const messagesQuery = useCallback(
+    (signal: AbortSignal) =>
+      getSupabase()
+        .from('chat_messages')
+        .select(MESSAGE_COLUMNS)
+        .eq('thread_id', threadId ?? '')
+        .abortSignal(signal),
+    [threadId],
+  );
+
+  const readThread = useCallback(async (signal: AbortSignal) => {
+    return (await getSupabase().rpc('chat_my_threads').abortSignal(signal)) as Result<ThreadRow[]>;
+  }, []);
+
+  const fetchNewest = useCallback(
+    async (signal: AbortSignal) => {
+      if (!threadId) return;
+      const aborted = () => signal.aborted;
+      const failed = (text: string) => {
+        if (shown.current) setStale(text);
+        else setError(text);
+        setLoading(false);
+      };
+      try {
+        const [threads, rows] = (await Promise.all([
+          readThread(signal),
+          // One more than a page says whether there is anything before it.
+          messagesQuery(signal)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(0, MESSAGE_PAGE),
+        ])) as [Result<ThreadRow[]>, Result<MessageRow[]>];
+        if (aborted()) return;
+        const failure = threads.error ?? rows.error;
+        if (failure) {
+          failed(describeError(failure, 'Could not load the conversation.'));
+          return;
+        }
+        const found = (threads.data ?? []).find((row) => row.id === threadId) ?? null;
+        const all = rows.data ?? [];
+        const page = all.slice(0, MESSAGE_PAGE).reverse().map(toMessage);
+        setThread(found ? toThread(found) : null);
+        setLoaded((current) => mergeNewest(current, page, all.length > MESSAGE_PAGE));
+        shown.current = found !== null;
+        setError(null);
+        setStale(null);
+        setLoading(false);
+        if (found) markThrough(page.at(-1)?.id);
+      } catch (e) {
+        if (aborted()) return;
+        failed(describeThrown(e, 'Could not load the conversation.'));
+      }
+    },
+    [threadId, readThread, messagesQuery, markThrough],
+  );
+
+  // One at a time; a request meanwhile runs once more after it.
+  const refresh = useCallback((): Promise<void> => {
+    if (refreshing.current) {
+      again.current = true;
+      return refreshing.current;
+    }
+    const signal = life.current?.signal;
+    if (!signal) return Promise.resolve();
+    // Read through a function: it changes while the read is awaited.
+    const queued = () => again.current && !signal.aborted;
+    const run = (async () => {
+      do {
+        again.current = false;
+        await fetchNewest(signal);
+      } while (queued());
+    })().finally(() => {
+      if (refreshing.current === run) refreshing.current = null;
+    });
+    refreshing.current = run;
+    return run;
+  }, [fetchNewest]);
+
+  useEffect(() => {
     if (!threadId) {
       setLoading(false);
       return;
     }
-    inFlight.current?.abort();
     const controller = new AbortController();
-    inFlight.current = controller;
-    const aborted = () => controller.signal.aborted;
-    const supabase = getSupabase();
-
-    try {
-      const [threads, messageRows] = (await Promise.all([
-        supabase.rpc('chat_my_threads').abortSignal(controller.signal),
-        readPages<MessageRow>((from, to) =>
-          supabase
-            .from('chat_messages')
-            .select(MESSAGE_COLUMNS)
-            .eq('thread_id', threadId)
-            .order('created_at')
-            .order('id')
-            .range(from, to)
-            .abortSignal(controller.signal),
-        ),
-      ])) as [Result<ThreadRow[]>, Result<MessageRow[]>];
-      if (aborted()) return;
-
-      const failure = threads.error ?? messageRows.error;
-      if (failure) {
-        setError(describeError(failure, 'Could not load the conversation.'));
-        setLoading(false);
-        return;
-      }
-
-      const found = (threads.data ?? []).find((row) => row.id === threadId) ?? null;
-      setThread(found ? toThread(found) : null);
-      // The database's rows replace what was on screen — a confirmed bubble
-      // cannot appear twice — but a bubble still in flight is kept. Realtime
-      // means a reload can land in the middle of a send, and the words somebody
-      // is waiting on must not blink out and back.
-      const fresh = (messageRows.data ?? []).map(toMessage);
-      setMessages((current) => [...fresh, ...current.filter((message) => message.pending)]);
-      setError(null);
-      setLoading(false);
-
-      // After the read, not before, and silent on failure: the conversation is
-      // on screen and unread is a convenience. The dot in the tab bar is told
-      // either way — it is about to be wrong, and it is not on this screen to
-      // notice.
-      const through = fresh.at(-1)?.id;
-      if (found && through && document.visibilityState === 'visible') {
-        void supabase
-          .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
-          .then(() => {
-            unreadChanged();
-            // Its notifications are seen now, so the icon drops by them.
-            announceNotificationsChanged();
-          });
-      }
-    } catch (e) {
-      if (aborted()) return;
-      setError(describeThrown(e, 'Could not load the conversation.'));
-      setLoading(false);
-    }
-  }, [threadId]);
-
-  useEffect(() => {
-    void load();
+    life.current = controller;
+    shown.current = false;
+    marked.current = null;
+    refreshing.current = null;
+    void refresh();
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void load();
+      if (document.visibilityState === 'visible') void refresh();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
-      inFlight.current?.abort();
+      controller.abort();
     };
-  }, [load]);
+  }, [threadId, refresh]);
 
   const reload = useCallback(() => {
-    void load();
-  }, [load]);
+    void refresh();
+  }, [refresh]);
+
+  const changed = useCallback(
+    (row: Record<string, unknown>) => {
+      const id = row.id;
+      const signal = life.current?.signal;
+      if (typeof id !== 'string' || !signal || !shown.current) {
+        void refresh();
+        return;
+      }
+      // The latest fetch of a message wins, whatever order they come back in.
+      const turn = (fetches.current.get(id) ?? 0) + 1;
+      fetches.current.set(id, turn);
+      void (async () => {
+        try {
+          const { data, error: failure } = (await messagesQuery(signal)
+            .eq('id', id)
+            .maybeSingle()) as Result<MessageRow>;
+          if (signal.aborted || fetches.current.get(id) !== turn) return;
+          if (failure) {
+            void refresh();
+            return;
+          }
+          if (!data) {
+            setLoaded((current) => dropMessage(current, id));
+            return;
+          }
+          const message = toMessage(data);
+          setLoaded((current) => upsertMessage(current, message));
+          const newest = split(now.current.messages).confirmed.at(-1);
+          if (!newest || messageOrder(message, newest) >= 0) markThrough(message.id);
+          // A rename or a new picture changes the header.
+          if (message.notice) {
+            const threads = await readThread(signal);
+            const found = (threads.data ?? []).find((r) => r.id === threadId);
+            if (found && fetches.current.get(id) === turn) setThread(toThread(found));
+          }
+        } catch {
+          if (!signal.aborted) void refresh();
+        }
+      })();
+    },
+    [threadId, refresh, messagesQuery, readThread, markThrough],
+  );
+
+  /** Everything from `from` (inclusive, by time) up to the oldest loaded. */
+  const readBefore = useCallback(
+    async (from: ChatMessage | null): Promise<string | null> => {
+      const signal = life.current?.signal;
+      if (!threadId || !signal) return null;
+      const oldest = split(now.current.messages).confirmed[0];
+      if (!oldest) return null;
+      if (from) {
+        const result = await readPages<MessageRow>((first, last) =>
+          messagesQuery(signal)
+            .gte('created_at', from.createdAt)
+            .or(beforeFilter(oldest))
+            .order('created_at')
+            .order('id')
+            .range(first, last),
+        );
+        if (signal.aborted) return null;
+        if (result.error) return describeError(result.error, 'Could not load earlier messages.');
+        const page = (result.data ?? []).map(toMessage);
+        setLoaded((current) => mergeEarlier(current, page, true, oldest.id));
+        return null;
+      }
+      const { data, error: failure } = (await messagesQuery(signal)
+        .or(beforeFilter(oldest))
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(0, MESSAGE_PAGE)) as Result<MessageRow[]>;
+      if (signal.aborted) return null;
+      if (failure) return describeError(failure, 'Could not load earlier messages.');
+      const all = data ?? [];
+      const page = all.slice(0, MESSAGE_PAGE).reverse().map(toMessage);
+      setLoaded((current) => mergeEarlier(current, page, all.length > MESSAGE_PAGE, oldest.id));
+      return null;
+    },
+    [threadId, messagesQuery],
+  );
+
+  const loadEarlier = useCallback(async () => {
+    setLoadingEarlier(true);
+    setEarlierError(null);
+    try {
+      setEarlierError(await readBefore(null));
+    } catch (e) {
+      setEarlierError(describeThrown(e, 'Could not load earlier messages.'));
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }, [readBefore]);
+
+  const reveal = useCallback(
+    async (messageId: string): Promise<boolean> => {
+      const signal = life.current?.signal;
+      if (now.current.messages.some((m) => m.id === messageId)) return true;
+      if (!signal || !now.current.earlier) return false;
+      setLoadingEarlier(true);
+      try {
+        const { data } = (await messagesQuery(signal)
+          .eq('id', messageId)
+          .maybeSingle()) as Result<MessageRow>;
+        if (!data || signal.aborted) return false;
+        const target = toMessage(data);
+        const oldest = split(now.current.messages).confirmed[0];
+        if (oldest && messageOrder(target, oldest) >= 0) return false;
+        const problem = await readBefore(target);
+        if (problem) setEarlierError(problem);
+        return problem === null;
+      } catch {
+        return false;
+      } finally {
+        if (!signal.aborted) setLoadingEarlier(false);
+      }
+    },
+    [messagesQuery, readBefore],
+  );
 
   const send = useCallback(
     async (
@@ -432,47 +706,44 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
 
       pendingCount.current += 1;
       const pendingId = `pending:${pendingCount.current}`;
-      setMessages((current) => [
+      setLoaded((current) => ({
         ...current,
-        {
-          id: pendingId,
-          threadId,
-          authorId: memberId,
-          body,
-          attachments,
-          // The reader's own clock, and only ever used to draw this bubble for
-          // the second it exists. The row that replaces it carries the
-          // server's, which is the one everything is ordered and compared by.
-          createdAt: new Date().toISOString(),
-          removedAt: null,
-          removedByAdmin: false,
-          editedAt: null,
-          replyTo,
-          notice: null,
-          linkPreview: null,
-          sharedPostId: null,
-          pending: true,
-        },
-      ]);
+        messages: [
+          ...current.messages,
+          {
+            id: pendingId,
+            threadId,
+            authorId: memberId,
+            body,
+            attachments,
+            // The reader's own clock, only for the second this bubble exists.
+            createdAt: new Date().toISOString(),
+            removedAt: null,
+            removedByAdmin: false,
+            editedAt: null,
+            replyTo,
+            notice: null,
+            linkPreview: null,
+            sharedPostId: null,
+            pending: true,
+          },
+        ],
+      }));
 
       const result = await sendMessage(threadId, memberId, body, attachments, replyTo);
       if (!result.ok) {
-        // The undo. A bubble that stays on screen having never been saved is
-        // the one thing this must not do.
-        setMessages((current) => current.filter((message) => message.id !== pendingId));
+        // The undo: a bubble must never stay on screen having never been saved.
+        setLoaded((current) => dropMessage(current, pendingId));
         return result.error;
       }
       const saved = result.value;
-      setMessages((current) => {
-        // The ordinary case: swap the pending bubble for the row the database
-        // made. The other one is a reload having already brought that row in
-        // and taken the pending bubble with it, in which case there is nothing
-        // to do and nothing to duplicate.
-        if (current.some((message) => message.id === pendingId)) {
-          return current.map((message) => (message.id === pendingId ? saved : message));
-        }
-        return current.some((message) => message.id === saved.id) ? current : [...current, saved];
-      });
+      // Swap the pending bubble for the saved row, unless the live change
+      // already brought that row in.
+      setLoaded((current) =>
+        current.messages.some((m) => m.id === saved.id)
+          ? dropMessage(current, pendingId)
+          : upsertMessage(dropMessage(current, pendingId), saved),
+      );
       return null;
     },
     [threadId, memberId],
@@ -481,17 +752,16 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
   const edit = useCallback(async (messageId: string, body: string): Promise<string | null> => {
     const result = await editMessage(messageId, body);
     if (!result.ok) return result.error;
-    // Not optimistic, unlike sending: the words were already on the screen
-    // in the editor, and what replaces them should be what the database
-    // holds. The row arrives over the wire as an update and the reload
-    // redraws it; this only stops the old words flashing back first.
-    setMessages((current) =>
-      current.map((message) =>
+    // Not optimistic, unlike sending: the live change brings the database's
+    // row; this only stops the old words flashing back first.
+    setLoaded((current) => ({
+      ...current,
+      messages: current.messages.map((message) =>
         message.id === messageId
           ? { ...message, body, editedAt: new Date().toISOString() }
           : message,
       ),
-    );
+    }));
     return null;
   }, []);
 
@@ -499,27 +769,38 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
     const result = await removeMessage(messageId);
     if (!result.ok) return result.error;
     // The row is blanked by the function; the files go through the storage
-    // API, which no SQL can reach — see 20260918200000. Best effort, after
-    // the fact that matters has already happened.
-    setMessages((current) => {
-      const target = current.find((message) => message.id === messageId);
-      if (target && target.attachments.length > 0) void deleteAttachments(target.attachments);
-      return current;
-    });
-    // Not optimistic. Removal is rare, deliberate and irreversible, and the
-    // sentence that replaces the body — by its author, or by an administrator —
-    // is derived by the database rather than guessed here.
-    setMessages((current) =>
-      current.map((message) =>
+    // API, which no SQL can reach — see 20260918200000. Best effort.
+    const target = now.current.messages.find((message) => message.id === messageId);
+    if (target && target.attachments.length > 0) void deleteAttachments(target.attachments);
+    // Not optimistic: the sentence that replaces the body is the database's.
+    setLoaded((current) => ({
+      ...current,
+      messages: current.messages.map((message) =>
         message.id === messageId
           ? { ...message, body: '', attachments: [], removedAt: new Date().toISOString() }
           : message,
       ),
-    );
+    }));
     return null;
   }, []);
 
-  return { thread, messages, loading, error, reload, send, edit, remove };
+  return {
+    thread,
+    messages: loaded.messages,
+    loading,
+    error,
+    stale,
+    hasEarlier: loaded.earlier,
+    loadingEarlier,
+    earlierError,
+    loadEarlier,
+    reveal,
+    reload,
+    changed,
+    send,
+    edit,
+    remove,
+  };
 }
 
 /**
