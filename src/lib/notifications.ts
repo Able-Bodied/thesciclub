@@ -4,6 +4,7 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { californiaToday, grantDay } from '@/lib/grants';
+import { onReadElsewhere, tellOtherTabs } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -186,9 +187,11 @@ export function useUnseenNotifications(outsideChat = false): {
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener(NOTIFICATIONS_CHANGED, soon);
+    const stopHearing = onReadElsewhere(soon);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener(NOTIFICATIONS_CHANGED, soon);
+      stopHearing();
       soon.cancel();
     };
   }, [refresh, soon]);
@@ -211,6 +214,7 @@ export const NOTIFICATIONS_CHANGED = 'club:notifications-changed';
 
 export function announceNotificationsChanged(): void {
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+  tellOtherTabs();
 }
 
 /** In quotes, and short: a topic's title or an event's, inside a sentence. */

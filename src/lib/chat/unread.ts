@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
+import { onReadElsewhere, tellOtherTabs } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -32,8 +34,8 @@ import { getSupabase } from '@/lib/supabase';
  *    refetch on every navigation: the dot then moves exactly when the fact
  *    moves, instead of on every tap anywhere in the app.
  *
- * Realtime lands in the next phase and will add the third: somebody else
- * writing to you while you are looking at something else.
+ * Also: a new message (the tab bar's realtime), a read in another tab
+ * (src/lib/read-elsewhere.ts) and a read on another device (below).
  *
  * A failure leaves the count at zero and says nothing. The dot is a hint; an
  * error message in the tab bar is not.
@@ -52,6 +54,7 @@ const listeners = new Set<() => void>();
 /** Tell the dot that the answer has changed. Called by threads.ts. */
 export function unreadChanged(): void {
   for (const listener of listeners) listener();
+  tellOtherTabs();
 }
 
 export interface UnreadState {
@@ -65,6 +68,7 @@ export function useUnreadThreads(): UnreadState {
   // Suspended members read their conversations, so they get the dot too. Only a
   // session with no member row behind it has nothing to count.
   const signedIn = account.status === 'member' || account.status === 'suspended';
+  const memberId = signedIn ? account.userId : null;
 
   const [count, setCount] = useState(0);
 
@@ -97,13 +101,23 @@ export function useUnreadThreads(): UnreadState {
     void load();
 
     listeners.add(again);
+    const stopHearing = onReadElsewhere(again);
     window.addEventListener('focus', again);
     return () => {
       listeners.delete(again);
+      stopHearing();
       window.removeEventListener('focus', again);
       again.cancel();
     };
   }, [load, again]);
+
+  // Read on another device: their own last_read_at moved.
+  useRealtimeRows({
+    table: 'chat_thread_members',
+    filter: memberId ? `member_id=eq.${memberId}` : undefined,
+    onChange: again,
+    enabled: Boolean(memberId),
+  });
 
   return { count, reload: again };
 }

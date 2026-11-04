@@ -5,6 +5,7 @@ import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
 import type { Failure } from '@/lib/describe-error';
 import { NOTIFICATIONS_CHANGED } from '@/lib/notifications';
 import { showOnAppIcon } from '@/lib/push/notifications';
+import { onReadElsewhere } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -43,9 +44,11 @@ export function useIconBadge(): void {
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener(NOTIFICATIONS_CHANGED, soon);
+    const stopHearing = onReadElsewhere(soon);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener(NOTIFICATIONS_CHANGED, soon);
+      stopHearing();
       soon.cancel();
     };
   }, [refresh, soon]);
