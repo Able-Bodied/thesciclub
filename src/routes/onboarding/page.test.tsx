@@ -502,10 +502,13 @@ describe('the welcome screen', () => {
   it('starts on the welcome screen, not on a form', () => {
     renderJoin();
     expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
-    // The logo carries "MEMBERS ONLY" too, so match the footer line whole.
-    expect(
-      screen.getByText(/Members only\. Nothing inside the club is public\./),
-    ).toBeInTheDocument();
+    // The logo carries "MEMBERS ONLY" too, so match the footer line whole;
+    // "Members only." is bold, in an element of its own (the owner, 2026-11-03).
+    const bold = screen.getByText('Members only.');
+    expect(bold.tagName).toBe('B');
+    expect(bold.parentElement).toHaveTextContent(
+      'Members only. Nothing inside the club is public.',
+    );
   });
 
   it('shows the club mark and offers both doors', () => {
