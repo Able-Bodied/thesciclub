@@ -14,6 +14,7 @@ vi.mock('@/lib/account', () => ({
 vi.mock('@/routes/onboarding/page', () => ({ default: () => <h1>Join</h1> }));
 
 const { default: App } = await import('@/App');
+const { PRIVACY_UPDATED, TERMS_UPDATED } = await import('@/lib/terms');
 
 function open(path: string) {
   render(
@@ -35,6 +36,14 @@ describe('the Privacy Policy', () => {
     open('/privacy');
     expect(screen.getAllByText(/operated by Alfred Shaheen/).length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toMatch(/run by Able Bodied|nonprofit/);
+  });
+
+  // The owner, 2026-11-03: Privacy has its own date, not the Terms'.
+  it('shows its own date, the same as its newest note', () => {
+    open('/privacy');
+    expect(screen.getByText(`Last updated ${PRIVACY_UPDATED}`)).toBeInTheDocument();
+    const newest = screen.getAllByRole('heading', { name: /What changed on/ })[0];
+    expect(newest).toHaveTextContent(`What changed on ${PRIVACY_UPDATED}`);
   });
 
   // The note names no earlier operator (the owner, 2026-10-26).
@@ -346,6 +355,11 @@ describe('the Terms of Service', () => {
   it('opens with no account', () => {
     open('/terms');
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+  });
+
+  it('shows the Terms’ own date', () => {
+    open('/terms');
+    expect(screen.getByText(`Last updated ${TERMS_UPDATED}`)).toBeInTheDocument();
   });
 
   it('names who runs the club, and no nonprofit', () => {

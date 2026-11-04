@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { PRIVACY_UPDATED } from '@/lib/terms';
 import {
   ContactEmail,
   LegalPage,
@@ -21,7 +22,7 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="November 3, 2026">
+    <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
       <Note title="What changed on November 3, 2026">
         <List>
           <li>

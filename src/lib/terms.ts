@@ -16,8 +16,11 @@ import { getSupabase } from '@/lib/supabase';
 /** The Terms' date, as the database keeps it. */
 export const TERMS_VERSION = '2026-11-03';
 
-/** The same date, as the Terms and Privacy pages print it. */
+/** The same date, as the Terms page prints it. */
 export const TERMS_UPDATED = 'November 3, 2026';
+
+/** The Privacy page's own date: its newest "What changed on" note. */
+export const PRIVACY_UPDATED = 'November 3, 2026';
 
 type Failure = Parameters<typeof describeError>[0];
 
