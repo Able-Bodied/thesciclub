@@ -1407,4 +1407,4 @@ AS $function$
      );
 $function$;
 
-drop function public.my_hidden_member_ids();
+drop function private.my_hidden_member_ids();

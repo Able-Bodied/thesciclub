@@ -7,9 +7,9 @@
 -- mentions and lock screens. B is still not told (the neutral sentences
 -- stay); the report, the weekly count and Unblock are unchanged.
 --
--- my_hidden_member_ids(): both ways, for the read rules and the functions
--- that run as the reader, in the "= any ((select ...))" shape Step 6 proved
--- runs once. my_blocked_member_ids() keeps meaning who I blocked: the Blocked
+-- private.my_hidden_member_ids(): both ways, for the read rules and the
+-- functions that run as the reader, in the "= any ((select ...))" shape Step
+-- 6 proved runs once. In private, so the API cannot be asked who blocked you. my_blocked_member_ids() keeps meaning who I blocked: the Blocked
 -- members list, Unblock, and hiding a direct conversation from its blocker.
 -- B keeps that conversation, with only B's own words in it: hiding it would
 -- tell B. Definer functions with no reader add the other direction in place.
@@ -23,7 +23,9 @@
 -- Undo: supabase/undo/20261103190000.sql.
 -- ============================================================================
 
-create function public.my_hidden_member_ids()
+-- In private, which the API does not serve: the rules call it as the
+-- reader, but nobody can ask it who blocked them (20260929000000's pattern).
+create function private.my_hidden_member_ids()
 returns uuid[]
 language sql
 stable
@@ -40,35 +42,35 @@ as $$
     ) x;
 $$;
 
-comment on function public.my_hidden_member_ids() is
+comment on function private.my_hidden_member_ids() is
   'Members hidden from the caller by a block either way (an administrator only by their own). my_blocked_member_ids() is only who the caller blocked.';
 
-revoke all on function public.my_hidden_member_ids() from public, anon;
-grant execute on function public.my_hidden_member_ids() to authenticated;
+revoke all on function private.my_hidden_member_ids() from public, anon;
+grant execute on function private.my_hidden_member_ids() to authenticated;
 
 -- The six read rules: the same, with the both-ways list.
 alter policy "read reactions in your conversation" on public.chat_message_reactions
   using (((EXISTS ( SELECT 1
    FROM public.chat_messages m
-  WHERE ((m.id = chat_message_reactions.target_id) AND (m.removed_at IS NULL) AND (m.notice IS NULL) AND (m.thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[]))))) AND (NOT (member_id = ANY (( SELECT public.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
+  WHERE ((m.id = chat_message_reactions.target_id) AND (m.removed_at IS NULL) AND (m.notice IS NULL) AND (m.thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[]))))) AND (NOT (member_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
 alter policy "a member reads the messages in a thread they are in" on public.chat_messages
-  using (((thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[])) AND (NOT COALESCE((author_id = ANY (( SELECT public.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
+  using (((thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[])) AND (NOT COALESCE((author_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
 alter policy "a member reads the likes in a readable room" on public.chat_post_likes
   using (((EXISTS ( SELECT 1
    FROM (public.chat_posts p
      JOIN public.chat_topics t ON ((t.id = p.topic_id)))
-  WHERE ((p.id = chat_post_likes.post_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT public.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
+  WHERE ((p.id = chat_post_likes.post_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
 alter policy "read reactions on readable standing posts" on public.chat_post_reactions
   using (((EXISTS ( SELECT 1
    FROM (public.chat_posts p
      JOIN public.chat_topics t ON ((t.id = p.topic_id)))
-  WHERE ((p.id = chat_post_reactions.target_id) AND (p.removed_at IS NULL) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT public.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
+  WHERE ((p.id = chat_post_reactions.target_id) AND (p.removed_at IS NULL) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
 alter policy "a member reads a readable topic's posts" on public.chat_posts
   using (((EXISTS ( SELECT 1
    FROM public.chat_topics t
-  WHERE ((t.id = chat_posts.topic_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT COALESCE((author_id = ANY (( SELECT public.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
+  WHERE ((t.id = chat_posts.topic_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT COALESCE((author_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
 alter policy "a member reads a readable room's topics" on public.chat_topics
-  using (((room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[])) AND (NOT COALESCE((author_id = ANY (( SELECT public.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
+  using (((room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[])) AND (NOT COALESCE((author_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
 
 -- The functions, as live on 2026-11-03, with the other way added.
 
@@ -93,7 +95,7 @@ AS $function$
    where m.id = any (message_ids)
      and m.removed_at is null
      and public.is_thread_member(m.thread_id)
-     and not coalesce(m.author_id = any (public.my_hidden_member_ids()), false)
+     and not coalesce(m.author_id = any (private.my_hidden_member_ids()), false)
      and public.chat_can_see_shared_post(p.id);
 $function$;
 
@@ -103,7 +105,7 @@ CREATE OR REPLACE FUNCTION public.chat_topics_for(room text)
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-  with hidden as (select public.my_hidden_member_ids() as ids)
+  with hidden as (select private.my_hidden_member_ids() as ids)
   select
     t.id,
     t.room_id,
