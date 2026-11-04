@@ -11,6 +11,10 @@
  * Neither is used for an address with a pending invite of its own, or somebody
  * could take that person's place.
  *
+ * Only a link used at the address it went to proves the address. Any other
+ * account is noted as unproven, to be confirmed from Me (20261104110000); if
+ * that cannot be noted, the account is taken away again.
+ *
  * Anything else answers `created: false`, with no reason given, and the page
  * goes on to the ordinary sign-up and its code. That sign-up says what needs
  * saying, and this says nothing about whether an address has an account.
@@ -25,12 +29,30 @@ export interface Deps {
   codeAdmits(code: string): Promise<boolean>;
   /** Whether a pending invite is waiting for this address. */
   invited(address: string): Promise<boolean>;
-  /** Makes the account, confirmed. False if it was refused for any reason. */
+  /** Makes the account, confirmed: its id, or null if it was refused for any reason. */
   createConfirmedUser(
     email: string,
     password: string,
     metadata: Record<string, string>,
-  ): Promise<boolean>;
+  ): Promise<string | null>;
+  /** Notes the account's address as unproven (note_unproven_email). */
+  noteUnproven(account: string): Promise<boolean>;
+  /** Deletes an account just made. */
+  removeUser(account: string): Promise<void>;
+}
+
+async function make(
+  deps: Deps,
+  address: string,
+  password: string,
+  metadata: Record<string, string>,
+  proven: boolean,
+): Promise<{ created: boolean }> {
+  const account = await deps.createConfirmedUser(address, password, metadata);
+  if (!account) return { created: false };
+  if (proven || (await deps.noteUnproven(account))) return { created: true };
+  await deps.removeUser(account);
+  return { created: false };
 }
 
 export async function inviteSignup(body: unknown, deps: Deps): Promise<{ created: boolean }> {
@@ -42,15 +64,13 @@ export async function inviteSignup(body: unknown, deps: Deps): Promise<{ created
   if (typeof token === 'string' && token.trim()) {
     const sentTo = (await deps.inviteAddress(token))?.toLowerCase();
     if (sentTo && (sentTo === address || !(await deps.invited(address)))) {
-      return {
-        created: await deps.createConfirmedUser(address, password, { invite_token: token }),
-      };
+      return make(deps, address, password, { invite_token: token }, sentTo === address);
     }
   }
 
   if (typeof code === 'string' && code.trim()) {
     if ((await deps.codeAdmits(code)) && !(await deps.invited(address))) {
-      return { created: await deps.createConfirmedUser(address, password, { qr_code: code }) };
+      return make(deps, address, password, { qr_code: code }, false);
     }
   }
   return { created: false };

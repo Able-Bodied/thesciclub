@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppNav, litTab } from '@/components/app-nav';
 import type * as NotificationsModule from '@/lib/notifications';
 
-const unseen = vi.hoisted(() => ({ count: 0 }));
+const unseen = vi.hoisted(() => ({ count: 0, unproven: null as string | null }));
 
 // The bell reads its number from the database; stubbed so this test reads nothing.
 vi.mock('@/lib/notifications', async (importOriginal) => ({
@@ -14,6 +14,7 @@ vi.mock('@/lib/notifications', async (importOriginal) => ({
 vi.mock('@/lib/chat/unread', () => ({ useUnreadThreads: () => ({ count: 0, reload: vi.fn() }) }));
 vi.mock('@/lib/chat/realtime', () => ({ useRealtimeRows: vi.fn() }));
 vi.mock('@/lib/icon-badge', () => ({ useIconBadge: vi.fn() }));
+vi.mock('@/lib/email-proof', () => ({ useUnprovenEmail: () => unseen.unproven }));
 
 describe('litTab', () => {
   it('lights a tab on its own path and beneath it', () => {
@@ -108,6 +109,14 @@ describe('the Me tab', () => {
     renderNav();
     expect(screen.getByRole('link', { name: 'Me, new notifications' })).toBeInTheDocument();
     unseen.count = 0;
+  });
+
+  // The owner, 2026-11-04.
+  it('says so while their email waits to be confirmed', () => {
+    unseen.unproven = 'sam@example.com';
+    renderNav();
+    expect(screen.getByRole('link', { name: 'Me, confirm your email' })).toBeInTheDocument();
+    unseen.unproven = null;
   });
 
   it('is plain otherwise', () => {

@@ -21,6 +21,7 @@ import { appFeedbackRoom } from '@/routes/home/feedback-card';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
 import { BlockedMembers } from '@/routes/me/blocked-members';
+import { ConfirmEmailBanner } from '@/routes/me/confirm-email-banner';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { DisplaySummary } from '@/routes/me/display-summary';
@@ -284,6 +285,7 @@ export default function MePage() {
 
       {/* Above the tabs, so it is seen on whichever one Me opens on. */}
       <AddEmailBanner state={signIn.state} reload={signIn.reload} />
+      <ConfirmEmailBanner />
 
       <PageTabs
         id="me"
