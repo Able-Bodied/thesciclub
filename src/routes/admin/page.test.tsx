@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import type * as MembersAdmin from '@/routes/admin/members-admin';
 import {
@@ -931,6 +931,39 @@ describe('the withdrawn list', () => {
     expect(await screen.findByText(/withdrawn 2 times/)).toBeInTheDocument();
     expect(screen.getAllByText('a@example.com')).toHaveLength(1);
     expect(screen.getByText('b@example.com')).toBeInTheDocument();
+  });
+});
+
+describe('the side of the invites tab', () => {
+  const wideScreen = (matches: boolean) => {
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+  };
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
+  // Beside the list it scrolls on its own, so the keyboard must reach it.
+  it('is a named keyboard stop when it sits beside the list', async () => {
+    wideScreen(true);
+    const user = userEvent.setup();
+    renderAdmin();
+    await user.click(await screen.findByRole('tab', { name: 'Invites' }));
+    const side = await screen.findByRole('region', { name: 'Joining and adding to the list' });
+    expect(side).toHaveAttribute('tabindex', '0');
+    expect(within(side).getByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
+  });
+
+  it('is no extra stop in one column, where it does not scroll', async () => {
+    wideScreen(false);
+    const user = userEvent.setup();
+    renderAdmin();
+    await user.click(await screen.findByRole('tab', { name: 'Invites' }));
+    const side = await screen.findByRole('region', { name: 'Joining and adding to the list' });
+    expect(side).not.toHaveAttribute('tabindex');
   });
 });
 

@@ -131,6 +131,7 @@ export default function AdminPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [tally, setTally] = useState<TallyRow[]>([]);
   const [moreInvites, setMoreInvites] = useState<InvitePart | null>(null);
+  const sideBySide = useSideBySide();
   const [blocked, setBlocked] = useState<BlockedEmail[]>([]);
   const [organizationRevision, setOrganizationRevision] = useState(0);
   const [organizationsPart, setOrganizationsPart] = useState<'directory' | 'admins'>('directory');
@@ -637,7 +638,15 @@ export default function AdminPage() {
               // the list scrolls: adding a number and checking the list for it
               // are done together.
               <div className="grid items-start gap-x-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-                <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
+                {/* Beside the list, it scrolls by itself (the owner,
+                    2026-11-03), so it is a named stop for the keyboard there.
+                    One column on a phone: no scroll inside a scroll. The
+                    padding keeps focus rings inside the clip. */}
+                <section
+                  aria-label="Joining and adding to the list"
+                  tabIndex={sideBySide ? 0 : undefined}
+                  className="min-w-0 lg:sticky lg:top-[4.5rem] lg:-m-1.5 lg:max-h-[calc(100dvh-9rem)] lg:overflow-y-auto lg:p-1.5"
+                >
                   <JoiningSection
                     setting={joining.setting}
                     error={joining.error}
@@ -659,7 +668,7 @@ export default function AdminPage() {
                       />
                     </div>
                   </Section>
-                </div>
+                </section>
                 <div className="min-w-0">
                   <JoinTally rows={tally} />
                   <Section
@@ -933,6 +942,27 @@ export default function AdminPage() {
 }
 
 type InvitePart = 'listed' | 'withdrawn';
+
+/** Tailwind's lg: where the invites tab is two columns. */
+const SIDE_BY_SIDE = '(min-width: 64rem)';
+
+function useSideBySide(): boolean {
+  const [wide, setWide] = useState(
+    () => typeof window.matchMedia === 'function' && window.matchMedia(SIDE_BY_SIDE).matches,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(SIDE_BY_SIDE);
+    const changed = () => {
+      setWide(query.matches);
+    };
+    query.addEventListener('change', changed);
+    return () => {
+      query.removeEventListener('change', changed);
+    };
+  }, []);
+  return wide;
+}
 
 /** As the roster's: how many are drawn, and the next page. */
 function ShowMoreInvites({
