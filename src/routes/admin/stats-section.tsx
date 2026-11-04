@@ -22,6 +22,7 @@ import {
   systemCounts,
   useDeviceReport,
 } from '@/routes/admin/member-devices';
+import { PageSpeedSection } from '@/routes/admin/page-speed-section';
 import {
   CAME_LABELS,
   cameByPhrase,
@@ -710,6 +711,9 @@ export function StatsSection() {
       ) : loading ? (
         <p className="py-10 text-center text-[0.875rem] text-grey">Counting…</p>
       ) : null}
+      <div className="mt-8">
+        <PageSpeedSection />
+      </div>
     </section>
   );
 }

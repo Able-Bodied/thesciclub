@@ -14,6 +14,10 @@ const api = vi.hoisted(() => ({
   devices: null as DeviceReport | null,
   calls: [] as [string, unknown][],
 }));
+// Page speed reads its own functions; its tests are speed-charts.test.tsx.
+vi.mock('@/routes/admin/page-speed-section', () => ({
+  PageSpeedSection: () => <h2>Page speed</h2>,
+}));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (name: string, args: { period: string }) => {
@@ -170,6 +174,12 @@ describe('Admin → Stats', () => {
       ['admin_club_stats', { period: 'all' }],
       ['admin_sign_in_methods', { period: 'all' }],
     ]);
+  });
+
+  // The owner, 2026-11-04: for administrators here, not on Stats & controls.
+  it('ends with page speed', async () => {
+    render(<StatsSection />, { wrapper: MemoryRouter });
+    expect(await screen.findByRole('heading', { name: 'Page speed' })).toBeInTheDocument();
   });
 
   it('offers every period, all time first', () => {

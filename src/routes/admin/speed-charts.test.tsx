@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { niceMax, RequestBars, seconds } from '@/routes/stats/speed-charts';
+import { niceMax, RequestBars, seconds } from '@/routes/admin/speed-charts';
 
 describe('the charts’ numbers', () => {
   it('rounds the axis up to 1, 2 or 5 of a power of ten', () => {

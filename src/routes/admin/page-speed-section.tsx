@@ -7,7 +7,7 @@ import {
   SpeedTrendChart,
   seconds,
   type TrendPoint,
-} from '@/routes/stats/speed-charts';
+} from '@/routes/admin/speed-charts';
 
 /**
  * Page speed, for administrators (the owner, 2026-11-04; 20261104010000):
