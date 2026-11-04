@@ -130,9 +130,10 @@ export default function TermsPage() {
           </li>
           <li>
             <b>To block</b> a member, press the <b>•••</b> on their profile, or beside anything they
-            wrote, and choose <b>Block</b>. You stop seeing what they write, neither of you can
-            message the other, and nothing they do notifies you. They are not told; administrators
-            are. Unblock them at any time from <b>Me → Settings → Blocked members</b>.
+            wrote, and choose <b>Block</b>. You stop seeing what they write, and they stop seeing
+            what you write. Administrators can still see what you post. Neither of you can message
+            the other, and nothing they do notifies you. They are not told; administrators are.
+            Unblock them at any time from <b>Me → Settings → Blocked members</b>.
           </li>
         </List>
       </Section>
