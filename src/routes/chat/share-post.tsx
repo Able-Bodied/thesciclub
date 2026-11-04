@@ -505,7 +505,7 @@ function MemberChoices({
   foundConversation: boolean;
   onChoose: (memberId: string, name: string) => void;
 }) {
-  const { members, loading, error } = useBrowseMembers();
+  const { members, loading, error } = useBrowseMembers('names');
   const shown = useMemo(() => {
     const direct = new Set(conversations.map((thread) => thread.otherMemberId));
     return members

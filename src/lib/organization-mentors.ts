@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { toOrganizationMark } from '@/lib/members';
+import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { RepresentedOrganization } from '@/types/domain';
 
@@ -19,6 +20,7 @@ export async function grantMentor(
       organization: organizationId,
       member: memberId,
     });
+    if (!error) directoryChanged();
     return error
       ? { ok: false, error: describeError(error, 'They were not made a mentor.') }
       : { ok: true };
@@ -36,6 +38,7 @@ export async function revokeMentor(
       organization: organizationId,
       member: memberId,
     });
+    if (!error) directoryChanged();
     return error
       ? { ok: false, error: describeError(error, 'They are still a mentor.') }
       : { ok: true };
@@ -54,6 +57,7 @@ export async function removeOrganizationPerson(
       p_organization: organizationId,
       p_member: memberId,
     });
+    if (!error) directoryChanged();
     return error
       ? { ok: false, error: describeError(error, 'They were not removed.') }
       : { ok: true };

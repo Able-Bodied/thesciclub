@@ -1,3 +1,4 @@
+import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -46,7 +47,10 @@ export async function setMyUsername(
   name: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { error } = await getSupabase().rpc('set_my_username', { name });
-  if (!error) return { ok: true };
+  if (!error) {
+    directoryChanged();
+    return { ok: true };
+  }
   if (error.code === '23505') return { ok: false, error: USERNAME_TAKEN };
   if (error.code === '22023') {
     return {

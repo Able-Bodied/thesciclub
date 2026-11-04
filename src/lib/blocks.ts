@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import type { ChatWriteResult } from '@/lib/chat/threads';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -31,12 +32,14 @@ const UNBLOCK_FAILED = { attempt: 'They are still blocked.' };
 export async function blockMember(memberId: string): Promise<ChatWriteResult<null>> {
   const { error } = await getSupabase().rpc('block_member', { member: memberId });
   if (error) return { ok: false, error: describeError(error, BLOCK_FAILED) };
+  directoryChanged();
   return { ok: true, value: null };
 }
 
 export async function unblockMember(memberId: string): Promise<ChatWriteResult<null>> {
   const { error } = await getSupabase().rpc('unblock_member', { member: memberId });
   if (error) return { ok: false, error: describeError(error, UNBLOCK_FAILED) };
+  directoryChanged();
   return { ok: true, value: null };
 }
 
