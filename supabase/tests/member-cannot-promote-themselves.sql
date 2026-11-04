@@ -109,7 +109,9 @@ set local role authenticated;
 
 \echo ''
 \echo '== 8. a suspended member cannot reinstate themselves =='
-\echo '   expect: ERROR, membership status is changed by an administrator'
+\echo '   expect: UPDATE 0. Since 20261103220000 a suspended member updates no row'
+\echo '   of their own; the guard (step 4 of only-active-members-edit-their-profile)'
+\echo '   still refuses an active member changing their status.'
 savepoint self_reinstate;
 update public.members set status = 'active' where id = 'cccccccc-9090-0000-0000-00000000000c';
 rollback to savepoint self_reinstate;
