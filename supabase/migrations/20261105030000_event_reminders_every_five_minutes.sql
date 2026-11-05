@@ -8,12 +8,13 @@
 -- Each branch's window is wider than 5 minutes, and the *_sent tables still
 -- record each member once, so no reminder is skipped or sent twice:
 --   day ahead      due at day_ahead_at, open until 12 h before: unchanged.
---   ten minutes    the owner, 2026-11-05: 10 to 15 minutes before, never
---                  less than 10. Start in (now + 10 min, now + 15 min 30 s]:
---                  never under 10; 30 s of overlap absorbs a run starting
---                  late (a minute for starts on the minute). A run missed,
---                  or later than that, cannot send its starts 10 minutes
---                  ahead any more, so those go without this reminder.
+--   ten minutes    the owner, 2026-11-05: start in (now + 5 min,
+--                  now + 15 min 30 s], each member once. On-time runs send
+--                  10 to 15 min 30 s before (the run before took the rest;
+--                  30 s of overlap absorbs a late start). After a missed or
+--                  very late run, what it had goes late, 5 to 10 minutes
+--                  before; so does an RSVP or event made that late. Never
+--                  under 5 minutes, never twice.
 --   check in       end + 30 min, open 15 minutes: unchanged, now prefiltered
 --                  on coalesce(end_time, start_time) in (now - 4h45, now - 30m].
 --   follow-up      10am the day after, open an hour: now from events that
@@ -72,7 +73,7 @@ begin
     join public.event_rsvps rv on rv.event_id = e.id and rv.status = 'going'
     join public.members r on r.id = rv.member_id and r.status = 'active'
    where not e.all_day
-     and e.start_time > now() + interval '10 minutes'
+     and e.start_time > now() + interval '5 minutes'
      and e.start_time <= now() + interval '15 minutes 30 seconds'
   on conflict do nothing;
   get diagnostics recorded = row_count;
