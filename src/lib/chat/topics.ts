@@ -2,11 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
+import { flushTopicRead, markTopicRead } from '@/lib/chat/topic-read-mark';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
-import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
-import { missingFunction, viewDevice } from '@/lib/device';
-import { announceNotificationsChanged } from '@/lib/notifications';
+import { missingFunction } from '@/lib/device';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -387,6 +386,8 @@ export function useTopicPosts(
   const [error, setError] = useState<string | null>(null);
   const [movedTo, setMovedTo] = useState<string | null>(null);
   const inFlight = useRef<AbortController | null>(null);
+  // This visit has marked once already.
+  const opened = useRef(false);
 
   const load = useCallback(async () => {
     if (!roomId || !topicId) {
@@ -478,32 +479,13 @@ export function useTopicPosts(
       setLoading(false);
 
       // After the read, not before: the value above is where the reader had
-      // got to, and this is the visit that moves it. A failure here is silent —
-      // the topic is on screen and unread is a convenience.
-      //
-      // `.then`, not just `void`: a Supabase request is only sent when it is
-      // awaited or `.then`ed. This line was `void supabase.rpc(...)` from the
-      // start, so no visit was ever recorded: views stayed at nothing and
-      // topics never stopped looking unread (found 2026-10-10; the hosted
-      // chat_topic_reads had never had a row inserted). Reading also reads the
-      // notifications about the topic, so the bell is told to count again.
+      // got to, and this is the visit that moves it. A failure is silent.
+      // Only the first load of a visit marks through the same post again;
+      // reloads mark only when the newest post moved (topic-read-mark.ts).
       const through = postRows.data?.at(-1)?.id;
       if (found && through) {
-        void supabase
-          .rpc('chat_mark_topic_read_through', {
-            topic: topicId,
-            post: through,
-            device: viewDevice(),
-          })
-          .then(({ error }) =>
-            missingFunction(error)
-              ? supabase.rpc('chat_mark_topic_read_through', { topic: topicId, post: through })
-              : { error },
-          )
-          .then(({ error }) => {
-            if (!error) announcePostViewsChanged();
-            announceNotificationsChanged();
-          });
+        markTopicRead(topicId, through, !opened.current);
+        opened.current = true;
       }
     } catch (e) {
       if (aborted()) return;
@@ -518,6 +500,14 @@ export function useTopicPosts(
       inFlight.current?.abort();
     };
   }, [load]);
+
+  // Another topic is a new visit; leaving sends the mark still waiting.
+  useEffect(() => {
+    opened.current = false;
+    return () => {
+      if (topicId) flushTopicRead(topicId);
+    };
+  }, [topicId]);
 
   const reload = useCallback(() => {
     void load();
