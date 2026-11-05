@@ -1,11 +1,11 @@
 -- ============================================================================
--- An invitation joins the event already there (20261105120000)
+-- An invitation joins the event already there (20261105120000, 20261105140000)
 -- ============================================================================
 -- The owner, 2026-11-05: "The SCI Club Weekly" was on the calendar twice,
 -- once added in the club and once from a Google Calendar invitation. Combine
 -- them, with the invitation's meeting link and the club event's organization.
 --
--- Steps 1 and 8 are the ones that matter: one event, not two, keeping its
+-- Steps 1, 8, 9 and 10 are the ones that matter: one event, not two, keeping its
 -- organization and who is coming.
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
@@ -184,5 +184,129 @@ select (select count(*) from public.events e where e.id = theirs) as theirs_left
        (select i.joined and i.event_id = hand2 from public.calendar_invites i where i.uid = 'probe-pair@google.com') as joined
   from probe_pair join public.events e on e.id = hand2 join public.organizations o on o.id = e.organization_id;
 select private.calendar_join_duplicates() as second_run;
+
+\echo ''
+\echo '== 9. A REPEATING ONE TAKES THE CLUB''S EVENT IN (expect added | false; the club''s event gone; first date: Probe Host Org, the Meet, 1 going, the chat moved; 4 dates) =='
+create temporary table probe_series as
+select '10000000-c0c2-0000-0000-000000000005'::uuid as hand3,
+       '10000000-c0c2-0000-0000-000000000006'::uuid as thread3,
+       t + interval '7 hours' as t3
+  from probe_t;
+grant select on probe_series to service_role;
+insert into public.events (id, title, description, description_html, start_time, end_time, location,
+                           organization_id, event_format, added_by)
+select hand3, 'Probe Series', 'Made in the club', '', t3, t3 + interval '1 hour', '',
+       'dddddddd-c0c2-0000-0000-00000000000d'::uuid, 'online', 'aaaaaaaa-c0c2-0000-0000-00000000000a'::uuid
+  from probe_series;
+insert into public.event_rsvps (event_id, member_id, status)
+select hand3, 'bbbbbbbb-c0c2-0000-0000-00000000000b'::uuid, 'going' from probe_series;
+insert into public.chat_threads (id, kind, name, event_id) select thread3, 'group', 'Probe Series', hand3 from probe_series;
+insert into public.chat_thread_members (thread_id, member_id)
+select thread3, 'bbbbbbbb-c0c2-0000-0000-00000000000b'::uuid from probe_series;
+insert into public.chat_messages (thread_id, author_id, body)
+select thread3, 'bbbbbbbb-c0c2-0000-0000-00000000000b'::uuid, 'Looking forward' from probe_series;
+set local role service_role;
+select r ->> 'outcome', r ->> 'joined'
+  from (select public.calendar_invite_receive('admin@probe.example', true, null,
+    base || jsonb_build_object('uid', 'probe-series@google.com', 'title', 'Probe Series',
+      'starts', to_jsonb(t3), 'ends', to_jsonb(t3 + interval '1 hour'),
+      'repeat', jsonb_build_object('unit', 'week', 'every', 1, 'endsOn', null, 'endsAfter', 4))) r
+  from probe_payload, probe_series) s;
+reset role;
+create temporary table probe_opener as
+select i.event_id as opener, e.series_id from public.calendar_invites i join public.events e on e.id = i.event_id
+ where i.uid = 'probe-series@google.com';
+select (select count(*) from public.events x, probe_series where x.id = hand3) as club_event_left,
+       o.name, e.url,
+       (select count(*) from public.event_rsvps v where v.event_id = e.id) as going,
+       (select t.event_id = e.id from public.chat_threads t, probe_series where t.id = thread3) as chat_moved,
+       (select count(*) from public.events x where x.series_id = e.series_id) as dates
+  from probe_opener p join public.events e on e.id = p.opener
+  join public.organizations o on o.id = e.organization_id;
+
+\echo ''
+\echo '== 10. a change moves every date in place (expect updated; same first date; 1 going; 4 dates, all 30 minutes later, all with the new words) =='
+set local role service_role;
+select r ->> 'outcome'
+  from (select public.calendar_invite_receive('admin@probe.example', true, null,
+    base || jsonb_build_object('uid', 'probe-series@google.com', 'sequence', 1, 'title', 'Probe Series',
+      'description', 'New words', 'starts', to_jsonb(t3 + interval '30 minutes'),
+      'ends', to_jsonb(t3 + interval '90 minutes'),
+      'repeat', jsonb_build_object('unit', 'week', 'every', 1, 'endsOn', null, 'endsAfter', 4))) r
+  from probe_payload, probe_series) s;
+reset role;
+select i.event_id = p.opener as same_first_date,
+       (select count(*) from public.event_rsvps v where v.event_id = p.opener) as going,
+       (select count(*) from public.events x where x.series_id = p.series_id) as dates,
+       (select count(*) from public.events x, probe_series
+         where x.series_id = p.series_id and x.description = 'New words'
+           and extract(minute from x.start_time at time zone 'America/Los_Angeles')
+             = extract(minute from (t3 + interval '30 minutes') at time zone 'America/Los_Angeles')) as moved_with_new_words
+  from probe_opener p, public.calendar_invites i where i.uid = 'probe-series@google.com';
+
+\echo ''
+\echo '== 11. a new rule keeps the dates it still makes (expect updated; same first date; 1 going; 2 dates, two weeks apart) =='
+set local role service_role;
+select r ->> 'outcome'
+  from (select public.calendar_invite_receive('admin@probe.example', true, null,
+    base || jsonb_build_object('uid', 'probe-series@google.com', 'sequence', 2, 'title', 'Probe Series',
+      'description', 'New words', 'starts', to_jsonb(t3 + interval '30 minutes'),
+      'ends', to_jsonb(t3 + interval '90 minutes'),
+      'repeat', jsonb_build_object('unit', 'week', 'every', 2, 'endsOn', null, 'endsAfter', 2))) r
+  from probe_payload, probe_series) s;
+reset role;
+select i.event_id = p.opener as same_first_date,
+       (select count(*) from public.event_rsvps v where v.event_id = p.opener) as going,
+       (select count(*) from public.events x where x.series_id = p.series_id) as dates,
+       (select max(x.start_time) - min(x.start_time) from public.events x where x.series_id = p.series_id) as apart
+  from probe_opener p, public.calendar_invites i where i.uid = 'probe-series@google.com';
+
+\echo ''
+\echo '== 12. a one-off invitation''s change keeps its event (expect updated; same event t; 1 going; the new time) =='
+set local role service_role;
+select r ->> 'outcome' from (select public.calendar_invite_receive('admin@probe.example', true, null,
+  base || jsonb_build_object('uid', 'probe-single@google.com', 'title', 'Probe Single',
+    'starts', to_jsonb(t + interval '9 hours'), 'ends', null)) r from probe_payload, probe_t) s;
+reset role;
+create temporary table probe_single as
+select event_id as first_event from public.calendar_invites where uid = 'probe-single@google.com';
+insert into public.event_rsvps (event_id, member_id, status)
+select first_event, 'bbbbbbbb-c0c2-0000-0000-00000000000b'::uuid, 'going' from probe_single;
+set local role service_role;
+select r ->> 'outcome' from (select public.calendar_invite_receive('admin@probe.example', true, null,
+  base || jsonb_build_object('uid', 'probe-single@google.com', 'sequence', 1, 'title', 'Probe Single',
+    'starts', to_jsonb(t + interval '10 hours'), 'ends', null)) r from probe_payload, probe_t) s;
+reset role;
+select i.event_id = p.first_event as same_event,
+       (select count(*) from public.event_rsvps v where v.event_id = i.event_id) as going,
+       e.start_time - t as starts_after
+  from probe_single p, probe_t, public.calendar_invites i join public.events e on e.id = i.event_id
+ where i.uid = 'probe-single@google.com';
+
+\echo ''
+\echo '== 13. a change keeps the organization it was given (expect held, then the admin chooses: added; then a change: updated, not held; Probe Other Org) =='
+insert into public.organization_representatives (organization_id, member_id)
+values ('dddddddd-c0c2-0000-0000-00000000000d', 'cccccccc-c0c2-0000-0000-00000000000c');
+set local role service_role;
+select r ->> 'outcome' from (select public.calendar_invite_receive('other-rep@probe.example', true, null,
+  base || jsonb_build_object('uid', 'probe-choose@google.com', 'title', 'Probe Choose',
+    'starts', to_jsonb(t + interval '11 hours'), 'ends', null)) r from probe_payload, probe_t) s;
+reset role;
+select id as choose_id from public.calendar_invites where uid = 'probe-choose@google.com' \gset
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'aaaaaaaa-c0c2-0000-0000-00000000000a', 'role', 'authenticated')::text, true) is not null as signed_in;
+set local role authenticated;
+select public.decide_calendar_invite(:'choose_id', true, 'eeeeeeee-c0c2-0000-0000-00000000000e') is not null as approved;
+reset role;
+select set_config('request.jwt.claims', '', true) is not null as signed_out;
+set local role service_role;
+select r ->> 'outcome' from (select public.calendar_invite_receive('other-rep@probe.example', true, null,
+  base || jsonb_build_object('uid', 'probe-choose@google.com', 'sequence', 1, 'title', 'Probe Choose',
+    'description', 'Changed', 'starts', to_jsonb(t + interval '11 hours'), 'ends', null)) r from probe_payload, probe_t) s;
+reset role;
+select i.state, o.name
+  from public.calendar_invites i join public.events e on e.id = i.event_id
+  join public.organizations o on o.id = e.organization_id
+ where i.uid = 'probe-choose@google.com';
 
 rollback;
