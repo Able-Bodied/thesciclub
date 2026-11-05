@@ -233,6 +233,21 @@ const isCopy = (path: string) => path.includes('.thumb.');
 /** Photographs storage refused, each counted as broken once (a changed photo). */
 const refusedPhotos = new Set<string>();
 
+/**
+ * A member's face (`<id>/profile-….webp`, `seed/<id>.webp`), not a logo, an
+ * event's picture or a review's: only a face can be changed by another member
+ * behind a kept read, so only a face is worth reading members again for.
+ */
+export function isMemberPhoto(path: string): boolean {
+  const [folder, name, ...rest] = path.split('/');
+  return (
+    rest.length === 0 &&
+    folder !== undefined &&
+    name !== undefined &&
+    (folder === 'seed' || (folder !== 'organizations' && name.startsWith('profile')))
+  );
+}
+
 /** Whether storage has said this small copy is not there. */
 export function copyMissing(bucket: SignedBucket, path: string): boolean {
   return missingCopies.has(cacheKey(bucket, path));
@@ -318,7 +333,12 @@ async function sign(bucket: SignedBucket, paths: string[]): Promise<void> {
         signed.set(cacheKey(bucket, row.path), { url: row.signedUrl, until: now + CACHE_FOR_MS });
       } else if (row.path && isCopy(row.path)) {
         missingCopies.add(cacheKey(bucket, row.path));
-      } else if (row.path && bucket === KEPT_BUCKET && !refusedPhotos.has(row.path)) {
+      } else if (
+        row.path &&
+        bucket === KEPT_BUCKET &&
+        isMemberPhoto(row.path) &&
+        !refusedPhotos.has(row.path)
+      ) {
         // Likely another member's old file, deleted by a change: read again.
         refusedPhotos.add(row.path);
         signed.delete(cacheKey(bucket, row.path));

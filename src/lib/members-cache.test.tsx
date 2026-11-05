@@ -311,6 +311,48 @@ describe('the shared directory', () => {
     }
   });
 
+  // The robots, 2026-11-04: three refused logos (none in the test storage)
+  // read the directory again behind Peers.
+  it('reads nothing more for refused logos', async () => {
+    db.files = new Set();
+    function Logo({ path }: { path: string }) {
+      return <span>{usePhotoUrl(path) ?? 'badge'}</span>;
+    }
+    await loaded();
+    render(
+      <>
+        <Logo path="organizations/aby.png" />
+        <Logo path="organizations/ibf.webp" />
+        <Logo path="organizations/mtw.jpg" />
+      </>,
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(db.reads).toHaveLength(1);
+  });
+
+  it('never reads the deck or the names again for a broken face inside the minute', async () => {
+    const peers = await loaded();
+    db.rows['member-a'] = [{ ...row('b', 'Bea'), photo_path: 'b/new.webp' }, row('c', 'Cal')];
+    const now = Date.now();
+    photoBroke(now);
+    await waitFor(() => {
+      expect(peers.result.current.members[0]?.photoPath).toBe('b/new.webp');
+    });
+    photoBroke(now + 1);
+    // Peers map, new message, new group, Home, Peers again.
+    for (const use of ['deck', 'names', 'names', 'deck', 'deck'] as const) {
+      const screenOpen = renderHook(() => useBrowseMembers(use));
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      expect(screenOpen.result.current.members[0]?.photoPath).toBe('b/new.webp');
+      screenOpen.unmount();
+    }
+    // The deck once, and the one light read.
+    expect(db.reads.map((read) => read.columns === 'id, photo_path, photo_alt')).toEqual([
+      false,
+      true,
+    ]);
+  });
+
   it('keeps no failed read: the next screen asks again', async () => {
     db.fail = true;
     const first = await loaded();
