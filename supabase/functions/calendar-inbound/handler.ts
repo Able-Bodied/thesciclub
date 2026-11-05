@@ -47,6 +47,10 @@ export interface ReceiveResult {
   organization?: string | null;
   reason?: string;
   notify?: string[];
+  /** It joined an event already added in the club (20261105120000). */
+  joined?: boolean;
+  /** A cancelled one that joined: the club's event stays. */
+  kept?: boolean;
 }
 
 export interface Mail {
@@ -268,6 +272,10 @@ function whenLine(invite: InviteEvent): string {
   return invite.location ? `${when}, ${invite.location}` : when;
 }
 
+/** An invitation that joined an event already in the club (20261105120000). */
+const JOINED =
+  "It was already on the club's calendar, so the invitation joined that event: its organization and who is coming stay. Changes to the invitation are copied to it; cancelling the invitation leaves it.";
+
 /** What to tell whom, for each outcome. Nothing for an ignored one: no reply to strangers. */
 export function repliesFor(
   result: ReceiveResult,
@@ -284,10 +292,19 @@ export function repliesFor(
         {
           to: sender,
           subject: `${result.outcome === 'added' ? 'Added to' : 'Updated in'} The SCI Club: ${title}`,
-          text: `${title}\n${whenLine(invite)}\nHosted by ${result.organization ?? 'The SCI Club'}${linkLine(invite)}\n\n${site}/events/${result.event ?? ''}\n\nChanges to the invitation are copied to the club, and cancelling it takes the event off. If your calendar asks whom to tell about a change, choose all guests: you will get an email like this one each time, and without it the club did not get the change.${note}`,
+          text: `${title}\n${whenLine(invite)}\nHosted by ${result.organization ?? 'The SCI Club'}${linkLine(invite)}\n\n${site}/events/${result.event ?? ''}\n\n${result.joined ? JOINED : 'Changes to the invitation are copied to the club, and cancelling it takes the event off.'} If your calendar asks whom to tell about a change, choose all guests: you will get an email like this one each time, and without it the club did not get the change.${note}`,
         },
       ];
     case 'cancelled':
+      if (result.kept) {
+        return [
+          {
+            to: sender,
+            subject: `Still on The SCI Club: ${title}`,
+            text: `The invitation was cancelled, but ${title} was added in the club, so it stays on the club's calendar. If it is not happening, delete it there:\n\n${site}/events/${result.event ?? ''}`,
+          },
+        ];
+      }
       return [
         {
           to: sender,
