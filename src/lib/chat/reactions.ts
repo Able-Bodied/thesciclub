@@ -31,6 +31,8 @@ export interface ReactionsState {
   failure: { target: string; message: string } | null;
   choose: (target: string, emoji: ReactionEmoji | null) => Promise<boolean>;
   reload: () => void;
+  /** Targets not read yet: the reader's own reaction there is unknown. */
+  unread?: ReadonlySet<string>;
 }
 
 /** One read/subscription per screen, shared by all its posts or messages.
@@ -66,6 +68,8 @@ export function useReactions(
   // read that overlapped a write does not overwrite it.
   const asked = useRef({ scope, ids: new Set<string>() });
   const written = useRef(new Map<string, number>());
+  const storeNow = useRef(store);
+  storeNow.current = store;
   const controllers = useRef(new Set<AbortController>());
 
   const read = useCallback(
@@ -188,6 +192,9 @@ export function useReactions(
     async (target: string, emoji: ReactionEmoji | null) => {
       const token = `${scope}:${target}`;
       if (!memberId || !wanted.includes(target) || busy.current.has(token)) return false;
+      // Not before this target is read: the write would be a guess at the reader's own.
+      const now = storeNow.current;
+      if (now.scope !== scope || !now.byTarget.has(target)) return false;
       busy.current.add(token);
       const bump = () => {
         written.current.set(target, (written.current.get(target) ?? 0) + 1);
@@ -236,6 +243,7 @@ export function useReactions(
 
   const own = store.scope === scope ? store.byTarget : null;
   const rows = useMemo(() => (own ? wanted.flatMap((t) => own.get(t) ?? []) : []), [own, wanted]);
+  const unread = useMemo(() => new Set(wanted.filter((t) => !own?.has(t))), [own, wanted]);
   return {
     rows,
     // Some target not read yet. Nothing waits on this: React stays usable.
@@ -249,5 +257,6 @@ export function useReactions(
     ),
     choose,
     reload,
+    unread,
   };
 }

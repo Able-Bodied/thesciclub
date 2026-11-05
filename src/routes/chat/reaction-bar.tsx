@@ -58,6 +58,8 @@ export function ReactionBar({
   const rows = state.rows.filter((r) => r.target_id === target && r.emoji !== null);
   const mine = rows.find((r) => r.member_id === readerId)?.emoji ?? null;
   const pending = state.pending.has(target);
+  // Until read, the reader's own reaction is unknown: the picker waits, React does not.
+  const known = !state.unread?.has(target);
   // Not while counts load: a slow read must not grey out React.
   const disabled = !readerId || pending;
   const trigger = (
@@ -146,6 +148,7 @@ export function ReactionBar({
               mine={mine}
               what={what}
               pending={pending}
+              known={known}
               failure={state.failure?.target === target ? state.failure.message : null}
               choose={choose}
               onClose={() => {
@@ -363,6 +366,7 @@ function ReactionSheet({
   mine,
   what,
   pending,
+  known = true,
   failure,
   choose,
   onClose,
@@ -371,6 +375,7 @@ function ReactionSheet({
   mine: ReactionEmoji | null;
   what: string;
   pending: boolean;
+  known?: boolean;
   failure: string | null;
   choose: (emoji: ReactionEmoji) => Promise<boolean>;
   onClose: () => void;
@@ -423,7 +428,7 @@ function ReactionSheet({
               type="button"
               aria-label={name}
               aria-pressed={mine === emoji}
-              disabled={pending}
+              disabled={pending || !known}
               onClick={() => {
                 void choose(emoji);
               }}
@@ -433,6 +438,11 @@ function ReactionSheet({
             </button>
           ))}
         </div>
+        {known ? null : (
+          <p role="status" className="mt-2 text-[0.75rem] text-grey">
+            Loading your reaction…
+          </p>
+        )}
         {mine ? (
           <p className="mt-2 text-[0.75rem] text-grey">Tap {mine} again to take it back.</p>
         ) : null}

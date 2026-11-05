@@ -29,6 +29,33 @@ describe('reaction controls', () => {
     );
     expect(screen.getByRole('button', { name: 'React to “the message”' })).toBeEnabled();
   });
+  it('opens React at once, but waits for the reader’s own reaction before a choice', async () => {
+    const data = state({ loading: true, unread: new Set(['m1']) });
+    const { rerender } = render(
+      <ReactionBar target="m1" what="the message" readerId="me" state={data} />,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'React to “the message”' }));
+    const picker = screen.getByRole('dialog', { name: 'React to “the message”' });
+    expect(within(picker).getByRole('status')).toHaveTextContent('Loading your reaction…');
+    expect(within(picker).getByRole('button', { name: 'Love' })).toBeDisabled();
+    // Read: the reader had Love, so a tap now takes it back.
+    rerender(
+      <ReactionBar
+        target="m1"
+        what="the message"
+        readerId="me"
+        state={{
+          ...data,
+          loading: false,
+          unread: new Set(),
+          rows: [{ target_id: 'm1', member_id: 'me', emoji: '❤️' }],
+        }}
+      />,
+    );
+    await user.click(within(picker).getByRole('button', { name: 'Love' }));
+    expect(data.choose).toHaveBeenCalledWith('m1', null);
+  });
   it('shows React and Reply directly while keeping Edit in the menu', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'other', emoji: '❤️' }] });
     render(

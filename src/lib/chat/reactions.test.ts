@@ -10,6 +10,7 @@ const db = vi.hoisted(() => ({
   reads: [] as unknown[],
   writes: [] as unknown[],
   hold: null as Promise<void> | null,
+  readHold: null as Promise<void> | null,
   pages: [] as number[],
   changed: null as (() => void) | null,
   row: null as ((row: Record<string, unknown>) => void) | null,
@@ -46,10 +47,11 @@ vi.mock('@/lib/supabase', () => ({
         abortSignal: () => {
           db.reads.push({ table, ids });
           if (db.thrown) return Promise.reject(new TypeError('Failed to fetch'));
-          return Promise.resolve({
+          const answer = () => ({
             data: db.rows.filter((r) => ids.includes(r.target_id)).slice(offset, offset + 1000),
             error: db.readError,
           });
+          return db.readHold ? db.readHold.then(answer) : Promise.resolve(answer());
         },
       };
       return query;
@@ -75,6 +77,7 @@ beforeEach(() => {
   db.reads = [];
   db.writes = [];
   db.hold = null;
+  db.readHold = null;
   db.pages = [];
 });
 const loaded = async (result: { current: { loading: boolean } }) =>
@@ -83,6 +86,32 @@ const loaded = async (result: { current: { loading: boolean } }) =>
   });
 
 describe('emoji reactions', () => {
+  it('writes nothing for a target whose reactions are not read yet', async () => {
+    db.rows = [{ target_id: 'p1', member_id: 'me', emoji: '❤️' }];
+    let release: () => void = () => undefined;
+    db.readHold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { result } = renderHook(() => useReactions('post', ['p1'], 'me'));
+    expect(result.current.unread?.has('p1')).toBe(true);
+    // Neither a take-back nor a change can be decided from an unknown state.
+    for (const emoji of [null, '💪'] as const) {
+      await act(async () => {
+        expect(await result.current.choose('p1', emoji)).toBe(false);
+      });
+    }
+    expect(db.writes).toEqual([]);
+    await act(async () => {
+      release();
+      await db.readHold;
+    });
+    await loaded(result);
+    expect(result.current.unread?.size).toBe(0);
+    await act(async () => {
+      expect(await result.current.choose('p1', null)).toBe(true);
+    });
+    expect(db.writes).toHaveLength(1);
+  });
   it('reads everybody’s reactions only for the targets on screen', async () => {
     db.rows = [
       { target_id: 'p1', member_id: 'other', emoji: '❤️' },
