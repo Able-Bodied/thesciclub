@@ -96,9 +96,12 @@ export default function ChatPage() {
   // everybody's list the moment it is started is the point of letting members
   // start them, and chat_rooms carries nothing private — the select policy is
   // unchanged, so a closed room still never reaches a member.
+  // A room changing recounts; a reconnect needs no recount of its own, as the
+  // chat_topics channel's catch-up above has just read the stats.
   useRealtimeRows({
     table: 'chat_rooms',
-    onChange: () => {
+    onChange: reloadRooms,
+    onRow: () => {
       reloadRooms();
       reloadStatsSoon();
     },

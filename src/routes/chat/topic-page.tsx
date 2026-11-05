@@ -175,7 +175,8 @@ export default function TopicPage() {
   );
   const reactions = useReactions('post', standingIds, account.userId);
   const likes = usePostLikes(standingIds);
-  const views = usePostViews(standingIds);
+  // Counted after this visit's read-through write lands, not before it too.
+  const views = usePostViews(standingIds, { afterVisit: true });
   const saves = useTopicSaves(topicId);
 
   useRealtimeRows({

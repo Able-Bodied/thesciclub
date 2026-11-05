@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 const CHANGED = 'club-post-views-changed';
@@ -9,8 +10,19 @@ export function announcePostViewsChanged() {
   window.dispatchEvent(new Event(CHANGED));
 }
 
-/** Counts only: private reader identities never leave the database. */
-export function usePostViews(postIds: readonly string[]) {
+/** How long a topic waits for its visit to be counted before reading anyway. */
+export const VISIT_WAIT_MS = 3000;
+
+/**
+ * Counts only: private reader identities never leave the database.
+ * `afterVisit` (a topic): the first read waits for this visit's read-through
+ * write, which says so (announcePostViewsChanged); a read before it is
+ * replaced a moment later.
+ */
+export function usePostViews(
+  postIds: readonly string[],
+  { afterVisit = false }: { afterVisit?: boolean } = {},
+) {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
   const key = [...new Set(postIds)].sort().join(',');
@@ -21,9 +33,22 @@ export function usePostViews(postIds: readonly string[]) {
   });
   // Read again for the same posts, the counts stay up until the new ones land.
   const shown = useRef<string | null>(null);
+  const kept = useKeptRead();
+  const [visited, setVisited] = useState(!afterVisit);
+
+  useEffect(() => {
+    if (visited) return;
+    const timer = window.setTimeout(() => {
+      setVisited(true);
+    }, VISIT_WAIT_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [visited]);
 
   useEffect(() => {
     const refresh = () => {
+      setVisited(true);
       setAttempt((n) => n + 1);
     };
     window.addEventListener(CHANGED, refresh);
@@ -42,6 +67,11 @@ export function usePostViews(postIds: readonly string[]) {
     }
     const again = shown.current === key;
     if (!again) setState({ byPost: new Map(), loading: true });
+    if (!visited) return;
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    const read = `${memberId}|${key}|${attempt}`;
+    if (kept.fresh(read)) return;
+    const landed = kept.start(read);
     async function load() {
       try {
         // Supabase caps returned rows at 1,000; long topics still need a
@@ -66,6 +96,7 @@ export function usePostViews(postIds: readonly string[]) {
           byPost: new Map(rows.map((row) => [row.post_id, Number(row.view_count)])),
           loading: false,
         });
+        landed();
       } catch {
         if (!controller.signal.aborted && !again) setState({ byPost: new Map(), loading: false });
       }
@@ -74,7 +105,7 @@ export function usePostViews(postIds: readonly string[]) {
     return () => {
       controller.abort();
     };
-  }, [memberId, key, attempt]);
+  }, [memberId, key, attempt, visited, kept]);
 
   return state;
 }
