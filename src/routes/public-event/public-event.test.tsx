@@ -112,6 +112,15 @@ describe('the public event page', () => {
     expect(screen.queryByText(/\d+ (going|interested)/i)).toBeNull();
     expect(screen.queryByText(/going/i)).toBeNull();
     expect(screen.getByRole('button', { name: 'RSVP' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /interested/i })).toBeNull();
+  });
+
+  // The owner, 2026-11-05: only RSVP on the public page, also where the host takes no RSVPs here.
+  it('offers only RSVP, also for an event whose host takes no RSVPs here', async () => {
+    api.event = { ...EVENT, takesRsvps: false };
+    renderAt('/e/picnic');
+    expect(await screen.findByRole('button', { name: 'RSVP' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /interested/i })).toBeNull();
   });
 
   // The owner, 2026-10-24: a stronger ask to join, set apart.
@@ -165,13 +174,13 @@ describe('the public event page', () => {
     expect(screen.queryByText('Join online')).toBeNull();
   });
 
-  it('opens the form from Going', async () => {
+  it('opens the form from RSVP, with no choice to make', async () => {
     renderAt('/e/picnic');
     await userEvent.click(await screen.findByRole('button', { name: 'RSVP' }));
     expect(
       await screen.findByRole('heading', { name: 'Get added to our list' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Going' })).toBeChecked();
+    expect(screen.queryByRole('radio')).toBeNull();
   });
 
   // The owner, 2026-10-24: the form is the club's list, not the host's own
@@ -232,12 +241,25 @@ describe('registering', () => {
   }
 
   it('needs a name and an email before it can be sent', async () => {
-    renderAt('/e/picnic/register?status=interested');
-    expect(await screen.findByRole('radio', { name: 'Interested' })).toBeChecked();
+    renderAt('/e/picnic/register');
+    expect(await screen.findByLabelText('Your name')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Your name'), 'Maria');
     await userEvent.type(screen.getByLabelText('Email'), 'not an email');
     expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+  });
+
+  // The owner, 2026-11-05: Going only, even from an old ?status=interested link or a no-RSVP event.
+  it('registers as going, with no Interested choice', async () => {
+    api.event = { ...EVENT, takesRsvps: false };
+    renderAt('/e/picnic/register?status=interested');
+    expect(await screen.findByLabelText('Your name')).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByText('Interested')).toBeNull();
+    await fill();
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await screen.findByRole('heading', { name: 'Welcome' });
+    expect(api.registered[0]).toMatchObject({ eventId: 'picnic', status: 'going' });
   });
 
   it('keeps the registration, then opens the welcome page', async () => {

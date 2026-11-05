@@ -22,8 +22,9 @@ import { EventDescription, safeHref } from '@/routes/events/rich-text';
  *
  * What an organization would post on its own calendar, and nothing that says
  * who is in the club: no counts, nobody's name (not even the host's, who may
- * be a member), no comments, no group chat. Going and Interested open the
- * registration form (./register.tsx). A member who is signed in is sent to the
+ * be a member), no comments, no group chat. One RSVP button opens the
+ * registration form (./register.tsx); no Interested here (the owner, 2026-11-05:
+ * members still have it on their own page). A member who is signed in is sent to the
  * event's own page, which has all of that.
  *
  * The address holds the event's id or its short link (20261101070000).
@@ -164,27 +165,17 @@ export default function PublicEventPage() {
             <p className="mt-4 text-[0.875rem] text-grey">This event is over.</p>
           ) : (
             <div className="mt-4 flex gap-2.5">
-              {event.takesRsvps ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    recordRsvpClick(event.id, true);
-                    void navigate(`/e/${event.id}/register?status=going`);
-                  }}
-                  className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
-                >
-                  RSVP
-                </button>
-              ) : null}
+              {/* Every event, also one whose host takes no RSVPs here: the form
+                  says the club's list is not the host's sign-up. */}
               <button
                 type="button"
                 onClick={() => {
-                  recordRsvpClick(event.id, false);
-                  void navigate(`/e/${event.id}/register?status=interested`);
+                  recordRsvpClick(event.id, true);
+                  void navigate(`/e/${event.id}/register`);
                 }}
-                className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.9375rem] text-emphasis"
+                className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
               >
-                Interested
+                RSVP
               </button>
             </div>
           )}

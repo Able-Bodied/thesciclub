@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import {
   fetchPublicEvent,
@@ -35,17 +35,11 @@ const LABEL = 'mt-4 block font-bold text-[0.8125rem] text-ink';
 
 export default function RegisterForEventPage() {
   const { id = '' } = useParams<{ id: string }>();
-  const [params] = useSearchParams();
   const account = useAccount();
   const navigate = useNavigate();
   const [event, setEvent] = useState<PublicEvent | null | undefined>(undefined);
-  const [status, setStatus] = useState<RsvpStatus>(
-    params.get('status') === 'interested' ? 'interested' : 'going',
-  );
-  // Only a typed address asks for Going where there is no RSVP button.
-  useEffect(() => {
-    if (event?.takesRsvps === false) setStatus('interested');
-  }, [event]);
+  // Going only (the owner, 2026-11-05): the public page offers just RSVP.
+  const status: RsvpStatus = 'going';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -182,37 +176,6 @@ export default function RegisterForEventPage() {
               ) : null}
             </p>
           )}
-
-          <fieldset className="mt-4">
-            <legend className="sr-only">Your answer</legend>
-            <div className="flex gap-2">
-              {(event.takesRsvps
-                ? (['going', 'interested'] as const)
-                : (['interested'] as const)
-              ).map((value) => (
-                <label
-                  key={value}
-                  className={`cursor-pointer rounded-full border-[1.4px] px-4 py-2 font-bold font-head text-[0.875rem] ${
-                    status === value
-                      ? 'border-emphasis bg-emphasis text-white'
-                      : 'border-line bg-paper text-ink2'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="status"
-                    value={value}
-                    checked={status === value}
-                    onChange={() => {
-                      setStatus(value);
-                    }}
-                    className="sr-only"
-                  />
-                  {value === 'going' ? 'Going' : 'Interested'}
-                </label>
-              ))}
-            </div>
-          </fieldset>
 
           <label htmlFor="register-name" className={LABEL}>
             Your name
