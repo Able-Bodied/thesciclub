@@ -3,10 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import type { Organization } from '@/types/domain';
 
-const directory = vi.hoisted(() => ({ asked: [] as string[] }));
+const directory = vi.hoisted(() => ({
+  asked: [] as string[],
+  tables: [] as string[],
+  view: false,
+}));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
-    from: () => {
+    from: (table: string) => {
+      directory.tables.push(table);
       let columns = '';
       const query = {
         select: (wanted: string) => {
@@ -18,40 +23,49 @@ vi.mock('@/lib/supabase', () => ({
         order: () => query,
         range: () =>
           Promise.resolve(
-            columns.includes('postal_code')
+            table === 'organization_directory' && !directory.view
               ? {
                   data: null,
                   error: {
-                    code: '42703',
-                    message: 'column organization_places_1.postal_code does not exist',
+                    code: 'PGRST205',
+                    message:
+                      "Could not find the table 'public.organization_directory' in the schema cache",
                   },
                 }
-              : {
-                  data: [
-                    {
-                      id: 'o1',
-                      short_code: 'BORP',
-                      name: 'BORP',
-                      city: 'Berkeley',
-                      description: '',
-                      tags: null,
-                      can_invite: false,
-                      logo_path: null,
-                      state: 'CA',
-                      organization_places: [
-                        {
-                          id: 'p1',
-                          position: 0,
-                          label: null,
-                          address: null,
-                          city: 'Berkeley',
-                          state: 'CA',
-                        },
-                      ],
+              : columns.includes('postal_code')
+                ? {
+                    data: null,
+                    error: {
+                      code: '42703',
+                      message: 'column organization_places_1.postal_code does not exist',
                     },
-                  ],
-                  error: null,
-                },
+                  }
+                : {
+                    data: [
+                      {
+                        id: 'o1',
+                        short_code: 'BORP',
+                        name: 'BORP',
+                        city: 'Berkeley',
+                        description: '',
+                        tags: null,
+                        can_invite: false,
+                        logo_path: null,
+                        state: 'CA',
+                        organization_places: [
+                          {
+                            id: 'p1',
+                            position: 0,
+                            label: null,
+                            address: null,
+                            city: 'Berkeley',
+                            state: 'CA',
+                          },
+                        ],
+                      },
+                    ],
+                    error: null,
+                  },
           ),
       };
       return query;
@@ -187,8 +201,14 @@ describe('the directory before ZIP codes are in the database', () => {
     });
     expect(result.current.error).toBeNull();
     expect(result.current.organizations[0]?.places?.[0]?.postalCode).toBeNull();
-    // With notes, then without notes, then without ZIP codes.
-    expect(directory.asked.map((columns) => columns.includes('postal_code'))).toEqual([
+    // The view, then with notes, without notes, and without ZIP codes.
+    expect(directory.tables).toEqual([
+      'organization_directory',
+      'organizations',
+      'organizations',
+      'organizations',
+    ]);
+    expect(directory.asked.slice(1).map((columns) => columns.includes('postal_code'))).toEqual([
       true,
       true,
       false,
@@ -196,7 +216,22 @@ describe('the directory before ZIP codes are in the database', () => {
   });
 
   it('asks for a place’s contact note first, and without it after', () => {
-    expect(directory.asked[0]).toContain('note, url)');
-    expect(directory.asked[1]).not.toContain('note');
+    expect(directory.asked[1]).toContain('note, url)');
+    expect(directory.asked[2]).not.toContain('note');
+  });
+});
+
+// 20261105010000: one read, its places already joined.
+describe('the directory once its view is in the database', () => {
+  it('is read from the view alone', async () => {
+    directory.view = true;
+    directory.tables.length = 0;
+    const { result } = renderHook(() => useOrganizations());
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.organizations[0]?.places?.[0]?.id).toBe('p1');
+    expect(directory.tables).toEqual(['organization_directory']);
   });
 });

@@ -141,6 +141,9 @@ function forgetDirectory() {
 onForgetSharedReads(forgetDirectory);
 onCalendarChanged(forgetDirectory);
 
+/** 20261105010000: the same rows, its places read in one pass. */
+const DIRECTORY_VIEW =
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, summary, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places';
 const DIRECTORY =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, summary, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code, note, url)';
 /** Before 20261103030000: no contact note or page for a place. */
@@ -149,12 +152,12 @@ const DIRECTORY_WITHOUT_NOTES = DIRECTORY.replace(', note, url)', ')');
 const DIRECTORY_WITHOUT_ZIP =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)';
 
-function readDirectory(columns: string) {
+function readDirectory(columns: string, table = 'organizations') {
   return readPages<OrganizationRow>(
     (from, to) =>
       // Cast because the list is longer than supabase-js's types can parse.
       getSupabase()
-        .from('organizations')
+        .from(table)
         .select(columns)
         .is('removed_at', null)
         .order('name')
@@ -170,7 +173,10 @@ function readOrganizations(): Promise<OrganizationsRead> {
   if (inFlight) return inFlight;
   const read = (async (): Promise<OrganizationsRead> => {
     try {
-      let { data, error } = await readDirectory(DIRECTORY);
+      let { data, error } = await readDirectory(DIRECTORY_VIEW, 'organization_directory');
+      // Until 20261105010000 is live: the embedded places.
+      if (error?.code === 'PGRST205' || error?.code === '42P01')
+        ({ data, error } = await readDirectory(DIRECTORY));
       // Until 20261103030000, and before it 20261028700000, is live: without them.
       if (error?.code === '42703') ({ data, error } = await readDirectory(DIRECTORY_WITHOUT_NOTES));
       if (error?.code === '42703') ({ data, error } = await readDirectory(DIRECTORY_WITHOUT_ZIP));
