@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PasswordReveal } from '@/components/password-reveal';
 import { MIN_PASSWORD } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
+import { recheckUnprovenEmail } from '@/lib/email-proof';
 import { forgetRecoveryLink, recoveryLinkWorked } from '@/lib/recovery-link';
 import { getSupabase } from '@/lib/supabase';
 import { Field, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
@@ -60,6 +61,7 @@ export default function ResetPasswordPage() {
       return;
     }
     forgetRecoveryLink();
+    recheckUnprovenEmail();
     // A non-member is sent on to /join by the guard at Home.
     void navigate('/home', { replace: true });
   }
