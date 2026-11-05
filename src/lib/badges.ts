@@ -1,14 +1,14 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useAccount } from '@/lib/account';
 import { useRealtimeRows } from '@/lib/chat/realtime';
-import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
+import { onPageReturn, pageHidden } from '@/lib/page-return';
 import { onReadElsewhere } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
 
 /**
  * The Chat dot, the bell, Me's dot and the app icon, from one request
- * (`my_badge_counts`, 20261104211000) with one 1.5 s limit for all of them.
- * Each used to ask on its own, and the bell up to three times on Me.
+ * (`my_badge_counts`, 20261104211000) at most once per BADGE_MS for all of
+ * them, and never while the page is hidden. Each used to ask on its own.
  *
  * Module-level, like `unreadChanged`: what changes a number (opening a
  * conversation, the notifications list) and what draws it are far apart.
@@ -94,37 +94,82 @@ async function load() {
   }
 }
 
-let again = coalesce(() => void load(), RECOUNT_MS);
+/** At most one recount per this long; the dot may lag this much (owner). */
+export const BADGE_MS = 5000;
+/** A change waits this long, so its echoes (the read it caused) ask once. */
+export const SETTLE_MS = 1000;
 
-/** Recount every badge, within the shared limit. */
-export function badgesChanged(): void {
-  again();
-}
+let timer: ReturnType<typeof setTimeout> | null = null;
+let lastRun = Number.NEGATIVE_INFINITY;
+// Reads this tab is making; a recount waits for them to land.
+let reading = 0;
 
-const onVisible = () => {
-  if (document.visibilityState === 'visible') again();
-};
-
-let stopHearing: (() => void) | null = null;
-
-function start() {
-  window.addEventListener('focus', again);
-  // A read in another tab (src/lib/read-elsewhere.ts).
-  stopHearing = onReadElsewhere(again);
-  window.addEventListener(NOTIFICATIONS_CHANGED, again);
-  document.addEventListener('visibilitychange', onVisible);
-  // Outside the limit, as each badge's own first count was: a change right
-  // after opening still counts at once.
+function run() {
+  timer = null;
+  // Hidden: the return recounts. Mid-read: the read's end asks again.
+  if (pageHidden() || reading > 0) return;
+  lastRun = Date.now();
   void load();
 }
 
+/** Recount every badge: once per BADGE_MS, the last change always counted. */
+export function badgesChanged(): void {
+  if (timer || mounted === 0 || pageHidden() || !reader.key) return;
+  timer = setTimeout(run, Math.max(SETTLE_MS, lastRun + BADGE_MS - Date.now()));
+}
+
+/** A read of this member's own is under way: the recount waits for it. */
+export function holdBadgesFor(read: PromiseLike<unknown>): void {
+  reading += 1;
+  let held = true;
+  const done = () => {
+    if (!held) return;
+    held = false;
+    clearTimeout(giveUp);
+    reading -= 1;
+    badgesChanged();
+  };
+  // A read that never answers holds nothing for long.
+  const giveUp = setTimeout(done, BADGE_MS);
+  read.then(done, done);
+}
+
+function cancel() {
+  if (timer) clearTimeout(timer);
+  timer = null;
+}
+
+// Back in front: one recount at once (within the limit); the socket may have
+// slept, and nothing was counted while hidden.
+function onReturn() {
+  if (timer || mounted === 0 || !reader.key) return;
+  const wait = lastRun + BADGE_MS - Date.now();
+  if (wait <= 0) run();
+  else timer = setTimeout(run, wait);
+}
+
+let stopHearing: (() => void) | null = null;
+let stopReturn: (() => void) | null = null;
+
+function start() {
+  // A read in another tab (src/lib/read-elsewhere.ts).
+  stopHearing = onReadElsewhere(badgesChanged);
+  window.addEventListener(NOTIFICATIONS_CHANGED, badgesChanged);
+  stopReturn = onPageReturn(onReturn);
+  // At once on opening; hidden, on the return.
+  if (!pageHidden()) {
+    lastRun = Date.now();
+    void load();
+  }
+}
+
 function stop() {
-  window.removeEventListener('focus', again);
-  window.removeEventListener(NOTIFICATIONS_CHANGED, again);
-  document.removeEventListener('visibilitychange', onVisible);
+  window.removeEventListener(NOTIFICATIONS_CHANGED, badgesChanged);
   stopHearing?.();
   stopHearing = null;
-  again.cancel();
+  stopReturn?.();
+  stopReturn = null;
+  cancel();
 }
 
 function setReader(next: Reader) {
@@ -134,7 +179,9 @@ function setReader(next: Reader) {
   publish(NONE);
   // A different member is asked at once; the first one is start()'s.
   if (mounted === 0) return;
-  again.cancel();
+  cancel();
+  if (pageHidden()) return;
+  lastRun = Date.now();
   void load();
 }
 
@@ -168,8 +215,10 @@ export function useBadgeCounts(): BadgeCounts {
 }
 
 /**
- * The tab bar's realtime for every badge: this member's notifications, and
- * their own read positions moving on another device.
+ * The tab bar's realtime for every badge: this member's notifications (one
+ * per unmuted message, reply or mention), and their own conversation rows (a
+ * read on another device, being added to a group). A group renamed, or a
+ * group message across a block, writes neither; the next recount shows it.
  */
 export function useBadgeRealtime(): void {
   const account = useAccount();
@@ -194,8 +243,11 @@ export function useBadgeRealtime(): void {
 
 /** For tests: forget everything between them. */
 export function resetBadgesForTest(): void {
-  again.cancel();
-  again = coalesce(() => void load(), RECOUNT_MS);
+  cancel();
+  lastRun = Number.NEGATIVE_INFINITY;
+  reading = 0;
+  stopReturn?.();
+  stopReturn = null;
   counts = NONE;
   reader = { key: null, notifications: false };
   generation += 1;

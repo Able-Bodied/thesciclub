@@ -1,4 +1,4 @@
-/** At most one badge recount per this long, after the first. */
+/** At most one list reload per this long, after the first (badges: BADGE_MS). */
 export const RECOUNT_MS = 1500;
 
 export interface Coalesced {

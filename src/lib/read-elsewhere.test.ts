@@ -99,13 +99,13 @@ describe.each(cases)('$name in a second tab', ({ drawn, mount }) => {
 
     // The first tab reads it all; the database now says 0.
     db.row = { chat_unread: 0, unseen: 0, unseen_outside_chat: 0, icon_kinds: 0 };
-    // Well past the first count, so this one is not held back.
+    // Well past the first count (5 s apart), so only the settling second.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(6000);
     });
     otherTab().postMessage('read');
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
+      await vi.advanceTimersByTimeAsync(1000);
     });
     expect(counts()).toBe(2);
     if (drawn) expect(result.current).toBe(0);
@@ -123,6 +123,7 @@ describe.each(cases)('$name in a second tab', ({ drawn, mount }) => {
 describe('the realtime for another device', () => {
   it('watches only this member’s own read positions and notifications', () => {
     renderHook(useBadgeRealtime);
+    expect(db.watched).toHaveLength(2);
     expect(db.watched).toContainEqual({
       table: 'chat_thread_members',
       filter: 'member_id=eq.u1',
