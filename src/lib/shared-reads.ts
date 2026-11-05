@@ -50,22 +50,87 @@ const photoListeners = new Set<() => void>();
 /** At most one re-read per this long, however many faces fail at once. */
 export const PHOTO_RECHECK_MS = 30_000;
 let lastPhotoRecheck: number | null = null;
+// One re-read at the end of a window a face broke in, so none is lost.
+let trailingRecheck: ReturnType<typeof setTimeout> | null = null;
 
 /** For a kept read that names photographs, to read again behind what it shows. */
 export function onPhotoBroke(listener: () => void): void {
   photoListeners.add(listener);
 }
 
-/**
- * A photograph would not load: likely changed elsewhere, its old file gone.
- * Kept reads are read again behind what they show, once per PHOTO_RECHECK_MS.
- */
-export function photoBroke(now = Date.now()): void {
-  if (lastPhotoRecheck !== null && now - lastPhotoRecheck < PHOTO_RECHECK_MS) return;
+function recheckPhotos(now: number): void {
+  if (trailingRecheck !== null) clearTimeout(trailingRecheck);
+  trailingRecheck = null;
   lastPhotoRecheck = now;
   for (const listener of photoListeners) listener();
 }
 
+/**
+ * A photograph would not load or sign: likely changed elsewhere, its old file
+ * gone. Kept reads are read again behind what they show, once per
+ * PHOTO_RECHECK_MS; a break inside the window is read once at its end.
+ */
+export function photoBroke(now = Date.now()): void {
+  if (lastPhotoRecheck === null || now - lastPhotoRecheck >= PHOTO_RECHECK_MS) {
+    recheckPhotos(now);
+    return;
+  }
+  if (trailingRecheck !== null) return;
+  trailingRecheck = setTimeout(
+    () => {
+      recheckPhotos(Date.now());
+    },
+    lastPhotoRecheck + PHOTO_RECHECK_MS - now,
+  );
+}
+
+const faceListeners = new Set<() => void>();
+/** How often open screens look for other members' changed photos. */
+export const FACES_FRESH_MS = 60_000;
+let faceHolders = 0;
+let faceTimer: ReturnType<typeof setInterval> | null = null;
+let missedFaces = false;
+
+/** For a kept read that names photographs, told each FACES_FRESH_MS while seen. */
+export function onFacesStale(listener: () => void): void {
+  faceListeners.add(listener);
+}
+
+function facesStale(): void {
+  if (document.visibilityState !== 'visible') {
+    missedFaces = true;
+    return;
+  }
+  missedFaces = false;
+  for (const listener of faceListeners) listener();
+}
+
+function onFacesShown(): void {
+  if (missedFaces && document.visibilityState === 'visible') facesStale();
+}
+
+/**
+ * Held by each screen drawing faces: while any does, a timer tells the kept
+ * reads, and a page shown again after a missed tick tells them at once.
+ */
+export function holdFacesFresh(): () => void {
+  faceHolders += 1;
+  if (faceHolders === 1) {
+    faceTimer = setInterval(facesStale, FACES_FRESH_MS);
+    document.addEventListener('visibilitychange', onFacesShown);
+  }
+  return () => {
+    faceHolders -= 1;
+    if (faceHolders > 0) return;
+    if (faceTimer !== null) clearInterval(faceTimer);
+    faceTimer = null;
+    missedFaces = false;
+    document.removeEventListener('visibilitychange', onFacesShown);
+  };
+}
+
 onForgetSharedReads(() => {
   lastPhotoRecheck = null;
+  if (trailingRecheck !== null) clearTimeout(trailingRecheck);
+  trailingRecheck = null;
 });

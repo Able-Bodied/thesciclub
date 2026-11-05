@@ -1,8 +1,14 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
-import { onDirectoryChanged, onForgetSharedReads, onPhotoBroke } from '@/lib/shared-reads';
+import {
+  holdFacesFresh,
+  onDirectoryChanged,
+  onFacesStale,
+  onForgetSharedReads,
+  onPhotoBroke,
+} from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { BrowseMember, InjuryType, MemberType, RepresentedOrganization } from '@/types/domain';
 import { memberType } from '@/types/domain';
@@ -209,6 +215,51 @@ onPhotoBroke(() => {
   tellWatchers();
 });
 
+/**
+ * Each minute a screen is seen (shared-reads.ts): only ids and photos, one
+ * read for every screen, and the kept read patched and redrawn if one moved.
+ */
+let probing = false;
+async function probePhotos(): Promise<void> {
+  const held = heldDirectory;
+  if (probing || !held?.value || held.reading || directoryWatchers.size === 0) return;
+  // A call, so the type checker does not narrow it across the await.
+  const current = () => heldDirectory === held && !held.reading;
+  probing = true;
+  try {
+    const { data, error } = await readPages<
+      Pick<BrowseMemberRow, 'id' | 'photo_path' | 'photo_alt'>
+    >((from, to) =>
+      getSupabase()
+        .from('browse_members')
+        .select('id, photo_path, photo_alt')
+        .order('display_name')
+        .order('id')
+        .range(from, to),
+    );
+    const members = held.value;
+    if (error || !data || !current()) return;
+    const now = new Map(data.map((row) => [row.id, row]));
+    const next = members.map((member) => {
+      const row = now.get(member.id);
+      return !row || (row.photo_path === member.photoPath && row.photo_alt === member.photoAlt)
+        ? member
+        : { ...member, photoPath: row.photo_path, photoAlt: row.photo_alt };
+    });
+    if (next.every((member, i) => member === members[i])) return;
+    held.value = next;
+    held.read = Promise.resolve({ members: next, error: null });
+    tellWatchers();
+  } catch {
+    // Offline: the next minute asks again.
+  } finally {
+    probing = false;
+  }
+}
+onFacesStale(() => {
+  void probePhotos();
+});
+
 /** A deck's read serves a picker too; not the other way round. */
 const covers = (held: HeldDirectory, use: DirectoryUse) => held.use === 'deck' || use === 'names';
 
@@ -286,8 +337,10 @@ export function useBrowseMembers(use: DirectoryUse = 'deck'): MembersState {
       setRound((n) => n + 1);
     };
     directoryWatchers.add(watcher);
+    const release = holdFacesFresh();
     return () => {
       directoryWatchers.delete(watcher);
+      release();
     };
   }, []);
 
@@ -365,6 +418,14 @@ export interface MemberState {
   notFound: boolean;
 }
 
+/** Profiles open, told to read their one row again for a changed photo. */
+const memberWatchers = new Set<() => void>();
+const tellMemberWatchers = () => {
+  for (const watcher of memberWatchers) watcher();
+};
+onPhotoBroke(tellMemberWatchers);
+onFacesStale(tellMemberWatchers);
+
 export function useBrowseMember(id: string | undefined): MemberState {
   const [state, setState] = useState<MemberState>({
     member: null,
@@ -373,11 +434,49 @@ export function useBrowseMember(id: string | undefined): MemberState {
     signedOut: false,
     notFound: false,
   });
+  // Bumped to read the row again, behind what is shown.
+  const [round, setRound] = useState(0);
+  // The id whose row is drawn: a re-read of it changes only a found row.
+  const shown = useRef<string | null>(null);
+  useEffect(() => {
+    const watcher = () => {
+      setRound((n) => n + 1);
+    };
+    memberWatchers.add(watcher);
+    const release = holdFacesFresh();
+    return () => {
+      memberWatchers.delete(watcher);
+      release();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
     const aborted = () => signal.aborted;
+    if (round < 0) return;
+    const again = id !== undefined && shown.current === id;
+
+    // Only the photo, and only a found row changes: what is shown stays up.
+    async function refreshPhoto(memberId: string, signal: AbortSignal) {
+      const result = await getSupabase()
+        .from('browse_members')
+        .select('id, photo_path, photo_alt')
+        .eq('id', memberId)
+        .abortSignal(signal)
+        .maybeSingle();
+      const row = result.data as Pick<BrowseMemberRow, 'photo_path' | 'photo_alt'> | null;
+      if (signal.aborted || result.error || !row) return;
+      setState((now) =>
+        now.member?.id === memberId &&
+        (now.member.photoPath !== row.photo_path || now.member.photoAlt !== row.photo_alt)
+          ? {
+              ...now,
+              member: { ...now.member, photoPath: row.photo_path, photoAlt: row.photo_alt },
+            }
+          : now,
+      );
+    }
 
     async function load() {
       if (!id) {
@@ -388,6 +487,10 @@ export function useBrowseMember(id: string | undefined): MemberState {
         const supabase = getSupabase();
         const { data: sessionData } = await supabase.auth.getSession();
         if (aborted()) return;
+        if (again) {
+          await refreshPhoto(id, signal);
+          return;
+        }
         if (!sessionData.session) {
           setState({
             member: null,
@@ -420,6 +523,7 @@ export function useBrowseMember(id: string | undefined): MemberState {
           return;
         }
         const row = result.data as BrowseMemberRow | null;
+        shown.current = row ? id : null;
         setState({
           member: row ? toMember(row) : null,
           loading: false,
@@ -428,7 +532,7 @@ export function useBrowseMember(id: string | undefined): MemberState {
           notFound: row === null,
         });
       } catch (e) {
-        if (aborted()) return;
+        if (aborted() || again) return;
         setState({
           member: null,
           loading: false,
@@ -443,7 +547,7 @@ export function useBrowseMember(id: string | undefined): MemberState {
     return () => {
       controller.abort();
     };
-  }, [id]);
+  }, [id, round]);
 
   return state;
 }

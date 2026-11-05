@@ -1,12 +1,15 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import { AccountContext } from '@/lib/account-context';
 import { blockMember } from '@/lib/blocks';
+import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import { DIRECTORY_FRESH_MS, useBrowseMembers } from '@/lib/members';
+import { usePhotoUrl } from '@/lib/photos';
 import {
   directoryChanged,
+  FACES_FRESH_MS,
   forgetSharedReads,
   PHOTO_RECHECK_MS,
   photoBroke,
@@ -20,10 +23,12 @@ interface FakeDatabase {
   rows: Record<string, Record<string, unknown>[]>;
   reads: { userId: string | null; columns: string }[];
   fail: boolean;
+  /** Storage files there now; any other photo path is refused at signing. */
+  files: Set<string> | null;
 }
 
 const db = vi.hoisted(
-  (): FakeDatabase => ({ userId: 'member-a', rows: {}, reads: [], fail: false }),
+  (): FakeDatabase => ({ userId: 'member-a', rows: {}, reads: [], fail: false, files: null }),
 );
 
 vi.mock('@/lib/supabase', () => ({
@@ -35,6 +40,19 @@ vi.mock('@/lib/supabase', () => ({
         }),
     },
     rpc: () => Promise.resolve({ error: null }),
+    storage: {
+      from: () => ({
+        createSignedUrls: (paths: string[]) =>
+          Promise.resolve({
+            data: paths.map((path) =>
+              db.files?.has(path)
+                ? { path, signedUrl: `https://signed.test/${path}`, error: null }
+                : { path, signedUrl: null, error: 'Either the object does not exist' },
+            ),
+            error: null,
+          }),
+      }),
+    },
     from: () => {
       let columns = '';
       const query = {
@@ -77,6 +95,8 @@ beforeEach(() => {
   };
   db.reads = [];
   db.fail = false;
+  db.files = null;
+  resetAttachmentUrls();
 });
 
 afterEach(() => {
@@ -226,6 +246,65 @@ describe('the shared directory', () => {
       expect(names(later.result.current.members)).toEqual(['Bea', 'Cal', 'Dee']);
     });
     expect(db.reads).toHaveLength(2);
+  });
+
+  // The robots, 2026-11-04: Bea changed her photo and deleted the old file;
+  // signing the old path was refused, no image erred, and initials stayed.
+  it('reads again when a face is refused at signing, and draws the new photo', async () => {
+    db.rows['member-a'] = [{ ...row('b', 'Bea'), photo_path: 'b/profile-old.webp' }];
+    await loaded();
+    db.rows['member-a'] = [{ ...row('b', 'Bea'), photo_path: 'b/profile-new.webp' }];
+    db.files = new Set(['b/profile-new.webp']);
+    function Face() {
+      const { members } = useBrowseMembers();
+      const url = usePhotoUrl(members[0]?.photoPath);
+      return <span data-testid="face">{url ?? 'initials'}</span>;
+    }
+    render(<Face />);
+    await waitFor(() => {
+      expect(screen.getByTestId('face')).toHaveTextContent(
+        'https://signed.test/b/profile-new.webp',
+      );
+    });
+    expect(db.reads).toHaveLength(2);
+  });
+
+  // The robots, 2026-11-04: open screens kept an old photo for 112 s+.
+  it('patches a changed photo into open screens each minute, with a light read', async () => {
+    // Only the interval is faked; waitFor polls on one, so this settles by hand.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const settle = async () => {
+      for (let i = 0; i < 10; i += 1) {
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      }
+    };
+    try {
+      const open = renderHook(() => useBrowseMembers());
+      await settle();
+      const first = open.result.current.members;
+      expect(names(first)).toEqual(['Bea', 'Cal']);
+      // Nothing moved: no redraw.
+      vi.advanceTimersByTime(FACES_FRESH_MS);
+      await settle();
+      expect(db.reads.map((read) => read.columns.startsWith('id, photo_path'))).toEqual([
+        false,
+        true,
+      ]);
+      expect(db.reads[1]?.columns).toBe('id, photo_path, photo_alt');
+      expect(open.result.current.members).toBe(first);
+      db.rows['member-a'] = [
+        { ...row('b', 'Bea'), photo_path: 'b/profile-new.webp' },
+        row('c', 'Cal'),
+      ];
+      vi.advanceTimersByTime(FACES_FRESH_MS);
+      await settle();
+      expect(open.result.current.members[0]?.photoPath).toBe('b/profile-new.webp');
+      expect(names(open.result.current.members)).toEqual(['Bea', 'Cal']);
+      // The probe only: the deck is not read again.
+      expect(db.reads).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps no failed read: the next screen asks again', async () => {

@@ -2,6 +2,7 @@ import { act, render, renderHook, screen, waitFor } from '@testing-library/react
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetAttachmentUrls, useAttachmentUrls } from '@/lib/chat/attachments';
 import { thumbPath, usePhotoUrl } from '@/lib/photos';
+import { onPhotoBroke } from '@/lib/shared-reads';
 
 /**
  * Photographs and logos are drawn through signed URLs (HANDOFF.md "What Home is" step 6,
@@ -35,6 +36,12 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
+// Counted: a refused photograph counts as a broken one.
+const broke = { count: 0 };
+onPhotoBroke(() => {
+  broke.count += 1;
+});
+
 function Face({ path }: { path: string | null }) {
   const url = usePhotoUrl(path);
   return <span data-testid={path ?? 'none'}>{url ?? 'initials'}</span>;
@@ -45,6 +52,7 @@ beforeEach(() => {
   resetAttachmentUrls();
   storage.calls = [];
   storage.refuse = new Set();
+  broke.count = 0;
 });
 
 describe('usePhotoUrl', () => {
@@ -116,6 +124,24 @@ describe('usePhotoUrl', () => {
     expect(screen.getByTestId('seed/gone.webp')).toHaveTextContent('initials');
   });
 
+  // The robots, 2026-11-04: a changed photo's old file refused at signing
+  // drew initials with no image error, so nothing was read again.
+  it('counts a refused photograph as broken, once per path', async () => {
+    storage.refuse.add('u1/profile-old.webp');
+    const first = render(<Face path="u1/profile-old.webp" />);
+    await waitFor(() => {
+      expect(broke.count).toBe(1);
+    });
+    first.unmount();
+    render(<Face path="u1/profile-old.webp" />);
+    await waitFor(() => {
+      expect(storage.calls).toHaveLength(2);
+    });
+    await act(() => new Promise((r) => setTimeout(r, 10)));
+    expect(broke.count).toBe(1);
+    expect(screen.getByTestId('u1/profile-old.webp')).toHaveTextContent('initials');
+  });
+
   it('keeps the two buckets apart: a chat path is signed from chat', async () => {
     const { result } = renderHook(() => useAttachmentUrls(['rooms/bowel/x.webp']));
     await waitFor(() => {
@@ -165,6 +191,8 @@ describe('small copies', () => {
     );
     await act(() => new Promise((r) => setTimeout(r, 10)));
     expect(storage.calls).toHaveLength(1);
+    // A missing copy is not a changed photo.
+    expect(broke.count).toBe(0);
   });
 });
 

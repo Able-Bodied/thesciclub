@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { readInBatches } from '@/lib/read-pages';
-import { onDirectoryChanged, onForgetSharedReads, onPhotoBroke } from '@/lib/shared-reads';
+import {
+  holdFacesFresh,
+  onDirectoryChanged,
+  onFacesStale,
+  onForgetSharedReads,
+  onPhotoBroke,
+} from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import { type InjuryType, injuryLabel } from '@/types/domain';
 
@@ -58,14 +64,34 @@ onForgetSharedReads(resetChatAuthors);
 // Kept authors to read again; drawn as they were until the read lands.
 const stale = new Set<string>();
 const authorWatchers = new Set<() => void>();
+const tellAuthorWatchers = () => {
+  for (const watcher of authorWatchers) watcher();
+};
+/** The ids each open screen draws, so a re-read asks for them all at once. */
+const shownIds = new Map<symbol, string[]>();
+let rereading = false;
 function readAuthorsAgain(): void {
   for (const id of cache.keys()) stale.add(id);
   missing.clear();
-  for (const watcher of authorWatchers) watcher();
+  if (rereading) return;
+  const ids = [...new Set([...shownIds.values()].flat())];
+  if (ids.length === 0) return;
+  // One read for every screen; each redraws from the cache once it lands.
+  rereading = true;
+  void fetchChatAuthors(ids)
+    .then(() => {
+      if (!ids.some((id) => stale.has(id))) tellAuthorWatchers();
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      rereading = false;
+    });
 }
-// A face changed: this device's own, or another member's whose old file is gone.
+// A face changed: this device's own, another member's whose old file is gone,
+// or one of those minutely looks (shared-reads.ts).
 onDirectoryChanged(readAuthorsAgain);
 onPhotoBroke(readAuthorsAgain);
+onFacesStale(readAuthorsAgain);
 
 /** What a face and a byline need, read alone or embedded in another read. */
 export const AUTHOR_COLUMNS =
@@ -111,10 +137,15 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
 
 /** Authors that came embedded in another read (Home's topics). */
 export function rememberChatAuthors(rows: readonly ChatAuthorRow[]): void {
+  let moved = false;
   for (const row of rows) {
+    const before = cache.get(row.id);
+    if (before && before.photoPath !== row.photo_path) moved = true;
     cache.set(row.id, toAuthor(row));
     stale.delete(row.id);
   }
+  // A face changed in another read: open screens redraw it, reading nothing.
+  if (moved) tellAuthorWatchers();
 }
 
 /**
@@ -161,14 +192,25 @@ export function useChatAuthors(ids: (string | null)[]): Map<string, ChatAuthor> 
       setRound((n) => n + 1);
     };
     authorWatchers.add(watcher);
+    const release = holdFacesFresh();
     return () => {
       authorWatchers.delete(watcher);
+      release();
     };
   }, []);
 
   // The identity of `ids` changes on every render of the caller, so the effect
   // is keyed on the ids themselves rather than on the array.
   const key = [...new Set(ids.filter((id): id is string => Boolean(id)))].sort().join(',');
+
+  useEffect(() => {
+    if (!key) return;
+    const self = Symbol();
+    shownIds.set(self, key.split(','));
+    return () => {
+      shownIds.delete(self);
+    };
+  }, [key]);
 
   useEffect(() => {
     if (!key || round < 0) return;

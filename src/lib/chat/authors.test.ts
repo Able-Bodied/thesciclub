@@ -1,3 +1,4 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as Authors from '@/lib/chat/authors';
 
@@ -141,5 +142,50 @@ describe('fetchChatAuthors', () => {
     reads.directoryChanged();
     await fetchChatAuthors(['a']);
     expect(asked).toHaveLength(3);
+  });
+});
+
+describe('open screens', () => {
+  // Only the interval is faked; this settles by hand.
+  const settle = async () => {
+    for (let i = 0; i < 10; i += 1) {
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    }
+  };
+
+  // The robots, 2026-11-04: a topic left open kept an old photo for 112 s+.
+  it('read every author they draw again each minute, in one read, and redraw', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const data = rows.map((row) => ({ ...row }));
+      const { useChatAuthors } = await loadWithClient(data);
+      const { FACES_FRESH_MS } = await import('@/lib/shared-reads');
+      const topic = renderHook(() => useChatAuthors(['a', 'b']));
+      const likes = renderHook(() => useChatAuthors(['a']));
+      await settle();
+      expect(topic.result.current.get('a')?.photoPath).toBe('seed/a.webp');
+      const before = asked.length;
+      Object.assign(data[0] ?? {}, { photo_path: 'a/profile-new.webp' });
+      vi.advanceTimersByTime(FACES_FRESH_MS);
+      await settle();
+      expect(asked.slice(before)).toEqual([['a', 'b']]);
+      expect(topic.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
+      expect(likes.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('redraw a photo another read brought, reading nothing', async () => {
+    const { useChatAuthors, rememberChatAuthors } = await loadWithClient(rows);
+    const open = renderHook(() => useChatAuthors(['a']));
+    await settle();
+    const before = asked.length;
+    act(() => {
+      rememberChatAuthors([{ ...rows[0], photo_path: 'a/profile-new.webp' } as (typeof rows)[0]]);
+    });
+    await settle();
+    expect(open.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
+    expect(asked.length).toBe(before);
   });
 });
