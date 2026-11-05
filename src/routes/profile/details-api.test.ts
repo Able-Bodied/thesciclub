@@ -91,6 +91,23 @@ describe('what is still blank', () => {
   it('never counts the name or the birthday', () => {
     expect(missingDetails(details({ displayName: '', birthDate: '' }))).toEqual([]);
   });
+
+  // The owner, 2026-11-04: choosing family or professional is the answer.
+  it.each(['family', 'professional'] as const)(
+    'asks no level or date of somebody who is %s',
+    (injuryType) => {
+      const them = details({ injuryType, exactLevel: null, injuryDate: null });
+      expect(missingDetails(them)).toEqual([]);
+      expect(detailsPercent(them)).toBe(100);
+    },
+  );
+
+  it('still asks everybody else for both', () => {
+    expect(missingDetails(details({ exactLevel: null, injuryDate: null }))).toEqual([
+      'your injury or condition',
+      'when you were injured',
+    ]);
+  });
 });
 
 describe('listing them in words', () => {

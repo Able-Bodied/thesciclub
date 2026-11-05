@@ -7,6 +7,8 @@ import {
   canDecline,
   firstOpenScreen,
   isAnswered,
+  KIND_KEY,
+  LOADED_KEY,
   progressOf,
   QUESTIONS,
   questionFor,
@@ -182,10 +184,76 @@ describe('progress', () => {
   it('reaches a hundred when everything applicable is answered', () => {
     const answers: Answers = {};
     for (const q of QUESTIONS) {
-      if (q.onlyIf) continue;
+      if (q.onlyIf && !q.onlyIf({})) continue;
       answers[q.key] = q.kind === 'many' ? ['x'] : q.kind === 'yesno' ? false : 'answered';
     }
     expect(progressOf(answers).percent).toBe(100);
+  });
+});
+
+// The owner, 2026-11-04: nothing about an injury for family or professionals.
+describe('family and professionals', () => {
+  const INJURY_SCREENS = [
+    'How it began',
+    'Day to day',
+    'Interests',
+    'Self-care devices',
+    'The specifics',
+    'Do you own any adaptive sports equipment?',
+    'Did you receive any grants?',
+    'Mentoring',
+  ];
+  const titles = (answers: Answers) =>
+    screensThatApply(answers).map((index) => SCREENS[index]?.title);
+
+  it.each(['family', 'professional'])('are not asked about an injury, as %s', (kind) => {
+    const shown = titles({ [KIND_KEY]: kind, selfCare: ['Dictation software'] });
+    expect(shown).toEqual([
+      'About you',
+      'Brief bio',
+      'Family',
+      'Education',
+      'Work',
+      'Are you part of any organizations?',
+      'Topics you are happy to talk about',
+    ]);
+  });
+
+  it.each(['quad', 'condition', null])('everybody else is, as %s', (kind) => {
+    const shown = titles({ [KIND_KEY]: kind, selfCare: ['Dictation software'] });
+    for (const title of INJURY_SCREENS) expect(shown).toContain(title);
+  });
+
+  it('are not asked before or after an injury', () => {
+    const answers: Answers = { [KIND_KEY]: 'professional', hasChildren: true };
+    const asked = applicableQuestions(answers).map((q) => q.key);
+    expect(asked).toContain('education');
+    expect(asked).not.toContain('childrenWhen');
+    expect(asked).not.toContain('educationWhen');
+    expect(applicableQuestions({ hasChildren: true }).map((q) => q.key)).toEqual(
+      expect.arrayContaining(['childrenWhen', 'educationWhen']),
+    );
+  });
+
+  it('finish without them', () => {
+    const answers: Answers = { [KIND_KEY]: 'family', hasChildren: true };
+    for (const q of applicableQuestions(answers)) {
+      if (q.key in answers) continue;
+      answers[q.key] = q.kind === 'many' ? ['x'] : q.kind === 'yesno' ? true : 'answered';
+    }
+    expect(progressOf(answers).percent).toBe(100);
+    expect(firstOpenScreen(answers)).toBeNull();
+    expect(applicableQuestions(answers).map((q) => q.key)).not.toContain('howInjured');
+  });
+
+  it('still reach an answer they gave before, even while clearing it', () => {
+    const answers: Answers = {
+      [KIND_KEY]: 'family',
+      [LOADED_KEY]: ['howInjured'],
+      howInjured: '',
+    };
+    expect(titles(answers)).toContain('How it began');
+    expect(titles(answers)).not.toContain('Interests');
   });
 });
 

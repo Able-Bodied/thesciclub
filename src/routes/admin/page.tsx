@@ -815,6 +815,7 @@ export default function AdminPage() {
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
+                  isPartner={partners.has(m.id)}
                   partnerTitle={partners.get(m.id) ?? null}
                   onSetPartner={(title) => {
                     act(m.id, () => setPartner(m.id, title));
@@ -1027,6 +1028,7 @@ function Row({
   onRemove,
   onToggleMentor,
   onMakeOrganization,
+  isPartner,
   partnerTitle,
   onSetPartner,
   onRemovePartner,
@@ -1048,9 +1050,11 @@ function Row({
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
   onMakeOrganization: () => void;
-  /** Their title as a professional, or null. Left out where nobody can be one: a seeded row. */
+  isPartner?: boolean;
+  /** Their profession as a verified professional, null until they write it on Me. */
   partnerTitle?: string | null;
-  onSetPartner?: (title: string) => void;
+  /** Null makes them one without a title. Left out where nobody can be one: a seeded row. */
+  onSetPartner?: (title: string | null) => void;
   onRemovePartner?: () => void;
   onStrike: (reason: string) => void;
   /** This member's strikes that still count. Withdrawn and expired ones are not here. */
@@ -1078,6 +1082,7 @@ function Row({
   const [listingStrikes, setListingStrikes] = useState(false);
   // The title being written, while that panel is open.
   const [partnering, setPartnering] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const [unpartnering, setUnpartnering] = useState(false);
   // The database refuses a fourth (20260917000000), so the button that would
   // ask for one is not offered. The count beside the name is already saying
@@ -1114,7 +1119,7 @@ function Row({
               Admin
             </span>
           ) : null}
-          {partnerTitle ? (
+          {isPartner ? (
             <span className="ml-2 text-[0.75rem] text-grey">{PARTNER_ROLE_NAME}</span>
           ) : null}
           {isSelf ? <span className="ml-2 text-[0.6875rem] text-grey">you</span> : null}
@@ -1220,18 +1225,30 @@ function Row({
               <legend className="mb-2 font-bold text-[0.75rem] text-grey">
                 {PARTNER_ROLE_NAME}
               </legend>
-              {partnerTitle ? (
-                <p className="mb-2 text-[0.8125rem] text-ink">{partnerTitle}</p>
+              {isPartner ? (
+                <p className="mb-2 text-[0.8125rem] text-ink">
+                  {partnerTitle ?? 'No profession yet. They write it on Me.'}
+                </p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <SmallButton
-                  onClick={() => {
-                    setPartnering(partnerTitle ?? '');
-                  }}
-                >
-                  {partnerTitle ? 'Change profession' : `Make ${PARTNER_ROLE_NAME.toLowerCase()}`}
-                </SmallButton>
-                {partnerTitle ? (
+                {isPartner ? (
+                  <SmallButton
+                    onClick={() => {
+                      setPartnering(partnerTitle ?? '');
+                    }}
+                  >
+                    Change profession
+                  </SmallButton>
+                ) : (
+                  <SmallButton
+                    onClick={() => {
+                      setVerifying(true);
+                    }}
+                  >
+                    Make {PARTNER_ROLE_NAME.toLowerCase()}
+                  </SmallButton>
+                )}
+                {isPartner ? (
                   <SmallButton
                     destructive
                     onClick={() => {
@@ -1424,13 +1441,39 @@ function Row({
             can no longer introduce members. Introductions already made stay.
           </p>
         </ConfirmPanel>
+      ) : verifying ? (
+        <Panel
+          title={`Make ${member.displayName} a ${PARTNER_ROLE_NAME.toLowerCase()}?`}
+          buttons={
+            <>
+              <PanelButton
+                onClick={() => {
+                  setVerifying(false);
+                }}
+              >
+                Cancel
+              </PanelButton>
+              <PanelButton
+                onClick={() => {
+                  setVerifying(false);
+                  onSetPartner?.(null);
+                }}
+              >
+                Make {PARTNER_ROLE_NAME.toLowerCase()}
+              </PanelButton>
+            </>
+          }
+        >
+          <p>
+            For professionals who work with people with SCI/D. A verified mark shows beside their
+            name. They can invite without a limit, make codes of their own, introduce members to
+            each other, and see who they invited or introduced. They see nobody’s messages or
+            contact details. They write their profession themselves, on Me.
+          </p>
+        </Panel>
       ) : partnering !== null ? (
         <Panel
-          title={
-            partnerTitle
-              ? `${member.displayName}’s profession`
-              : `Make ${member.displayName} a ${PARTNER_ROLE_NAME.toLowerCase()}?`
-          }
+          title={`${member.displayName}’s profession`}
           buttons={
             <>
               <PanelButton
@@ -1453,14 +1496,6 @@ function Row({
             </>
           }
         >
-          {partnerTitle ? null : (
-            <p>
-              For professionals who work with people with SCI/D. They can invite without a limit,
-              make codes of their own, introduce members to each other, and see who they invited or
-              introduced. They see nobody’s messages or contact details. They can change their
-              profession themselves, on Me.
-            </p>
-          )}
           <label
             className="mt-2 block font-semibold text-[0.75rem] text-ink"
             htmlFor={`partner-title-${member.id}`}

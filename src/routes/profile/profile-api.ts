@@ -1,7 +1,14 @@
 import { describeError } from '@/lib/describe-error';
 import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
-import { type Answers, canDecline, QUESTIONS } from '@/routes/profile/questions';
+import {
+  type Answers,
+  answeredKeys,
+  canDecline,
+  KIND_KEY,
+  LOADED_KEY,
+  QUESTIONS,
+} from '@/routes/profile/questions';
 
 /**
  * Reading and writing the survey's answers.
@@ -25,7 +32,7 @@ import { type Answers, canDecline, QUESTIONS } from '@/routes/profile/questions'
  * which questions somebody would rather not answer, for the survey and the
  * details form both, so it is appended rather than derived.
  */
-const COLUMNS = [...QUESTIONS.map((q) => q.column), 'declined'];
+const COLUMNS = [...QUESTIONS.map((q) => q.column), 'declined', 'injury_type'];
 
 /**
  * The columns the app may know about before the database does: `declined`
@@ -105,6 +112,9 @@ export async function loadAnswers(): Promise<
     // back in an unexpected shape should read as empty, not as "[object
     // Object]" sitting in somebody's profile.
   }
+  // For which questions apply; never saved, as no question has these keys.
+  answers[LOADED_KEY] = answeredKeys(answers);
+  if (typeof row.injury_type === 'string') answers[KIND_KEY] = row.injury_type;
   return { ok: true, answers, declined: declinedFrom(row) };
 }
 

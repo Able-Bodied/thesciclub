@@ -78,12 +78,17 @@ export async function confirmEmailCode(code: string): Promise<'proved' | 'refuse
     });
     if (result.error) return 'failed';
     if (result.data?.proved !== true) return 'refused';
-    asked = null;
-    window.dispatchEvent(new Event(CHANGED));
+    recheckUnprovenEmail();
     return 'proved';
   } catch {
     return 'failed';
   }
+}
+
+/** Asks again: after a code, or a reset link, which proves it too (20261104120000). */
+export function recheckUnprovenEmail(): void {
+  asked = null;
+  window.dispatchEvent(new Event(CHANGED));
 }
 
 /** For tests. */

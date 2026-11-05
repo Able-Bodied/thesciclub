@@ -452,10 +452,13 @@ export async function setMemberType(
     : { ok: true };
 }
 
-/** Make them a professional, or change the title beside their name (20261029100000). */
+/**
+ * Make them a verified professional, with no title: they write it on Me
+ * (20261104160000). Or change the title beside their name.
+ */
 export async function setPartner(
   target: string,
-  title: string,
+  title: string | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_set_partner', {
     p_member: target,
@@ -463,7 +466,7 @@ export async function setPartner(
   });
   forgetPartnerTitles();
   return error
-    ? { ok: false, error: describeError(error, 'They were not made a professional.') }
+    ? { ok: false, error: describeError(error, 'They were not made a verified professional.') }
     : { ok: true };
 }
 
@@ -471,7 +474,7 @@ export async function removePartner(target: string): Promise<{ ok: boolean; erro
   const { error } = await getSupabase().rpc('admin_remove_partner', { p_member: target });
   forgetPartnerTitles();
   return error
-    ? { ok: false, error: describeError(error, 'They are still a professional.') }
+    ? { ok: false, error: describeError(error, 'They are still a verified professional.') }
     : { ok: true };
 }
 

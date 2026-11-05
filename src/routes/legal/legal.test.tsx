@@ -54,7 +54,7 @@ describe('the Privacy Policy', () => {
       .map((heading) => heading.parentElement?.textContent ?? '');
     expect(notes[0]).toMatch(/Added: the app measures how long it takes to load/);
     expect(notes[0]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
-    expect(notes[0]).toMatch(/Changed: trusted partners are now called professionals/);
+    expect(notes[0]).toMatch(/Changed: trusted partners are now called verified professionals/);
     expect(notes[1]).toMatch(/Added: you can measure distances in Filters from another city/);
     expect(notes[2]).toMatch(/Added: once a day, on each way you use the club/);
     expect(notes[3]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
@@ -541,7 +541,9 @@ describe('professionals', () => {
   it('says who they are, what they see, and that nobody is asked first', () => {
     open('/privacy');
     const who = screen.getByRole('heading', { name: 'Who can see what' }).parentElement;
-    expect(who).toHaveTextContent(/Professionals work with people with spinal cord injuries/);
+    expect(who).toHaveTextContent(
+      /Verified professionals work with people with spinal cord injuries/,
+    );
     expect(who).toHaveTextContent(/cannot read conversations they are not in/);
     expect(who).toHaveTextContent(/You\s+are not asked first/);
     expect(who).toHaveTextContent(/You can\s+leave it, block or report anyone in it/);
@@ -553,7 +555,9 @@ describe('professionals', () => {
   it('are in the Terms, with what they can do', () => {
     open('/terms');
     expect(document.body.textContent).toMatch(/We may make a member who works with people/);
-    expect(document.body.textContent).toMatch(/shown with the profession they write/);
+    expect(document.body.textContent).toMatch(
+      /shown with a verified mark and the profession\s+they write/,
+    );
     expect(document.body.textContent).toMatch(
       /Connecting adds both to a group conversation without\s+asking them first/,
     );

@@ -1,5 +1,13 @@
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
-import { BEFORE_AFTER, EDUCATION, EMPLOYMENT, INDEPENDENCE, MARITAL_STATUS } from '@/types/domain';
+import {
+  BEFORE_AFTER,
+  EDUCATION,
+  EMPLOYMENT,
+  hasNoInjury,
+  INDEPENDENCE,
+  type InjuryType,
+  MARITAL_STATUS,
+} from '@/types/domain';
 
 /**
  * The profile survey — the questions the deck actually searches on.
@@ -191,6 +199,38 @@ export const SPECIFICS_FOR: readonly string[] = [
   'Wheelchair assist devices',
 ];
 
+/** Not questions: the member's kind, and what was answered on loading, for `aboutAnInjury`. */
+export const KIND_KEY = 'injuryType';
+export const LOADED_KEY = 'answeredWhenLoaded';
+
+function hasAnswer(value: Answer | undefined): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'string') return value.trim() !== '';
+  return value === true;
+}
+
+/** What LOADED_KEY holds: the keys with something in them. */
+export function answeredKeys(answers: Answers): string[] {
+  return Object.keys(answers).filter((key) => hasAnswer(answers[key]));
+}
+
+function asksAboutAnInjury(a: Answers): boolean {
+  const kind = a[KIND_KEY];
+  return !hasNoInjury(typeof kind === 'string' ? (kind as InjuryType) : null);
+}
+
+/**
+ * Not asked of family or professionals (the owner, 2026-11-04;
+ * 20261104130000), unless answered before, so it can still be changed. As
+ * loaded, so clearing it does not take it away mid-edit.
+ */
+function aboutAnInjury(key: string): (a: Answers) => boolean {
+  return (a) => {
+    const loaded = a[LOADED_KEY];
+    return asksAboutAnInjury(a) || (Array.isArray(loaded) && loaded.includes(key));
+  };
+}
+
 export const QUESTIONS: Question[] = [
   {
     key: 'gender',
@@ -234,6 +274,7 @@ export const QUESTIONS: Question[] = [
     title: 'How did your injury or condition begin?',
     kind: 'text',
     placeholder: 'A car accident on the 880 in 2013… or transverse myelitis at 34…',
+    onlyIf: aboutAnInjury('howInjured'),
   },
 
   {
@@ -260,7 +301,7 @@ export const QUESTIONS: Question[] = [
     title: 'Before or after your injury?',
     kind: 'one',
     options: BEFORE_AFTER,
-    onlyIf: (a) => a.hasChildren === true,
+    onlyIf: (a) => a.hasChildren === true && aboutAnInjury('childrenWhen')(a),
   },
 
   {
@@ -269,6 +310,7 @@ export const QUESTIONS: Question[] = [
     title: 'Level of independence',
     kind: 'one',
     options: INDEPENDENCE,
+    onlyIf: aboutAnInjury('independence'),
   },
   {
     key: 'employment',
@@ -276,6 +318,7 @@ export const QUESTIONS: Question[] = [
     title: 'Employment status',
     kind: 'one',
     options: EMPLOYMENT,
+    onlyIf: aboutAnInjury('employment'),
   },
 
   {
@@ -291,6 +334,7 @@ export const QUESTIONS: Question[] = [
     title: 'Before or after your injury?',
     kind: 'one',
     options: BEFORE_AFTER,
+    onlyIf: aboutAnInjury('educationWhen'),
   },
 
   {
@@ -311,6 +355,7 @@ export const QUESTIONS: Question[] = [
     max: 10,
     allowOther: true,
     otherPlaceholder: 'In your own words',
+    onlyIf: aboutAnInjury('interests'),
   },
 
   // Notes for the club, not a profile answer (20261031000000).
@@ -330,6 +375,7 @@ export const QUESTIONS: Question[] = [
     title: 'Do you own any adaptive sports equipment?',
     kind: 'text',
     placeholder: 'Top End Force 3 handcycle, Freewheel, and HOC Glide ski',
+    onlyIf: aboutAnInjury('sportsEquipment'),
   },
 
   // In words rather than a list of organizations (owner, 2026-10-08): which
@@ -341,6 +387,7 @@ export const QUESTIONS: Question[] = [
     kind: 'text',
     placeholder:
       'I received a Kelly Brush grant and High Fives grant for my handcycle and a NorCal SCI Franklin Project rehab grant to go to Neuroworx.',
+    onlyIf: aboutAnInjury('grants'),
   },
 
   {
@@ -351,6 +398,7 @@ export const QUESTIONS: Question[] = [
     options: SELF_CARE,
     allowOther: true,
     otherPlaceholder: 'In your own words',
+    onlyIf: aboutAnInjury('selfCare'),
   },
 
   // Asked only of somebody who chose one of the self-care answers it is about
@@ -364,8 +412,10 @@ export const QUESTIONS: Question[] = [
     kind: 'text',
     placeholder: 'SmartDrive; Dragon; 2019 Odyssey with a power sliding door…',
     onlyIf: (a) =>
-      (Array.isArray(a.selfCare) && a.selfCare.some((c) => SPECIFICS_FOR.includes(c))) ||
-      (typeof a.detail === 'string' && a.detail.trim() !== ''),
+      hasAnswer(a.detail) ||
+      (asksAboutAnInjury(a) &&
+        Array.isArray(a.selfCare) &&
+        a.selfCare.some((c) => SPECIFICS_FOR.includes(c))),
   },
 
   {
@@ -373,6 +423,7 @@ export const QUESTIONS: Question[] = [
     column: 'wants_to_mentor',
     title: 'Do you want to be a peer mentor?',
     kind: 'yesno',
+    onlyIf: aboutAnInjury('wantsToMentor'),
   },
 ];
 

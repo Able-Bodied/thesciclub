@@ -8,6 +8,7 @@ const auth = vi.hoisted(() => ({
   /** Whether this visit's reset link worked (lib/recovery-link). */
   linkWorked: true,
   forgotten: 0,
+  rechecked: 0,
   /** The page's own subscriber, to send PASSWORD_RECOVERY to after it mounts. */
   listener: null as ((event: string, session: unknown) => void) | null,
   updated: [] as unknown[],
@@ -18,6 +19,12 @@ vi.mock('@/lib/recovery-link', () => ({
   recoveryLinkWorked: () => auth.linkWorked,
   forgetRecoveryLink: () => {
     auth.forgotten += 1;
+  },
+}));
+
+vi.mock('@/lib/email-proof', () => ({
+  recheckUnprovenEmail: () => {
+    auth.rechecked += 1;
   },
 }));
 
@@ -56,6 +63,7 @@ beforeEach(() => {
   auth.session = true;
   auth.linkWorked = true;
   auth.forgotten = 0;
+  auth.rechecked = 0;
   auth.listener = null;
   auth.updated = [];
   auth.error = null;
@@ -76,6 +84,8 @@ describe('choosing a new password', () => {
     expect(auth.updated).toEqual([{ password: 'a new password' }]);
     // The link has done its one job: back here, it no longer opens the form.
     expect(auth.forgotten).toBe(1);
+    // The link proved the address too (20261104120000): Me asks again.
+    expect(auth.rechecked).toBe(1);
   });
 
   // Supabase ends the member's other sessions on every password change.

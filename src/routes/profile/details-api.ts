@@ -7,6 +7,7 @@ import {
   type Completeness,
   type DatePrecision,
   type ExactLevel,
+  hasNoInjury,
   INJURY_TYPES,
   type InjuryType,
   typeForLevel,
@@ -83,6 +84,10 @@ export type DetailKey = (typeof DECLINABLE_DETAILS)[number]['key'];
 /** Whether the details form has an answer for one of the five. */
 export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean {
   if (key === 'photo') return Boolean(details.photoPath);
+  // Family or a professional answers both (the owner, 2026-11-04; 20261104150000).
+  if ((key === 'exactLevel' || key === 'injuryDate') && hasNoInjury(details.injuryType)) {
+    return true;
+  }
   if (key === 'exactLevel') {
     return Boolean(details.exactLevel) || details.conditionName.trim() !== '';
   }

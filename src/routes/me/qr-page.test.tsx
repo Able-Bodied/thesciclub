@@ -461,7 +461,7 @@ describe("a professional's own code", () => {
     expect(
       await screen.findByRole('heading', { name: 'Create QR code or invite link' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Your own code, as a professional')).toBeInTheDocument();
+    expect(screen.getByText('Your own code, as a verified professional')).toBeInTheDocument();
     expect(screen.queryByLabelText('Email shown while joining is closed')).toBeNull();
     expect(
       screen.getByText(/before it expires can join the club, as invited by you/),
@@ -493,7 +493,7 @@ describe("a professional's own code", () => {
     renderPage();
     const who = await screen.findByLabelText("Who it's for");
     expect(
-      within(who).getByRole('option', { name: 'Just you, as a professional' }),
+      within(who).getByRole('option', { name: 'Just you, as a verified professional' }),
     ).toBeInTheDocument();
     expect(within(who).getByRole('option', { name: 'NorCal SCI' })).toBeInTheDocument();
   });
