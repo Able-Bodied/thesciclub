@@ -5,7 +5,10 @@
 -- steps (events moved back 5 minutes per run), each ten-minutes-before and
 -- check-in reminder is sent exactly once, at the first run its window
 -- allows, with starts and ends just before, on and after the boundaries.
--- A run missed still sends the ten-minute one. Follow-ups go for events
+-- The ten-minute one always goes 10 to 15 min 30 s before the start, never
+-- less than 10 (the owner, 2026-11-05). A run 50 s late still sends a start
+-- on the minute; a run missed sends what is still over 10 minutes away and
+-- loses the rest. Follow-ups go for events
 -- that ended late or early yesterday (local), not today's or older ones,
 -- and once. Every follow-up's due time, across zones and DST changes, lies
 -- inside the new prefilter. The new index serves that prefilter.
@@ -41,20 +44,21 @@ insert into public.members (id, type, status, display_name, phone, birth_date, l
 create temp table plan (name text primary key, branch text, at interval, has_end boolean) on commit drop;
 insert into plan values
   ('s-started', 'ten', interval '-1 second', null),
-  ('s-0m01',    'ten', interval '1 second', null),
-  ('s-0m59',    'ten', interval '59 seconds', null),
-  ('s-1m',      'ten', interval '1 minute', null),
-  ('s-1m01',    'ten', interval '61 seconds', null),
-  ('s-4m59',    'ten', interval '4 minutes 59 seconds', null),
-  ('s-5m',      'ten', interval '5 minutes', null),
-  ('s-5m01',    'ten', interval '5 minutes 1 second', null),
   ('s-9m59',    'ten', interval '9 minutes 59 seconds', null),
   ('s-10m',     'ten', interval '10 minutes', null),
   ('s-10m01',   'ten', interval '10 minutes 1 second', null),
+  ('s-10m29',   'ten', interval '10 minutes 29 seconds', null),
+  ('s-10m30',   'ten', interval '10 minutes 30 seconds', null),
+  ('s-10m31',   'ten', interval '10 minutes 31 seconds', null),
   ('s-14m59',   'ten', interval '14 minutes 59 seconds', null),
   ('s-15m',     'ten', interval '15 minutes', null),
   ('s-15m01',   'ten', interval '15 minutes 1 second', null),
-  ('s-32m',     'ten', interval '32 minutes', null),
+  ('s-15m30',   'ten', interval '15 minutes 30 seconds', null),
+  ('s-15m31',   'ten', interval '15 minutes 31 seconds', null),
+  ('s-19m59',   'ten', interval '19 minutes 59 seconds', null),
+  ('s-20m',     'ten', interval '20 minutes', null),
+  ('s-20m01',   'ten', interval '20 minutes 1 second', null),
+  ('s-37m',     'ten', interval '37 minutes', null),
   ('c-45m',     'check', interval '-45 minutes', true),
   ('c-44m59',   'check', interval '-44 minutes -59 seconds', true),
   ('c-30m01',   'check', interval '-30 minutes -1 second', true),
@@ -91,21 +95,26 @@ insert into public.event_check_ins (event_id, member_id)
 select id, 'a0000000-1105-0003-0000-000000000002' from probe_events;
 
 -- One run per step; the step each batch was.
-create temp table runs (batch timestamptz, step integer) on commit drop;
+create temp table runs (batch timestamptz, step integer, moved interval) on commit drop;
+create temp table moved (by interval) on commit drop;
+insert into moved values (interval '0');
 create function pg_temp.run(step integer) returns void language plpgsql as $$
+declare started timestamptz := clock_timestamp();
 begin
   perform public.push_event_reminders();
+  -- Only this call's batch.
   insert into runs
-  select distinct batch, step from (
+  select distinct batch, step, (select by from moved) from (
     select batch from public.event_starting_sent
     union select batch from public.event_check_in_reminders_sent) b
-   where batch not in (select batch from runs);
+   where batch >= started;
 end $$;
-create function pg_temp.later(minutes integer) returns void language sql as $$
+create function pg_temp.later(minutes integer, seconds integer default 0) returns void language sql as $$
   update public.events
-     set start_time = start_time - make_interval(mins => minutes),
-         end_time = end_time - make_interval(mins => minutes)
+     set start_time = start_time - make_interval(mins => minutes, secs => seconds),
+         end_time = end_time - make_interval(mins => minutes, secs => seconds)
    where id in (select id from probe_events);
+  update moved set by = by + make_interval(mins => minutes, secs => seconds);
 $$;
 
 do $$
@@ -129,8 +138,8 @@ create temp table expected on commit drop as
 select p.name, p.branch,
        (select min(k) from generate_series(0, 12) k
          where case when p.branch = 'ten'
-                 then p.at > make_interval(mins => 5 * k)
-                  and p.at <= make_interval(mins => 5 * k + 10)
+                 then p.at > make_interval(mins => 5 * k + 10)
+                  and p.at <= make_interval(mins => 5 * k + 15, secs => 30)
                  else p.at + interval '30 minutes' <= make_interval(mins => 5 * k)
                   and p.at + interval '45 minutes' > make_interval(mins => 5 * k) end) as step
   from plan p;
@@ -149,10 +158,25 @@ begin
 end $$;
 
 select pg_temp.check_true(
-  (select count(*) from expected where step is not null and branch = 'ten') = 14
+  (select count(*) from expected where step is not null and branch = 'ten') = 13
   and (select count(*) from expected where step is not null and branch = 'check') = 11
-  and (select count(*) from expected where step is null) = 3,
-  'the plan reaches 14 ten-minute and 11 check-in reminders, and 3 are never due');
+  and (select count(*) from expected where step is null) = 5,
+  'the plan reaches 13 ten-minute and 11 check-in reminders, and 5 are never due');
+
+select pg_temp.check_true(
+  (select string_agg(name, ',' order by name) from expected where step is null and branch = 'ten')
+    = 's-10m,s-9m59,s-started',
+  'only starts already 10 minutes away or less at the first run go without');
+
+-- The ten-minute lead, start minus the run's time, for every one sent.
+create function pg_temp.leads_ok() returns boolean language sql as $$
+  select coalesce(bool_and(p.at - r.moved > interval '10 minutes'
+                       and p.at - r.moved <= interval '15 minutes 30 seconds'), true)
+    from public.event_starting_sent s join probe_events e on e.id = s.event_id
+    join runs r using (batch) join plan p on p.name = e.name;
+$$;
+select pg_temp.check_true(pg_temp.leads_ok(),
+  'every ten-minute reminder went 10 to 15 min 30 s before the start, never less than 10');
 
 select pg_temp.check_true(
   not exists (select 1 from sent where branch = 'ten' and name = 's-started'),
@@ -165,30 +189,54 @@ select pg_temp.check_true(
 select pg_temp.check_true(
   (select count(*) from public.notifications
     where member_id = 'a0000000-1105-0003-0000-000000000001' and kind = 'event_starting'
-      and event_id in (select id from probe_events)) = 14
+      and event_id in (select id from probe_events)) = 13
   and (select count(*) from public.notifications
     where member_id = 'a0000000-1105-0003-0000-000000000001' and kind = 'check_in_reminder'
       and event_id in (select id from probe_events)) = 11,
   'one notification for each reminder sent');
 
--- A missed run: runs 10 minutes apart still catch a start at 10 m 30 s.
+-- A run 50 s late, then one missed. Fresh events, the clock from zero.
 delete from runs;
+update moved set by = interval '0';
+insert into plan values
+  ('late-15m',     'ten', interval '15 minutes', null),
+  ('late-15m20',   'ten', interval '15 minutes 20 seconds', null),
+  ('late-16m',     'ten', interval '16 minutes', null),
+  ('late-20m',     'ten', interval '20 minutes', null),
+  ('late-21m',     'ten', interval '21 minutes', null),
+  ('missed-22m',   'ten', interval '22 minutes', null),
+  ('missed-25m',   'ten', interval '25 minutes', null),
+  ('missed-25m20', 'ten', interval '25 minutes 20 seconds', null),
+  ('missed-30m',   'ten', interval '30 minutes', null);
 with made as (
   insert into public.events (title, host_name, start_time)
-  values ('probe-5m missed-10m30', 'Probe', now() + interval '10 minutes 30 seconds'),
-         ('probe-5m missed-10m59', 'Probe', now() + interval '10 minutes 59 seconds')
+  select 'probe-5m ' || name, 'Probe', now() + at from plan where name ~ '^(late|missed)-'
   returning id, title
 )
 insert into probe_events select substr(title, 10), id from made;
 insert into public.event_rsvps (event_id, member_id, status)
-select id, 'a0000000-1105-0003-0000-000000000001', 'going' from probe_events where name like 'missed-%';
+select id, 'a0000000-1105-0003-0000-000000000001', 'going' from probe_events where name ~ '^(late|missed)-';
+-- Runs at 0, at 5 m 50 s (50 s late), none at 10 m (missed), then 15 m.
 select pg_temp.run(0);
-select pg_temp.later(10);
-select pg_temp.run(2);
+select pg_temp.later(5, 50);
+select pg_temp.run(1);
+select pg_temp.later(9, 10);
+select pg_temp.run(3);
+
 select pg_temp.check_true(
-  (select count(*) from public.event_starting_sent s join probe_events e on e.id = s.event_id
-    join runs r using (batch) where e.name like 'missed-%' and r.step = 2) = 2,
-  'a run missed still sends the ten-minute reminder, at the next run');
+  (select string_agg(e.name || '@' || r.step, ',' order by e.name)
+     from public.event_starting_sent s join probe_events e on e.id = s.event_id
+     join runs r using (batch) where e.name ~ '^(late|missed)-')
+    = 'late-15m@0,late-15m20@0,late-16m@1,late-20m@1,late-21m@1,missed-25m20@3,missed-30m@3',
+  'a run 50 s late still sends a start on the minute; after a missed one, what is over 10 minutes away still goes');
+
+select pg_temp.check_true(
+  not exists (select 1 from public.event_starting_sent s join probe_events e on e.id = s.event_id
+               where e.name in ('missed-22m', 'missed-25m')),
+  'what the missed run had, now under 10 minutes away, is not sent late');
+
+select pg_temp.check_true(pg_temp.leads_ok(),
+  'late and after a missed run, never less than 10 minutes before');
 
 -- Follow-ups: in the whole-hour zone where it is now 10am, "yesterday" ended
 -- events are due this hour.
