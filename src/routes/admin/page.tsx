@@ -121,7 +121,7 @@ export default function AdminPage() {
   const [only, setOnly] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [strikes, setStrikes] = useState<Strike[]>([]);
-  // The two invite lists, each read a page at a time (20261103160000). Two,
+  // The two invite lists, each read a page at a time (20261104201000). Two,
   // because "The list" should mean the people who are on it: withdrawn rows
   // carry who vouched and when, and cost nothing kept apart.
   const [listed, setListed] = useState<WithdrawnInvite[]>([]);

@@ -1,5 +1,5 @@
 -- ============================================================================
--- A block hides both ways (20261103190000): what each person reads, before
+-- A block hides both ways (20261104203000): what each person reads, before
 -- and after
 -- ============================================================================
 -- Blk blocks Bkd and the administrator Adm. For each person (Ord, Blk, Bkd, the administrator Adm, Thd
@@ -13,9 +13,9 @@
 -- On a THROWAWAY stack only (the fixture is committed between runs):
 --
 --   psql ... -v phase=before  -f - < supabase/tests/blocks-both-ways.sql
---   (apply 20261103190000)
+--   (apply 20261104203000)
 --   psql ... -v phase=after   -f - < supabase/tests/blocks-both-ways.sql
---   (to prove the undo: apply supabase/undo/20261103190000.sql, then
+--   (to prove the undo: apply supabase/undo/20261104203000.sql, then
 --   phase=undone, which expects no difference at all)
 --   psql ... -v phase=cleanup -f - < supabase/tests/blocks-both-ways.sql
 --

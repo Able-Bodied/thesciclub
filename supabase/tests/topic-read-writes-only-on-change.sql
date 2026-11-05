@@ -1,5 +1,5 @@
 -- ============================================================================
--- Opening a topic writes only when something changes (20261104020000)
+-- Opening a topic writes only when something changes (20261104213000)
 -- ============================================================================
 -- Reopening a topic read this far, with no notification waiting, writes
 -- nothing at all: no row version, no insert, update or delete in the read

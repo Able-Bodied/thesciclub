@@ -187,7 +187,7 @@ select a.display_name as liked_by
 \echo ''
 \echo '== 8. a paused member cannot like, and reads nothing =='
 \echo '   expect: f a_member | f active | 0 likes seen, then ERROR on the'
-\echo '   insert. A paused member reads nothing (20261103210000).'
+\echo '   insert. A paused member reads nothing (20261104205000).'
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-7777-0000-0000-000000000004","role":"authenticated"}';
 set local role authenticated;

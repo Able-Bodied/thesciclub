@@ -5,7 +5,7 @@
 -- each member below, read as them, it must equal the conversations
 -- chat_my_threads marks unread, and the number written beside them; except
 -- a muted conversation, which the list marks and the dot leaves out
--- (20261103200000).
+-- (20261104204000).
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -141,11 +141,11 @@ begin
 end $$;
 
 select pg_temp.check_member('aaaaaaaa-2914-0000-0000-00000000000a', 2, 'an ordinary member: a direct and a group unread, one read');
-select pg_temp.check_member('dddddddd-2914-0000-0000-00000000000d', 0, 'a muted conversation is marked in the list, and does not light the dot (20261103200000)', 1);
+select pg_temp.check_member('dddddddd-2914-0000-0000-00000000000d', 0, 'a muted conversation is marked in the list, and does not light the dot (20261104204000)', 1);
 select pg_temp.check_member('33333333-2914-0000-0000-000000000003', 1, 'Ny: the unmuted one lights the dot; the muted one only the list; the left one neither', 2);
 select pg_temp.check_member('eeeeeeee-2914-0000-0000-00000000000e', 1, 'a group they left is gone');
 select pg_temp.check_member('ffffffff-2914-0000-0000-00000000000f', 0, 'only their own words are newer');
-select pg_temp.check_member('11111111-2914-0000-0000-000000000001', 0, 'a suspended member reads nothing (20261103210000)');
+select pg_temp.check_member('11111111-2914-0000-0000-000000000001', 0, 'a suspended member reads nothing (20261104205000)');
 select pg_temp.check_member('22222222-2914-0000-0000-000000000002', 1, 'a blocked member''s direct conversation and words are left out');
 select pg_temp.check_member('bbbbbbbb-2914-0000-0000-00000000000b', 1, 'Bo: only the authorless line is not his');
 

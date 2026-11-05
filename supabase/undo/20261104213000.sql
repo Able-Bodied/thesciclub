@@ -1,4 +1,4 @@
--- Undo for 20261104020000_opening_a_topic_writes_only_when_something_changes.sql:
+-- Undo for 20261104213000_opening_a_topic_writes_only_when_something_changes.sql:
 -- the body before it, from pg_get_functiondef on a fresh stack (2026-11-04).
 -- Compare with the live definition before release.
 

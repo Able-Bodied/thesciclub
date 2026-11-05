@@ -53,7 +53,7 @@ export async function setMuted(
   muted: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const result = await writeMuted(target, userId, muted);
-  // A muted conversation leaves the Chat dot (20261103200000).
+  // A muted conversation leaves the Chat dot (20261104204000).
   if (result.ok && target.kind === 'thread') unreadChanged();
   return result;
 }

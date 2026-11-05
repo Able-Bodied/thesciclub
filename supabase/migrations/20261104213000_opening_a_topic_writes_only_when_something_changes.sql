@@ -12,7 +12,7 @@
 -- version calls it; its device rows were already insert-if-missing.
 --
 -- Probe: topic-read-writes-only-on-change.sql.
--- Undo: supabase/undo/20261104020000.sql.
+-- Undo: supabase/undo/20261104213000.sql.
 -- ============================================================================
 
 create or replace function public.chat_mark_topic_read_through(topic uuid, post uuid)

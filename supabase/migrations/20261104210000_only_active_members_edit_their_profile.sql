@@ -7,7 +7,7 @@
 -- held for their photograph in storage and for set_my_username().
 --
 -- Now each needs an active member (is_active_member(), the meaning is_member()
--- has had since 20261103210000):
+-- has had since 20261104205000):
 --   * the members update rule: a paused member's update matches no row;
 --   * set_my_username(): refused;
 --   * their own photograph folder: upload, replace and delete. Onboarding
@@ -18,7 +18,7 @@
 -- (guard_own_member_row), joining's insert rule, delete_my_account(),
 -- note_device(), record_sign_in(), agree_to_terms() and the admin_* functions,
 -- all security definer.
--- Probe: only-active-members-edit-their-profile.sql. Undo: supabase/undo/20261103220000.sql.
+-- Probe: only-active-members-edit-their-profile.sql. Undo: supabase/undo/20261104210000.sql.
 -- ============================================================================
 
 alter policy "members can update own row" on public.members

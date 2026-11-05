@@ -109,7 +109,7 @@ set local role authenticated;
 
 \echo ''
 \echo '== 8. a suspended member cannot reinstate themselves =='
-\echo '   expect: UPDATE 0. Since 20261103220000 a suspended member updates no row'
+\echo '   expect: UPDATE 0. Since 20261104210000 a suspended member updates no row'
 \echo '   of their own; the guard (step 4 of only-active-members-edit-their-profile)'
 \echo '   still refuses an active member changing their status.'
 savepoint self_reinstate;

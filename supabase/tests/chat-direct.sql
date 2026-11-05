@@ -221,7 +221,7 @@ rollback to savepoint reopen_hidden;
 \echo '== 7. a suspended member neither reads their conversations nor writes =='
 \echo '   expect: f a_member | f active | 0 threads | 0 messages, then ERROR on'
 \echo '   the message and ERROR on opening a new conversation. A paused member'
-\echo '   reads nothing (20261103210000); reinstated, the conversation is back.'
+\echo '   reads nothing (20261104205000); reinstated, the conversation is back.'
 savepoint suspended_caller;
 set local role postgres;
 insert into public.chat_thread_members (thread_id, member_id)

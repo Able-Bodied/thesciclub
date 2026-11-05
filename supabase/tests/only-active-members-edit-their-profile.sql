@@ -1,5 +1,5 @@
 -- ============================================================================
--- Only an active member edits their own profile (20261103220000)
+-- Only an active member edits their own profile (20261104210000)
 -- ============================================================================
 -- An active, a suspended and a removed member each try to change their name,
 -- bio and photo path, their username, and the photographs in their folder.
@@ -8,7 +8,7 @@
 -- their row exists, joins, and fills in their profile.
 --
 -- One transaction, rolled back, each expected refusal in its own savepoint.
--- Before 20261103220000, steps 5-13 went through.
+-- Before 20261104210000, steps 5-13 went through.
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p <port> -U postgres -d postgres \
 --     -f - < supabase/tests/only-active-members-edit-their-profile.sql

@@ -496,7 +496,7 @@ All live. Migration headers and the files named say how and why.
   members, Admin → Reports → Blocks (`#blocks`), where Monday's count leads;
   the New reports switch covers it. `member_blocks` is readable by
   the blocker only; content hides both ways through `private.my_hidden_member_ids()`
-  (not from an administrator; `20261103190000`), the Blocked list reads `my_blocked_member_ids()`,
+  (not from an administrator; `20261104203000`), the Blocked list reads `my_blocked_member_ids()`,
   Peers both ways in the views; `members_blocked()` is never granted.
   Probes: `member-blocks.sql`, `blocks-weekly.sql`, `blocks-both-ways.sql`.
 - **Profile reports**: Report beside Block in a profile's ••• (`report_member`,

@@ -7,7 +7,7 @@ import { getSupabase } from '@/lib/supabase';
 
 /**
  * The Chat dot, the bell, Me's dot and the app icon, from one request
- * (`my_badge_counts`, 20261103230000) with one 1.5 s limit for all of them.
+ * (`my_badge_counts`, 20261104211000) with one 1.5 s limit for all of them.
  * Each used to ask on its own, and the bell up to three times on Me.
  *
  * Module-level, like `unreadChanged`: what changes a number (opening a
@@ -43,7 +43,7 @@ export const NOTIFICATIONS_CHANGED = 'club:notifications-changed';
 interface Reader {
   /** Whose numbers; null is nobody to count for. */
   key: string | null;
-  /** False for a suspended member: the Chat dot only (theirs is 0, 20261103210000). */
+  /** False for a suspended member: the Chat dot only (theirs is 0, 20261104205000). */
   notifications: boolean;
 }
 
@@ -174,7 +174,7 @@ export function useBadgeCounts(): BadgeCounts {
 export function useBadgeRealtime(): void {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
-  // A suspended member's count is 0 (20261103210000); watching is harmless.
+  // A suspended member's count is 0 (20261104205000); watching is harmless.
   const readerId =
     account.status === 'member' || account.status === 'suspended' ? account.userId : null;
 

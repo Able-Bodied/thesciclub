@@ -11,14 +11,14 @@
 --   icon_kinds          my_unseen_notification_kinds(), so notification_badge
 --
 -- It calls those four rather than copying their rules, so it cannot drift
--- from them: two-way blocks (20261103190000), muted conversations (200000)
--- and paused members (210000) come with them, and so will later changes.
+-- from them: two-way blocks (20261104203000), muted conversations (204000)
+-- and paused members (205000) come with them, and so will later changes.
 -- The first draft (speed branch, 20261103170000) copied the bell's rules to
 -- count both in one pass; that copy went stale within hours.
 --
 -- Security invoker; each function keeps its own rights. The four stay for
 -- older store apps. Probe: supabase/tests/badge-counts-in-one.sql.
--- Undo: supabase/undo/20261103230000.sql.
+-- Undo: supabase/undo/20261104211000.sql.
 -- ============================================================================
 
 create or replace function public.my_badge_counts()
@@ -34,7 +34,7 @@ as $$
 $$;
 
 comment on function public.my_badge_counts() is
-  'The Chat dot, the bell, Me''s dot and the app icon in one call. See 20261103230000.';
+  'The Chat dot, the bell, Me''s dot and the app icon in one call. See 20261104211000.';
 
 revoke all on function public.my_badge_counts() from public, anon;
 grant execute on function public.my_badge_counts() to authenticated;

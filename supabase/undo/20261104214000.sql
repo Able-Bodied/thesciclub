@@ -1,4 +1,4 @@
--- Undo for 20261104040000_a_peers_place_is_kept.sql: map_peer_cities works
+-- Undo for 20261104214000_a_peers_place_is_kept.sql: map_peer_cities works
 -- each member's place out on every read again, as 20261029040000.
 
 create or replace function public.map_peer_cities()

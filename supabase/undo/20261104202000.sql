@@ -1,4 +1,4 @@
--- Undo for 20261103180000_a_registration_refusal_is_not_a_server_error.sql:
+-- Undo for 20261104202000_a_registration_refusal_is_not_a_server_error.sql:
 -- register_for_event as 20261029110000 left it. Compare with the live
 -- definition first.
 

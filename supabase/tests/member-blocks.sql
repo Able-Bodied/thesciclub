@@ -9,7 +9,7 @@
 --   3. a direct message is refused both ways, with the neutral sentence, and
 --      neither can open a conversation or put the other in a group
 --   4. what Bo wrote, liked and reacted is hidden from Ada, shared rooms and
---      groups included, and Ada's from Bo (20261103190000); Peers both ways
+--      groups included, and Ada's from Bo (20261104203000); Peers both ways
 --   5. nothing Bo does notifies Ada, in the list or on a lock screen (the
 --      other way: blocks-both-ways.sql)
 --   6. one report per block, naming both, with no words, notifying nobody
@@ -125,7 +125,7 @@ begin
   assert public.my_blocked_member_ids() = '{}', 'Bo''s list is not empty';
   assert (select count(*) from public.chat_reports) = 0, 'Bo read the block report';
   -- Cy's group, from before the block, and nothing since. Ada's message
-  -- before it is hidden too: a block hides both ways (20261103190000).
+  -- before it is hidden too: a block hides both ways (20261104203000).
   assert (select string_agg(kind, ',' order by kind) from public.my_notifications(null, 100)) = 'group_add',
     'Bo was notified of something new, or still sees Ada''s';
   raise notice 'PASS 2: no row, no list, no report and no notification for Bo';
@@ -223,7 +223,7 @@ $$;
 -- and like her second post.
 \echo ''
 \echo '== 3d. Bo cannot reply in Ada''s topic nor like her post: he cannot see them =='
-\echo '   expect: ERROR (row-level security) twice (20261103190000). Then both are'
+\echo '   expect: ERROR (row-level security) twice (20261104203000). Then both are'
 \echo '   written past the rules, so step 5 can prove they notify nobody.'
 select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000b","role":"authenticated"}', true) is not null as bo;
 insert into public.chat_messages (thread_id, author_id, body) values (:'grp', auth.uid(), 'Bo in the group') returning id as bo_msg \gset

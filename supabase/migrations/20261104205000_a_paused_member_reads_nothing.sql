@@ -25,7 +25,7 @@
 --
 -- Drafted as 20261102030000 (never applied); renumbered onto 2026-11-03's
 -- main, the bell's functions added. Probe: suspended-reads-nothing.sql.
--- Undo: supabase/undo/20261103210000.sql.
+-- Undo: supabase/undo/20261104205000.sql.
 -- ============================================================================
 
 create or replace function public.is_member()
@@ -47,7 +47,7 @@ comment on function public.is_member() is
 alter policy "a member reads their own notifications" on public.notifications
   using (((member_id = (select auth.uid())) and (select public.is_member())));
 
--- The bell and the badge, as live after 20261103190000, for active members only.
+-- The bell and the badge, as live after 20261104203000, for active members only.
 
 CREATE OR REPLACE FUNCTION public.my_notifications(before timestamp with time zone DEFAULT NULL::timestamp with time zone, max_rows integer DEFAULT 40)
  RETURNS TABLE(id uuid, kind text, count integer, created_at timestamp with time zone, seen boolean, read boolean, actor_id uuid, actor_name text, actor_photo text, place text, excerpt text, detail text, url text)

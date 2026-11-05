@@ -156,7 +156,7 @@ end;
 $$;
 
 comment on function public.admin_invite_page(text, integer, integer) is
-  'A page of admin_invites, listed or withdrawn by address, newest first, with the total; accounts looked up for that page only. Administrators only. See 20261103160000.';
+  'A page of admin_invites, listed or withdrawn by address, newest first, with the total; accounts looked up for that page only. Administrators only. See 20261104201000.';
 
 create or replace function public.admin_invite_counts()
 returns table (pending bigint)
@@ -174,7 +174,7 @@ end;
 $$;
 
 comment on function public.admin_invite_counts() is
-  'How many invites are waiting. Administrators only. See 20261103160000.';
+  'How many invites are waiting. Administrators only. See 20261104201000.';
 
 -- by_admin is [{name, joined}], most first; a name is null for an
 -- administrator no longer here. Walk-ins are one row, with no event, last.
@@ -222,7 +222,7 @@ end;
 $$;
 
 comment on function public.admin_join_tally() is
-  'Who joined while anybody could, by event and administrator, walk-ins last. Administrators only. See 20261103160000.';
+  'Who joined while anybody could, by event and administrator, walk-ins last. Administrators only. See 20261104201000.';
 
 revoke all on function public.admin_invite_page(text, integer, integer) from public, anon;
 revoke all on function public.admin_invite_counts() from public, anon;

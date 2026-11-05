@@ -1,5 +1,5 @@
 -- ============================================================================
--- A peer's place is kept (20261104040000)
+-- A peer's place is kept (20261104214000)
 -- ============================================================================
 -- map_peer_cities now reads each member's kept place. Here it is compared
 -- with today's way, which works every place out on each read (copied from

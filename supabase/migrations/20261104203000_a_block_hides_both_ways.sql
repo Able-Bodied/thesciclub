@@ -1,29 +1,78 @@
--- Undo for 20261103190000_a_block_hides_both_ways.sql: a block hides one way
--- again. The rules and functions as live before it (fresh stack, 2026-11-03).
--- Compare with the live definitions first.
+-- ============================================================================
+-- A block hides both ways
+-- ============================================================================
+-- The owner, 2026-11-03: blocking is two-way, as in most apps. When A blocks
+-- B, A's topics, posts, replies, messages, likes and reactions are hidden
+-- from B too, everywhere: rooms, groups, event chats, the bell, its counts,
+-- mentions and lock screens. B is still not told (the neutral sentences
+-- stay); the report, the weekly count and Unblock are unchanged.
+--
+-- private.my_hidden_member_ids(): both ways, for the read rules and the
+-- functions that run as the reader, in the "= any ((select ...))" shape Step
+-- 6 proved runs once. In private, so the API cannot be asked who blocked you. my_blocked_member_ids() keeps meaning who I blocked: the Blocked
+-- members list, Unblock, and hiding a direct conversation from its blocker.
+-- B keeps that conversation, with only B's own words in it: hiding it would
+-- tell B. Definer functions with no reader add the other direction in place.
+-- Counts that name nobody (replies, views, members) stay as they were.
+--
+-- Not for administrators: a member who blocks one still hides nothing from
+-- them, as member-blocks.sql has held since 20261022060000, so blocking the
+-- founders cannot hide anybody from moderation. The owner to confirm.
+--
+-- Probes: blocks-both-ways.sql, member-blocks.sql.
+-- Undo: supabase/undo/20261104203000.sql.
+-- ============================================================================
 
+-- In private, which the API does not serve: the rules call it as the
+-- reader, but nobody can ask it who blocked them (20260929000000's pattern).
+create function private.my_hidden_member_ids()
+returns uuid[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(array_agg(distinct x.id), '{}'::uuid[])
+    from (
+      select b.blocked_id as id from public.member_blocks b where b.blocker_id = auth.uid()
+      union all
+      -- An administrator still reads a member who blocked them.
+      select b.blocker_id from public.member_blocks b
+       where b.blocked_id = auth.uid() and not public.is_admin()
+    ) x;
+$$;
+
+comment on function private.my_hidden_member_ids() is
+  'Members hidden from the caller by a block either way (an administrator only by their own). my_blocked_member_ids() is only who the caller blocked.';
+
+revoke all on function private.my_hidden_member_ids() from public, anon;
+grant execute on function private.my_hidden_member_ids() to authenticated;
+
+-- The six read rules: the same, with the both-ways list.
 alter policy "read reactions in your conversation" on public.chat_message_reactions
   using (((EXISTS ( SELECT 1
    FROM public.chat_messages m
-  WHERE ((m.id = chat_message_reactions.target_id) AND (m.removed_at IS NULL) AND (m.notice IS NULL) AND (m.thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[]))))) AND (NOT (member_id = ANY (( SELECT public.my_blocked_member_ids() AS my_blocked_member_ids)::uuid[])))));
+  WHERE ((m.id = chat_message_reactions.target_id) AND (m.removed_at IS NULL) AND (m.notice IS NULL) AND (m.thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[]))))) AND (NOT (member_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
 alter policy "a member reads the messages in a thread they are in" on public.chat_messages
-  using (((thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[])) AND (NOT COALESCE((author_id = ANY (( SELECT public.my_blocked_member_ids() AS my_blocked_member_ids)::uuid[])), false))));
+  using (((thread_id = ANY (( SELECT public.my_thread_ids() AS my_thread_ids)::uuid[])) AND (NOT COALESCE((author_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
 alter policy "a member reads the likes in a readable room" on public.chat_post_likes
   using (((EXISTS ( SELECT 1
    FROM (public.chat_posts p
      JOIN public.chat_topics t ON ((t.id = p.topic_id)))
-  WHERE ((p.id = chat_post_likes.post_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT public.my_blocked_member_ids() AS my_blocked_member_ids)::uuid[])))));
+  WHERE ((p.id = chat_post_likes.post_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
 alter policy "read reactions on readable standing posts" on public.chat_post_reactions
   using (((EXISTS ( SELECT 1
    FROM (public.chat_posts p
      JOIN public.chat_topics t ON ((t.id = p.topic_id)))
-  WHERE ((p.id = chat_post_reactions.target_id) AND (p.removed_at IS NULL) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT public.my_blocked_member_ids() AS my_blocked_member_ids)::uuid[])))));
+  WHERE ((p.id = chat_post_reactions.target_id) AND (p.removed_at IS NULL) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT (member_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])))));
 alter policy "a member reads a readable topic's posts" on public.chat_posts
   using (((EXISTS ( SELECT 1
    FROM public.chat_topics t
-  WHERE ((t.id = chat_posts.topic_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT COALESCE((author_id = ANY (( SELECT public.my_blocked_member_ids() AS my_blocked_member_ids)::uuid[])), false))));
+  WHERE ((t.id = chat_posts.topic_id) AND (t.room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[]))))) AND (NOT COALESCE((author_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
 alter policy "a member reads a readable room's topics" on public.chat_topics
-  using (((room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[])) AND (NOT COALESCE((author_id = ANY (( SELECT public.my_blocked_member_ids() AS my_blocked_member_ids)::uuid[])), false))));
+  using (((room_id = ANY (( SELECT public.my_readable_room_ids() AS my_readable_room_ids)::text[])) AND (NOT COALESCE((author_id = ANY (( SELECT private.my_hidden_member_ids() AS my_hidden_member_ids)::uuid[])), false))));
+
+-- The functions, as live on 2026-11-03, with the other way added.
 
 CREATE OR REPLACE FUNCTION public.chat_shared_posts(message_ids uuid[])
  RETURNS TABLE(message_id uuid, post_id uuid, topic_id uuid, room_id text, room_name text, topic_title text, opening boolean, author_id uuid, body text, photo_path text, created_at timestamp with time zone)
@@ -46,7 +95,7 @@ AS $function$
    where m.id = any (message_ids)
      and m.removed_at is null
      and public.is_thread_member(m.thread_id)
-     and not coalesce(m.author_id = any (public.my_blocked_member_ids()), false)
+     and not coalesce(m.author_id = any (private.my_hidden_member_ids()), false)
      and public.chat_can_see_shared_post(p.id);
 $function$;
 
@@ -56,7 +105,7 @@ CREATE OR REPLACE FUNCTION public.chat_topics_for(room text)
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-  with hidden as (select public.my_blocked_member_ids() as ids)
+  with hidden as (select private.my_hidden_member_ids() as ids)
   select
     t.id,
     t.room_id,
@@ -224,8 +273,9 @@ AS $function$
      end
      and not exists (
        select 1 from public.member_blocks b
-        where b.blocker_id = auth.uid()
-          and b.blocked_id in (n.actor_id, tp.author_id, ox.id)
+        where (b.blocker_id = auth.uid() and b.blocked_id in (n.actor_id, tp.author_id, ox.id))
+           or (b.blocked_id = auth.uid() and b.blocker_id in (n.actor_id, tp.author_id, ox.id)
+               and not public.is_admin())
      )
    order by n.created_at desc, n.id
    limit least(greatest(coalesce(max_rows, 40), 1), 100);
@@ -274,8 +324,9 @@ AS $function$
        end
        and not exists (
          select 1 from public.member_blocks b
-          where b.blocker_id = auth.uid()
-            and b.blocked_id in (n.actor_id, tp.author_id, ox.id)
+          where (b.blocker_id = auth.uid() and b.blocked_id in (n.actor_id, tp.author_id, ox.id))
+           or (b.blocked_id = auth.uid() and b.blocker_id in (n.actor_id, tp.author_id, ox.id)
+               and not public.is_admin())
        )
      order by n.created_at desc, n.id
      limit 100
@@ -328,8 +379,9 @@ AS $function$
        end
        and not exists (
          select 1 from public.member_blocks b
-          where b.blocker_id = auth.uid()
-            and b.blocked_id in (n.actor_id, tp.author_id, ox.id)
+          where (b.blocker_id = auth.uid() and b.blocked_id in (n.actor_id, tp.author_id, ox.id))
+           or (b.blocked_id = auth.uid() and b.blocker_id in (n.actor_id, tp.author_id, ox.id)
+               and not public.is_admin())
        )
      order by n.created_at desc, n.id
      limit 100
@@ -382,8 +434,8 @@ AS $function$
      end
      and not exists (
        select 1 from public.member_blocks b
-        where b.blocker_id = member
-          and b.blocked_id in (n.actor_id, tp.author_id)
+        where (b.blocker_id = member and b.blocked_id in (n.actor_id, tp.author_id))
+           or (b.blocked_id = member and b.blocker_id in (n.actor_id, tp.author_id) and not r.is_admin)
      );
 $function$;
 
@@ -638,12 +690,13 @@ begin
         join public.members r on r.id = pr.member_id and r.status = 'active'
        where p_event = 'profile_reminder' and pr.sent_on = (p_key ->> 'day')::date
     ) owed
-   -- Nothing from a member the recipient blocked, nor from a topic they
-   -- started (20261022080000).
+   -- Nothing across a block, either way, from the member or their topic
+   -- (20261022080000, both ways since 20261104203000).
    where not exists (
      select 1 from public.member_blocks b
-      where b.blocker_id = owed.member_id
-        and b.blocked_id in (
+      where (b.blocker_id = owed.member_id or (b.blocked_id = owed.member_id and not exists (
+               select 1 from public.members a where a.id = owed.member_id and a.is_admin)))
+        and (case when b.blocker_id = owed.member_id then b.blocked_id else b.blocker_id end) in (
           owed.actor_id,
           (select tp.author_id from public.chat_topics tp where tp.id = owed.topic_id)
         )
@@ -694,6 +747,7 @@ begin
        select 1 from public.member_blocks b
         where (b.blocker_id = r.id and b.blocked_id in (new.author_id, tp.author_id))
            or (b.blocker_id = new.author_id and b.blocked_id = r.id)
+           or (b.blocker_id = tp.author_id and b.blocked_id = r.id and not r.is_admin)
      )
   on conflict do nothing;
   get diagnostics recorded = row_count;
@@ -748,7 +802,8 @@ begin
          and m.removed_at is null
          and not exists (
            select 1 from public.member_blocks b
-            where b.blocker_id = r.id and b.blocked_id = m.author_id
+            where (b.blocker_id = r.id and b.blocked_id = m.author_id)
+               or (b.blocker_id = m.author_id and b.blocked_id = r.id and not r.is_admin)
          )
          and not exists (
            select 1 from public.chat_thread_mutes x where x.thread_id = t.id and x.member_id = r.id
@@ -793,7 +848,8 @@ begin
        where (p.opened_at is not null or r.is_admin)
          and not exists (
            select 1 from public.member_blocks b
-            where b.blocker_id = r.id and b.blocked_id in (p.author_id, p.starter_id)
+            where (b.blocker_id = r.id and b.blocked_id in (p.author_id, p.starter_id))
+               or (b.blocker_id in (p.author_id, p.starter_id) and b.blocked_id = r.id and not r.is_admin)
          )
          and not exists (
            select 1 from public.chat_topic_mutes x where x.topic_id = p.topic_id and x.member_id = r.id
@@ -847,8 +903,8 @@ begin
        where l.author_id is distinct from l.liker_id
          and not exists (
            select 1 from public.member_blocks b
-            where b.blocker_id = r.id
-              and b.blocked_id in (
+            where (b.blocker_id = r.id or (b.blocked_id = r.id and not r.is_admin))
+              and (case when b.blocker_id = r.id then b.blocked_id else b.blocker_id end) in (
                 l.liker_id,
                 (select tp.author_id from public.chat_topics tp where tp.id = l.topic_id)
               )
@@ -930,6 +986,7 @@ begin
            select 1 from public.member_blocks b
             where (b.blocker_id = r.id and b.blocked_id in (l.reactor_id, l.starter_id))
                or (b.blocker_id = l.reactor_id and b.blocked_id = r.id)
+               or (b.blocker_id = l.starter_id and b.blocked_id = r.id and not r.is_admin)
          )
          and (l.opened_at is not null or r.is_admin)
          and not exists (
@@ -975,6 +1032,7 @@ begin
            select 1 from public.member_blocks b
             where (b.blocker_id = r.id and b.blocked_id in (l.author_id, l.starter_id))
                or (b.blocker_id = l.author_id and b.blocked_id = r.id)
+               or (b.blocker_id = l.starter_id and b.blocked_id = r.id and not r.is_admin)
          )
          and not exists (
            select 1 from public.chat_topic_mutes q where q.topic_id = l.topic_id and q.member_id = r.id
@@ -1004,7 +1062,8 @@ begin
          and t.event_id is null
          and not exists (
            select 1 from public.member_blocks b
-            where b.blocker_id = r.id and b.blocked_id = (p_key ->> 'by')::uuid
+            where (b.blocker_id = r.id and b.blocked_id = (p_key ->> 'by')::uuid)
+               or (b.blocker_id = (p_key ->> 'by')::uuid and b.blocked_id = r.id and not r.is_admin)
          )
          and (p_key ->> 'by') is not null
          and (p_key ->> 'by')::uuid <> tm.member_id
@@ -1256,7 +1315,8 @@ begin
          )
          and not exists (
            select 1 from public.member_blocks b
-            where b.blocker_id = r.id and b.blocked_id in (n.actor_id, ox.id)
+            where (b.blocker_id = r.id and b.blocked_id in (n.actor_id, ox.id))
+               or (b.blocker_id in (n.actor_id, ox.id) and b.blocked_id = r.id and not r.is_admin)
          );
 
   elsif p_event = 'daily' then
@@ -1402,9 +1462,9 @@ AS $function$
           and n.author_id is distinct from member
           and not exists (
             select 1 from public.member_blocks b
-             where b.blocker_id = member and b.blocked_id = n.author_id
+             where (b.blocker_id = member and b.blocked_id = n.author_id)
+                or (b.blocker_id = n.author_id and b.blocked_id = member
+                    and not exists (select 1 from public.members a where a.id = member and a.is_admin))
           )
      );
 $function$;
-
-drop function private.my_hidden_member_ids();

@@ -1,5 +1,5 @@
 -- ============================================================================
--- One badge request gives the same four numbers (20261103230000)
+-- One badge request gives the same four numbers (20261104211000)
 -- ============================================================================
 -- my_badge_counts, read as each member, against the four functions it
 -- replaces in the app: chat_unread_count, my_unseen_notification_count,
@@ -8,8 +8,8 @@
 -- The people are SPEED-PLAN Step 2's: the fixtures of
 -- unread-count-matches-list.sql and unseen-count-matches-list.sql, copied,
 -- plus rows that tell the four numbers apart, and today's rules: a block
--- hides both ways (190000), a muted conversation (200000), a paused or
--- removed member reads nothing (210000), an administrator is not hidden from.
+-- hides both ways (203000), a muted conversation (204000), a paused or
+-- removed member reads nothing (205000), an administrator is not hidden from.
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \

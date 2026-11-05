@@ -1,5 +1,5 @@
 -- ============================================================================
--- The notify list counts each event once (20261104070000)
+-- The notify list counts each event once (20261104215000)
 -- ============================================================================
 -- organization_event_notices, rewritten for speed, must return what the
 -- 20261103085000 version returned, row for row and in order. An organization

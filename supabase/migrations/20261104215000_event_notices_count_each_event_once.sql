@@ -13,7 +13,7 @@
 -- 100 events are picked first, and member_sees_event() is only asked for
 -- followers or groups events (it is always true for public and club ones).
 -- Same rows, same checks. Probe: event-notices-same-rows.sql.
--- Undo: supabase/undo/20261104070000.sql.
+-- Undo: supabase/undo/20261104215000.sql.
 -- ============================================================================
 
 create or replace function public.organization_event_notices(p_organization uuid)

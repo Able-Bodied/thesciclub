@@ -92,7 +92,7 @@ const { rosterFilter } = vi.hoisted(() => ({
             : true,
 }));
 // As admin_invite_page, admin_invite_counts and admin_join_tally answer
-// (20261103160000), over api.invites; their own probe is admin-invite-page.sql.
+// (20261104201000), over api.invites; their own probe is admin-invite-page.sql.
 const inviteKey = (i: AdminInvite) => (i.email ?? i.phone ?? i.id).toLowerCase();
 const newestFirst = (a: AdminInvite, b: AdminInvite) => b.createdAt.localeCompare(a.createdAt);
 function invitePart(part: 'listed' | 'withdrawn') {

@@ -8,7 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * Blocking a member (20261022050000 to 20261022080000).
  *
- * The database does the hiding, both ways since 20261103190000, and the
+ * The database does the hiding, both ways since 20261104203000, and the
  * refusing; this asks and reads back the blocker's own list. The blocked
  * member cannot read it, and is not told.
  */

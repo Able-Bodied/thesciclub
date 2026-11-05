@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Going and interested counts: the shortcut changes no number
--- (20261103150000)
+-- (20261104200000)
 -- ============================================================================
 -- For each person, every row of event_rsvp_counts is compared with the view
 -- as it was before (20261022180000), rebuilt here as a temporary view run the

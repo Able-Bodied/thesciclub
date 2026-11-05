@@ -339,7 +339,7 @@ select resolved_at is null as still_open, place from public.admin_chat_reports()
 \echo ''
 \echo '== 16. somebody paused cannot report: they read nothing =='
 \echo '   expect: f reads | f writes, then ERROR. A paused member reads nothing'
-\echo '   (20261103210000), so cannot report what they can no longer see; an'
+\echo '   (20261104205000), so cannot report what they can no longer see; an'
 \echo '   administrator can still be asked directly.'
 reset role;
 insert into public.chat_thread_members (thread_id, member_id)

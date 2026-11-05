@@ -84,7 +84,7 @@ it('shares a public event at thesciclub.com/e/', () => {
   expect(publicEventUrl('abc')).toBe('https://thesciclub.com/e/abc');
 });
 
-describe('a refused registration (20261103180000)', () => {
+describe('a refused registration (20261104202000)', () => {
   const registration = {
     eventId: 'gone',
     status: 'going' as const,

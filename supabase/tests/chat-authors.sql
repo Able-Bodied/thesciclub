@@ -139,7 +139,7 @@ rollback to savepoint removed;
 
 \echo ''
 \echo '== 7. a suspended member neither reads nor writes =='
-\echo '   expect: f | f | 0. A paused member reads nothing (20261103210000).'
+\echo '   expect: f | f | 0. A paused member reads nothing (20261104205000).'
 savepoint suspended;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-1111-0000-0000-000000000004","role":"authenticated"}';

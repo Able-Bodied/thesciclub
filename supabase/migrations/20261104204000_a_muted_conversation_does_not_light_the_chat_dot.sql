@@ -12,7 +12,7 @@
 --
 -- As 20261029140000 otherwise, still SECURITY INVOKER: the member reads their
 -- own mutes. Probe: unread-count-matches-list.sql.
--- Undo: supabase/undo/20261103200000.sql.
+-- Undo: supabase/undo/20261104204000.sql.
 -- ============================================================================
 
 create or replace function public.chat_unread_count()

@@ -402,7 +402,7 @@ rollback to savepoint long_title;
 \echo '   expect: f a_member | f active | 0 threads, then ERROR on the message,'
 \echo '   ERROR on starting a group and ERROR on adding — and DELETE 0 for'
 \echo '   leaving, and f still_in_it only because they cannot read it: a paused'
-\echo '   member reads nothing (20261103210000), not even the roster row leaving'
+\echo '   member reads nothing (20261104205000), not even the roster row leaving'
 \echo '   would delete. Reinstated, they can leave.'
 savepoint suspended_caller;
 set local role postgres;

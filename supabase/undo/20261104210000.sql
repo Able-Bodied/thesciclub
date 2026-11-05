@@ -1,4 +1,4 @@
--- Undo for 20261103220000_only_active_members_edit_their_profile.sql: a paused
+-- Undo for 20261104210000_only_active_members_edit_their_profile.sql: a paused
 -- or removed member edits their own row and photograph again, as before.
 
 alter policy "members can update own row" on public.members

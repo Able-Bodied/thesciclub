@@ -275,7 +275,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
             .abortSignal(controller.signal) as PromiseLike<Result<TopicRow[]>>,
         want.current,
       );
-      // A database before 20261104010000: the whole list, as before.
+      // A database before 20261104212000: the whole list, as before.
       if (missingFunction(read.error)) {
         const all = (await supabase
           .rpc('chat_topics_for', { room: roomId })
@@ -326,7 +326,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
   return { topics, loading, error, reload, hasMore, loadingMore, showMore };
 }
 
-/** One topic's row (20261104010000), or the room's list on an older database. */
+/** One topic's row (20261104212000), or the room's list on an older database. */
 async function readOneTopic(
   topicId: string,
   roomId: string,

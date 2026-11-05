@@ -1,4 +1,4 @@
--- Undo for 20261104070000_event_notices_count_each_event_once.sql: the notify
+-- Undo for 20261104215000_event_notices_count_each_event_once.sql: the notify
 -- list as 20261103085000 wrote it.
 
 create or replace function public.organization_event_notices(p_organization uuid)

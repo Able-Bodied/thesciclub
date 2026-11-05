@@ -128,7 +128,7 @@ select count(*) as saves from public.chat_saves;
 \echo ''
 \echo '== 8. a paused member may not save: they cannot read the topic =='
 \echo '   expect: f a_member | f active, then ERROR (row-level security).'
-\echo '   A paused member reads nothing (20261103210000).'
+\echo '   A paused member reads nothing (20261104205000).'
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-5a5e-0000-0000-000000000004","role":"authenticated"}';
 set local role authenticated;

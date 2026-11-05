@@ -19,7 +19,7 @@ create table if not exists private.member_places (
 );
 
 comment on table private.member_places is
-  'Where the map counts each member, rounded as map_peer_cities sends it. Kept by triggers. See 20261104040000.';
+  'Where the map counts each member, rounded as map_peer_cities sends it. Kept by triggers. See 20261104214000.';
 
 revoke all on private.member_places from public, anon, authenticated;
 

@@ -1,5 +1,5 @@
 -- ============================================================================
--- A paused member reads nothing (20261103210000)
+-- A paused member reads nothing (20261104205000)
 -- ============================================================================
 -- An active member and a suspended one share an open room, a conversation, a
 -- photograph and the seed's events. The active one reads them; the suspended

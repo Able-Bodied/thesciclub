@@ -1,4 +1,4 @@
--- Undo for 20261103200000_a_muted_conversation_does_not_light_the_chat_dot.sql:
+-- Undo for 20261104204000_a_muted_conversation_does_not_light_the_chat_dot.sql:
 -- a muted conversation counts towards the Chat dot again, as live before it.
 
 create or replace function public.chat_unread_count()

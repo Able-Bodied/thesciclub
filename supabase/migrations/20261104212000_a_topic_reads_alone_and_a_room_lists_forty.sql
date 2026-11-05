@@ -14,7 +14,7 @@
 --
 -- chat_topics_for(room) is unchanged, for store apps that still call it.
 --
--- Probe: topic-list-pages.sql. Undo: supabase/undo/20261104010000.sql.
+-- Probe: topic-list-pages.sql. Undo: supabase/undo/20261104212000.sql.
 -- ============================================================================
 
 create function public.chat_topic_for(topic uuid)

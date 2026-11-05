@@ -1,5 +1,5 @@
 -- ============================================================================
--- A registration refusal is not a server error (20261103180000)
+-- A registration refusal is not a server error (20261104202000)
 -- ============================================================================
 -- Under 20261029110000, steps 1 and 2 answered P0002 and step 5 54000, which
 -- PostgREST sends as HTTP 500. Now 22023 and P0001 (both 400), same words.

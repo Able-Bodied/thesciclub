@@ -1,4 +1,4 @@
--- Undo for 20261103210000_a_paused_member_reads_nothing.sql: suspended members
+-- Undo for 20261104205000_a_paused_member_reads_nothing.sql: suspended members
 -- read again, as before. The bell's functions as live before it.
 
 create or replace function public.is_member()

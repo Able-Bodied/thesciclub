@@ -72,7 +72,7 @@ select current_user, auth.uid(), public.is_admin() as admin;
 \echo ''
 \echo '== 1. the refusals =='
 \echo '   expect: PASS 1a (yourself 42501, nobody P0002, hidden P0002), PASS 1b (a paused'
-\echo '   member 42501, 20261103210000; an account with no member row 42501), PASS 1c (anon may not execute)'
+\echo '   member 42501, 20261104205000; an account with no member row 42501), PASS 1c (anon may not execute)'
 do $$
 begin
   begin
