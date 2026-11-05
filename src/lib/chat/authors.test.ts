@@ -146,7 +146,6 @@ describe('fetchChatAuthors', () => {
 });
 
 describe('open screens', () => {
-  // Only the interval is faked; this settles by hand.
   const settle = async () => {
     for (let i = 0; i < 10; i += 1) {
       await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
@@ -154,26 +153,25 @@ describe('open screens', () => {
   };
 
   // The robots, 2026-11-04: a topic left open kept an old photo for 112 s+.
-  it('read every author they draw again each minute, in one read, and redraw', async () => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    try {
-      const data = rows.map((row) => ({ ...row }));
-      const { useChatAuthors } = await loadWithClient(data);
-      const { FACES_FRESH_MS } = await import('@/lib/shared-reads');
-      const topic = renderHook(() => useChatAuthors(['a', 'b']));
-      const likes = renderHook(() => useChatAuthors(['a']));
-      await settle();
-      expect(topic.result.current.get('a')?.photoPath).toBe('seed/a.webp');
-      const before = asked.length;
-      Object.assign(data[0] ?? {}, { photo_path: 'a/profile-new.webp' });
-      vi.advanceTimersByTime(FACES_FRESH_MS);
-      await settle();
-      expect(asked.slice(before)).toEqual([['a', 'b']]);
-      expect(topic.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
-      expect(likes.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
-    } finally {
-      vi.useRealTimers();
-    }
+  it('read every author they draw again on a page shown again, in one read, and redraw', async () => {
+    const data = rows.map((row) => ({ ...row }));
+    const { useChatAuthors } = await loadWithClient(data);
+    const { FACES_FRESH_MS } = await import('@/lib/shared-reads');
+    const topic = renderHook(() => useChatAuthors(['a', 'b']));
+    const likes = renderHook(() => useChatAuthors(['a']));
+    await settle();
+    expect(topic.result.current.get('a')?.photoPath).toBe('seed/a.webp');
+    const before = asked.length;
+    Object.assign(data[0] ?? {}, { photo_path: 'a/profile-new.webp' });
+    const later = Date.now() + FACES_FRESH_MS;
+    vi.spyOn(Date, 'now').mockReturnValue(later);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    expect(asked.slice(before)).toEqual([['a', 'b']]);
+    expect(topic.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
+    expect(likes.result.current.get('a')?.photoPath).toBe('a/profile-new.webp');
+    vi.restoreAllMocks();
   });
 
   it('redraw a photo another read brought, reading nothing', async () => {

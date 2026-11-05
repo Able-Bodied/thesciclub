@@ -206,14 +206,16 @@ describe('the shared directory', () => {
     expect(open.result.current.loading).toBe(false);
   });
 
-  it('reads again behind what is shown when a photo will not load, once per 30 s', async () => {
+  it('reads photos again behind what is shown when one will not load, once per 30 s', async () => {
     const open = await loaded();
     const now = Date.now();
-    db.rows['member-a'] = [row('b', 'Bea'), row('c', 'Cal (changed)')];
+    db.rows['member-a'] = [row('b', 'Bea'), { ...row('c', 'Cal'), photo_path: 'c/new.webp' }];
     photoBroke(now);
     await waitFor(() => {
-      expect(names(open.result.current.members)).toEqual(['Bea', 'Cal (changed)']);
+      expect(open.result.current.members[1]?.photoPath).toBe('c/new.webp');
     });
+    // The light read, not the deck.
+    expect(db.reads.map((read) => read.columns)[1]).toBe('id, photo_path, photo_alt');
     expect(db.reads).toHaveLength(2);
     // A screen of failing faces is still one read.
     photoBroke(now + 1);
@@ -269,38 +271,40 @@ describe('the shared directory', () => {
     expect(db.reads).toHaveLength(2);
   });
 
-  // The robots, 2026-11-04: open screens kept an old photo for 112 s+.
-  it('patches a changed photo into open screens each minute, with a light read', async () => {
-    // Only the interval is faked; waitFor polls on one, so this settles by hand.
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    const settle = async () => {
-      for (let i = 0; i < 10; i += 1) {
-        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-      }
+  // The robots, 2026-11-04: open screens kept an old photo for 112 s+. The
+  // owner, the same day: nothing on a timer while the page stays seen.
+  it('reads nothing while seen and idle, and patches a moved photo when shown again', async () => {
+    const open = await loaded();
+    const first = open.result.current.members;
+    vi.useFakeTimers();
+    const flush = () =>
+      act(async () => {
+        for (let i = 0; i < 20; i += 1) await Promise.resolve();
+      });
+    const show = async (state: DocumentVisibilityState) => {
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(state);
+      document.dispatchEvent(new Event('visibilitychange'));
+      await flush();
     };
     try {
-      const open = renderHook(() => useBrowseMembers());
-      await settle();
-      const first = open.result.current.members;
-      expect(names(first)).toEqual(['Bea', 'Cal']);
-      // Nothing moved: no redraw.
-      vi.advanceTimersByTime(FACES_FRESH_MS);
-      await settle();
-      expect(db.reads.map((read) => read.columns.startsWith('id, photo_path'))).toEqual([
-        false,
-        true,
-      ]);
-      expect(db.reads[1]?.columns).toBe('id, photo_path, photo_alt');
-      expect(open.result.current.members).toBe(first);
-      db.rows['member-a'] = [
-        { ...row('b', 'Bea'), photo_path: 'b/profile-new.webp' },
-        row('c', 'Cal'),
-      ];
-      vi.advanceTimersByTime(FACES_FRESH_MS);
-      await settle();
-      expect(open.result.current.members[0]?.photoPath).toBe('b/profile-new.webp');
-      expect(names(open.result.current.members)).toEqual(['Bea', 'Cal']);
-      // The probe only: the deck is not read again.
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+      vi.advanceTimersByTime(5 * 60_000);
+      await flush();
+      expect(db.reads).toHaveLength(1);
+      db.rows['member-a'] = [{ ...row('b', 'Bea'), photo_path: 'b/new.webp' }, row('c', 'Cal')];
+      await show('hidden');
+      await show('visible');
+      expect(db.reads.map((read) => read.columns)[1]).toBe('id, photo_path, photo_alt');
+      expect(open.result.current.members[0]?.photoPath).toBe('b/new.webp');
+      expect(open.result.current.members[1]).toBe(first[1]);
+      // Shown again within the minute: nothing.
+      vi.advanceTimersByTime(FACES_FRESH_MS - 1);
+      await show('hidden');
+      await show('visible');
+      expect(db.reads).toHaveLength(2);
+      vi.advanceTimersByTime(1);
+      await show('hidden');
+      await show('visible');
       expect(db.reads).toHaveLength(3);
     } finally {
       vi.useRealTimers();

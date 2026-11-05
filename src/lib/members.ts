@@ -205,24 +205,21 @@ const directoryWatchers = new Set<() => void>();
 const tellWatchers = () => {
   for (const watcher of directoryWatchers) watcher();
 };
+/** Screens showing the directory, told to draw the kept read as patched. */
+const directoryRedrawers = new Set<() => void>();
 onDirectoryChanged(() => {
   forgetDirectory();
   tellWatchers();
 });
-// Another member's photo changed: read again behind what is shown.
-onPhotoBroke(() => {
-  if (heldDirectory?.value) heldDirectory.at = 0;
-  tellWatchers();
-});
 
 /**
- * Each minute a screen is seen (shared-reads.ts): only ids and photos, one
- * read for every screen, and the kept read patched and redrawn if one moved.
+ * After a broken photo or a page shown again (shared-reads.ts): only ids and
+ * photos, one read for every screen, the kept read patched if one moved.
  */
 let probing = false;
 async function probePhotos(): Promise<void> {
   const held = heldDirectory;
-  if (probing || !held?.value || held.reading || directoryWatchers.size === 0) return;
+  if (probing || !held?.value || held.reading || directoryRedrawers.size === 0) return;
   // A call, so the type checker does not narrow it across the await.
   const current = () => heldDirectory === held && !held.reading;
   probing = true;
@@ -249,13 +246,18 @@ async function probePhotos(): Promise<void> {
     if (next.every((member, i) => member === members[i])) return;
     held.value = next;
     held.read = Promise.resolve({ members: next, error: null });
-    tellWatchers();
+    // Redrawn, not read: a stale deck is not read again for a photo.
+    for (const redraw of directoryRedrawers) redraw();
   } catch {
-    // Offline: the next minute asks again.
+    // Offline: the next broken photo or return asks again.
   } finally {
     probing = false;
   }
 }
+// Another member's photo may have changed: a photo broke, or the page is back.
+onPhotoBroke(() => {
+  void probePhotos();
+});
 onFacesStale(() => {
   void probePhotos();
 });
@@ -336,13 +338,24 @@ export function useBrowseMembers(use: DirectoryUse = 'deck'): MembersState {
     const watcher = () => {
       setRound((n) => n + 1);
     };
+    const redraw = () => {
+      setState((now) => {
+        const held = heldDirectory;
+        if (now.signedOut || !held?.value || now.members === held.value || !covers(held, use)) {
+          return now;
+        }
+        return { members: held.value, loading: false, error: null, signedOut: false };
+      });
+    };
     directoryWatchers.add(watcher);
+    directoryRedrawers.add(redraw);
     const release = holdFacesFresh();
     return () => {
       directoryWatchers.delete(watcher);
+      directoryRedrawers.delete(redraw);
       release();
     };
-  }, []);
+  }, [use]);
 
   useEffect(() => {
     let cancelled = false;

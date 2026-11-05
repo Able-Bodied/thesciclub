@@ -51,33 +51,46 @@ describe('photoBroke', () => {
 });
 
 describe('holdFacesFresh', () => {
-  it('tells the kept reads each minute while a screen holds it and the page is seen', () => {
+  const show = (state: DocumentVisibilityState) => {
+    seen(state);
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+
+  // The owner, 2026-11-04: nothing on a timer while the page stays seen.
+  it('tells nothing over minutes of a seen, idle page', () => {
     seen('visible');
     const release = holdFacesFresh();
-    const second = holdFacesFresh();
-    vi.advanceTimersByTime(FACES_FRESH_MS - 1);
+    vi.advanceTimersByTime(10 * FACES_FRESH_MS);
     expect(told.stale).toBe(0);
-    vi.advanceTimersByTime(1);
-    expect(told.stale).toBe(1);
-    vi.advanceTimersByTime(FACES_FRESH_MS);
-    expect(told.stale).toBe(2);
     release();
-    second();
-    vi.advanceTimersByTime(FACES_FRESH_MS * 3);
-    expect(told.stale).toBe(2);
   });
 
-  it('asks nothing while hidden, and once on being shown again', () => {
-    seen('hidden');
+  it('tells the kept reads when the page is shown again, at most once a minute', () => {
     const release = holdFacesFresh();
-    vi.advanceTimersByTime(FACES_FRESH_MS * 3);
+    const second = holdFacesFresh();
+    // Shown again soon after the screen opened: nothing.
+    show('hidden');
+    show('visible');
     expect(told.stale).toBe(0);
-    seen('visible');
-    document.dispatchEvent(new Event('visibilitychange'));
+    vi.advanceTimersByTime(FACES_FRESH_MS);
+    show('hidden');
+    expect(told.stale).toBe(0);
+    show('visible');
     expect(told.stale).toBe(1);
-    // Shown again with no tick missed: nothing.
-    document.dispatchEvent(new Event('visibilitychange'));
+    vi.advanceTimersByTime(FACES_FRESH_MS - 1);
+    show('hidden');
+    show('visible');
     expect(told.stale).toBe(1);
+    vi.advanceTimersByTime(1);
+    show('hidden');
+    show('visible');
+    expect(told.stale).toBe(2);
+    // No screen drawing faces: nothing.
     release();
+    second();
+    vi.advanceTimersByTime(FACES_FRESH_MS);
+    show('hidden');
+    show('visible');
+    expect(told.stale).toBe(2);
   });
 });

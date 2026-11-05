@@ -45,7 +45,7 @@ const settle = async () => {
 };
 
 afterEach(() => {
-  vi.useRealTimers();
+  vi.restoreAllMocks();
   db.row = { id: 'b', type: 'peer', display_name: 'Bea', state: 'CA', photo_path: 'b/old.webp' };
   db.reads = [];
   db.fail = false;
@@ -53,23 +53,29 @@ afterEach(() => {
 
 describe('an open profile', () => {
   // The robots, 2026-11-04: a profile left open kept the old photo.
-  it('reads only the photo again each minute, and draws a changed one', async () => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  it('reads only the photo again when shown again, and draws a changed one', async () => {
     db.row.photo_path = 'b/old.webp';
     const open = renderHook(() => useBrowseMember('b'));
     await settle();
     const first = open.result.current.member;
     expect(first?.photoPath).toBe('b/old.webp');
-    vi.advanceTimersByTime(FACES_FRESH_MS);
+    const start = Date.now();
+    const shownAt = (at: number) => {
+      vi.spyOn(Date, 'now').mockReturnValue(at);
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    shownAt(start + FACES_FRESH_MS);
     await settle();
     expect(db.reads).toEqual(['*', 'id, photo_path, photo_alt']);
     // Unchanged: the same object, so nothing redraws.
     expect(open.result.current.member).toBe(first);
     db.row.photo_path = 'b/new.webp';
-    vi.advanceTimersByTime(FACES_FRESH_MS);
+    shownAt(start + 2 * FACES_FRESH_MS);
     await settle();
     expect(open.result.current.member?.photoPath).toBe('b/new.webp');
     expect(open.result.current.member?.displayName).toBe('Bea');
+    vi.restoreAllMocks();
   });
 
   it('keeps what it shows through a failed re-read after a broken photo', async () => {

@@ -85,46 +85,38 @@ export function photoBroke(now = Date.now()): void {
 }
 
 const faceListeners = new Set<() => void>();
-/** How often open screens look for other members' changed photos. */
+/** A page shown again looks for changed photos at most this often. No timer. */
 export const FACES_FRESH_MS = 60_000;
 let faceHolders = 0;
-let faceTimer: ReturnType<typeof setInterval> | null = null;
-let missedFaces = false;
+let lastFacesLook: number | null = null;
 
-/** For a kept read that names photographs, told each FACES_FRESH_MS while seen. */
+/** For a kept read that names photographs, told when the page is shown again. */
 export function onFacesStale(listener: () => void): void {
   faceListeners.add(listener);
 }
 
-function facesStale(): void {
-  if (document.visibilityState !== 'visible') {
-    missedFaces = true;
-    return;
-  }
-  missedFaces = false;
+function onFacesShown(): void {
+  if (document.visibilityState !== 'visible') return;
+  const now = Date.now();
+  if (lastFacesLook !== null && now - lastFacesLook < FACES_FRESH_MS) return;
+  lastFacesLook = now;
   for (const listener of faceListeners) listener();
 }
 
-function onFacesShown(): void {
-  if (missedFaces && document.visibilityState === 'visible') facesStale();
-}
-
 /**
- * Held by each screen drawing faces: while any does, a timer tells the kept
- * reads, and a page shown again after a missed tick tells them at once.
+ * Held by each screen drawing faces: while any does, a page hidden and shown
+ * again tells the kept reads, once per FACES_FRESH_MS. Nothing while it stays seen.
  */
 export function holdFacesFresh(): () => void {
   faceHolders += 1;
   if (faceHolders === 1) {
-    faceTimer = setInterval(facesStale, FACES_FRESH_MS);
+    // Just read: a page shown again within the minute asks nothing.
+    lastFacesLook ??= Date.now();
     document.addEventListener('visibilitychange', onFacesShown);
   }
   return () => {
     faceHolders -= 1;
     if (faceHolders > 0) return;
-    if (faceTimer !== null) clearInterval(faceTimer);
-    faceTimer = null;
-    missedFaces = false;
     document.removeEventListener('visibilitychange', onFacesShown);
   };
 }
@@ -133,4 +125,5 @@ onForgetSharedReads(() => {
   lastPhotoRecheck = null;
   if (trailingRecheck !== null) clearTimeout(trailingRecheck);
   trailingRecheck = null;
+  lastFacesLook = null;
 });

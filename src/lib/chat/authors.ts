@@ -88,7 +88,7 @@ function readAuthorsAgain(): void {
     });
 }
 // A face changed: this device's own, another member's whose old file is gone,
-// or one of those minutely looks (shared-reads.ts).
+// or the page shown again (shared-reads.ts).
 onDirectoryChanged(readAuthorsAgain);
 onPhotoBroke(readAuthorsAgain);
 onFacesStale(readAuthorsAgain);
