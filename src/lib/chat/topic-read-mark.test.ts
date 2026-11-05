@@ -142,6 +142,19 @@ describe('bursts', () => {
     expect(marks()).toEqual(['post-1', 'post-9', 'post-4']);
   });
 
+  it('sends nothing while the page is hidden, and the newest on return', () => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    markTopicRead('topic', 'post-1', true);
+    markTopicRead('topic', 'post-2', false);
+    vi.advanceTimersByTime(TOPIC_MARK_GAP_MS * 2);
+    flushTopicRead('topic');
+    expect(marks()).toEqual([]);
+    visibility.mockReturnValue('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(marks()).toEqual(['post-2']);
+  });
+
   it('tries again after a failure', async () => {
     state.fail = true;
     markTopicRead('topic', 'post-1', true);
