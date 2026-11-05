@@ -7,16 +7,33 @@ import { pagedDatabase } from '@/test/paged-database';
 const db = vi.hoisted(() => ({
   rows: [] as Record<string, unknown>[],
   onChange: null as (() => void) | null,
+  onRow: null as ((row: Record<string, unknown>) => void) | null,
   watch: vi.fn(),
+  reads: 0,
 }));
 vi.mock('@/lib/chat/realtime', () => ({
-  useRealtimeRows: (options: { table: string; filter: string; onChange: () => void }) => {
+  useRealtimeRows: (options: {
+    table: string;
+    filter: string;
+    onChange: () => void;
+    onRow?: (row: Record<string, unknown>) => void;
+  }) => {
     db.watch(options.table, options.filter);
     db.onChange = options.onChange;
+    db.onRow = options.onRow ?? null;
   },
 }));
 vi.mock('@/lib/supabase', () => ({
-  getSupabase: () => pagedDatabase({ chat_thread_members: db.rows }),
+  getSupabase: () => {
+    const base = pagedDatabase({ chat_thread_members: db.rows });
+    return {
+      ...base,
+      from: (table: string) => {
+        db.reads += 1;
+        return base.from(table);
+      },
+    };
+  },
 }));
 
 const message: ChatMessage = {
@@ -38,6 +55,8 @@ const message: ChatMessage = {
 beforeEach(() => {
   db.rows = [{ thread_id: 'thread', member_id: 'other', last_read_at: '-infinity' }];
   db.onChange = null;
+  db.onRow = null;
+  db.reads = 0;
   db.watch.mockClear();
 });
 
@@ -96,6 +115,67 @@ describe('live receipt reads', () => {
       expect(readReceipt(message, 'direct', result.current)).toBe('Read');
     });
   });
+  it('applies a read position from the change itself, without reading the roster', async () => {
+    const { result } = renderHook(() => useThreadReadReceipts('thread'));
+    await waitFor(() => {
+      expect(result.current?.get('other')).toBe('-infinity');
+    });
+    const before = db.reads;
+    act(() => {
+      db.onRow?.({
+        thread_id: 'thread',
+        member_id: 'other',
+        last_read_at: '2026-10-08T13:00:00+00:00',
+      });
+    });
+    expect(readReceipt(message, 'direct', result.current)).toBe('Read');
+    // An older position arriving late does not move it back.
+    act(() => {
+      db.onRow?.({
+        thread_id: 'thread',
+        member_id: 'other',
+        last_read_at: '2026-10-08T11:00:00+00:00',
+      });
+    });
+    expect(result.current?.get('other')).toBe('2026-10-08T13:00:00+00:00');
+    // A new member of the group, as it came.
+    act(() => {
+      db.onRow?.({
+        thread_id: 'thread',
+        member_id: 'new',
+        last_read_at: '2026-10-08T12:30:00+00:00',
+      });
+    });
+    expect(readReceipt(message, 'group', result.current)).toBe('Read by 2 of 2');
+    expect(db.reads).toBe(before);
+  });
+
+  it('reads the roster again when a change is not shaped as expected', async () => {
+    const { result } = renderHook(() => useThreadReadReceipts('thread'));
+    await waitFor(() => {
+      expect(result.current?.get('other')).toBe('-infinity');
+    });
+    const before = db.reads;
+    // No zone: it would be read as local time.
+    act(() => {
+      db.onRow?.({ thread_id: 'thread', member_id: 'other', last_read_at: '2026-10-08T13:00:00' });
+    });
+    await waitFor(() => {
+      expect(db.reads).toBe(before + 1);
+    });
+    act(() => {
+      db.onRow?.({
+        thread_id: 'elsewhere',
+        member_id: 'other',
+        last_read_at: '2026-10-08T13:00:00Z',
+      });
+    });
+    await waitFor(() => {
+      expect(db.reads).toBe(before + 2);
+    });
+    expect(result.current?.get('other')).toBe('-infinity');
+  });
+
   it('paginates large rosters and scopes the read to this thread', async () => {
     db.rows = Array.from({ length: 1005 }, (_, id) => ({
       thread_id: 'thread',

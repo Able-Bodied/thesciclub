@@ -88,7 +88,9 @@ export default function ChatPage() {
   // in a room they can read. Unfiltered is the point — the list is about all of
   // them at once, and a subscription per row would be a socket per
   // conversation.
-  useRealtimeRows({ table: 'chat_messages', onChange: reloadThreads });
+  // A busy group re-reads the list at most once per 1.5 s, the last kept.
+  const reloadThreadsSoon = useCoalesced(reloadThreads);
+  useRealtimeRows({ table: 'chat_messages', onChange: reloadThreadsSoon });
   // Every reply in every room changes a topic: recount at most once per 1.5 s.
   const reloadStatsSoon = useCoalesced(reloadStats);
   useRealtimeRows({ table: 'chat_topics', onChange: reloadStatsSoon });
