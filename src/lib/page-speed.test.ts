@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   endpointOf,
   flush,
+  measuredVisit,
   ONE_VISIT_IN,
   resetPageSpeed,
   screenOf,
@@ -114,7 +115,7 @@ describe('timing requests', () => {
   });
 });
 
-// The owner, 2026-11-04: one visit in three for now.
+// The owner, 2026-11-05: one visit in ten.
 describe('measuring only some visits', () => {
   it('sends nothing from a visit that is not measured, not even what came before', async () => {
     const send = vi.fn(() => Promise.resolve());
@@ -126,24 +127,47 @@ describe('measuring only some visits', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it('measures about one visit in three', async () => {
-    expect(ONE_VISIT_IN).toBe(3);
+  it('measures one visit in ten', async () => {
+    expect(ONE_VISIT_IN).toBe(10);
     const random = vi.spyOn(Math, 'random');
     const send = vi.fn(() => Promise.resolve());
     const fetcher = timedFetch(() => Promise.resolve(new Response('[]', { status: 200 })));
 
-    random.mockReturnValue(0.32);
+    random.mockReturnValue(0.099);
     startPageSpeed(send);
     await fetcher(`${BASE}/rest/v1/members`, {});
     flush();
     expect(send).toHaveBeenCalledTimes(1);
 
+    // Measured at one in three, not at one in ten.
     resetPageSpeed();
-    random.mockReturnValue(0.34);
+    random.mockReturnValue(0.1);
     startPageSpeed(send);
     await fetcher(`${BASE}/rest/v1/members`, {});
     flush();
     expect(send).toHaveBeenCalledTimes(1);
     random.mockRestore();
+  });
+
+  it('measures about a tenth of many page loads', () => {
+    const loads = 50_000;
+    let measured = 0;
+    for (let i = 0; i < loads; i++) if (measuredVisit()) measured += 1;
+    expect(measured / loads).toBeGreaterThan(0.09);
+    expect(measured / loads).toBeLessThan(0.11);
+  });
+
+  it('keeps one visit’s requests together under one id', async () => {
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    const send = vi.fn((_samples: { visit: string }[]) => Promise.resolve());
+    const fetcher = timedFetch(() => Promise.resolve(new Response('[]', { status: 200 })));
+    startPageSpeed(send);
+    await fetcher(`${BASE}/rest/v1/members`, {});
+    await fetcher(`${BASE}/rest/v1/rpc/map_events`, {});
+    flush();
+    random.mockRestore();
+    const batch = send.mock.calls[0]?.[0] ?? [];
+    expect(batch).toHaveLength(2);
+    expect(new Set(batch.map((s) => s.visit)).size).toBe(1);
   });
 });

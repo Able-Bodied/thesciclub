@@ -186,7 +186,7 @@ export function PageSpeedSection() {
               <thead className="text-grey">
                 <tr>
                   <th className="px-2 py-1.5 text-left font-semibold">Screen</th>
-                  <th className={HEAD}>Loads</th>
+                  <th className={HEAD}>Sampled loads</th>
                   {LOAD_METRICS.map(([, label]) => (
                     <th key={label} className={HEAD}>
                       {label} p50 / p90
@@ -219,7 +219,7 @@ export function PageSpeedSection() {
                   <th className="px-2 py-1.5 text-left font-semibold">
                     {unit === 'hour' ? 'Hour' : 'Day'}
                   </th>
-                  <th className={HEAD}>Loads</th>
+                  <th className={HEAD}>Sampled loads</th>
                   <th className={HEAD}>Typical</th>
                   <th className={HEAD}>Slow end</th>
                 </tr>
@@ -252,7 +252,7 @@ export function PageSpeedSection() {
                 <thead className="text-grey">
                   <tr>
                     <th className="px-2 py-1.5 text-left font-semibold">Request</th>
-                    <th className={HEAD}>Count</th>
+                    <th className={HEAD}>Sampled</th>
                     <th className={HEAD}>Typical</th>
                     <th className={HEAD}>Slow end</th>
                     <th className={HEAD}>Failed</th>
@@ -280,8 +280,9 @@ export function PageSpeedSection() {
       )}
       <p className="mt-2 text-[0.75rem] text-grey leading-[1.45]">
         Measured on people’s own devices, not tied to anybody, and kept 30 days. One visit in{' '}
-        {ONE_VISIT_IN} is measured, so visits are about 1/{ONE_VISIT_IN} of the real number. Typical
-        (p50) is the middle time; the slow end (p90) is where one in ten took longer.
+        {ONE_VISIT_IN} is measured, so every count here is a sample, about 1/{ONE_VISIT_IN} of the
+        real number. Typical (p50) is the middle time; the slow end (p90) is where one in ten took
+        longer.
       </p>
     </section>
   );

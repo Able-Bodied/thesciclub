@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useThreadMessages } from '@/lib/chat/threads';
+import { resetTopicReadMarks } from '@/lib/chat/topic-read-mark';
 import { useTopicPosts } from '@/lib/chat/topics';
 import { pagedDatabase } from '@/test/paged-database';
 
@@ -39,6 +40,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 beforeEach(() => {
+  resetTopicReadMarks();
   state.rpc.mockClear();
   state.sent.mockClear();
   const rows = Array.from({ length: 1005 }, (_, id) => ({

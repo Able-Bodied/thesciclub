@@ -27,7 +27,7 @@ describe('the slowest requests', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: /rpc:map_events/ }));
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Typical 288 ms · slow end 4.3 s466 requests · 2 failed',
+      'Typical 288 ms · slow end 4.3 s466 sampled requests · 2 failed',
     );
   });
 });
