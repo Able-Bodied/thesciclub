@@ -298,7 +298,7 @@ $$;
 select exists (
   select 1 from vault.decrypted_secrets where name = 'push_notify_url' and decrypted_secret <> ''
 ) as url_set;
--- A device for Bo: a message queues only when a push is owed (20261105110000).
+-- A device for Bo: a message queues only when a push is owed (20261105160000).
 insert into public.push_subscriptions (endpoint, member_id, p256dh, auth)
 values ('https://web.push.apple.com/rename-probe', 'bbbbbbbb-7777-0000-0000-000000000002',
         'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',

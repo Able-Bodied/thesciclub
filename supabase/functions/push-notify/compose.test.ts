@@ -49,7 +49,7 @@ describe('compose', () => {
     ).toMatchObject({ title: 'Group message from Bo in Weekend Crew', body: 'Who is driving?' });
   });
 
-  // 20261105110000: one push per 2 minutes says how many are unread.
+  // 20261105160000: one push per 2 minutes says how many are unread.
   it('says how many messages are unread when more than one', () => {
     expect(compose(owed({ detail: '3' }))).toMatchObject({
       title: '3 new messages from Bo',

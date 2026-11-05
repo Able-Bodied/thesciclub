@@ -1,5 +1,5 @@
 -- ============================================================================
--- A busy conversation pushes once every two minutes (20261105110000)
+-- A busy conversation pushes once every two minutes (20261105160000)
 -- ============================================================================
 -- Who gets a push for a conversation message, and when; the bell is checked
 -- alongside, as it must not change. Time is moved by backdating pushed_at

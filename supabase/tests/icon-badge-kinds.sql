@@ -109,7 +109,7 @@ reset role;
 select pg_temp.check_true(pg_temp.ana_icon() = 4, 'and two reactions: 4');
 
 \echo '== 3. every push carries the same number =='
--- 22, the first: the second came within 2 minutes and pushed nobody (20261105110000).
+-- 22, the first: the second came within 2 minutes and pushed nobody (20261105160000).
 select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000022"}') = 4,
   'a message push says 4');
 select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'like',

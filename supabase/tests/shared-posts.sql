@@ -263,7 +263,7 @@ $$;
 \echo '   expect: PASS 5a (Cy reacts; one notification, no words; a lock screen gets'
 \echo '   no words either), PASS 5b (Bo edits to a line and back to none; cannot'
 \echo '   swap the post), PASS 5c (the reports say a post was shared)'
--- Asked before Cy reads it: a read conversation owes no push (20261105110000).
+-- Asked before Cy reads it: a read conversation owes no push (20261105160000).
 set local role postgres;
 do $$
 declare

@@ -160,7 +160,7 @@ describe('NotificationSettings', () => {
       ).toBeInTheDocument();
     });
 
-    // 20261105110000, the owner's wording.
+    // 20261105160000, the owner's wording.
     it('says a busy conversation notifies at most every 2 minutes', async () => {
       hook.state = 'on';
       render(<NotificationSettings userId="u1" />);

@@ -130,7 +130,7 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/how many kinds of\s+notification you have not opened yet/);
   });
 
-  // 20261105110000.
+  // 20261105160000.
   it('says a busy conversation notifies at most every two minutes, and not while open', () => {
     open('/privacy');
     const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;

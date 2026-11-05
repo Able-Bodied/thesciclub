@@ -1,6 +1,43 @@
--- Undo for 20261105110000_a_busy_conversation_pushes_every_two_minutes.sql:
--- every message pushes to everybody again. The three functions as they were
--- (20261105020000, 20261104203000, 20261010000000), then the columns go.
+-- ============================================================================
+-- A busy conversation pushes once every two minutes
+-- ============================================================================
+-- The owner, 2026-11-05: sending a message was ~12% of Pro's database time
+-- under load, as every message pushed to everybody else and counted each
+-- one's icon number. The bell, the Chat dot and realtime are unchanged; only
+-- pushes for conversation messages change:
+--
+--   1. No push to a member whose read position in the conversation moved in
+--      the last 30 s: they are in it now.
+--   2. At most one push per member per conversation every 2 minutes while it
+--      stays unread. The next one says how many are new (detail). Reading
+--      resets it: the read row closes and the next message makes a new one.
+--   3. The icon number is counted only for a push that goes; and with no push
+--      owed, push_notify_send sends no request at all.
+--
+-- Kept on the notification row each member already upserts (pushed_at,
+-- pushed_message), so a message writes nothing more than before. The message
+-- is recorded on its own, out of the list of every kind: planning that list
+-- was most of a message's cost (10-20 ms locally; now about 1 ms).
+--
+-- Deploy order is free: today's push-notify ignores detail for a message and
+-- says the latest one as before; the new compose.ts says "5 new messages".
+--
+-- Replies, likes, reactions, mentions and every other kind: unchanged.
+-- Anyone restating notifications_record or push_owed keeps pushed_* or
+-- messages stop pushing (probe: busy-conversation-pushes.sql).
+--
+-- push_owed as 20261105020000 left it (a group's name as subject).
+-- Undo: supabase/undo/20261105160000.sql.
+-- ============================================================================
+
+alter table public.notifications
+  add column if not exists pushed_at timestamptz,
+  add column if not exists pushed_message uuid;
+
+comment on column public.notifications.pushed_at is
+  'When this unread conversation row last pushed; null if it has not.';
+comment on column public.notifications.pushed_message is
+  'The message that push was for, which push_owed answers for.';
 
 CREATE OR REPLACE FUNCTION public.notifications_record(p_event text, p_key jsonb)
  RETURNS void
@@ -10,9 +47,69 @@ CREATE OR REPLACE FUNCTION public.notifications_record(p_event text, p_key jsonb
 AS $function$
 declare
   key_id uuid;
+  owed boolean;
 begin
   if p_event in ('message', 'post', 'report', 'member_joined', 'grant_open') then
     key_id := (p_key ->> 'id')::uuid;
+  end if;
+
+  -- A message on its own: planning the whole list below cost more than the
+  -- write. Same rows, same bell. pushed_at/pushed_message say who gets a push:
+  -- not someone whose read position moved in the last 30 s (in the
+  -- conversation now), and at most one per 2 minutes while it stays unread.
+  -- Reading makes a new row, so the next message pushes again.
+  if p_event = 'message' then
+    with up as (
+      insert into public.notifications as n (
+        member_id, kind, tag, actor_id, thread_id, message_id, pushed_at, pushed_message
+      )
+      select tm.member_id, t.kind, 'thread:' || t.id::text, m.author_id, t.id, m.id,
+             w.at, case when w.at is not null then m.id end
+        from public.chat_messages m
+        join public.chat_threads t on t.id = m.thread_id
+        join public.chat_thread_members tm
+          on tm.thread_id = t.id and tm.member_id is distinct from m.author_id
+        join public.members r on r.id = tm.member_id and r.status = 'active'
+        cross join lateral (
+          select case when tm.last_read_at > clock_timestamp() - interval '30 seconds'
+                      then null else clock_timestamp() end as at
+        ) w
+       where m.id = key_id and m.removed_at is null
+         and not exists (
+           select 1 from public.chat_thread_mutes x where x.thread_id = t.id and x.member_id = r.id
+         )
+         and not exists (
+           select 1 from public.member_blocks b
+            where (b.blocker_id = r.id and b.blocked_id = m.author_id)
+               or (b.blocker_id = m.author_id and b.blocked_id = r.id and not r.is_admin)
+         )
+      on conflict (member_id, tag) where read_at is null
+      do update set
+        created_at = clock_timestamp(),
+        count = n.count + 1,
+        actor_id = excluded.actor_id,
+        message_id = excluded.message_id,
+        post_id = excluded.post_id,
+        detail = excluded.detail,
+        grant_id = excluded.grant_id,
+        seen_at = null,
+        pushed_at = case
+          when excluded.pushed_at is not null
+           and (n.pushed_at is null or n.pushed_at <= excluded.pushed_at - interval '2 minutes')
+          then excluded.pushed_at else n.pushed_at end,
+        pushed_message = case
+          when excluded.pushed_at is not null
+           and (n.pushed_at is null or n.pushed_at <= excluded.pushed_at - interval '2 minutes')
+          then excluded.pushed_message else n.pushed_message end
+      returning n.member_id, n.pushed_message
+    )
+    select exists (
+      select 1 from up join public.push_subscriptions s on s.member_id = up.member_id
+       where up.pushed_message = key_id
+    ) into owed;
+    -- push_notify_send skips the request when nobody is owed one.
+    perform set_config('sciclub.message_push', case when owed then 'yes' else 'no' end, true);
+    return;
   end if;
 
   insert into public.notifications as n (
@@ -23,25 +120,12 @@ begin
          owed.message_id, owed.topic_id, owed.post_id, owed.event_id,
          owed.organization_id, owed.report_id, owed.joined_id, owed.detail, owed.grant_id
     from (
-      -- A message: everybody else in the conversation.
-      select tm.member_id, t.kind, 'thread:' || t.id::text as tag, m.author_id as actor_id,
-             t.id as thread_id, m.id as message_id, null::uuid as topic_id, null::uuid as post_id,
+      -- A reply: the topic's starter, and everybody else who has posted in it.
+      -- First now, so it names the columns (a message is recorded above).
+      select owed.member_id, owed.kind, 'topic:' || p.topic_id::text as tag, p.author_id as actor_id,
+             null::uuid as thread_id, null::uuid as message_id, p.topic_id, p.id as post_id,
              null::uuid as event_id, null::uuid as organization_id, null::uuid as report_id,
              null::uuid as joined_id, null::text as detail, null::uuid as grant_id
-        from public.chat_messages m
-        join public.chat_threads t on t.id = m.thread_id
-        join public.chat_thread_members tm
-          on tm.thread_id = t.id and tm.member_id is distinct from m.author_id
-        join public.members r on r.id = tm.member_id and r.status = 'active'
-       where p_event = 'message' and m.id = key_id and m.removed_at is null
-         and not exists (
-           select 1 from public.chat_thread_mutes x where x.thread_id = t.id and x.member_id = r.id
-         )
-
-      union all
-      -- A reply: the topic's starter, and everybody else who has posted in it.
-      select owed.member_id, owed.kind, 'topic:' || p.topic_id::text, p.author_id,
-             null, null, p.topic_id, p.id, null, null, null, null, null, null
         from (
           select p.id, p.author_id, p.topic_id, tp.author_id as starter_id, tp.room_id, rm.opened_at
             from public.chat_posts p
@@ -287,11 +371,16 @@ declare
   target text;
   secret text;
 begin
+  perform set_config('sciclub.message_push', '', true);
   begin
     perform public.notifications_record(p_event, p_key);
   exception when others then
     raise warning 'notifications_record: %', sqlerrm;
   end;
+  -- Nobody owed a push for this message: no request, no push_owed.
+  if p_event = 'message' and current_setting('sciclub.message_push', true) = 'no' then
+    return;
+  end if;
 
   select s.decrypted_secret into target
     from vault.decrypted_secrets s where s.name = 'push_notify_url';
@@ -334,7 +423,9 @@ begin
   if p_event = 'message' then
     -- Opens on the message itself (?message=), which the conversation
     -- scrolls to: a later look at the notification should not land on
-    -- whatever was said since.
+    -- whatever was said since. Only those notifications_record marked for
+    -- this message (20261105160000); detail is how many are unread, if more
+    -- than one.
     return query
       select s.endpoint, s.p256dh, s.auth,
              t.kind, a.display_name, m.body, cardinality(m.attachments),
@@ -342,7 +433,7 @@ begin
              case when t.kind = 'group' then
                coalesce(t.name, (select e.title from public.events e where e.id = t.event_id))
              end,
-             null::text,
+             case when n.count > 1 then n.count::text end,
              '/chat/t/' || t.id::text || '?message=' || m.id::text, 'thread:' || t.id::text,
              public.notification_badge(r.id)
         from public.chat_messages m
@@ -350,6 +441,9 @@ begin
         join public.chat_thread_members tm
           on tm.thread_id = t.id and tm.member_id is distinct from m.author_id
         join public.members r on r.id = tm.member_id and r.status = 'active'
+        join public.notifications n
+          on n.member_id = r.id and n.tag = 'thread:' || t.id::text
+         and n.read_at is null and n.pushed_message = m.id
         join public.push_subscriptions s on s.member_id = r.id
         left join public.members a on a.id = m.author_id
        where m.id = key_id
@@ -999,7 +1093,3 @@ begin
   end if;
 end;
 $function$;
-
-alter table public.notifications
-  drop column if exists pushed_at,
-  drop column if exists pushed_message;

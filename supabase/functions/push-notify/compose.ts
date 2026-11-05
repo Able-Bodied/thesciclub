@@ -7,7 +7,7 @@
  *   Direct message   "Direct message from Bo"   + the words, cut short
  *   Group message    "Group message from Bo in Crew" + the words, cut short
  *   Several unread   "3 new messages from Bo" / "3 new messages in Crew" + "Bo: the words"
- *                    (one push per 2 minutes, 20261105110000)
+ *                    (one push per 2 minutes, 20261105160000)
  *   Topic reply      "Bo replied to your topic" + the words, cut short
  *
  * And the six added the same day (20260927020000):
