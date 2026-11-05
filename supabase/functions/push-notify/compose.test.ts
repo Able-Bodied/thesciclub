@@ -49,6 +49,31 @@ describe('compose', () => {
     ).toMatchObject({ title: 'Group message from Bo in Weekend Crew', body: 'Who is driving?' });
   });
 
+  // 20261105110000: one push per 2 minutes says how many are unread.
+  it('says how many messages are unread when more than one', () => {
+    expect(compose(owed({ detail: '3' }))).toMatchObject({
+      title: '3 new messages from Bo',
+      body: 'See you Friday',
+      tag: 'thread:abc',
+    });
+    expect(compose(owed({ kind: 'group', body: 'Who is driving?', detail: '5' }))).toMatchObject({
+      title: '5 new group messages',
+      body: 'Bo: Who is driving?',
+    });
+    expect(
+      compose(owed({ kind: 'group', body: 'Who is driving?', detail: '5', subject: 'Crew' }))
+        ?.title,
+    ).toBe('5 new messages in Crew');
+    expect(compose(owed({ kind: 'group', body: '', detail: '2' }))?.body).toBe(
+      'Bo: Shared a post.',
+    );
+  });
+
+  it('reads a count of one, or none, as a single message', () => {
+    expect(compose(owed({ detail: '1' }))?.title).toBe('Direct message from Bo');
+    expect(compose(owed({ kind: 'group', detail: 'x' }))?.title).toBe('Group message from Bo');
+  });
+
   // The owner, 2026-10-01: a reply says who, and what they replied, cut short.
   it('says who replied to a topic and what they said', () => {
     const reply = compose(

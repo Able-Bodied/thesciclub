@@ -6,6 +6,8 @@
  *
  *   Direct message   "Direct message from Bo"   + the words, cut short
  *   Group message    "Group message from Bo in Crew" + the words, cut short
+ *   Several unread   "3 new messages from Bo" / "3 new messages in Crew" + "Bo: the words"
+ *                    (one push per 2 minutes, 20261105110000)
  *   Topic reply      "Bo replied to your topic" + the words, cut short
  *
  * And the six added the same day (20260927020000):
@@ -77,7 +79,7 @@ export interface Owed {
   photo_count: number;
   /** An event's title or an organization's name, for the two daily kinds. */
   subject: string | null;
-  /** A start time ("10:00am") or a count ("3"). */
+  /** A start time ("10:00am") or a count ("3"); a message's unread count. */
   detail: string | null;
   url: string;
   tag: string;
@@ -161,6 +163,12 @@ export function withTag(url: string, tag: string): string {
   return `${base}${base.includes('?') ? '&' : '?'}n=${encodeURIComponent(tag)}${hash}`;
 }
 
+/** A message's unread count from `detail`, if more than one. */
+function unread(owed: Owed): number | null {
+  const n = /^\d+$/.test(owed.detail ?? '') ? Number(owed.detail) : 0;
+  return n > 1 ? n : null;
+}
+
 /** Null for a kind this file does not know, which is then not sent at all. */
 export function compose(owed: Owed): PushMessage | null {
   // The author can be gone by the time this runs; the name is not.
@@ -174,17 +182,28 @@ export function compose(owed: Owed): PushMessage | null {
   };
   const subject = shorten(owed.subject ?? '', 60);
 
+  const many = unread(owed);
+
   switch (owed.kind) {
     // A message with neither words nor photographs is a shared post
     // (20261025010000), which is never quoted.
     case 'direct':
       return {
-        title: `Direct message from ${name}`,
+        title: many ? `${many} new messages from ${name}` : `Direct message from ${name}`,
         body: words(owed) || 'Shared a post.',
         ...where,
       };
-    // subject is the group's name, since 20261105020000.
+    // subject is the group's name, since 20261105020000. Several unread
+    // name the latest sender in the body.
     case 'group':
+      if (many) {
+        return {
+          title:
+            subject === '' ? `${many} new group messages` : `${many} new messages in ${subject}`,
+          body: `${name}: ${words(owed) || 'Shared a post.'}`,
+          ...where,
+        };
+      }
       return {
         title:
           subject === ''
