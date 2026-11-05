@@ -20,6 +20,9 @@ const db = vi.hoisted(() => ({
   stats: new Map<string, RoomStats>(),
   isAdmin: false,
   liked: [] as string[],
+  likes: new Map<string, string[]>(),
+  /** The posts whose likes are still being read. */
+  likesLoading: new Set<string>(),
   hasMore: false,
   showMore: vi.fn(),
 }));
@@ -33,8 +36,9 @@ vi.mock('@/lib/chat/opening-posts', () => ({
 vi.mock('@/lib/chat/likes', async (importOriginal) => ({
   ...(await importOriginal<typeof Likes>()),
   usePostLikes: () => ({
-    byPost: new Map(),
-    loading: false,
+    byPost: db.likes,
+    loading: db.likesLoading.size > 0,
+    loadingFor: (id: string) => db.likesLoading.has(id),
     failure: null,
     toggle: (id: string) => {
       db.liked.push(id);
@@ -127,6 +131,8 @@ beforeEach(() => {
   db.topics = [];
   db.stats = new Map();
   db.isAdmin = false;
+  db.likes = new Map();
+  db.likesLoading = new Set();
   db.hasMore = false;
   db.showMore.mockClear();
 });
@@ -239,6 +245,36 @@ describe('a discussion room', () => {
     const group = screen.getByRole('group', { name: 'Sort by' });
     expect(within(group).getByRole('button', { name: 'Activity' })).toBeInTheDocument();
   });
+});
+
+// The robots, 2026-11-04: a liked post drew "Like" until its likes were read.
+it('never draws Like on a liked post before its likes are read', () => {
+  db.topics = [topic({ id: '1', title: 'Travelling with a bowel programme' })];
+  db.likes = new Map([['1-post', ['me']]]);
+  db.likesLoading = new Set(['1-post']);
+  const { rerender } = renderRoom();
+  expect(screen.queryByText(/^Liked?$/)).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Like / })).toBeNull();
+  expect(
+    screen.getByRole('button', {
+      name: 'Your like on Travelling with a bowel programme is not known',
+    }),
+  ).toBeDisabled();
+  expect(screen.getByText('Likes …')).toBeVisible();
+
+  db.likesLoading = new Set();
+  rerender(
+    <MemoryRouter initialEntries={['/chat/rooms/bowel']}>
+      <Routes>
+        <Route path="/chat/rooms/:roomId" element={<RoomPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  expect(
+    screen.getByRole('button', {
+      name: 'Liked Travelling with a bowel programme. Press to take it back.',
+    }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });
 
 it('likes the same opening post from its room row, including the author’s own topic', async () => {

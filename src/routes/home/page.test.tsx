@@ -44,6 +44,8 @@ const db = vi.hoisted(() => ({
   likes: new Map<string, string[]>(),
   likesAskedFor: [] as string[][],
   liked: [] as string[],
+  /** The posts whose likes are still being read. */
+  likesLoading: new Set<string>(),
   near: { status: 'unplaced', ids: null as ReadonlySet<string> | null },
   nearAskedFor: [] as (number | null)[],
 }));
@@ -90,7 +92,8 @@ vi.mock('@/lib/chat/likes', async (importOriginal) => ({
     db.likesAskedFor.push([...ids]);
     return {
       byPost: db.likes,
-      loading: false,
+      loading: db.likesLoading.size > 0,
+      loadingFor: (id: string) => db.likesLoading.has(id),
       error: null,
       failure: null,
       toggle: (id: string) => {
@@ -257,6 +260,7 @@ beforeEach(() => {
   db.likes = new Map();
   db.likesAskedFor = [];
   db.liked = [];
+  db.likesLoading = new Set();
   db.near = { status: 'unplaced', ids: null };
   db.nearAskedFor = [];
 });
@@ -321,6 +325,24 @@ describe('likes on Home', () => {
   it('asks for the likes of every opening post on Home, and nothing else', () => {
     renderPage();
     expect([...(db.likesAskedFor.at(-1) ?? [])].sort()).toEqual(['photo-opening', 'plain-opening']);
+  });
+
+  // The robots, 2026-11-04: a liked post drew "Like" until its likes were read.
+  it('never draws Like on a liked card before its likes are read', () => {
+    db.likes = new Map([
+      ['photo-opening', ['me']],
+      ['plain-opening', ['me']],
+    ]);
+    db.likesLoading = new Set(['photo-opening', 'plain-opening']);
+    renderPage();
+    expect(screen.queryByText(/^Liked?$/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Like / })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Your like on Wheel covers I made is not known' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Your like on Morning or evening routine? is not known' }),
+    ).toBeDisabled();
   });
 
   it('likes a photograph from its card, and counts it', async () => {

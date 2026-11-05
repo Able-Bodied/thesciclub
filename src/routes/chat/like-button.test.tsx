@@ -69,15 +69,22 @@ describe('LikeButton', () => {
 });
 
 describe('PostLikes', () => {
-  it('keeps Like visible while loading without showing a guessed zero', () => {
-    renderLikes({ likedBy: [], loading: true });
-    expect(screen.getByRole('button', { name: "Like Nicole's post" })).toBeDisabled();
+  // The robots, 2026-11-04: a liked post drew "Like" until its likes were read.
+  it('draws neither Like nor Liked while loading, nor a guessed zero', () => {
+    renderLikes({ likedBy: ['me'], loading: true });
+    const button = screen.getByRole('button', { name: "Your like on Nicole's post is not known" });
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute('aria-pressed');
+    expect(button).toHaveTextContent(/^$/);
     expect(screen.getByText('Likes …')).toBeVisible();
     expect(screen.queryByText('0 likes')).toBeNull();
   });
   it('says when the count is unavailable rather than showing zero', () => {
     renderLikes({ likedBy: [], unavailable: true });
-    expect(screen.getByRole('button', { name: "Like Nicole's post" })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: "Your like on Nicole's post is not known" }),
+    ).toBeDisabled();
+    expect(screen.queryByText(/^Liked?$/)).toBeNull();
     expect(screen.getByText('Likes unavailable')).toBeVisible();
     expect(screen.queryByText('0 likes')).toBeNull();
   });

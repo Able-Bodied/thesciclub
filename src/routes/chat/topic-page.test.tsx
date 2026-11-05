@@ -38,6 +38,8 @@ const db = vi.hoisted(() => ({
   likesAskedFor: [] as string[][],
   liked: [] as string[],
   likeFailure: null as { postId: string; message: string } | null,
+  /** The posts whose likes are still being read. */
+  likesLoading: new Set<string>(),
   movedTo: null as string | null,
   saved: new Set<string>(),
   saveToggles: [] as [string, string | null][],
@@ -73,7 +75,8 @@ vi.mock('@/lib/chat/likes', async (importOriginal) => ({
     db.likesAskedFor.push([...ids]);
     return {
       byPost: db.likes,
-      loading: false,
+      loading: db.likesLoading.size > 0,
+      loadingFor: (id: string) => db.likesLoading.has(id),
       error: null,
       failure: db.likeFailure,
       toggle: (id: string) => {
@@ -324,6 +327,7 @@ beforeEach(() => {
   db.likesAskedFor = [];
   db.liked = [];
   db.likeFailure = null;
+  db.likesLoading = new Set();
   db.movedTo = null;
   db.saved = new Set();
   db.saveToggles = [];
@@ -498,6 +502,27 @@ describe('likes', () => {
     await userEvent.click(within(article).getByRole('button', { name: 'Like your post' }));
     expect(db.liked).toEqual(['2']);
     expect(screen.getAllByRole('button', { name: /^Like / })).toHaveLength(2);
+  });
+
+  // The robots, 2026-11-04: a liked post drew "Like" until its likes were read.
+  it('never draws Like on a post whose likes are still being read', () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan', replyTo: '1' })];
+    db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
+    db.likes = new Map([
+      ['1', ['me']],
+      ['2', ['me']],
+    ]);
+    // A reply has just arrived: the first post's likes are still known.
+    db.likesLoading = new Set(['2']);
+    renderTopic();
+    expect(screen.queryByText(/^Like$/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Like / })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: "Liked Nicole's post. Press to take it back." }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('button', { name: "Your like on Jan's post is not known" }),
+    ).toBeDisabled();
   });
 
   it('likes a reply as well as a top-level post', () => {

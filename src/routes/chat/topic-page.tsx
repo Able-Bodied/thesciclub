@@ -503,7 +503,7 @@ export default function TopicPage() {
     likes: {
       likedBy: likes.byPost.get(post.id) ?? [],
       readerId: account.userId,
-      loading: likes.loading,
+      loading: likes.loadingFor(post.id),
       unavailable: Boolean(likes.error),
       onToggle: () => {
         likes.toggle(post.id);

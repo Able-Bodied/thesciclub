@@ -57,7 +57,8 @@ export function LikeButton({
   className,
   disabled = false,
 }: {
-  liked: boolean;
+  /** Null while the reader's own like is not known: no word, so never "Like". */
+  liked: boolean | null;
   /** What is being liked, for the name: "Jan's post", or a topic's title. */
   what: string;
   onToggle: () => void;
@@ -66,6 +67,19 @@ export function LikeButton({
 }) {
   // Goes up with each like, so the thumb remounts and pulses once.
   const [pulse, setPulse] = useState(0);
+  if (liked === null) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-label={`Your like on ${what} is not known`}
+        data-target="small"
+        className={cn(CONTROL, 'text-ink2', className)}
+      >
+        <ThumbsUp aria-hidden="true" className="h-[1.15em] w-[1.15em] flex-none opacity-40" />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -132,7 +146,7 @@ export function PostLikes({
     <>
       {readerId ? (
         <LikeButton
-          liked={likedBy.includes(readerId)}
+          liked={loading || unavailable ? null : likedBy.includes(readerId)}
           what={what}
           onToggle={onToggle}
           className={className}

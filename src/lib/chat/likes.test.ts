@@ -357,6 +357,24 @@ describe('usePostLikes', () => {
     expect(seen.filter((s) => !s.loading).every((s) => s.liked)).toBe(true);
   });
 
+  it('keeps posts already read known while a new post is read', async () => {
+    db.rows = [{ post_id: 'p1', member_id: 'me' }];
+    const { result, rerender } = renderHook(({ ids }) => usePostLikes(ids), {
+      initialProps: { ids: ['p1'] },
+    });
+    expect(result.current.loadingFor('p1')).toBe(true);
+    await waitFor(() => {
+      expect(result.current.loadingFor('p1')).toBe(false);
+    });
+    // A reply arriving: only the new post is unknown.
+    rerender({ ids: ['p1', 'p2'] });
+    expect(result.current.loadingFor('p1')).toBe(false);
+    expect(result.current.loadingFor('p2')).toBe(true);
+    await waitFor(() => {
+      expect(result.current.loadingFor('p2')).toBe(false);
+    });
+  });
+
   it('reads again on reload', async () => {
     const { result } = renderHook(() => usePostLikes(['p1']));
     await waitFor(() => {

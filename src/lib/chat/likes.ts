@@ -137,6 +137,8 @@ export async function unlikePost(postId: string, memberId: string): Promise<Chat
 export interface PostLikesState {
   byPost: LikesByPost;
   loading: boolean;
+  /** This post's likes are not known yet. Posts the last read drew stay known. */
+  loadingFor: (postId: string) => boolean;
   /** The read failed. Screens draw no count rather than a wrong one. */
   error: string | null;
   /** A like or its taking back that did not land, and which post it was on. */
@@ -147,6 +149,7 @@ export interface PostLikesState {
 }
 
 const EMPTY: LikesByPost = new Map();
+const NONE: ReadonlySet<string> = new Set();
 
 export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const account = useAccount();
@@ -162,6 +165,8 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const [settled, setSettled] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loading = memberId !== null && key !== '' && settled !== key;
+  // The posts the last good read covered: drawn as they were while more load.
+  const [known, setKnown] = useState<ReadonlySet<string>>(NONE);
   const [failure, setFailure] = useState<PostLikesState['failure']>(null);
   // Bumped by reload, so the effect runs again for the same ids.
   const [attempt, setAttempt] = useState(0);
@@ -177,6 +182,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
     if (!memberId || key === '') {
       shown.current = null;
       setByPost(EMPTY);
+      setKnown(NONE);
       setSettled(null);
       setError(null);
       return;
@@ -206,17 +212,20 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
         if (failed) {
           if (again) return;
           setByPost(EMPTY);
+          setKnown(NONE);
           setError(describeError(failed, 'Could not load the likes.'));
           setSettled(key);
           return;
         }
         shown.current = key;
         setByPost(groupLikes(data ?? []));
+        setKnown(new Set(ids));
         setError(null);
         setSettled(key);
       } catch (e) {
         if (controller.signal.aborted || again) return;
         setByPost(EMPTY);
+        setKnown(NONE);
         setError(describeThrown(e, 'Could not load the likes.'));
         setSettled(key);
       }
@@ -264,5 +273,10 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
     setAttempt((n) => n + 1);
   }, []);
 
-  return { byPost, loading, error: loading ? null : error, failure, toggle, reload };
+  const loadingFor = useCallback(
+    (postId: string) => loading && !known.has(postId),
+    [loading, known],
+  );
+
+  return { byPost, loading, loadingFor, error: loading ? null : error, failure, toggle, reload };
 }

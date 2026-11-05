@@ -279,13 +279,13 @@ export default function HomePage() {
     [memberId, viewer, eventsRead.reload, rsvpSheetFor],
   );
 
-  /** A standing opener keeps its Like visible while the real count loads. */
+  /** A standing opener's likes, drawn as unknown until they are read. */
   function likesFor(opening: ChatPost | null): CardLikes | undefined {
     if (!opening) return undefined;
     return {
       likedBy: likes.byPost.get(opening.id) ?? [],
       readerId: memberId,
-      loading: likes.loading,
+      loading: likes.loadingFor(opening.id),
       unavailable: Boolean(likes.error),
       onToggle: () => {
         likes.toggle(opening.id);

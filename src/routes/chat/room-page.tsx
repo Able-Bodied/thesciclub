@@ -257,7 +257,7 @@ export default function RoomPage() {
                       ? {
                           likedBy: likes.byPost.get(postId) ?? [],
                           readerId: account.status === 'member' ? account.userId : null,
-                          loading: likes.loading,
+                          loading: likes.loadingFor(postId),
                           unavailable: Boolean(likes.error),
                           onToggle: () => {
                             likes.toggle(postId);
