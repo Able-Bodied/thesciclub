@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { resetPageReturnForTest } from '@/lib/page-return';
 import { forgetSharedReads } from '@/lib/shared-reads';
 
 /**
@@ -16,6 +17,9 @@ afterEach(cleanup);
 
 /** Reads shared between screens start from nothing in each test (lib/shared-reads.ts). */
 afterEach(forgetSharedReads);
+
+/** Each test's first focus is a return of its own (lib/page-return.ts). */
+afterEach(resetPageReturnForTest);
 
 /**
  * No test may reach the network.

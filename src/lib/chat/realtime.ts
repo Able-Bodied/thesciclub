@@ -1,13 +1,14 @@
 import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { useEffect, useRef } from 'react';
+import { onPageReturn, pageHidden } from '@/lib/page-return';
 import { getSupabase } from '@/lib/supabase';
 
 /**
  * Being told when a row lands, instead of asking.
  *
  * One hook, used by every live surface in Chat: a conversation watches its own
- * messages, a topic its own posts, a room its own topics, and the shell watches
- * every message the reader can see so that the list and the nav dot move.
+ * messages, a topic its own posts, a room its own topics, the Chat list every
+ * message the reader can see, and the tab bar its own notifications.
  *
  * ---------------------------------------------------------------------------
  * Realtime reads tables, and applies the table's select policy
@@ -15,7 +16,7 @@ import { getSupabase } from '@/lib/supabase';
  * Not views — see 20260918120000. The filter below is a narrowing of what the
  * reader is already allowed to see and never the thing that makes it safe: an
  * unfiltered `chat_messages` subscription is scoped by RLS to the threads they
- * are in, which is why the shell can have one at all.
+ * are in, which is why the Chat list can have one at all.
  *
  * ---------------------------------------------------------------------------
  * It refetches; it does not apply the payload
@@ -45,6 +46,9 @@ import { getSupabase } from '@/lib/supabase';
  * So the refetch runs on SUBSCRIBED — the first one and every reconnection —
  * and again when the window regains focus, which covers the case where the
  * socket never noticed it had died.
+ *
+ * While the page is hidden, nothing is read: changes wait, and the return
+ * (src/lib/page-return.ts) reads once, as focus always did.
  */
 
 export interface RealtimeRowsOptions {
@@ -64,13 +68,13 @@ export interface RealtimeRowsOptions {
    * Given, a changed row goes here instead of to `onChange`, so a long list
    * can fetch just that row. Reconnects and focus still call `onChange`.
    */
-  onRow?: (row: Record<string, unknown>) => void;
+  onRow?: (row: Record<string, unknown>, event: 'INSERT' | 'UPDATE') => void;
 }
 
 /**
  * Channels are named per subscription, not per table.
  *
- * Two components can legitimately watch the same table at once — the shell
+ * Two components can legitimately watch the same table at once — the Chat list
  * watches every message and an open conversation watches its own — and a shared
  * topic name is how one of them unsubscribing takes the other one's events with
  * it.
@@ -100,13 +104,15 @@ export function useRealtimeRows({
     const channel = supabase.channel(`chat:${table}:${channelCount}`);
 
     const fire = () => {
-      latest.current();
+      if (!pageHidden()) latest.current();
     };
-    const changed = (payload?: { new?: Record<string, unknown> }) => {
-      const row = payload?.new;
-      if (latestRow.current && row && typeof row === 'object') latestRow.current(row);
-      else latest.current();
-    };
+    const changed =
+      (event: 'INSERT' | 'UPDATE') => (payload?: { new?: Record<string, unknown> }) => {
+        if (pageHidden()) return;
+        const row = payload?.new;
+        if (latestRow.current && row && typeof row === 'object') latestRow.current(row, event);
+        else latest.current();
+      };
 
     channel
       // INSERT and UPDATE, and not DELETE. Removal is a soft update that
@@ -119,12 +125,12 @@ export function useRealtimeRows({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table, ...(filter ? { filter } : {}) },
-        changed,
+        changed('INSERT'),
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table, ...(filter ? { filter } : {}) },
-        changed,
+        changed('UPDATE'),
       )
       .subscribe((status) => {
         // The first subscribe and every reconnection. See the header: this is
@@ -133,13 +139,11 @@ export function useRealtimeRows({
         if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) fire();
       });
 
-    const onFocus = () => {
-      fire();
-    };
-    window.addEventListener('focus', onFocus);
+    // Focus or shown again, heard once (src/lib/page-return.ts).
+    const stopReturn = onPageReturn(fire);
 
     return () => {
-      window.removeEventListener('focus', onFocus);
+      stopReturn();
       void supabase.removeChannel(channel);
     };
   }, [table, filter, enabled]);

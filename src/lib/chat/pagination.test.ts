@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useThreadMessages } from '@/lib/chat/threads';
 import { useTopicPosts } from '@/lib/chat/topics';
 import { pagedDatabase } from '@/test/paged-database';
@@ -16,6 +17,11 @@ vi.mock('@/lib/chat/unread', () => ({ unreadChanged: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     ...pagedDatabase(state.tables),
+    channel: () => {
+      const channel = { on: () => channel, subscribe: () => channel };
+      return channel;
+    },
+    removeChannel: () => Promise.resolve('ok'),
     rpc: (name: string, args: Record<string, unknown>) => {
       state.rpc(name, args);
       const data =
@@ -124,7 +130,12 @@ describe('long conversations and topics', () => {
 describe('read markers in background tabs', () => {
   it('marks nothing while hidden and catches up when the conversation becomes visible', async () => {
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-    const { result } = renderHook(() => useThreadMessages('thread'));
+    // As the conversation screen wires it: its realtime catches up on return.
+    const { result } = renderHook(() => {
+      const messages = useThreadMessages('thread');
+      useRealtimeRows({ table: 'chat_messages', onChange: messages.reload });
+      return messages;
+    });
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
