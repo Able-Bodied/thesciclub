@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CardsShown } from '@/components/cards-shown';
 import { FilterButton } from '@/components/filter-button';
 import { HeaderSearch } from '@/components/header-search';
 import { LoadingCards } from '@/components/loading-cards';
@@ -226,6 +227,8 @@ export default function PeersPage() {
           </div>
         ) : (
           <>
+            {/* Timed for page speed, in the deck only (the owner, 2026-11-04). */}
+            {showingMap ? null : <CardsShown />}
             <div className="mx-auto w-full max-w-[1100px]">
               <p className="mb-3 text-[0.78125rem] text-grey">
                 {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}

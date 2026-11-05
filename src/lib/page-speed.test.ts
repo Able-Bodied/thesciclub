@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  cardsShown,
   endpointOf,
   flush,
   measuredVisit,
+  noteScreen,
   ONE_VISIT_IN,
   resetPageSpeed,
   screenOf,
@@ -169,5 +171,86 @@ describe('measuring only some visits', () => {
     const batch = send.mock.calls[0]?.[0] ?? [];
     expect(batch).toHaveLength(2);
     expect(new Set(batch.map((s) => s.visit)).size).toBe(1);
+  });
+});
+
+// The owner, 2026-11-04: time until the cards on Events and Peers are drawn
+// with their data.
+describe('cards shown', () => {
+  interface Sent {
+    metric: string;
+    screen: string;
+    ms: number;
+  }
+  function sending() {
+    const sent: Sent[] = [];
+    startPageSpeed((samples) => {
+      sent.push(...(samples as Sent[]));
+      return Promise.resolve();
+    }, true);
+    // Drawn at once, rather than at the next two frames.
+    vi.stubGlobal('requestAnimationFrame', (step: FrameRequestCallback) => {
+      step(performance.now());
+      return 0;
+    });
+    return sent;
+  }
+  const go = (path: string) => {
+    window.history.pushState({}, '', path);
+    noteScreen(path);
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.pushState({}, '', '/');
+  });
+
+  it('times from opening the app, through a redirect', () => {
+    const sent = sending();
+    go('/');
+    go('/events');
+    cardsShown();
+    flush();
+    expect(sent).toEqual([
+      expect.objectContaining({ metric: 'cards-after-open', screen: '/events' }),
+    ]);
+  });
+
+  it('times from the tap once somebody has moved to the screen', () => {
+    const sent = sending();
+    go('/home');
+    window.dispatchEvent(new Event('pointerdown'));
+    go('/peers');
+    cardsShown();
+    flush();
+    expect(sent).toEqual([
+      expect.objectContaining({ metric: 'cards-after-tap', screen: '/peers' }),
+    ]);
+  });
+
+  it('sends no card times from a visit that is not measured', () => {
+    const send = vi.fn(() => Promise.resolve());
+    startPageSpeed(send, false);
+    vi.stubGlobal('requestAnimationFrame', (step: FrameRequestCallback) => {
+      step(performance.now());
+      return 0;
+    });
+    go('/events');
+    cardsShown();
+    flush();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('times a visit once, and only on the screen it is on', () => {
+    const sent = sending();
+    go('/events');
+    cardsShown();
+    cardsShown();
+    window.dispatchEvent(new Event('pointerdown'));
+    noteScreen('/peers');
+    // Still at /events in the address: a late call from the last screen.
+    cardsShown();
+    flush();
+    expect(sent).toHaveLength(1);
   });
 });

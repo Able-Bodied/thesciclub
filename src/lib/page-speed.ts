@@ -277,6 +277,88 @@ export function startPageSpeed(send: Sender, measured = measuredVisit()): void {
   });
 }
 
+/*
+ * Cards shown (the owner, 2026-11-04): how long until a screen's cards are
+ * on screen with their data, not its loading placeholders. Timed two ways:
+ * from opening the app (cards-after-open), and from moving to the screen
+ * inside it (cards-after-tap). A screen kept loaded and gone back to shows
+ * its cards at once and is not timed.
+ */
+
+interface ScreenVisit {
+  path: string;
+  /** performance.now() when the screen was reached; 0 is opening the app. */
+  at: number;
+  opened: boolean;
+  done: boolean;
+  /** The page was put away meanwhile, so the time says nothing. */
+  hidden: boolean;
+}
+
+let current: ScreenVisit | null = null;
+let touched = false;
+/** When somebody last tapped or pressed a key, for the start of a move. */
+let lastInput: number | null = null;
+
+function watchVisit() {
+  const touch = (event: Event) => {
+    touched = true;
+    lastInput = event.timeStamp;
+  };
+  window.addEventListener('pointerdown', touch, { capture: true, passive: true });
+  window.addEventListener('keydown', touch, { capture: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && current) current.hidden = true;
+  });
+}
+
+/**
+ * Called as the address changes (App.tsx). Until somebody has touched the
+ * app, a new address is still the opening: a redirect from / to /home is
+ * not a tap.
+ */
+export function noteScreen(pathname: string): void {
+  if (current?.path === pathname) return;
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  if (current === null || (!touched && current.opened && !current.done)) {
+    if (current === null && typeof window !== 'undefined') watchVisit();
+    current = { path: pathname, at: 0, opened: true, done: false, hidden };
+    return;
+  }
+  // From the tap that led here, not from when the screen took over: a
+  // screen's script loads first, with the last screen still up.
+  const now = performance.now();
+  // A browser that stamps events from 1970 rather than from the page's
+  // start gives a time past now; the move then starts here.
+  const at = lastInput !== null && lastInput <= now && now - lastInput < 10_000 ? lastInput : now;
+  current = { path: pathname, at, opened: false, done: false, hidden };
+}
+
+/**
+ * Called once a screen's cards are drawn with their data. Timed at the next
+ * frame after, which is when they are painted.
+ */
+export function cardsShown(): void {
+  const visit = current;
+  if (!visit || visit.done || visit.path !== window.location.pathname) return;
+  visit.done = true;
+  const finish = () => {
+    if (visit.hidden || document.visibilityState === 'hidden') return;
+    push({
+      kind: 'load',
+      screen: screenOf(visit.path),
+      metric: visit.opened ? 'cards-after-open' : 'cards-after-tap',
+      ms: performance.now() - visit.at,
+      ok: true,
+    });
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(finish);
+    });
+  } else finish();
+}
+
 /** For tests. */
 export function resetPageSpeed(): void {
   sender = null;
@@ -285,4 +367,7 @@ export function resetPageSpeed(): void {
   skipped = false;
   if (timer) clearTimeout(timer);
   timer = null;
+  current = null;
+  touched = false;
+  lastInput = null;
 }

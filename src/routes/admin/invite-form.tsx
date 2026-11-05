@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useAccount } from '@/lib/account';
 import { looksLikeEmail } from '@/lib/auth-email';
 import { describeThrown } from '@/lib/describe-error';
+import { useMemberOrganizations } from '@/lib/organization-members';
 import {
   createInvite,
   fetchInvitingOrganizations,
@@ -15,7 +17,13 @@ import {
  * report a failure the administrator would answer by adding it a second time.
  */
 export function InviteForm({ onCreated }: { onCreated: () => void }) {
-  const [organizations, setOrganizations] = useState<InvitingOrganization[]>([]);
+  const account = useAccount();
+  const [inviting, setInviting] = useState<InvitingOrganization[]>([]);
+  // Only the organizations they belong to (the owner, 2026-11-05).
+  const memberOf = useMemberOrganizations(
+    account.status === 'member' ? (account.userId ?? undefined) : undefined,
+  );
+  const organizations = inviting.filter((o) => memberOf.includes(o.id));
   const [email, setEmail] = useState('');
   // '' is the club itself — the administrator vouching in their own name —
   // rather than "nothing chosen"; picking an organization is the deliberate act.
@@ -26,7 +34,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
   const [done, setDone] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchInvitingOrganizations().then(setOrganizations);
+    void fetchInvitingOrganizations().then(setInviting);
   }, []);
 
   const ready = looksLikeEmail(email);

@@ -217,7 +217,10 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
     return Promise.resolve({ ok: true });
   },
   fetchInvitingOrganizations: () =>
-    Promise.resolve([{ id: 'org1', name: 'NorCal SCI', shortCode: 'NCS' }]),
+    Promise.resolve([
+      { id: 'org1', name: 'NorCal SCI', shortCode: 'NCS' },
+      { id: 'org2', name: 'Elsewhere Rugby', shortCode: 'ER' },
+    ]),
   createInvite: (input: unknown) => {
     api.created.push(input);
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
@@ -283,6 +286,11 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
 }));
 
+// The invite form offers only the organizations the administrator belongs to.
+vi.mock('@/lib/organization-members', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useMemberOrganizations: () => ['org1'],
+}));
 // Who is a professional, read with the roster; never the network.
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -1273,6 +1281,13 @@ describe('the invite list', () => {
         { email: 'dana@example.com', organizationId: 'org1', note: 'Met at rugby' },
       ]);
     });
+  });
+
+  it('offers only the organizations they belong to', async () => {
+    await openInvites();
+    const picker = screen.getByLabelText(/Vouched for by/);
+    expect(await within(picker).findByRole('option', { name: 'NorCal SCI' })).toBeInTheDocument();
+    expect(within(picker).queryByRole('option', { name: 'Elsewhere Rugby' })).toBeNull();
   });
 
   it('shows the database’s refusal and keeps what was typed', async () => {

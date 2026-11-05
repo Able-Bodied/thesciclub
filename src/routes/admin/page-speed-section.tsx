@@ -34,9 +34,12 @@ type Read<T> = { ok: true; value: T } | { ok: false; error: string };
 
 const REFUSAL = 'Could not load page speed.';
 
-async function rows(name: string, days: number): Promise<Read<Record<string, unknown>[]>> {
+async function rows(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<Read<Record<string, unknown>[]>> {
   try {
-    const { data, error } = (await getSupabase().rpc(name, { days })) as {
+    const { data, error } = (await getSupabase().rpc(name, args)) as {
       data: Record<string, unknown>[] | null;
       error: Failure | null;
     };
@@ -50,7 +53,7 @@ async function rows(name: string, days: number): Promise<Read<Record<string, unk
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
 
 export async function fetchPageSpeed(days: number): Promise<Read<SpeedRow[]>> {
-  const read = await rows('admin_page_speed', days);
+  const read = await rows('admin_page_speed', { days });
   if (!read.ok) return read;
   return {
     ok: true,
@@ -68,8 +71,12 @@ export async function fetchPageSpeed(days: number): Promise<Read<SpeedRow[]>> {
   };
 }
 
-export async function fetchPageSpeedTrend(days: number): Promise<Read<TrendPoint[]>> {
-  const read = await rows('admin_page_speed_trend', days);
+/** One load timing over time (20261105000000): first-paint, cards-after-tap… */
+export async function fetchPageSpeedTrend(
+  days: number,
+  timing: string,
+): Promise<Read<TrendPoint[]>> {
+  const read = await rows('admin_page_speed_trend', { days, timing });
   if (!read.ok) return read;
   return {
     ok: true,
@@ -88,10 +95,16 @@ const PERIODS = [
   ['30', '30 days'],
 ] as const;
 
-/** The load timings shown, in the order they happen. */
-const LOAD_METRICS = [
-  ['first-paint', 'First paint'],
-  ['ready', 'Ready'],
+/** The screens whose cards are timed (CardsShown), and their names here. */
+const CARD_SCREENS = [
+  ['/events', 'Events'],
+  ['/peers', 'Peers'],
+] as const;
+
+/** Cards shown, timed from opening the app and from tapping in. */
+const CARD_TIMINGS = [
+  ['cards-after-open', 'From opening the app'],
+  ['cards-after-tap', 'From tapping in'],
 ] as const;
 
 const CELL = 'px-2 py-1.5 text-right tabular-nums';
@@ -114,28 +127,68 @@ function TableView({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
+function TrendTable({ points, unit }: { points: TrendPoint[]; unit: 'hour' | 'day' }) {
+  return (
+    <TableView label={`The ${unit === 'hour' ? 'hourly' : 'daily'} numbers as a table`}>
+      <thead className="text-grey">
+        <tr>
+          <th className="px-2 py-1.5 text-left font-semibold">
+            {unit === 'hour' ? 'Hour' : 'Day'}
+          </th>
+          <th className={HEAD}>Sampled times</th>
+          <th className={HEAD}>Typical</th>
+          <th className={HEAD}>Slow end</th>
+        </tr>
+      </thead>
+      <tbody>
+        {points.map((p) => (
+          <tr key={p.bucket} className="border-line border-t">
+            <td className="px-2 py-1.5 text-left">
+              {new Date(p.bucket).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                ...(unit === 'hour' ? { hour: 'numeric' } : {}),
+                timeZone: 'America/Los_Angeles',
+              })}
+            </td>
+            <td className={CELL}>{p.loads}</td>
+            <td className={CELL}>{seconds(p.p50)}</td>
+            <td className={CELL}>{seconds(p.p90)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </TableView>
+  );
+}
+
 export function PageSpeedSection() {
   const [days, setDays] = useState<string>('7');
   const [speed, setSpeed] = useState<SpeedRow[] | null>(null);
   const [trend, setTrend] = useState<TrendPoint[] | null>(null);
+  const [cardsTrend, setCardsTrend] = useState<TrendPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     setSpeed(null);
     setTrend(null);
+    setCardsTrend(null);
     setError(null);
-    void Promise.all([fetchPageSpeed(Number(days)), fetchPageSpeedTrend(Number(days))]).then(
-      ([summary, overTime]) => {
-        if (!live) return;
-        if (!summary.ok) setError(summary.error);
-        else if (!overTime.ok) setError(overTime.error);
-        else {
-          setSpeed(summary.value);
-          setTrend(overTime.value);
-        }
-      },
-    );
+    void Promise.all([
+      fetchPageSpeed(Number(days)),
+      fetchPageSpeedTrend(Number(days), 'first-paint'),
+      fetchPageSpeedTrend(Number(days), 'cards-after-tap'),
+    ]).then(([summary, opening, cards]) => {
+      if (!live) return;
+      if (!summary.ok) setError(summary.error);
+      else if (!opening.ok) setError(opening.error);
+      else if (!cards.ok) setError(cards.error);
+      else {
+        setSpeed(summary.value);
+        setTrend(opening.value);
+        setCardsTrend(cards.value);
+      }
+    });
     return () => {
       live = false;
     };
@@ -143,13 +196,11 @@ export function PageSpeedSection() {
 
   const unit = days === '1' ? 'hour' : 'day';
   const loads = speed?.filter((r) => r.kind === 'load') ?? [];
-  const screens = [...new Set(loads.map((r) => r.screen))]
-    .map((screen) => ({
-      screen,
-      visits: Math.max(0, ...loads.filter((r) => r.screen === screen).map((r) => r.visits)),
-      by: new Map(loads.filter((r) => r.screen === screen).map((r) => [r.metric, r])),
-    }))
-    .sort((a, b) => b.visits - a.visits);
+  const cardsOf = (screen: string, timing: string) =>
+    loads.find((r) => r.screen === screen && r.metric === timing);
+  const firstPaints = loads
+    .filter((r) => r.metric === 'first-paint')
+    .sort((a, b) => b.samples - a.samples);
   const requests = (speed?.filter((r) => r.kind === 'request') ?? [])
     .slice()
     .sort((a, b) => b.p90 - a.p90)
@@ -165,7 +216,7 @@ export function PageSpeedSection() {
         <p role="alert" className="text-[0.8125rem] text-destructive">
           {error}
         </p>
-      ) : speed === null || trend === null ? (
+      ) : speed === null || trend === null || cardsTrend === null ? (
         <p role="status" className="py-4 text-[0.8125rem] text-grey">
           Loading…
         </p>
@@ -173,37 +224,40 @@ export function PageSpeedSection() {
         <p className="py-4 text-[0.8125rem] text-ink2">Nothing measured in this period yet.</p>
       ) : (
         <>
-          <Subheading>Opening the app, {unit === 'hour' ? 'by hour' : 'by day'}</Subheading>
-          {trend.length > 0 ? (
-            <SpeedTrendChart points={trend} unit={unit} />
-          ) : (
-            <p className="py-2 text-[0.8125rem] text-ink2">No app opens in this period.</p>
-          )}
-
-          <Subheading>Opening the app, by screen</Subheading>
-          <div className="mt-1 overflow-x-auto rounded-[12px] border border-line bg-paper">
+          <Subheading>Cards on Events and Peers</Subheading>
+          <p className="mt-0.5 text-[0.75rem] text-ink2 leading-[1.45]">
+            Until the cards are on screen with their data, not the grey placeholders.
+          </p>
+          <div className="mt-1.5 overflow-x-auto rounded-[12px] border border-line bg-paper">
             <table className="w-full text-[0.8125rem] text-ink">
               <thead className="text-grey">
                 <tr>
                   <th className="px-2 py-1.5 text-left font-semibold">Screen</th>
-                  <th className={HEAD}>Sampled loads</th>
-                  {LOAD_METRICS.map(([, label]) => (
-                    <th key={label} className={HEAD}>
-                      {label} p50 / p90
+                  {CARD_TIMINGS.map(([timing, label]) => (
+                    <th key={timing} className={HEAD}>
+                      {label}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {screens.map(({ screen, visits, by }) => (
+                {CARD_SCREENS.map(([screen, name]) => (
                   <tr key={screen} className="border-line border-t">
-                    <td className="px-2 py-1.5 text-left font-mono text-[0.75rem]">{screen}</td>
-                    <td className={CELL}>{visits}</td>
-                    {LOAD_METRICS.map(([metric]) => {
-                      const row = by.get(metric);
+                    <td className="px-2 py-1.5 text-left font-bold">{name}</td>
+                    {CARD_TIMINGS.map(([timing]) => {
+                      const row = cardsOf(screen, timing);
                       return (
-                        <td key={metric} className={CELL}>
-                          {row ? `${seconds(row.p50)} / ${seconds(row.p90)}` : '—'}
+                        <td key={timing} className={CELL}>
+                          {row ? (
+                            <>
+                              {seconds(row.p50)} / {seconds(row.p90)}
+                              <span className="block text-[0.6875rem] text-grey">
+                                {row.samples} sampled {row.samples === 1 ? 'time' : 'times'}
+                              </span>
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </td>
                       );
                     })}
@@ -212,32 +266,46 @@ export function PageSpeedSection() {
               </tbody>
             </table>
           </div>
+          <p className="mt-1 text-[0.71875rem] text-grey">Typical (p50) / slow end (p90).</p>
+
+          <Subheading>Cards after tapping in, {unit === 'hour' ? 'by hour' : 'by day'}</Subheading>
+          {cardsTrend.length > 0 ? (
+            <>
+              <SpeedTrendChart points={cardsTrend} unit={unit} />
+              <TrendTable points={cardsTrend} unit={unit} />
+            </>
+          ) : (
+            <p className="py-2 text-[0.8125rem] text-ink2">Nothing timed in this period yet.</p>
+          )}
+
+          <Subheading>
+            First paint on opening the app, {unit === 'hour' ? 'by hour' : 'by day'}
+          </Subheading>
           {trend.length > 0 ? (
-            <TableView label={`The ${unit === 'hour' ? 'hourly' : 'daily'} numbers as a table`}>
+            <>
+              <SpeedTrendChart points={trend} unit={unit} />
+              <TrendTable points={trend} unit={unit} />
+            </>
+          ) : (
+            <p className="py-2 text-[0.8125rem] text-ink2">No app opens in this period.</p>
+          )}
+          {firstPaints.length > 0 ? (
+            <TableView label="First paint by the screen it opened on">
               <thead className="text-grey">
                 <tr>
-                  <th className="px-2 py-1.5 text-left font-semibold">
-                    {unit === 'hour' ? 'Hour' : 'Day'}
-                  </th>
-                  <th className={HEAD}>Sampled loads</th>
+                  <th className="px-2 py-1.5 text-left font-semibold">Screen</th>
+                  <th className={HEAD}>Sampled opens</th>
                   <th className={HEAD}>Typical</th>
                   <th className={HEAD}>Slow end</th>
                 </tr>
               </thead>
               <tbody>
-                {trend.map((p) => (
-                  <tr key={p.bucket} className="border-line border-t">
-                    <td className="px-2 py-1.5 text-left">
-                      {new Date(p.bucket).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        ...(unit === 'hour' ? { hour: 'numeric' } : {}),
-                        timeZone: 'America/Los_Angeles',
-                      })}
-                    </td>
-                    <td className={CELL}>{p.loads}</td>
-                    <td className={CELL}>{seconds(p.p50)}</td>
-                    <td className={CELL}>{seconds(p.p90)}</td>
+                {firstPaints.map((row) => (
+                  <tr key={row.screen} className="border-line border-t">
+                    <td className="px-2 py-1.5 text-left font-mono text-[0.75rem]">{row.screen}</td>
+                    <td className={CELL}>{row.samples}</td>
+                    <td className={CELL}>{seconds(row.p50)}</td>
+                    <td className={CELL}>{seconds(row.p90)}</td>
                   </tr>
                 ))}
               </tbody>

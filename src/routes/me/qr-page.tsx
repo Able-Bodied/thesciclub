@@ -2,6 +2,7 @@ import { Link as LinkIcon, Loader2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { OrganizationPicker } from '@/components/organization-picker';
 import { QrCode } from '@/components/qr-code';
 import { useAccount } from '@/lib/account';
 import { loadSignInDetails } from '@/lib/account-email';
@@ -10,6 +11,7 @@ import { looksLikeEmail } from '@/lib/auth-email';
 import { PARTNER_ROLE_NAME, useIAmPartner } from '@/lib/club-partners';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { fetchJoiningIsOpen } from '@/lib/joining';
+import { useMemberOrganizations } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import {
@@ -97,9 +99,14 @@ export default function QrCodePage() {
     .filter((organization) => organization !== undefined)
     .sort((a, b) => a.name.localeCompare(b.name));
   // An administrator may make a code for any of them (the owner, 2026-11-01); the
-  // database has always allowed it (create_qr_code).
+  // database has always allowed it (create_qr_code). There are too many to
+  // list (the owner, 2026-11-05): theirs are listed, the rest are a search.
+  const memberOf = useMemberOrganizations(isAdmin ? (memberId ?? undefined) : undefined);
   const offered = isAdmin
-    ? [...everyOrganization].sort((a, b) => a.name.localeCompare(b.name))
+    ? [...new Set([...mine.ids, ...memberOf])]
+        .map((id) => byId.get(id))
+        .filter((organization) => organization !== undefined)
+        .sort((a, b) => a.name.localeCompare(b.name))
     : organizations;
   const mayMake = isAdmin || organizations.length > 0 || partner === true;
   // A partner's code with no organization lets people in and needs no email.
@@ -266,36 +273,25 @@ export default function QrCodePage() {
             void make();
           }}
         >
-          {offered.length > 1 || ((isAdmin || ownCode) && offered.length > 0) ? (
-            <div>
-              <label
-                htmlFor="qr-organization"
-                className="block font-bold text-[0.8125rem] text-ink"
-              >
-                Who it's for
-              </label>
-              <select
-                id="qr-organization"
-                value={forOrganization ?? NO_ORGANIZATION}
-                onChange={(e) => {
-                  setOrganizationId(e.target.value);
-                }}
-                className={FIELD}
-              >
-                {offered.map((organization) => (
-                  <option key={organization.id} value={organization.id}>
-                    {organization.name}
-                  </option>
-                ))}
-                {isAdmin ? (
-                  <option value={NO_ORGANIZATION}>No organization (credit only)</option>
-                ) : ownCode ? (
-                  <option value={NO_ORGANIZATION}>
-                    Just you, as a {PARTNER_ROLE_NAME.toLowerCase()}
-                  </option>
-                ) : null}
-              </select>
-            </div>
+          {offered.length > 1 ||
+          (isAdmin && everyOrganization.length > 0) ||
+          (ownCode && offered.length > 0) ? (
+            <OrganizationPicker
+              id="qr-organization"
+              label="Who it's for"
+              yours={offered}
+              others={isAdmin ? everyOrganization : []}
+              value={forOrganization ?? NO_ORGANIZATION}
+              onChange={setOrganizationId}
+              none={
+                isAdmin
+                  ? 'No organization (credit only)'
+                  : ownCode
+                    ? `Just you, as a ${PARTNER_ROLE_NAME.toLowerCase()}`
+                    : undefined
+              }
+              className={FIELD}
+            />
           ) : forOrganization ? (
             <p className="text-[0.875rem] text-ink">
               For <b>{byId.get(forOrganization)?.name}</b>

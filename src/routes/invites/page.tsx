@@ -63,16 +63,25 @@ export default function InvitesPage() {
   const [organizationId, setOrganizationId] = useState('');
   const mine = useMyOrganizations(userId);
   const { byId } = useOrganizations();
-  const myOrganizations = [...mine.ids]
+  const isAdmin = account.status === 'member' && account.isAdmin;
+  const memberOf = useMemberOrganizations(userId ?? undefined);
+  // Every organization they belong to, not only those they run (the owner,
+  // 2026-11-05; 20261105010000). Whoever joins on it joins it too, so one that
+  // approves its members first is only for its org admins and administrators.
+  const myOrganizations = [...new Set([...mine.ids, ...memberOf])]
     .map((id) => byId.get(id))
     .filter((organization) => organization !== undefined)
+    .filter(
+      (organization) => isAdmin || mine.ids.has(organization.id) || !organization.joinsNeedApproval,
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
-  const choosesOrganization = myOrganizations.length > 1;
+  // An org admin of several must choose, as before (the owner, 2026-10-30); of
+  // one, the database knows which. Anybody else may leave it at the club.
+  const runsOne = mine.ids.size > 0;
+  const mustChoose = runsOne && myOrganizations.length > 1;
+  const choosesOrganization = mustChoose || (!runsOne && myOrganizations.length > 0);
   // A club administrator answering a request picks who the invite is for, from
-  // the organizations they belong to (the owner, 2026-11-01). Only they may:
-  // create_my_invite refuses an org admin an organization they do not run.
-  const isAdmin = account.status === 'member' && account.isAdmin;
-  const memberOf = useMemberOrganizations(isAdmin ? (userId ?? undefined) : undefined);
+  // the organizations they belong to (the owner, 2026-11-01).
   const [invitingFor, setInvitingFor] = useState<Record<string, string>>({});
   const organizationsFor = (request: ReceivedInviteRequest) =>
     [...new Set([request.organizationId, ...mine.ids, ...memberOf])]
@@ -123,10 +132,7 @@ export default function InvitesPage() {
 
   const left = permissions.unlimited ? Infinity : slotsLeft(invites);
   const ready =
-    looksLikeEmail(email) &&
-    left > 0 &&
-    userId !== null &&
-    (!choosesOrganization || organizationId !== '');
+    looksLikeEmail(email) && left > 0 && userId !== null && (!mustChoose || organizationId !== '');
 
   /**
    * Deliberately not async: these are handed to onClick, which expects void,
@@ -161,7 +167,7 @@ export default function InvitesPage() {
         email: address,
         note: note.trim() || null,
         ...(permissions.unlimited ? { unlimited: true } : {}),
-        ...(choosesOrganization ? { organizationId } : {}),
+        ...(choosesOrganization && organizationId !== '' ? { organizationId } : {}),
       });
       if (result.ok) {
         setEmail('');
@@ -344,7 +350,9 @@ export default function InvitesPage() {
                   }}
                   className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
                 >
-                  <option value="">Choose an organization</option>
+                  <option value="">
+                    {mustChoose ? 'Choose an organization' : 'No organization, just the club'}
+                  </option>
                   {myOrganizations.map((organization) => (
                     <option key={organization.id} value={organization.id}>
                       {organization.name}

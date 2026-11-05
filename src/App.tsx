@@ -1,4 +1,4 @@
-import { Activity, lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Activity, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskOnOpening } from '@/components/ask-on-opening';
@@ -12,6 +12,7 @@ import { AnnounceProvider } from '@/lib/announce';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { keptReadsStale } from '@/lib/kept-reads';
 import { prefetchMap } from '@/lib/map';
+import { noteScreen } from '@/lib/page-speed';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import { OpenedNotification } from '@/lib/push/opened-notification';
 import DevLoginPage from '@/routes/dev-login/page';
@@ -334,6 +335,7 @@ export default function App() {
         <NativeShell />
         <LeaveHomeScreenHandoff />
         <RouteChange />
+        <ScreenTimer />
         <FollowNotification />
         <AppRoutes />
       </AnnounceProvider>
@@ -388,6 +390,15 @@ export function RouteChange() {
       observer.disconnect();
       cancelAnimationFrame(frame);
     };
+  }, [pathname]);
+  return null;
+}
+
+/** Where each screen visit starts, for page speed's cards shown (page-speed.ts). */
+function ScreenTimer() {
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    noteScreen(pathname);
   }, [pathname]);
   return null;
 }

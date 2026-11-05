@@ -88,6 +88,7 @@ vi.mock('@/lib/organizations', () => ({
     byId: new Map([
       ['ncs', { id: 'ncs', name: 'NorCal SCI' }],
       ['able', { id: 'able', name: 'Able Bodied' }],
+      ['closed', { id: 'closed', name: 'Closed Club', joinsNeedApproval: true }],
     ]),
   }),
 }));
@@ -289,7 +290,11 @@ describe('a request for an invite', () => {
   it('lets a club administrator choose among their organizations', async () => {
     account.current = { status: 'member', userId: 'me', isAdmin: true, displayName: 'Todd' };
     renderInvites();
-    await userEvent.selectOptions(await screen.findByLabelText('Inviting for'), 'Able Bodied');
+    await screen.findByRole('button', { name: 'Send invite' });
+    // The request's own, beside the form's (which now lists theirs too).
+    const forRequest = document.getElementById('request-organization-r1');
+    if (!forRequest) throw new Error('no organization choice on the request');
+    await userEvent.selectOptions(forRequest, 'Able Bodied');
     await userEvent.click(screen.getByRole('button', { name: 'Send invite' }));
     await waitFor(() => {
       expect(api.created[0]).toMatchObject({ organizationId: 'able' });
@@ -299,6 +304,34 @@ describe('a request for an invite', () => {
   it('leaves an org admin with the organization that was asked', async () => {
     renderInvites();
     await screen.findByRole('button', { name: 'Send invite' });
+    expect(document.getElementById('request-organization-r1')).toBeNull();
+  });
+});
+
+// The owner, 2026-11-05: every organization they belong to, not only those
+// they run; one that approves its members first only for its org admins.
+describe('who a new invite is for', () => {
+  beforeEach(() => {
+    requests.received = [];
+  });
+
+  it('offers the organizations they belong to, and sends the one chosen', async () => {
+    requests.memberOf = ['ncs', 'able'];
+    renderInvites();
+    const picker = await screen.findByLabelText('Inviting for');
+    expect(within(picker).getByRole('option', { name: 'Able Bodied' })).toBeInTheDocument();
+    await userEvent.selectOptions(picker, 'Able Bodied');
+    await userEvent.type(screen.getByLabelText('Email address'), 'friend2@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
+    await waitFor(() => {
+      expect(api.created.at(-1)).toMatchObject({ organizationId: 'able' });
+    });
+  });
+
+  it('leaves out one that approves its members, which they do not run', async () => {
+    requests.memberOf = ['ncs', 'closed'];
+    renderInvites();
+    await screen.findByRole('button', { name: 'Add and send the link' });
     expect(screen.queryByLabelText('Inviting for')).toBeNull();
   });
 });

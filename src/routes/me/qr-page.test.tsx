@@ -33,12 +33,20 @@ vi.mock('@/lib/joining', () => ({
 vi.mock('@/lib/organization-representatives', () => ({
   useMyOrganizations: () => ({ ids: state.mine, loading: false }),
 }));
+vi.mock('@/lib/organization-members', () => ({ useMemberOrganizations: () => [] }));
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useIAmPartner: () => state.partner,
 }));
 vi.mock('@/lib/organizations', () => {
-  const ncs = { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null };
+  const ncs = {
+    id: 'ncs',
+    name: 'NorCal SCI',
+    shortCode: 'NCS',
+    logoPath: null,
+    city: 'Sacramento',
+    places: [],
+  };
   return {
     useOrganizations: () => ({
       organizations: [ncs],
@@ -182,7 +190,12 @@ describe('who may make a code', () => {
 describe("an administrator's code", () => {
   it('can be for any organization, not only one they run', async () => {
     renderPage();
-    await userEvent.selectOptions(await screen.findByLabelText("Who it's for"), 'NorCal SCI');
+    // Not one of theirs, so it is a search rather than in the list (the owner, 2026-11-05).
+    await screen.findByLabelText("Who it's for");
+    expect(screen.queryByRole('option', { name: 'NorCal SCI' })).toBeNull();
+    await userEvent.type(screen.getByLabelText('Or find another organization'), 'norcal');
+    await userEvent.click(screen.getByRole('button', { name: 'NorCal SCI' }));
+    expect(screen.getByLabelText("Who it's for")).toHaveValue('ncs');
     await userEvent.click(screen.getByRole('button', { name: 'Make a link' }));
     await waitFor(() => {
       expect(state.created[0]?.organizationId).toBe('ncs');
