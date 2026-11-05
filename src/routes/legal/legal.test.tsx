@@ -52,13 +52,15 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(/Added: you can measure distances in Filters from another city/);
-    expect(notes[1]).toMatch(/Added: once a day, on each way you use the club/);
-    expect(notes[2]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
-    expect(notes[3]).toMatch(/Changed: Join replaces Follow/);
-    expect(notes[4]).toMatch(/Added: when you agreed/);
-    expect(notes[5]).toMatch(/Added: address suggestions/);
-    expect(notes[6]).toMatch(/Added: the map/);
+    expect(notes[0]).toMatch(/Added: the app measures how long it takes to load/);
+    expect(notes[0]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
+    expect(notes[1]).toMatch(/Added: you can measure distances in Filters from another city/);
+    expect(notes[2]).toMatch(/Added: once a day, on each way you use the club/);
+    expect(notes[3]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
+    expect(notes[4]).toMatch(/Changed: Join replaces Follow/);
+    expect(notes[5]).toMatch(/Added: when you agreed/);
+    expect(notes[6]).toMatch(/Added: address suggestions/);
+    expect(notes[7]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });

@@ -331,7 +331,7 @@ export function InjuryStep({ data, set }: StepProps) {
   // The birthday as they typed it, for "Since birth".
   const birth = data.birthDate ? birthPartsOf(data) : null;
 
-  // The date first and optional, then the kind. A relative or a professional
+  // The kind first, then the date, optional. A relative or a professional
   // has no date of their own to give.
   const noInjury = hasNoInjury(data.injuryType);
   return (
@@ -344,21 +344,9 @@ export function InjuryStep({ data, set }: StepProps) {
       </Question>
       <Sub>An injury or a condition: members find each other by this.</Sub>
 
-      {noInjury ? null : <InjuryDate data={data} set={set} birth={birth} />}
-      {!noInjury &&
-      injury &&
-      injuredAt !== null &&
-      age !== null &&
-      injuredAt >= 0 &&
-      injuredAt <= age ? (
-        <InjuredAt
-          label={dateLabel(injury.date, injury.precision)}
-          at={injuredAt}
-          condition={condition}
-        />
-      ) : null}
-
-      <div className="mt-5">
+      {/* The kind first (the owner, 2026-11-04): a relative or a
+          professional answers it and is done, with no date to skip past. */}
+      <div className="mt-4">
         <SpinalCordFields
           answer={data}
           onChange={(patch) => {
@@ -371,6 +359,24 @@ export function InjuryStep({ data, set }: StepProps) {
           }}
         />
       </div>
+
+      {noInjury ? null : (
+        <div className="mt-5">
+          <InjuryDate data={data} set={set} birth={birth} />
+        </div>
+      )}
+      {!noInjury &&
+      injury &&
+      injuredAt !== null &&
+      age !== null &&
+      injuredAt >= 0 &&
+      injuredAt <= age ? (
+        <InjuredAt
+          label={dateLabel(injury.date, injury.precision)}
+          at={injuredAt}
+          condition={condition}
+        />
+      ) : null}
       {/* Health information, so said plainly before it is shown (the owner,
           2026-10-29). Members see it on the profile (privacy policy). */}
       <Fine>

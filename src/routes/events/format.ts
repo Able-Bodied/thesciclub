@@ -124,11 +124,14 @@ export function shortWeekday(iso: string, timezone: string): string {
 }
 
 /**
- * Whether an event has an RSVP button (the owner, 2026-11-01): one made in the
- * club, by hand or by a calendar invite, always; one read from another calendar
- * only if its organization collects them (20261101080000).
+ * Whether Going reaches the host as an RSVP (the owner, 2026-11-01): one made
+ * in the club, by hand or by a calendar invite, always; one read from another
+ * calendar only if its organization collects them (20261101080000). Every
+ * event has Going all the same (2026-11-04): where it does not reach the host,
+ * the button says Going rather than RSVP, and the member is told to follow up
+ * with the host themselves.
  */
-export function takesRsvps(
+export function rsvpReachesHost(
   event: { handAdded: boolean },
   organization: { collectsRsvps?: boolean } | null,
 ): boolean {

@@ -5,8 +5,9 @@ import { cn } from '@/lib/utils';
 
 /**
  * For its org admins and the club's administrators (the owner, 2026-11-01):
- * whether events read from its own calendar take RSVPs. Those made in the club
- * always do.
+ * whether Going on events read from its own calendar is an RSVP to it. Those
+ * made in the club always are. Without it, Going is only for the club
+ * (2026-11-04).
  */
 export function OrganizationRsvpSetting({
   organizationId,
@@ -43,8 +44,8 @@ export function OrganizationRsvpSetting({
           <p className="font-bold text-[0.9375rem] text-ink">Collect RSVPs</p>
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
             {on
-              ? 'Events from your own calendar have an RSVP button, as those added here do.'
-              : 'Only events added here have an RSVP button. Those from your own calendar have Interested, and Register if they have a sign-up.'}
+              ? 'Going on events from your own calendar is an RSVP to you, as on those added here.'
+              : 'Members can say they’re going to events from your own calendar, but only to each other: they’re told to check with you if you need an RSVP.'}
           </p>
         </div>
         <button

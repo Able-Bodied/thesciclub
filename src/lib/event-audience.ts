@@ -1,4 +1,5 @@
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { sendInvite } from '@/lib/send-invite';
 import { getSupabase } from '@/lib/supabase';
 import type { EventAudience, RsvpStatus } from '@/types/domain';
 
@@ -305,6 +306,12 @@ export interface Guest {
   status: RsvpStatus;
   state: GuestState;
   respondedAt: string;
+  /** A registration from the public page; null for a member's RSVP. */
+  registrationId: string | null;
+  /** Whether the address is on the invite list already. */
+  invite: 'pending' | 'consumed' | null;
+  /** The pending invite, where this viewer may send it again. */
+  inviteId: string | null;
 }
 
 interface GuestRow {
@@ -314,6 +321,9 @@ interface GuestRow {
   status: RsvpStatus;
   state: GuestState;
   responded_at: string;
+  registration_id?: string | null;
+  invite_status?: string | null;
+  invite_id?: string | null;
 }
 
 /** The event's guest list, for its organizers and administrators. */
@@ -333,8 +343,35 @@ export async function fetchGuestList(eventId: string): Promise<Result<Guest[]>> 
       status: row.status,
       state: row.state,
       respondedAt: row.responded_at,
+      registrationId: row.registration_id ?? null,
+      invite:
+        row.invite_status === 'pending' || row.invite_status === 'consumed'
+          ? row.invite_status
+          : null,
+      inviteId: row.invite_id ?? null,
     })),
   };
+}
+
+/**
+ * Invites somebody who registered on the public page (20261104000000), then
+ * emails the link. Their link starts onboarding with the name and phone they
+ * gave. As createInvite: an invite made but not emailed is still made, and
+ * comes back ok with `sendError`, for Send again.
+ */
+export async function inviteGuest(
+  registrationId: string,
+): Promise<{ ok: true; inviteId: string; sendError?: string } | { ok: false; error: string }> {
+  const made = await call<string | null>(
+    'invite_event_guest',
+    { registration: registrationId },
+    'Could not invite them.',
+  );
+  if (!made.ok) return made;
+  const inviteId = made.value;
+  if (typeof inviteId !== 'string') return { ok: false, error: 'Could not invite them.' };
+  const sent = await sendInvite(inviteId);
+  return sent.ok ? { ok: true, inviteId } : { ok: true, inviteId, sendError: sent.error };
 }
 
 /** The list as a spreadsheet's CSV: what an organizer takes elsewhere. */

@@ -23,6 +23,20 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 4, 2026">
+        <List>
+          <li>
+            <b>Added:</b> the app measures how long it takes to load, and how long each request to
+            the club takes, so we can find what is slow. It is not tied to you (see What we
+            collect).
+          </li>
+          <li>
+            <b>Added:</b> an event’s organizers can invite somebody who registered on its public
+            page to join the club. The invite goes to the address they registered with, and its link
+            starts joining with the name and phone number they gave.
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 3, 2026">
         <List>
           <li>
@@ -335,6 +349,14 @@ export default function PrivacyPage() {
           app keeps you signed in and remembers settings such as text size, and, if you open a link
           to a post before you are signed in, which post, for 30 days, so it can take you there once
           you are. It uses no cookies or outside tools for advertising or analytics.
+        </P>
+        <P>
+          To find what is slow, the app records how long it took to open and how long each request
+          to the club took. With each time it records which kind of screen it was (an event, not
+          which event), what the request asked for (not what was in it), whether you were signed in,
+          whether you were using the installed app, whether it was a phone, and the kind of
+          connection. It is not tied to your account or your internet address, only administrators
+          see it, as summaries, and it is deleted after 30 days.
         </P>
       </Section>
 

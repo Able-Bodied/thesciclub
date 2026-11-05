@@ -55,6 +55,43 @@ export async function heldInviteAddress(): Promise<string | null> {
   return typeof address === 'string' && address !== '' ? address : null;
 }
 
+/** What a held invite link says about the person it went to (20261104000000). */
+export interface InviteDetails {
+  email: string;
+  /** From the public-page registration it was sent from, if any. */
+  name: string | null;
+  phone: string | null;
+  eventId: string | null;
+  status: 'going' | 'interested' | null;
+}
+
+/**
+ * As heldInviteAddress, with the name and phone the person gave when they
+ * registered for an event, where the invite was sent from the guest list.
+ * Falls back to the address alone if the newer call is not there yet.
+ */
+export async function heldInviteDetails(): Promise<InviteDetails | null> {
+  const token = heldInviteToken();
+  if (!token) return null;
+  const result = await getSupabase().rpc('invite_details_for_token', { token });
+  if (result.error) {
+    const email = await heldInviteAddress();
+    return email ? { email, name: null, phone: null, eventId: null, status: null } : null;
+  }
+  const rows: unknown = result.data;
+  const row = (Array.isArray(rows) ? rows[0] : rows) as Record<string, unknown> | null | undefined;
+  if (!row || typeof row.email !== 'string' || row.email === '') return null;
+  const text = (value: unknown) =>
+    typeof value === 'string' && value.trim() ? value.trim() : null;
+  return {
+    email: row.email,
+    name: text(row.name),
+    phone: text(row.phone),
+    eventId: text(row.event_id),
+    status: row.status === 'going' || row.status === 'interested' ? row.status : null,
+  };
+}
+
 /**
  * Claims the held invite for the signed-in account.
  *

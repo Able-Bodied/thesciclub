@@ -17,7 +17,7 @@ import {
   verifySignUpCode,
 } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
-import { pendingRegistration } from '@/lib/event-audience';
+import { keepPendingRegistration, pendingRegistration } from '@/lib/event-audience';
 import { useGoogleInBrowser } from '@/lib/google-in-browser';
 import { googlePhotoUrl } from '@/lib/google-photo';
 import {
@@ -30,7 +30,7 @@ import {
   captureInviteToken,
   claimHeldInvite,
   forgetInviteToken,
-  heldInviteAddress,
+  heldInviteDetails,
   heldInviteToken,
   INVITE_PARAM,
 } from '@/lib/invite-token';
@@ -251,10 +251,30 @@ export default function OnboardingPage() {
       return;
     }
     askedAddress.current = true;
-    void heldInviteAddress().then((address) => {
-      if (address === null) return;
+    void heldInviteDetails().then((details) => {
+      if (details === null) return;
+      const { email: address, name, phone } = details;
       setInviteAddress(address);
-      setData((d) => (d.email.trim() === '' ? { ...d, email: address } : d));
+      // Sent from an event's guest list (20261104000000): what they typed
+      // when they registered, into whatever is still empty.
+      setData((d) => ({
+        ...d,
+        email: d.email.trim() === '' ? address : d.email,
+        displayName: d.displayName.trim() === '' && name ? name : d.displayName,
+        phone: d.phone.trim() === '' && phone ? formatPhoneInput(phone) : d.phone,
+      }));
+      // Kept on the device as their registration would have been, so it
+      // outlasts a round trip to Google or Apple, and the event opens once
+      // they are in.
+      if (details.eventId && !pendingRegistration()) {
+        keepPendingRegistration({
+          eventId: details.eventId,
+          status: details.status ?? 'going',
+          name: name ?? '',
+          email: address,
+          phone: phone ?? '',
+        });
+      }
     });
   }, [account.status]);
 

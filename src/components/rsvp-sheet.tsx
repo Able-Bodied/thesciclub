@@ -6,6 +6,7 @@ import { describeThrown } from '@/lib/describe-error';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { loadOwnPhone, saveOwnPhone } from '@/lib/event-phone';
 import { rsvpSaved } from '@/lib/events';
+import { useOrganizations } from '@/lib/organizations';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import { isNative } from '@/lib/standalone';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,7 @@ import {
   downloadIcs,
   googleCalendarUrl,
 } from '@/routes/events/add-to-calendar';
+import { rsvpReachesHost } from '@/routes/events/format';
 import { safeHref } from '@/routes/events/rich-text';
 import type { ClubEvent, RsvpStatus } from '@/types/domain';
 
@@ -38,7 +40,8 @@ export const GOING_SHARES_CONTACT =
   'We share your email with the host, and your phone number if you’ve added one, for this event only.';
 
 /** The event as the sheet needs it: for the calendar, and the host's own sign-up. */
-export type SheetEvent = CalendarEvent & Pick<ClubEvent, 'registrationUrl' | 'handAdded'>;
+export type SheetEvent = CalendarEvent &
+  Pick<ClubEvent, 'registrationUrl' | 'handAdded' | 'organizationId' | 'hostName'>;
 
 const SKIPPED_KEY = 'sciclub.goingPhoneSkipped';
 
@@ -65,12 +68,21 @@ export function RsvpSheet({
   event,
   status,
   askPhone,
+  reachesHost = true,
+  host = null,
   onChange,
   onSavePhone,
   onClose,
 }: {
   event: SheetEvent;
   status: RsvpStatus;
+  /**
+   * Whether Going is an RSVP the host sees (rsvpReachesHost). Where it is
+   * not, the sheet says to follow up with them (the owner, 2026-11-04).
+   */
+  reachesHost?: boolean;
+  /** Who the host is, by name, if known. */
+  host?: string | null;
   /** Going, and the club has no number for them. */
   askPhone: boolean;
   /** Changes the answer, as the screen's own buttons do. */
@@ -151,7 +163,9 @@ export function RsvpSheet({
               )}
             >
               {going
-                ? GOING_SHARES_CONTACT
+                ? reachesHost
+                  ? GOING_SHARES_CONTACT
+                  : `This doesn’t send ${host ?? 'the host'} an RSVP, so check with them if they need one. Other members can see you’re going.`
                 : 'Make sure to RSVP if you decide to go, so the organizers know you’re coming.'}
             </p>
           ) : null}
@@ -297,6 +311,11 @@ interface Open {
 export function useRsvpSheet(userId: string | null) {
   const announce = useAnnounce();
   const [open, setOpen] = useState<Open | null>(null);
+  const { byId } = useOrganizations();
+  const organizationOf = useCallback(
+    (event: SheetEvent) => (event.organizationId ? (byId.get(event.organizationId) ?? null) : null),
+    [byId],
+  );
 
   const saved = useCallback(
     (event: SheetEvent, status: RsvpStatus | null, change: (next: RsvpStatus) => void) => {
@@ -306,7 +325,9 @@ export function useRsvpSheet(userId: string | null) {
         return;
       }
       setOpen({ event, status, askPhone: false, onChange: change });
+      // No number for a host that is not told anyway.
       if (status !== 'going' || !userId || skippedThisSession()) return;
+      if (!rsvpReachesHost(event, organizationOf(event))) return;
       void loadOwnPhone(userId).then((result) => {
         // A number that could not be read is not a reason to ask for one.
         if (!result.ok || result.phone !== null) return;
@@ -317,7 +338,7 @@ export function useRsvpSheet(userId: string | null) {
         );
       });
     },
-    [userId, announce],
+    [userId, announce, organizationOf],
   );
 
   const close = useCallback(() => {
@@ -333,6 +354,8 @@ export function useRsvpSheet(userId: string | null) {
       event={open.event}
       status={open.status}
       askPhone={open.askPhone}
+      reachesHost={rsvpReachesHost(open.event, organizationOf(open.event))}
+      host={organizationOf(open.event)?.name ?? open.event.hostName}
       onChange={open.onChange}
       onClose={close}
       onSavePhone={async (typed) => {

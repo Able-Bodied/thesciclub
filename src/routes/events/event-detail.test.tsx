@@ -309,6 +309,47 @@ describe('EventDetailPage', () => {
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
     });
 
+    // The owner, 2026-11-04: read from a calendar whose organization does not
+    // collect RSVPs, and with no sign-up, it still has Going, for the club.
+    it('offers Going on an imported event without a sign-up, and says the host is not told', async () => {
+      state.organizations = [makeOrganization({ id: 'pch', name: 'ParaCliffHangers' })];
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(21),
+          handAdded: false,
+          organizationId: 'pch',
+        }),
+      ];
+      renderDetail();
+      expect(screen.queryByRole('button', { name: 'RSVP' })).not.toBeInTheDocument();
+      const going = screen.getByRole('button', { name: 'Going' });
+      expect(going).toHaveAccessibleDescription(/doesn’t send ParaCliffHangers an RSVP/);
+      await userEvent.click(going);
+      expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
+      expect(await screen.findByRole('dialog')).toHaveTextContent(
+        /doesn’t send ParaCliffHangers an RSVP, so check with them/,
+      );
+      expect(screen.queryByText(/share your email/)).not.toBeInTheDocument();
+    });
+
+    it('calls it an RSVP where the organization collects them', () => {
+      state.organizations = [
+        makeOrganization({ id: 'pch', name: 'ParaCliffHangers', collectsRsvps: true }),
+      ];
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(21),
+          handAdded: false,
+          organizationId: 'pch',
+        }),
+      ];
+      renderDetail();
+      expect(screen.getByRole('button', { name: 'RSVP' })).not.toHaveAccessibleDescription();
+      expect(screen.queryByText(/doesn’t send/)).not.toBeInTheDocument();
+    });
+
     it('reads the Going list and tally again when it is taken back', async () => {
       state.events = [
         makeEvent({

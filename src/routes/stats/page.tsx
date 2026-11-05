@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/connect-fields';
 import { EventNoticesPanel } from '@/routes/stats/event-notices';
 import { OrganizationPeople } from '@/routes/stats/organization-people';
+import { PageSpeedSection } from '@/routes/stats/page-speed-section';
 
 /**
  * Stats & controls, for org admins and trusted partners (20261031110000): their
@@ -130,6 +131,7 @@ function Hub({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean 
       />
       <People />
       <Introductions connected={connected} />
+      {isAdmin ? <PageSpeedSection /> : null}
     </div>
   );
 }

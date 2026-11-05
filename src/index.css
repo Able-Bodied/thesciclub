@@ -179,6 +179,10 @@
   /* The pale red "Cancelled" badge and its words. Were written in place. */
   --danger-lt: #fbe9e7;
   --danger-ink: #8c1d18;
+  /* Chart series, checked for colour blindness against the paper in each
+     mode (page-speed charts, 2026-11-04). */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
 
   /* Display is Outfit; head and body are both Atkinson Hyperlegible Next.
      --head stays a separate token because 170-odd labels, names and buttons
@@ -678,6 +682,8 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
   --destructive: #ff9a90;
   --danger-lt: #3d1f1d;
   --danger-ink: #ffb4ab;
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
   --room-body: #9cbcf0;
   --room-mind: #c7aef2;
   --room-life: #dcb24c;
@@ -710,6 +716,8 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
     --destructive: #ff9a90;
     --danger-lt: #3d1f1d;
     --danger-ink: #ffb4ab;
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
     --room-body: #9cbcf0;
     --room-mind: #c7aef2;
     --room-life: #dcb24c;

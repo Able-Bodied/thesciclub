@@ -21,6 +21,9 @@ const guest = (o: Partial<Guest> = {}): Guest => ({
   status: 'going',
   state: 'unconfirmed',
   respondedAt: '2026-10-22T18:00:00Z',
+  registrationId: 'reg-1',
+  invite: null,
+  inviteId: null,
   ...o,
 });
 
