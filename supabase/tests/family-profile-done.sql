@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Probe: family and professionals finish without the injury questions
--- (20261104130000, 20261104140000)
+-- (20261104130000, 20261104140000), and Your details without a level or a
+-- date (20261104150000)
 -- ============================================================================
 -- Every check prints PASS or raises FAIL.
 --
@@ -56,6 +57,25 @@ update public.members
        self_care = array['None'], wants_to_mentor = true
  where id = 'aaaaaaaa-1108-0000-0000-00000000000c';
 select pg_temp.check_true(pg_temp.done('c'), 'and a member with an injury finishes with them');
+
+\echo '== Your details =='
+update public.members
+   set photo_path = 'p/photo.jpg', city = 'San Jose', state = 'CA', exact_level = null,
+       condition_name = null, injury_date = null
+ where id::text like 'aaaaaaaa-1108-%';
+create function pg_temp.details_done(who text) returns boolean language sql as $$
+  select public.member_details_done(m) from public.members m
+   where m.id = ('aaaaaaaa-1108-0000-0000-00000000000' || who)::uuid;
+$$;
+select pg_temp.check_true(pg_temp.details_done('a'), 'family finish Your details without a level or a date');
+select pg_temp.check_true(pg_temp.details_done('b'), 'and professionals');
+select pg_temp.check_true(pg_temp.details_done('c') = false, 'a member with an injury does not');
+select pg_temp.check_true(pg_temp.details_done('d') = false, 'nor one who gave no kind');
+update public.members set city = null where id = 'aaaaaaaa-1108-0000-0000-00000000000a';
+select pg_temp.check_true(pg_temp.details_done('a') = false, 'family still give the rest');
+update public.members set exact_level = 'C5', injury_date = '2013-01-01', injury_date_precision = 'year'
+ where id = 'aaaaaaaa-1108-0000-0000-00000000000c';
+select pg_temp.check_true(pg_temp.details_done('c'), 'and a member with an injury finishes with both');
 
 \echo '== done: every line above PASS =='
 rollback;

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { DECLINABLE_DETAILS } from '@/routes/profile/details-api';
 import { QUESTIONS, SPECIFICS_FOR } from '@/routes/profile/questions';
-import REMINDERS from '../../../supabase/migrations/20261022040000_finish_your_profile_reminders.sql?raw';
 import LATEST from '../../../supabase/migrations/20261104140000_family_and_professionals_skip_before_or_after.sql?raw';
+import DETAILS_LATEST from '../../../supabase/migrations/20261104150000_family_and_professionals_finish_their_details.sql?raw';
 
 /**
  * The reminders decide "finished" in the database (member_details_done,
  * member_profile_done), restating Me's rings. A question or a detail added
  * here and not there would remind somebody who had finished, or never remind
  * somebody who had not. A later migration that restates either function
- * should point this file at itself (20261104140000 restates the profile's).
+ * should point this file at itself (20261104140000 restates the profile's, 20261104150000 the details').
  */
 
 const COUNTED = QUESTIONS.filter((q) => !q.uncounted);
@@ -36,7 +36,7 @@ function body(name: string, sql: string): string {
 
 describe('the database’s idea of finished', () => {
   const profile = body('member_profile_done', LATEST);
-  const details = body('member_details_done', REMINDERS);
+  const details = body('member_details_done', DETAILS_LATEST);
 
   it.each(COUNTED.map((q) => [q.key, q.column] as const))(
     'asks the survey’s %s, in column %s',
@@ -69,5 +69,15 @@ describe('the database’s idea of finished', () => {
 
   it.each(DECLINABLE_DETAILS.map((d) => d.key))('asks Your details’ %s', (key) => {
     expect(details).toContain(`'${key}'`);
+  });
+
+  it('does not ask family or professionals for a level or a date', () => {
+    const guard = "coalesce(m.injury_type in ('family', 'professional'), false) or (";
+    const after = details.slice(details.indexOf(guard));
+    expect(details).toContain(guard);
+    for (const key of ['exactLevel', 'injuryDate']) {
+      expect(after).toContain(`'${key}'`);
+      expect(details.slice(0, details.indexOf(guard))).not.toContain(`'${key}'`);
+    }
   });
 });
