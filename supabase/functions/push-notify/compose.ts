@@ -5,7 +5,7 @@
  * wording, 2026-09-27 — every notification says what kind it is:
  *
  *   Direct message   "Direct message from Bo"   + the words, cut short
- *   Group message    "Group message from Bo"    + the words, cut short
+ *   Group message    "Group message from Bo in Crew" + the words, cut short
  *   Topic reply      "Bo replied to your topic" + the words, cut short
  *
  * And the six added the same day (20260927020000):
@@ -47,10 +47,10 @@
  *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
- * who replied. Nothing here names a room, a topic or a group — those are
- * named for what they are about, and a lock screen is read by whoever is next
- * to it. Event titles and organization
- * names are public (CONTEXT.md), which is why those two may.
+ * who replied. Nothing here names a room or a topic — those are named for
+ * what they are about, and a lock screen is read by whoever is next to it.
+ * Event titles and organization names are public (CONTEXT.md), which is why
+ * those two may. A group message names its group (the owner, 2026-11-05).
  */
 
 /** How much of a message a lock screen gets. iOS shows about four lines. */
@@ -183,9 +183,13 @@ export function compose(owed: Owed): PushMessage | null {
         body: words(owed) || 'Shared a post.',
         ...where,
       };
+    // subject is the group's name, since 20261105020000.
     case 'group':
       return {
-        title: `Group message from ${name}`,
+        title:
+          subject === ''
+            ? `Group message from ${name}`
+            : `Group message from ${name} in ${subject}`,
         body: words(owed) || 'Shared a post.',
         ...where,
       };

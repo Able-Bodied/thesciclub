@@ -42,6 +42,13 @@ describe('compose', () => {
     });
   });
 
+  // The owner, 2026-11-05: and which group.
+  it('names the group a message is in, when it has a name', () => {
+    expect(
+      compose(owed({ kind: 'group', body: 'Who is driving?', subject: 'Weekend Crew' })),
+    ).toMatchObject({ title: 'Group message from Bo in Weekend Crew', body: 'Who is driving?' });
+  });
+
   // The owner, 2026-10-01: a reply says who, and what they replied, cut short.
   it('says who replied to a topic and what they said', () => {
     const reply = compose(
