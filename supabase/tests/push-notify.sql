@@ -67,15 +67,15 @@ insert into public.chat_posts (id, topic_id, author_id, body) values
   ('44444444-5555-0000-0000-000000000001', '33333333-5555-0000-0000-000000000001', 'aaaaaaaa-5555-0000-0000-00000000000a', 'A private answer about a private thing');
 
 \echo ''
-\echo '== 1. a direct message reaches the other member and nobody else (expect Bo only, kind direct, the words) =='
+\echo '== 1. a direct message reaches the other member and nobody else (expect Bo only, kind direct, the words, no subject) =='
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
-       kind, actor_name, body, url
+       kind, actor_name, body, subject, url
   from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000001"}') o;
 
 \echo ''
-\echo '== 2. a group message reaches everybody else in it who is not paused (expect Bo and Grouped, not Author, not Paused, not Outsider) =='
+\echo '== 2. a group message reaches everybody else in it who is not paused (expect Bo and Grouped, not Author, not Paused, not Outsider; subject Probe group) =='
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
-       kind, actor_name, body
+       kind, actor_name, body, subject
   from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000002"}') o
  order by 1;
 

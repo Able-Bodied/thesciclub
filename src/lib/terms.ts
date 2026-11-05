@@ -20,7 +20,7 @@ export const TERMS_VERSION = '2026-11-03';
 export const TERMS_UPDATED = 'November 3, 2026';
 
 /** The Privacy page's own date: its newest "What changed on" note. */
-export const PRIVACY_UPDATED = 'November 4, 2026';
+export const PRIVACY_UPDATED = 'November 5, 2026';
 
 type Failure = Parameters<typeof describeError>[0];
 
