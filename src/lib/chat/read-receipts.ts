@@ -4,12 +4,22 @@ import type { ChatMessage, ThreadKind } from '@/lib/chat/types';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
+/** A time with its zone, so it is not read as local time. */
+const ZONED = /(?:Z|[+-]\d{2}:\d{2})$/;
+
 /** Postgres keeps microseconds; Date alone can mark a later message read early. */
 function instant(value: string): bigint | null {
   const milliseconds = Date.parse(value);
   if (!Number.isFinite(milliseconds)) return null;
   const fraction = /\.(\d+)(?:Z|[+-]\d{2}:\d{2})$/.exec(value)?.[1] ?? '';
   return BigInt(milliseconds) * 1000n + BigInt(fraction.padEnd(6, '0').slice(3, 6));
+}
+
+/** True when `a` is a later time than `b`. */
+function later(a: string, b: string): boolean {
+  const x = instant(a);
+  const y = instant(b);
+  return x !== null && (y === null || x > y);
 }
 
 /** A receipt belongs to a saved message and counts only the other members. */
@@ -60,11 +70,22 @@ export function useThreadReadReceipts(threadId: string | undefined) {
           .abortSignal(controller.signal),
       );
       if (controller.signal.aborted) return;
-      setReads(
-        result.error
-          ? null
-          : new Map((result.data ?? []).map((row) => [row.member_id, row.last_read_at])),
-      );
+      if (result.error) {
+        setReads(null);
+        return;
+      }
+      // A newer position heard live while this read was out is kept.
+      setReads((old) => {
+        const next = new Map<string, string>();
+        for (const row of result.data ?? []) {
+          const heard = old?.get(row.member_id);
+          next.set(
+            row.member_id,
+            heard && later(heard, row.last_read_at) ? heard : row.last_read_at,
+          );
+        }
+        return next;
+      });
     } catch {
       if (!controller.signal.aborted) setReads(null);
     }
@@ -76,6 +97,30 @@ export function useThreadReadReceipts(threadId: string | undefined) {
     return () => inFlight.current?.abort();
   }, [reload]);
 
+  // A changed row is applied as it came, not read again: each message moved
+  // every reader's row, and each move re-read the roster for everybody.
+  const onRow = useCallback(
+    (row: Record<string, unknown>) => {
+      const member = row.member_id;
+      const at = row.last_read_at;
+      if (
+        row.thread_id !== threadId ||
+        typeof member !== 'string' ||
+        typeof at !== 'string' ||
+        !ZONED.test(at) ||
+        instant(at) === null
+      ) {
+        void reload();
+        return;
+      }
+      setReads((old) => {
+        const before = old?.get(member);
+        if (!old || (before !== undefined && !later(at, before))) return old;
+        return new Map(old).set(member, at);
+      });
+    },
+    [threadId, reload],
+  );
   useRealtimeRows({
     table: 'chat_thread_members',
     filter: threadId ? `thread_id=eq.${threadId}` : undefined,
@@ -83,6 +128,7 @@ export function useThreadReadReceipts(threadId: string | undefined) {
     onChange: () => {
       void reload();
     },
+    onRow,
   });
   return reads;
 }

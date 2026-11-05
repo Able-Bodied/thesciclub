@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { holdBadgesFor } from '@/lib/badges';
 import { deleteAttachments, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
 import { CHAT_NOTICES, type ChatMessage, type ChatNotice, type ChatThread } from '@/lib/chat/types';
@@ -463,13 +464,16 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
       if (!threadId || !through || document.visibilityState !== 'visible') return;
       if (marked.current === through) return;
       marked.current = through;
-      void getSupabase()
-        .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
-        .then(() => {
-          unreadChanged();
-          // Its notifications are seen now, so the icon drops by them.
-          announceNotificationsChanged();
-        });
+      // The badges wait for it, so the new message's own count sees it read.
+      holdBadgesFor(
+        getSupabase()
+          .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
+          .then(() => {
+            unreadChanged();
+            // Its notifications are seen now, so the icon drops by them.
+            announceNotificationsChanged();
+          }),
+      );
     },
     [threadId],
   );
@@ -563,12 +567,8 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
     marked.current = null;
     refreshing.current = null;
     void refresh();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
-    };
-    document.addEventListener('visibilitychange', onVisible);
+    // Shown again: the screen's realtime reads once (src/lib/chat/realtime.ts).
     return () => {
-      document.removeEventListener('visibilitychange', onVisible);
       controller.abort();
     };
   }, [threadId, refresh]);

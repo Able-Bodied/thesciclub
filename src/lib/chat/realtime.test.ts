@@ -92,7 +92,7 @@ describe('useRealtimeRows', () => {
   });
 
   it('carries no filter at all when it was not given one', () => {
-    // The shell's subscription. RLS is what scopes it, not a filter.
+    // The Chat list's subscription. RLS is what scopes it, not a filter.
     renderHook(() => {
       useRealtimeRows({ table: 'chat_messages', onChange: () => undefined });
     });
@@ -125,6 +125,33 @@ describe('useRealtimeRows', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
+  it('reads nothing while the page is hidden, and once per screen when it is back', () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    const posts = vi.fn();
+    const rows = vi.fn();
+    const onRow = vi.fn();
+    renderHook(() => {
+      useRealtimeRows({ table: 'chat_posts', onChange: posts });
+      useRealtimeRows({ table: 'chat_messages', onChange: rows, onRow });
+    });
+    for (const channel of bus.channels) {
+      for (const handler of channel.handlers) handler.fire({ new: { id: 'x' } });
+      channel.status('SUBSCRIBED');
+    }
+    window.dispatchEvent(new Event('focus'));
+    expect(posts).not.toHaveBeenCalled();
+    expect(rows).not.toHaveBeenCalled();
+    expect(onRow).not.toHaveBeenCalled();
+    // Shown again: the page and the window both say so; each screen reads once.
+    visibility.mockReturnValue('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+    expect(posts).toHaveBeenCalledTimes(1);
+    expect(rows).toHaveBeenCalledTimes(1);
+    expect(onRow).not.toHaveBeenCalled();
+    visibility.mockRestore();
+  });
+
   it('passes a change on', () => {
     const onChange = vi.fn();
     renderHook(() => {
@@ -141,7 +168,7 @@ describe('useRealtimeRows', () => {
       useRealtimeRows({ table: 'chat_messages', onChange, onRow });
     });
     only().handlers[0]?.fire({ new: { id: 'm1' } });
-    expect(onRow).toHaveBeenCalledWith({ id: 'm1' });
+    expect(onRow).toHaveBeenCalledWith({ id: 'm1' }, 'INSERT');
     expect(onChange).not.toHaveBeenCalled();
     only().status('SUBSCRIBED');
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -156,7 +183,7 @@ describe('useRealtimeRows', () => {
   });
 
   it('gives every subscription its own channel and takes it down again', () => {
-    // Two components can watch the same table at once — the shell watches every
+    // Two components can watch the same table at once — the Chat list watches every
     // message and an open conversation watches its own — and a shared topic is
     // how one unmounting takes the other's events with it.
     const first = renderHook(() => {

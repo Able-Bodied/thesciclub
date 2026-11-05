@@ -43,9 +43,9 @@ export function useReactions(
   kind: ReactionKind,
   ids: readonly string[],
   memberId: string | null,
-  /** Off for Home, which reads once and does not follow the club live: the
-   * subscription is to every reaction anywhere, and each one re-read Home's. */
-  { live = true }: { live?: boolean } = {},
+  /** Off for Home, which reads once and does not follow the club live. `within`
+   * is the conversation or topic on screen: only its reactions are heard. */
+  { live = true, within }: { live?: boolean; within?: string | undefined } = {},
 ): ReactionsState {
   const key = [...new Set(ids)].sort().join(',');
   const wanted = useMemo(() => (key ? key.split(',') : []), [key]);
@@ -186,7 +186,15 @@ export function useReactions(
     },
     [scope, read],
   );
-  useRealtimeRows({ table, onChange: reload, onRow, enabled: live && Boolean(memberId && key) });
+  // Filtered by the column 20261105040000 adds, not by RLS alone.
+  const filter = within ? `${kind === 'post' ? 'topic_id' : 'thread_id'}=eq.${within}` : undefined;
+  useRealtimeRows({
+    table,
+    filter,
+    onChange: reload,
+    onRow,
+    enabled: live && Boolean(within && memberId && key),
+  });
 
   const choose = useCallback(
     async (target: string, emoji: ReactionEmoji | null) => {

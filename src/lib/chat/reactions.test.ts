@@ -14,15 +14,21 @@ const db = vi.hoisted(() => ({
   pages: [] as number[],
   changed: null as (() => void) | null,
   row: null as ((row: Record<string, unknown>) => void) | null,
+  watched: null as null | { table: string; filter?: string; enabled?: boolean },
 }));
 vi.mock('@/lib/chat/realtime', () => ({
   useRealtimeRows: ({
     onChange,
     onRow,
+    ...watched
   }: {
+    table: string;
+    filter?: string;
+    enabled?: boolean;
     onChange: () => void;
     onRow?: (row: Record<string, unknown>) => void;
   }) => {
+    db.watched = watched;
     db.changed = onChange;
     db.row = onRow ?? null;
   },
@@ -219,6 +225,24 @@ describe('emoji reactions', () => {
       { table: 'chat_message_reactions', ids: ['m1'] },
       { table: 'chat_message_reactions', ids: ['m2'] },
     ]);
+  });
+  // Every reaction in the club used to reach every open conversation and topic.
+  it('hears only the conversation or topic on screen', () => {
+    renderHook(() => useReactions('message', ['m1'], 'me', { within: 't1' }));
+    expect(db.watched).toEqual({
+      table: 'chat_message_reactions',
+      filter: 'thread_id=eq.t1',
+      enabled: true,
+    });
+    renderHook(() => useReactions('post', ['p1'], 'me', { within: 'topic1' }));
+    expect(db.watched).toEqual({
+      table: 'chat_post_reactions',
+      filter: 'topic_id=eq.topic1',
+      enabled: true,
+    });
+    // Nowhere named: nothing club-wide.
+    renderHook(() => useReactions('post', ['p1'], 'me'));
+    expect(db.watched?.enabled).toBe(false);
   });
   it('applies a live reaction as its row, with no read', async () => {
     const { result } = renderHook(() => useReactions('message', ['m1'], 'me'));

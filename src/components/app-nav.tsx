@@ -5,7 +5,6 @@ import { touchScreen, useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useBadgeRealtime } from '@/lib/badges';
-import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { useUnprovenEmail } from '@/lib/email-proof';
 import { useIconBadge } from '@/lib/icon-badge';
@@ -63,7 +62,7 @@ export function AppNav() {
   // Reading a conversation happens on a screen that is not this one, so the
   // hook listens for `unreadChanged()` rather than this refetching on every
   // navigation. See src/lib/chat/unread.ts.
-  const { count, reload } = useUnreadThreads();
+  const { count } = useUnreadThreads();
   // The bar is on every screen, so the app icon's number is kept here.
   useIconBadge();
   // Red on Me, so a notification is not missed on a screen with no bell
@@ -79,12 +78,9 @@ export function AppNav() {
   const bar = useRef<HTMLElement | null>(null);
   const { hidden, show } = useHideOnScroll(wide === false && touchScreen(), location.pathname, bar);
 
-  // The bar is mounted on every screen, which makes it the right place for the
-  // one subscription that has to survive navigation: somebody writing to you
-  // while you are reading an event. Unfiltered and scoped by RLS to the
-  // conversations this member is in.
-  useRealtimeRows({ table: 'chat_messages', onChange: reload });
-  // A notification for this member, or a read on another device.
+  // The bar is on every screen, so somebody writing to you while you read an
+  // event is heard here: each unmuted message writes this member a
+  // notification row (notifications_record), so no club-wide message feed.
   useBadgeRealtime();
 
   // Bottom bar on a phone, top bar on a desktop.

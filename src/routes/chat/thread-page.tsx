@@ -128,6 +128,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     'message',
     messages.filter((m) => !m.pending && !m.notice && m.removedAt === null).map((m) => m.id),
     account.userId,
+    { within: threadId },
   );
   const reads = useThreadReadReceipts(threadId);
   // Read again with every reload: a block or a removal changes what a card may show.

@@ -12,13 +12,14 @@
  *      Alex's screen shows it without anybody touching Alex's browser.
  *   2. Bo is on Peers, not on Chat at all. Alex writes. The dot appears on Bo's
  *      Chat tab.
- *   3. Bo taps through to the conversation. The dot goes, within the 1.5 s
- *      recount (src/lib/coalesce.ts). Taps, not a page load, which would
+ *   3. Bo taps through to the conversation. The dot goes, within the 5 s
+ *      recount (src/lib/badges.ts). Taps, not a page load, which would
  *      recount anyway and hide a missing `unreadChanged()`.
  *   4. A third account, outside the conversation, receives neither message
  *      over its socket. Realtime runs the chat read rules for every listener,
- *      so a rule that is too generous shows here first. Bo's socket carrying
- *      the reply shows the listening works.
+ *      so a rule that is too generous shows here first. Alex's socket carrying
+ *      Bo's words shows the listening works. Since 2026-11-05 the tab bar
+ *      hears a notification row, not the message, so Bo's does not.
  *
  * The second is the one worth the trouble. A subscription on the open screen is
  * easy to get right and easy to notice when it breaks; the one in the tab bar
@@ -88,6 +89,8 @@ async function signIn(page, { email, password }) {
   await page.goto(`${BASE}/join`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /already have an account/i }).click();
   await page.waitForTimeout(500);
+  await page.getByRole('button', { name: 'Sign in with email' }).click();
+  await page.waitForTimeout(300);
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -116,7 +119,7 @@ const heard = (page) => {
   });
   return frames;
 };
-const secondHeard = heard(second);
+const firstHeard = heard(first);
 const outsiderHeard = heard(outsider);
 
 await signIn(first, ACCOUNTS[0]);
@@ -175,7 +178,7 @@ await check(`${b.display_name}'s dot went once they opened the conversation`, as
 });
 
 await check(`${c.display_name}, outside the conversation, received neither message`, async () => {
-  if (!secondHeard.some((frame) => frame.includes(reply))) {
+  if (!firstHeard.some((frame) => frame.includes(words))) {
     throw new Error('the listening is broken');
   }
   if (outsiderHeard.some((frame) => frame.includes(words) || frame.includes(reply))) {

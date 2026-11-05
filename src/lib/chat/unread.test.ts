@@ -36,7 +36,11 @@ describe('useUnreadThreads', () => {
       expect(result.current.count).toBe(3);
     });
     db.count = 0;
+    // The badges count at most once per 5 s (src/lib/badges.ts).
+    vi.useFakeTimers();
     unreadChanged();
+    await vi.advanceTimersByTimeAsync(5000);
+    vi.useRealTimers();
     await vi.waitFor(() => {
       expect(result.current.count).toBe(0);
     });

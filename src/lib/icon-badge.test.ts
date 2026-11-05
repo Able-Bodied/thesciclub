@@ -49,7 +49,11 @@ describe('useIconBadge', () => {
     expect(db.calls).toEqual(['my_badge_counts']);
 
     db.kinds = 0;
+    // The badges count at most once per 5 s (src/lib/badges.ts).
+    vi.useFakeTimers();
     announceNotificationsChanged();
+    await vi.advanceTimersByTimeAsync(5000);
+    vi.useRealTimers();
     await vi.waitFor(() => {
       expect(db.icon).toEqual([2, 0]);
     });

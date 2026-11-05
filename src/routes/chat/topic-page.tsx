@@ -173,7 +173,7 @@ export default function TopicPage() {
     () => posts.filter((post) => post.removedAt === null).map((post) => post.id),
     [posts],
   );
-  const reactions = useReactions('post', standingIds, account.userId);
+  const reactions = useReactions('post', standingIds, account.userId, { within: topicId });
   const likes = usePostLikes(standingIds);
   const views = usePostViews(standingIds);
   const saves = useTopicSaves(topicId);
