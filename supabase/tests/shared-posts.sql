@@ -263,18 +263,7 @@ $$;
 \echo '   expect: PASS 5a (Cy reacts; one notification, no words; a lock screen gets'
 \echo '   no words either), PASS 5b (Bo edits to a line and back to none; cannot'
 \echo '   swap the post), PASS 5c (the reports say a post was shared)'
-do $$
-begin
-  perform public.chat_set_reaction('message', current_setting('probe.m_opener')::uuid, '👍');
-  assert exists (select 1 from public.chat_message_reactions where target_id = current_setting('probe.m_opener')::uuid), 'no reaction';
-  perform public.chat_mark_thread_read(current_setting('probe.dm')::uuid);
-  assert exists (select 1 from public.my_notifications(null, 100) n
-                  where n.kind = 'direct' and n.excerpt is null), 'no notification for the share, or one quoting something';
-  assert not exists (select 1 from public.my_notifications(null, 100) n where n.excerpt like '%cushion%'),
-    'a notification quotes the post';
-  raise notice 'PASS 5a: Cy reacts, and is notified without the post''s words';
-end;
-$$;
+-- Asked before Cy reads it: a read conversation owes no push (20261105110000).
 set local role postgres;
 do $$
 declare
@@ -285,6 +274,19 @@ begin
   assert found, 'no push owed to Cy';
   assert owed.body = '' and owed.photo_count = 0, format('the push carries %s', owed.body);
   raise notice 'PASS 5a: the lock screen gets no words of the post (compose.ts says "Shared a post.")';
+end;
+$$;
+set local role authenticated;
+do $$
+begin
+  perform public.chat_set_reaction('message', current_setting('probe.m_opener')::uuid, '👍');
+  assert exists (select 1 from public.chat_message_reactions where target_id = current_setting('probe.m_opener')::uuid), 'no reaction';
+  perform public.chat_mark_thread_read(current_setting('probe.dm')::uuid);
+  assert exists (select 1 from public.my_notifications(null, 100) n
+                  where n.kind = 'direct' and n.excerpt is null), 'no notification for the share, or one quoting something';
+  assert not exists (select 1 from public.my_notifications(null, 100) n where n.excerpt like '%cushion%'),
+    'a notification quotes the post';
+  raise notice 'PASS 5a: Cy reacts, and is notified without the post''s words';
 end;
 $$;
 set local role authenticated;

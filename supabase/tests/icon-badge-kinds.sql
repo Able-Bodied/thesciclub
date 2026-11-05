@@ -109,7 +109,8 @@ reset role;
 select pg_temp.check_true(pg_temp.ana_icon() = 4, 'and two reactions: 4');
 
 \echo '== 3. every push carries the same number =='
-select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000023"}') = 4,
+-- 22, the first: the second came within 2 minutes and pushed nobody (20261105110000).
+select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000022"}') = 4,
   'a message push says 4');
 select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'like',
   '{"post_id":"28110000-0000-0000-0000-000000000011","member_id":"bbbbbbbb-2811-0000-0000-00000000000b"}') = 4,
@@ -142,7 +143,7 @@ select pg_temp.as_member('aaaaaaaa-2811-0000-0000-00000000000a');
 insert into public.push_muted_kinds (member_id, kind) values (auth.uid(), 'reaction');
 reset role;
 select pg_temp.check_true(pg_temp.ana_icon() = 2, 'reactions off too: 2');
-select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000023"}') = 2,
+select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000022"}') = 2,
   'and a push says 2');
 set local role authenticated;
 select pg_temp.as_member('aaaaaaaa-2811-0000-0000-00000000000a');
@@ -157,7 +158,7 @@ select public.notifications_mark_seen();
 select pg_temp.check_true(public.my_unseen_notification_count() = 0, 'the bell is clear');
 reset role;
 select pg_temp.check_true(pg_temp.ana_icon() = 0, 'and so is the icon');
-select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000023"}') = 0,
+select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'message', '{"id":"28110000-0000-0000-0000-000000000022"}') = 0,
   'a push now says 0');
 
 \echo '== 7. nothing the bell would not show: a blocked member, a closed room =='
