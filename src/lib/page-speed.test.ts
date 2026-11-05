@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  cardsShown,
   endpointOf,
   flush,
+  noteScreen,
   ONE_VISIT_IN,
   resetPageSpeed,
   screenOf,
@@ -145,5 +147,73 @@ describe('measuring only some visits', () => {
     flush();
     expect(send).toHaveBeenCalledTimes(1);
     random.mockRestore();
+  });
+});
+
+// The owner, 2026-11-04: time until the cards on Events and Peers are drawn
+// with their data.
+describe('cards shown', () => {
+  interface Sent {
+    metric: string;
+    screen: string;
+    ms: number;
+  }
+  function sending() {
+    const sent: Sent[] = [];
+    startPageSpeed((samples) => {
+      sent.push(...(samples as Sent[]));
+      return Promise.resolve();
+    }, true);
+    // Drawn at once, rather than at the next two frames.
+    vi.stubGlobal('requestAnimationFrame', (step: FrameRequestCallback) => {
+      step(performance.now());
+      return 0;
+    });
+    return sent;
+  }
+  const go = (path: string) => {
+    window.history.pushState({}, '', path);
+    noteScreen(path);
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.pushState({}, '', '/');
+  });
+
+  it('times from opening the app, through a redirect', () => {
+    const sent = sending();
+    go('/');
+    go('/events');
+    cardsShown();
+    flush();
+    expect(sent).toEqual([
+      expect.objectContaining({ metric: 'cards-after-open', screen: '/events' }),
+    ]);
+  });
+
+  it('times from the tap once somebody has moved to the screen', () => {
+    const sent = sending();
+    go('/home');
+    window.dispatchEvent(new Event('pointerdown'));
+    go('/peers');
+    cardsShown();
+    flush();
+    expect(sent).toEqual([
+      expect.objectContaining({ metric: 'cards-after-tap', screen: '/peers' }),
+    ]);
+  });
+
+  it('times a visit once, and only on the screen it is on', () => {
+    const sent = sending();
+    go('/events');
+    cardsShown();
+    cardsShown();
+    window.dispatchEvent(new Event('pointerdown'));
+    noteScreen('/peers');
+    // Still at /events in the address: a late call from the last screen.
+    cardsShown();
+    flush();
+    expect(sent).toHaveLength(1);
   });
 });

@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { CardsShown } from '@/components/cards-shown';
 import { FilterButton } from '@/components/filter-button';
 import { HeaderSearch } from '@/components/header-search';
 import { LoadingCards } from '@/components/loading-cards';
@@ -575,6 +576,8 @@ export default function EventsPage() {
             </div>
           ) : (
             <div className="arrive">
+              {/* Timed for page speed, in the list only (the owner, 2026-11-04). */}
+              {showingMap ? null : <CardsShown />}
               {(goingFirst
                 ? [
                     { heading: "You're going" },
