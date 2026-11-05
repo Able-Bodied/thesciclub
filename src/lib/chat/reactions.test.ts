@@ -14,12 +14,14 @@ const db = vi.hoisted(() => ({
   pages: [] as number[],
   changed: null as (() => void) | null,
   row: null as ((row: Record<string, unknown>) => void) | null,
+  returned: null as (() => void) | null,
   watched: null as null | { table: string; filter?: string; enabled?: boolean },
 }));
 vi.mock('@/lib/chat/realtime', () => ({
   useRealtimeRows: ({
     onChange,
     onRow,
+    onReturn,
     ...watched
   }: {
     table: string;
@@ -27,10 +29,12 @@ vi.mock('@/lib/chat/realtime', () => ({
     enabled?: boolean;
     onChange: () => void;
     onRow?: (row: Record<string, unknown>) => void;
+    onReturn?: () => void;
   }) => {
     db.watched = watched;
     db.changed = onChange;
     db.row = onRow ?? null;
+    db.returned = onReturn ?? null;
   },
 }));
 vi.mock('@/lib/supabase', () => ({
@@ -243,6 +247,24 @@ describe('emoji reactions', () => {
     // Nowhere named: nothing club-wide.
     renderHook(() => useReactions('post', ['p1'], 'me'));
     expect(db.watched?.enabled).toBe(false);
+  });
+  it('on a return, reads every target once, with the screen’s new ones', async () => {
+    const { result, rerender } = renderHook(
+      ({ ids }) => useReactions('message', ids, 'me', { within: 't1' }),
+      { initialProps: { ids: ['m1', 'm2'] } },
+    );
+    await loaded(result);
+    db.reads = [];
+    db.rows = [{ target_id: 'm1', member_id: 'other', emoji: '🎉' }];
+    act(() => db.returned?.());
+    // Nothing yet: the conversation's own read brings new messages first.
+    expect(db.reads).toEqual([]);
+    expect(result.current.rows).toEqual([]);
+    rerender({ ids: ['m1', 'm2', 'm3'] });
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+    expect(db.reads).toEqual([{ table: 'chat_message_reactions', ids: ['m1', 'm2', 'm3'] }]);
   });
   it('applies a live reaction as its row, with no read', async () => {
     const { result } = renderHook(() => useReactions('message', ['m1'], 'me'));

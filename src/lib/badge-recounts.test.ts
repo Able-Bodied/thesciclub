@@ -35,6 +35,7 @@ vi.mock('@/lib/push/notifications', () => ({
 }));
 
 const { badgesChanged, holdBadgesFor, resetBadgesForTest } = await import('@/lib/badges');
+const { holdReturn, onPageReturn } = await import('@/lib/page-return');
 const { unreadChanged, useUnreadThreads } = await import('@/lib/chat/unread');
 const { announceNotificationsChanged, useUnseenNotifications } = await import(
   '@/lib/notifications'
@@ -146,6 +147,42 @@ describe('one badge request', () => {
     expect(db.calls).toHaveLength(2);
     await wait(30_000);
     expect(db.calls).toHaveLength(2);
+    visibility.mockRestore();
+  });
+
+  it('back to a conversation: counts once, after its catch-up and read mark land', async () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get');
+    renderHook(useEveryBadge);
+    await wait(0);
+    visibility.mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await wait(60_000);
+    let land: () => void = () => undefined;
+    const read = new Promise<void>((resolve) => {
+      land = resolve;
+    });
+    // The screen's catch-up holds the return; the tab bar's realtime says so too.
+    const stop = onPageReturn(() => {
+      holdReturn(read);
+      badgesChanged();
+    });
+    visibility.mockReturnValue('visible');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      window.dispatchEvent(new Event('focus'));
+    });
+    await wait(3000);
+    expect(db.calls).toHaveLength(1);
+    await act(async () => {
+      land();
+      await Promise.resolve();
+    });
+    // The mark's echoes.
+    act(badgesChanged);
+    act(badgesChanged);
+    await wait(30_000);
+    expect(db.calls).toHaveLength(2);
+    stop();
     visibility.mockRestore();
   });
 
