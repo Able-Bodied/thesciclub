@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CountUp } from '@/components/count-up';
+import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import {
   type ClubStats,
   type OnboardingStepKey,
@@ -22,6 +23,7 @@ import {
   systemCounts,
   useDeviceReport,
 } from '@/routes/admin/member-devices';
+import { PageSpeedSection } from '@/routes/admin/page-speed-section';
 import {
   CAME_LABELS,
   cameByPhrase,
@@ -598,7 +600,10 @@ function Weeks({ stats }: { stats: ClubStats }) {
           </caption>
           <thead>
             <tr className="border-line border-b text-grey">
-              <th scope="col" className="px-3.5 py-2 text-left font-semibold">
+              <th
+                scope="col"
+                className="sticky left-0 bg-paper px-3.5 py-2 text-left font-semibold"
+              >
                 Week of
               </th>
               {COLUMNS.map((column) => (
@@ -611,7 +616,10 @@ function Weeks({ stats }: { stats: ClubStats }) {
           <tbody>
             {newestFirst.map((week, index) => (
               <tr key={week.week} className="border-line border-b last:border-b-0">
-                <th scope="row" className="px-3.5 py-2 text-left font-semibold text-ink">
+                <th
+                  scope="row"
+                  className="sticky left-0 bg-paper px-3.5 py-2 text-left font-semibold text-ink"
+                >
                   {weekLabel(week.week)}
                   {index === 0 ? (
                     <span className="ml-1 font-normal text-grey">(so far)</span>
@@ -634,11 +642,21 @@ function Weeks({ stats }: { stats: ClubStats }) {
   );
 }
 
+/**
+ * In parts (the owner, 2026-11-04): on a phone this was four and a half
+ * screens. The period is for Overview and Signing in; Devices is since
+ * records began, and Page speed has its own.
+ */
+type StatsPart = 'overview' | 'sign-in' | 'devices' | 'speed';
+const STATS_PARTS: readonly StatsPart[] = ['overview', 'sign-in', 'devices', 'speed'];
+
 export function StatsSection() {
+  const [part, setPart] = useTabParam(STATS_PARTS, 'overview', undefined, 'part');
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const { stats, error, loading, reload } = useClubStats(period);
   const signIns = useSignInMethods(period);
   const devices = useDeviceReport();
+  const periodShown = part === 'overview' || part === 'sign-in';
 
   return (
     <section aria-labelledby="stats-heading">
@@ -646,70 +664,98 @@ export function StatsSection() {
         <h2 id="stats-heading" className={HEADING}>
           How the club is used
         </h2>
-        <SmallButton
-          onClick={() => {
-            void reload();
-            void signIns.reload();
-            void devices.reload();
-          }}
-          disabled={loading}
-        >
-          {loading ? 'Loading…' : 'Refresh'}
-        </SmallButton>
+        {part === 'speed' ? null : (
+          <SmallButton
+            onClick={() => {
+              void reload();
+              void signIns.reload();
+              void devices.reload();
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Loading…' : 'Refresh'}
+          </SmallButton>
+        )}
       </div>
-      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
-        Counted from what the club keeps, and nothing is sent anywhere. Counts only, never who,
-        except for who signed in how and who uses what.
-      </p>
-      <div className="mt-3 mb-3 max-w-[260px]">
-        <label htmlFor="stats-period" className="block font-bold text-[0.75rem] text-ink">
-          Period
-        </label>
-        <select
-          id="stats-period"
-          value={period}
-          onChange={(e) => {
-            setPeriod(e.target.value as StatsPeriod);
-          }}
-          className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
-        >
-          {PERIODS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PageTabs
+        nested
+        id="admin-stats"
+        label="Stats parts"
+        value={part}
+        onChange={setPart}
+        tabs={[
+          { value: 'overview', label: 'Overview' },
+          { value: 'sign-in', label: 'Signing in' },
+          { value: 'devices', label: 'Devices' },
+          { value: 'speed', label: 'Page speed' },
+        ]}
+      />
+      <TabPanel id="admin-stats" value={part} className="pt-3">
+        {periodShown ? (
+          <div className="mb-3 max-w-[260px]">
+            <label htmlFor="stats-period" className="block font-bold text-[0.75rem] text-ink">
+              Period
+            </label>
+            <select
+              id="stats-period"
+              value={period}
+              onChange={(e) => {
+                setPeriod(e.target.value as StatsPeriod);
+              }}
+              className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
+            >
+              {PERIODS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
-        >
-          {error}
-        </p>
-      ) : null}
-
-      {stats ? (
-        <>
-          <Summary stats={stats} />
-          <Joining stats={stats} />
-          <SigningIn data={signIns.methods} error={signIns.error} period={period} />
-          <Devices report={devices.report} error={devices.error} />
-          <Weeks stats={stats} />
-          <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
-            “Opened the app” means a member’s app was open and signed in since the period began. The
-            club only knows when each member last used it, so it can’t be counted for a previous
-            period. “Started onboarding” is an account that has signed in; Google and Apple sign in
-            as they make it. People who opened the app and left without an account are not counted.
-            A one-time link is a password-reset or emailed sign-in link. When the iPhone Home Screen
-            app takes over a sign-in from Safari or Chrome, it counts as the way the member signed
-            in there. Weeks start on Monday.
+        {part !== 'speed' && error ? (
+          <p
+            role="alert"
+            className="rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+          >
+            {error}
           </p>
-        </>
-      ) : loading ? (
-        <p className="py-10 text-center text-[0.875rem] text-grey">Counting…</p>
-      ) : null}
+        ) : null}
+
+        {part === 'speed' ? (
+          <PageSpeedSection />
+        ) : part === 'devices' ? (
+          <Devices report={devices.report} error={devices.error} />
+        ) : stats ? (
+          part === 'sign-in' ? (
+            <SigningIn data={signIns.methods} error={signIns.error} period={period} />
+          ) : (
+            <>
+              <Summary stats={stats} />
+              <Joining stats={stats} />
+              <Weeks stats={stats} />
+              <details className="mt-4 text-[0.75rem] text-grey leading-[1.45]">
+                <summary className="min-h-[44px] cursor-pointer py-2.5 font-semibold text-ink2">
+                  What these count
+                </summary>
+                <p>
+                  Counted from what the club keeps, and nothing is sent anywhere. Counts only, never
+                  who, except for who signed in how and who uses what. “Opened the app” means a
+                  member’s app was open and signed in since the period began. The club only knows
+                  when each member last used it, so it can’t be counted for a previous period.
+                  “Started onboarding” is an account that has signed in; Google and Apple sign in as
+                  they make it. People who opened the app and left without an account are not
+                  counted. A one-time link is a password-reset or emailed sign-in link. When the
+                  iPhone Home Screen app takes over a sign-in from Safari or Chrome, it counts as
+                  the way the member signed in there. Weeks start on Monday.
+                </p>
+              </details>
+            </>
+          )
+        ) : loading ? (
+          <p className="py-10 text-center text-[0.875rem] text-grey">Counting…</p>
+        ) : null}
+      </TabPanel>
     </section>
   );
 }

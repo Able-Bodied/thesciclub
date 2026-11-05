@@ -1048,7 +1048,7 @@ function Row({
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
   onMakeOrganization: () => void;
-  /** Their title as a trusted partner, or null. Left out where nobody can be one: a seeded row. */
+  /** Their title as a professional, or null. Left out where nobody can be one: a seeded row. */
   partnerTitle?: string | null;
   onSetPartner?: (title: string) => void;
   onRemovePartner?: () => void;
@@ -1229,7 +1229,7 @@ function Row({
                     setPartnering(partnerTitle ?? '');
                   }}
                 >
-                  {partnerTitle ? 'Change title' : `Make ${PARTNER_ROLE_NAME.toLowerCase()}`}
+                  {partnerTitle ? 'Change profession' : `Make ${PARTNER_ROLE_NAME.toLowerCase()}`}
                 </SmallButton>
                 {partnerTitle ? (
                   <SmallButton
@@ -1420,15 +1420,15 @@ function Row({
           }}
         >
           <p>
-            Their title goes from their name, their own codes stop letting people in, and they can
-            no longer introduce members. Introductions already made stay.
+            Their profession goes from their name, their own codes stop letting people in, and they
+            can no longer introduce members. Introductions already made stay.
           </p>
         </ConfirmPanel>
       ) : partnering !== null ? (
         <Panel
           title={
             partnerTitle
-              ? `${member.displayName}’s title`
+              ? `${member.displayName}’s profession`
               : `Make ${member.displayName} a ${PARTNER_ROLE_NAME.toLowerCase()}?`
           }
           buttons={
@@ -1457,14 +1457,15 @@ function Row({
             <p>
               For professionals who work with people with SCI/D. They can invite without a limit,
               make codes of their own, introduce members to each other, and see who they invited or
-              introduced. They see nobody’s messages or contact details.
+              introduced. They see nobody’s messages or contact details. They can change their
+              profession themselves, on Me.
             </p>
           )}
           <label
             className="mt-2 block font-semibold text-[0.75rem] text-ink"
             htmlFor={`partner-title-${member.id}`}
           >
-            Title shown beside their name
+            Profession shown beside their name
           </label>
           <input
             id={`partner-title-${member.id}`}

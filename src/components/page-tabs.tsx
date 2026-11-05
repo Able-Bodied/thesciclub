@@ -14,27 +14,33 @@ import { cn } from '@/lib/utils';
  * than pushed: a phone's back gesture leaves the screen, as it does everywhere
  * else in the club, instead of stepping back through tabs.
  */
-export function useTabParam<T extends string>(tabs: readonly T[], fallback: T, initial?: T) {
+export function useTabParam<T extends string>(
+  tabs: readonly T[],
+  fallback: T,
+  initial?: T,
+  /** The address parameter; a tab row inside a tab keeps its own. */
+  param = 'tab',
+) {
   const [params, setParams] = useSearchParams();
   // Read from the address once, then held here. Other parts of a screen tidy
   // their own parameters away (Google's return to Me does), and the tab must
   // not jump back to the first when they do.
   const [tab, setTabState] = useState<T>(
-    () => tabs.find((value) => value === params.get('tab')) ?? initial ?? fallback,
+    () => tabs.find((value) => value === params.get(param)) ?? initial ?? fallback,
   );
   const setTab = useCallback(
     (next: T) => {
       setTabState(next);
       setParams(
         (current) => {
-          if (next === fallback) current.delete('tab');
-          else current.set('tab', next);
+          if (next === fallback) current.delete(param);
+          else current.set(param, next);
           return current;
         },
         { replace: true },
       );
     },
-    [fallback, setParams],
+    [fallback, param, setParams],
   );
   return [tab, setTab] as const;
 }
@@ -65,6 +71,7 @@ export function PageTabs<T extends string>({
   label,
   fill = false,
   measure = 'max-w-[var(--events-measure)]',
+  nested = false,
 }: {
   /** Shared with each TabPanel, which is how a panel names its tab. */
   id: string;
@@ -75,6 +82,8 @@ export function PageTabs<T extends string>({
   fill?: boolean;
   /** The max-width class the screen's content uses, so the tabs line up with it. */
   measure?: string;
+  /** Inside another tab: does not stick, and sits in the content's own padding. */
+  nested?: boolean;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLDivElement>(null);
@@ -130,15 +139,21 @@ export function PageTabs<T extends string>({
   return (
     <>
       <div ref={sentinel} aria-hidden="true" />
-      <div className="sticky top-0 z-20 flex-none border-line border-b bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/85">
+      <div
+        className={cn(
+          'flex-none',
+          !nested &&
+            'sticky top-0 z-20 border-line border-b bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/85',
+        )}
+      >
         <div
           ref={row}
           role="tablist"
           aria-label={label}
           onKeyDown={onKeyDown}
           className={cn(
-            'mx-auto flex w-full gap-1.5 px-4 py-2',
-            measure,
+            'mx-auto flex w-full gap-1.5',
+            nested ? 'border-line border-b' : ['px-4 py-2', measure],
             !fill &&
               'overflow-x-auto pr-8 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] md:pr-4 md:[mask-image:none]',
           )}
@@ -165,9 +180,21 @@ export function PageTabs<T extends string>({
                   choose(tab.value);
                 }}
                 className={cn(
-                  'flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 font-semibold text-[0.875rem] transition-colors',
+                  'flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap font-semibold text-[0.875rem] transition-colors',
                   fill ? 'min-w-0 flex-1' : 'flex-none',
-                  selected ? 'bg-action text-white' : 'text-ink2 hover:bg-tint',
+                  // Underlined inside another tab, so the two rows never read
+                  // as one control.
+                  nested
+                    ? cn(
+                        '-mb-px border-b-[3px] px-3',
+                        selected
+                          ? 'border-emphasis text-ink'
+                          : 'border-transparent text-ink2 hover:text-ink',
+                      )
+                    : cn(
+                        'rounded-full px-4',
+                        selected ? 'bg-action text-white' : 'text-ink2 hover:bg-tint',
+                      ),
                 )}
               >
                 {tab.label}
@@ -176,7 +203,9 @@ export function PageTabs<T extends string>({
                     aria-hidden="true"
                     className={cn(
                       'min-w-[1.6em] rounded-full px-1.5 py-px text-center font-bold text-[0.75rem]',
-                      selected ? 'bg-white text-action' : 'bg-destructive-fill text-white',
+                      selected && !nested
+                        ? 'bg-white text-action'
+                        : 'bg-destructive-fill text-white',
                     )}
                   >
                     {tab.count}

@@ -21,6 +21,7 @@ import { appFeedbackRoom } from '@/routes/home/feedback-card';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
 import { BlockedMembers } from '@/routes/me/blocked-members';
+import { ConfirmEmailBanner } from '@/routes/me/confirm-email-banner';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { DisplaySummary } from '@/routes/me/display-summary';
@@ -28,6 +29,7 @@ import { MeHero } from '@/routes/me/hero';
 import { MapVisibility } from '@/routes/me/map-visibility';
 import { NotificationSettings } from '@/routes/me/notification-settings';
 import { MyOrganizations } from '@/routes/me/organizations';
+import { ProfessionField } from '@/routes/me/profession-field';
 import { SignInSection } from '@/routes/me/sign-in-section';
 import { StandingCard } from '@/routes/me/standing';
 import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
@@ -283,6 +285,7 @@ export default function MePage() {
 
       {/* Above the tabs, so it is seen on whichever one Me opens on. */}
       <AddEmailBanner state={signIn.state} reload={signIn.reload} />
+      <ConfirmEmailBanner />
 
       <PageTabs
         id="me"
@@ -332,6 +335,7 @@ export default function MePage() {
                     />
                   ) : null}
                 </div>
+                {partner ? <ProfessionField /> : null}
                 {userId && showInBrowse !== null ? (
                   <DeckVisibility
                     userId={userId}

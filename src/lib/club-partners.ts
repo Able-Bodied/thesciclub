@@ -3,14 +3,15 @@ import type { Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Trusted partners (20261029100000): professionals an administrator made
- * partners, such as a hospital's peer support lead or a physical therapist,
- * shown with their title beside their name. Nothing here is the permission
+ * Professionals (20261029100000; called trusted partners until the owner,
+ * 2026-11-04): an administrator makes them, such as a hospital's peer support
+ * lead or a physical therapist, and each names their profession on Me
+ * (20261104100000). Shown beside their name. The code still says partner. Nothing here is the permission
  * check; the database decides, and these only choose what to draw.
  */
 
 /** What the role is called wherever it is shown. One place to rename it. */
-export const PARTNER_ROLE_NAME = 'Trusted partner';
+export const PARTNER_ROLE_NAME = 'Professional';
 
 /** member id → title, e.g. "Physical therapist, SCI-FIT". */
 export type PartnerTitles = ReadonlyMap<string, string>;

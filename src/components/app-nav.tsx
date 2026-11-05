@@ -7,6 +7,7 @@ import { NotificationBell, useWideLayout } from '@/components/notification-bell'
 import { useBadgeRealtime } from '@/lib/badges';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
+import { useUnprovenEmail } from '@/lib/email-proof';
 import { useIconBadge } from '@/lib/icon-badge';
 import { useUnseenNotifications } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,8 @@ export function AppNav() {
   // Red on Me, so a notification is not missed on a screen with no bell
   // (the owner, 2026-11-01). Not for a conversation: Chat's own dot says that.
   const { count: unseen } = useUnseenNotifications(true);
+  // And while their email waits to be confirmed (the owner, 2026-11-04).
+  const unproven = useUnprovenEmail() !== null;
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
@@ -131,7 +134,9 @@ export function AppNav() {
                   ? 'Chat, something new'
                   : to === '/me' && unseen > 0
                     ? 'Me, new notifications'
-                    : undefined
+                    : to === '/me' && unproven
+                      ? 'Me, confirm your email'
+                      : undefined
               }
               className={cn(
                 'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
@@ -153,6 +158,11 @@ export function AppNav() {
                   >
                     <Bell className="h-[10px] w-[10px] fill-white text-white" strokeWidth={2.4} />
                   </span>
+                ) : to === '/me' && unproven ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-destructive-fill ring-2 ring-paper"
+                  />
                 ) : null}
                 {to === '/chat' && count > 0 ? (
                   // Ringed in the bar's own colour so it reads as a dot on

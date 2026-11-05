@@ -168,10 +168,10 @@ const intro = (o: Partial<MadeIntroduction> = {}): MadeIntroduction => ({
   ...o,
 });
 
-function renderPage() {
+function renderPage(tab?: string) {
   return render(
     <AnnounceProvider>
-      <MemoryRouter initialEntries={['/stats']}>
+      <MemoryRouter initialEntries={[tab ? `/stats?tab=${tab}` : '/stats']}>
         <Routes>
           <Route path="/stats" element={<StatsPage />} />
         </Routes>
@@ -204,7 +204,7 @@ describe('Stats & controls', () => {
     state.partner = false;
     renderPage();
     expect(
-      await screen.findByText('This page is for org admins and trusted partners.'),
+      await screen.findByText('This page is for org admins and professionals.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your numbers' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Connect two members' })).toBeNull();
@@ -230,8 +230,8 @@ describe('your organization', () => {
   it('shows an org admin their organization’s numbers, for the period chosen', async () => {
     state.orgIds = new Set(['o1']);
     renderPage();
+    expect(screen.getByRole('heading', { level: 2, name: 'Abilities' })).toBeInTheDocument();
     const section = screen.getByRole('region', { name: 'Your organization' });
-    expect(within(section).getByText('Abilities')).toBeInTheDocument();
     expect(await within(section).findByText('12')).toBeInTheDocument();
     expect(within(section).getByText('75%')).toBeInTheDocument();
     expect(within(section).getByText('4.5')).toBeInTheDocument();
@@ -301,7 +301,7 @@ describe('the events behind the numbers', () => {
 
   it('lists each event held with its own numbers, and opens it', async () => {
     state.orgEvents = [held()];
-    renderPage();
+    renderPage('events');
     const link = await screen.findByRole('link', { name: /Tuesday Ride/ });
     expect(link).toHaveAttribute('href', '/events/e1');
     expect(link).toHaveTextContent('5 going · 5 checked in · 80% turnout');
@@ -311,7 +311,7 @@ describe('the events behind the numbers', () => {
 
   it('counts turnout by who said Going, so a walk-in cannot pass 100%', async () => {
     state.orgEvents = [held({ going: 1, checkedIn: 3, saidGoingAndCame: 1 })];
-    renderPage();
+    renderPage('events');
     expect(await screen.findByRole('link', { name: /Tuesday Ride/ })).toHaveTextContent(
       '100% turnout',
     );
@@ -319,23 +319,25 @@ describe('the events behind the numbers', () => {
 
   it('gives no turnout for an event nobody said Going to', async () => {
     state.orgEvents = [held({ going: 0, checkedIn: 2, saidGoingAndCame: 0 })];
-    renderPage();
+    renderPage('events');
     const link = await screen.findByRole('link', { name: /Tuesday Ride/ });
     expect(link).toHaveTextContent('0 going · 2 checked in');
     expect(link).not.toHaveTextContent('turnout');
   });
 
   it('says so when none were held', async () => {
-    renderPage();
+    renderPage('events');
     expect(await screen.findByText('No events held in this period.')).toBeInTheDocument();
   });
 
   it('follows the period, down to the past 24 hours', async () => {
-    renderPage();
-    const section = screen.getByRole('region', { name: 'Your organization' });
+    renderPage('events');
+    const section = screen.getByRole('region', { name: 'Events held' });
     expect(state.eventsAsked).toEqual([['o1', 30]]);
     await userEvent.click(within(section).getByRole('button', { name: '24 hours' }));
     expect(state.eventsAsked.at(-1)).toEqual(['o1', 1]);
+    // One period for the organization's tabs.
+    await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(state.orgAsked.at(-1)).toEqual(['o1', 1]);
   });
 
@@ -343,7 +345,7 @@ describe('the events behind the numbers', () => {
     state.orgEvents = Array.from({ length: 12 }, (_, i) =>
       held({ id: `e${String(i)}`, title: `Ride ${String(i)}` }),
     );
-    renderPage();
+    renderPage('events');
     expect(await screen.findAllByRole('link', { name: /^Ride/ })).toHaveLength(10);
     await userEvent.click(screen.getByRole('button', { name: 'Show all 12' }));
     expect(screen.getAllByRole('link', { name: /^Ride/ })).toHaveLength(12);
@@ -407,13 +409,42 @@ describe('a mentor for your people', () => {
   });
 });
 
-describe('the order of the page', () => {
-  it('puts every stat before connecting two members', () => {
+// The owner, 2026-11-04: in tabs, for a phone.
+describe('the tabs', () => {
+  const tabs = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
+
+  it('puts an org admin’s organization first, then connecting, then their own numbers', async () => {
     state.orgIds = new Set(['o1']);
     renderPage();
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings.indexOf('Your organization')).toBeLessThan(headings.indexOf('Your numbers'));
-    expect(headings.indexOf('Your numbers')).toBeLessThan(headings.indexOf('Connect two members'));
+    expect(tabs()).toEqual(['Overview', 'People', 'Events', 'Connect', 'Your numbers']);
+    expect(screen.getByRole('tab', { name: 'Overview', selected: true })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Connect two members' })).toBeNull();
+    await userEvent.click(screen.getByRole('tab', { name: 'Connect' }));
+    expect(screen.getByRole('heading', { name: 'Connect two members' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Your organization' })).toBeNull();
+  });
+
+  it('gives a partner with no organization only their numbers and connecting', () => {
+    renderPage();
+    expect(tabs()).toEqual(['Your numbers', 'Connect']);
+    expect(screen.getByRole('heading', { name: 'Your numbers' })).toBeInTheDocument();
+  });
+
+  it('keeps the organization chosen from tab to tab', async () => {
+    state.account = { status: 'member', userId: 'bobby', isAdmin: true, displayName: 'Bobby' };
+    state.orgIds = new Set(['o2']);
+    renderPage();
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Organization' }), 'o1');
+    await userEvent.click(screen.getByRole('tab', { name: 'Events' }));
+    expect(screen.getByRole('combobox', { name: 'Organization' })).toHaveValue('o1');
+    await waitFor(() => {
+      expect(state.eventsAsked.at(-1)).toEqual(['o1', 30]);
+    });
+  });
+
+  it('opens on an organization tab named in the address only for an org admin', () => {
+    renderPage('events');
+    expect(screen.getByRole('tab', { name: 'Your numbers', selected: true })).toBeInTheDocument();
   });
 });
 
@@ -432,7 +463,7 @@ describe('connecting two members', () => {
   }
 
   it('needs two members and a note, then connects them without asking', async () => {
-    renderPage();
+    renderPage('connect');
     const section = screen.getByRole('region', { name: 'Connect two members' });
     const go = within(section).getByRole('button', { name: 'Connect them' });
     expect(go).toBeDisabled();
@@ -446,7 +477,7 @@ describe('connecting two members', () => {
   });
 
   it('never offers the same member twice', async () => {
-    renderPage();
+    renderPage('connect');
     const section = screen.getByRole('region', { name: 'Connect two members' });
     await userEvent.type(within(section).getByLabelText('First member'), 'ana');
     await userEvent.click(await within(section).findByRole('button', { name: /Ana Ruiz/ }));
@@ -455,7 +486,7 @@ describe('connecting two members', () => {
   });
 
   it('puts the connector in the conversation only if they tick it', async () => {
-    renderPage();
+    renderPage('connect');
     const section = await fill();
     await userEvent.click(
       within(section).getByRole('checkbox', { name: 'Join the conversation yourself' }),
@@ -466,7 +497,7 @@ describe('connecting two members', () => {
 
   it('says a refusal and keeps what was typed', async () => {
     state.connectError = 'Those two have been connected already.';
-    renderPage();
+    renderPage('connect');
     const section = await fill();
     await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
     expect(await within(section).findByRole('alert')).toHaveTextContent(state.connectError);
@@ -551,9 +582,7 @@ describe('my people', () => {
     renderPage();
     const people = screen.getByRole('region', { name: 'My people' });
     await within(people).findByText('Ana Cruz');
-    await userEvent.click(
-      within(people).getByRole('button', { name: 'Not yet introduced to a mentor' }),
-    );
+    await userEvent.click(within(people).getByRole('button', { name: 'No mentor yet' }));
     expect(within(people).getByText('Sam Lee')).toBeInTheDocument();
     expect(within(people).queryByText('Ana Cruz')).toBeNull();
     expect(within(people).queryByText(/Mo Mentor/)).toBeNull();
@@ -579,7 +608,7 @@ describe('introductions', () => {
       intro({ id: 'i2', status: 'opened', yeses: 2, threadId: 't9' }),
       intro({ id: 'i3', status: 'declined', yeses: 1 }),
     ];
-    renderPage();
+    renderPage('connect');
     const list = screen.getByRole('region', { name: 'Introductions' });
     expect(await within(list).findByText(/Waiting: 1 of 2 said yes/)).toBeInTheDocument();
     expect(within(list).getByText(/Didn’t go ahead/)).toBeInTheDocument();

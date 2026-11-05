@@ -78,7 +78,24 @@ const deps: Deps = {
         user_metadata: metadata,
       }),
     });
-    return response.ok;
+    if (!response.ok) return null;
+    const made = (await response.json()) as { id?: unknown };
+    return typeof made.id === 'string' ? made.id : null;
+  },
+  async noteUnproven(account) {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/note_unproven_email`, {
+      method: 'POST',
+      headers: serviceHeaders,
+      body: JSON.stringify({ p_account: account }),
+    });
+    return response.ok && (await response.json()) === true;
+  },
+  async removeUser(account) {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${account}`, {
+      method: 'DELETE',
+      headers: serviceHeaders,
+    });
+    if (!response.ok) console.error('invite-signup: could not remove', account, response.status);
   },
 };
 

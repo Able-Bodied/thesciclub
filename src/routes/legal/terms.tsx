@@ -45,12 +45,12 @@ export default function TermsPage() {
             else’s name, and tell you why.
           </li>
           <li>
-            <b>Trusted partners.</b> We may make a professional who works with people with spinal
-            cord injuries a trusted partner, shown with their title. A partner can invite without a
-            limit, make QR codes and links that let people in until they expire, and connect two
-            members, as an org admin can. Connecting adds both to a group conversation without
-            asking them first, and either can leave it at any time. A partner’s word is not medical
-            advice either, and we may end the role at any time.
+            <b>Professionals.</b> We may make a member who works with people with spinal cord
+            injuries a professional, shown with the profession they write. A professional can invite
+            without a limit, make QR codes and links that let people in until they expire, and
+            connect two members, as an org admin can. Connecting adds both to a group conversation
+            without asking them first, and either can leave it at any time. A professional’s word is
+            not medical advice either, and we may end the role at any time.
           </li>
         </List>
       </Section>

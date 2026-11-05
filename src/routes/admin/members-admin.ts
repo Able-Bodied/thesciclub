@@ -452,7 +452,7 @@ export async function setMemberType(
     : { ok: true };
 }
 
-/** Make them a trusted partner, or change the title beside their name (20261029100000). */
+/** Make them a professional, or change the title beside their name (20261029100000). */
 export async function setPartner(
   target: string,
   title: string,
@@ -463,7 +463,7 @@ export async function setPartner(
   });
   forgetPartnerTitles();
   return error
-    ? { ok: false, error: describeError(error, 'They were not made a trusted partner.') }
+    ? { ok: false, error: describeError(error, 'They were not made a professional.') }
     : { ok: true };
 }
 
@@ -471,7 +471,7 @@ export async function removePartner(target: string): Promise<{ ok: boolean; erro
   const { error } = await getSupabase().rpc('admin_remove_partner', { p_member: target });
   forgetPartnerTitles();
   return error
-    ? { ok: false, error: describeError(error, 'They are still a trusted partner.') }
+    ? { ok: false, error: describeError(error, 'They are still a professional.') }
     : { ok: true };
 }
 

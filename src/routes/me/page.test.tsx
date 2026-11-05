@@ -409,7 +409,7 @@ describe('MePage', () => {
     expect(await screen.findByText('network is unreachable')).toBeInTheDocument();
   });
 
-  // A trusted partner (20261029100000) finds their page, and their own codes.
+  // A professional (20261029100000) finds their page, and their own codes.
   it('leads an org admin or a partner to Stats & controls and to making a code', () => {
     privileges.partner = true;
     privileges.connects = true;

@@ -54,7 +54,7 @@ const api = vi.hoisted(() => ({
   reportsStrikeCount: true,
   /** Open reports, for the count in the Reports tab's label. */
   openReports: 0,
-  /** member id → trusted partner title (20261029100000). */
+  /** member id → professional title (20261029100000). */
   partners: new Map<string, string>(),
   partnerCalls: [] as [string, string | null][],
 }));
@@ -283,7 +283,7 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
 }));
 
-// Who is a trusted partner, read with the roster; never the network.
+// Who is a professional, read with the roster; never the network.
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchPartnerTitles: () => Promise.resolve(new Map(api.partners)),
@@ -393,15 +393,15 @@ beforeEach(() => {
 });
 
 // 20261029100000.
-describe('trusted partners', () => {
-  it('makes a member a trusted partner with the title shown beside their name', async () => {
+describe('professionals', () => {
+  it('makes a member a professional with the profession shown beside their name', async () => {
     renderAdmin();
     await manage();
-    await userEvent.click(await screen.findByRole('button', { name: 'Make trusted partner' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Make professional' }));
     const save = screen.getByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
     await userEvent.type(
-      screen.getByLabelText('Title shown beside their name'),
+      screen.getByLabelText('Profession shown beside their name'),
       ' Physical therapist, SCI-FIT ',
     );
     await userEvent.click(save);
@@ -416,7 +416,7 @@ describe('trusted partners', () => {
     renderAdmin();
     await manage();
     expect(await screen.findByText('Peer support, SCVMC')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove as trusted partner' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as professional' }));
     expect(api.partnerCalls).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove the role' }));
     await waitFor(() => {
@@ -428,7 +428,7 @@ describe('trusted partners', () => {
     api.members = [member({ isSeed: true })];
     renderAdmin();
     await manage();
-    expect(screen.queryByRole('button', { name: 'Make trusted partner' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make professional' })).toBeNull();
   });
 });
 

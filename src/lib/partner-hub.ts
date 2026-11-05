@@ -1,8 +1,9 @@
+import { forgetPartnerTitles } from '@/lib/club-partners';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * What an org admin or a trusted partner sees of their work on Stats &
+ * What an org admin or a professional sees of their work on Stats &
  * controls (20261031110000): who they invited or connected, their own counts,
  * their introductions, and their organization's numbers. The database
  * answers only for whoever is signed in.
@@ -397,4 +398,16 @@ export async function fetchMyPartnerCard(): Promise<Result<PartnerCard | null>> 
     ok: true,
     value: row ? { title: row.title, heading: row.card_heading, body: row.card_body } : null,
   };
+}
+
+/** A professional's own profession, beside their name (20261104100000). */
+export async function setMyProfessionalTitle(title: string): Promise<Result<string>> {
+  const result = await call(
+    'set_my_professional_title',
+    { p_title: title },
+    'Your profession was not saved.',
+  );
+  if (!result.ok) return result;
+  forgetPartnerTitles();
+  return { ok: true, value: typeof result.value === 'string' ? result.value : title.trim() };
 }

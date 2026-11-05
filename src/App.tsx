@@ -286,7 +286,7 @@ function ShellContent() {
             <Route path="/events/:id/check-ins" element={<CheckInsPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/me" element={null} />
-            {/* Administrators, org admins and trusted partners; the page sends
+            {/* Administrators, org admins and professionals; the page sends
             anybody else to Me. */}
             <Route path="/me/qr" element={<QrCodePage />} />
             <Route path="/me/saved" element={<SavedPage />} />
@@ -297,7 +297,7 @@ function ShellContent() {
             Reached from the Invites card on Me, which is where a member goes
             to find out what their membership lets them do. */}
             <Route path="/invites" element={<InvitesPage />} />
-            {/* Org admins and trusted partners (20261031110000); reached from Me. */}
+            {/* Org admins and professionals (20261031110000); reached from Me. */}
             <Route path="/stats" element={<StatsPage />} />
             {/* The page's old address, in notifications already sent. */}
             <Route path="/partner" element={<Navigate to="/stats" replace />} />

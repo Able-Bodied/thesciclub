@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   endpointOf,
   flush,
+  ONE_VISIT_IN,
   resetPageSpeed,
   screenOf,
   startPageSpeed,
@@ -56,7 +57,7 @@ describe('timing requests', () => {
     startPageSpeed((samples) => {
       sent.push(samples);
       return Promise.resolve();
-    });
+    }, true);
     const base = vi.fn(() => Promise.resolve(new Response('[]', { status: 200 })));
     const fetcher = timedFetch(base);
     await fetcher(`${BASE}/rest/v1/rpc/map_events`, {});
@@ -75,7 +76,7 @@ describe('timing requests', () => {
     startPageSpeed((samples) => {
       sent.push(samples);
       return Promise.resolve();
-    });
+    }, true);
     const fetcher = timedFetch(() => Promise.reject(new Error('offline')));
     await expect(fetcher(`${BASE}/rest/v1/members`, {})).rejects.toThrow('offline');
     flush();
@@ -87,7 +88,7 @@ describe('timing requests', () => {
     startPageSpeed((samples) => {
       sent.push(samples);
       return Promise.resolve();
-    });
+    }, true);
     const fetcher = timedFetch(() => Promise.resolve(new Response(null, { status: 204 })));
     await fetcher(`${BASE}/rest/v1/rpc/log_page_speed`, {});
     flush();
@@ -97,11 +98,45 @@ describe('timing requests', () => {
   it('never throws when sending fails', async () => {
     startPageSpeed(() => {
       throw new Error('not configured');
-    });
+    }, true);
     const fetcher = timedFetch(() => Promise.resolve(new Response('', { status: 200 })));
     await fetcher(`${BASE}/rest/v1/members`, {});
     expect(() => {
       flush();
     }).not.toThrow();
+  });
+});
+
+// The owner, 2026-11-04: one visit in three for now.
+describe('measuring only some visits', () => {
+  it('sends nothing from a visit that is not measured, not even what came before', async () => {
+    const send = vi.fn(() => Promise.resolve());
+    const fetcher = timedFetch(() => Promise.resolve(new Response('[]', { status: 200 })));
+    await fetcher(`${BASE}/rest/v1/members`, {});
+    startPageSpeed(send, false);
+    await fetcher(`${BASE}/rest/v1/rpc/map_events`, {});
+    flush();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('measures about one visit in three', async () => {
+    expect(ONE_VISIT_IN).toBe(3);
+    const random = vi.spyOn(Math, 'random');
+    const send = vi.fn(() => Promise.resolve());
+    const fetcher = timedFetch(() => Promise.resolve(new Response('[]', { status: 200 })));
+
+    random.mockReturnValue(0.32);
+    startPageSpeed(send);
+    await fetcher(`${BASE}/rest/v1/members`, {});
+    flush();
+    expect(send).toHaveBeenCalledTimes(1);
+
+    resetPageSpeed();
+    random.mockReturnValue(0.34);
+    startPageSpeed(send);
+    await fetcher(`${BASE}/rest/v1/members`, {});
+    flush();
+    expect(send).toHaveBeenCalledTimes(1);
+    random.mockRestore();
   });
 });
