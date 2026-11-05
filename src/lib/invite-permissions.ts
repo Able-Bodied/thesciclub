@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /** The database decides both access and the cap. Links may change without
@@ -16,13 +17,17 @@ export function useInvitePermissions(memberId: string | null) {
   const reload = useCallback(() => {
     setRevision((value) => value + 1);
   }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: The reload revision intentionally starts a new read.
+  const kept = useKeptRead();
   useEffect(() => {
     const controller = new AbortController();
     if (!memberId) {
       setState({ memberId, canInvite: false, unlimited: false, loading: false, error: null });
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    const read = `${memberId}#${revision}`;
+    if (kept.fresh(read)) return;
+    const landed = kept.start(read);
     // Read again for the same member, what is drawn stays up.
     setState((current) =>
       current.memberId === memberId
@@ -47,6 +52,7 @@ export function useInvitePermissions(memberId: string | null) {
           loading: false,
           error: null,
         });
+        landed();
       } catch (error) {
         if (!controller.signal.aborted)
           setState({
@@ -61,7 +67,7 @@ export function useInvitePermissions(memberId: string | null) {
     return () => {
       controller.abort();
     };
-  }, [memberId, revision]);
+  }, [memberId, revision, kept]);
   // Never redirect or draw the previous account's permissions during sign-in.
   const current =
     state.memberId === memberId

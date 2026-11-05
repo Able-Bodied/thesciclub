@@ -1,6 +1,7 @@
 import type { User, UserIdentity } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { siteOrigin } from '@/lib/site-origin';
 import { getSupabase } from '@/lib/supabase';
 
@@ -120,9 +121,13 @@ export type SignInState =
 export function useSignInDetails(): { state: SignInState; reload: () => void } {
   const [state, setState] = useState<SignInState>({ status: 'loading' });
   const [version, setVersion] = useState(0);
+  const kept = useKeptRead();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` is the reload trigger.
   useEffect(() => {
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    const read = String(version);
+    if (kept.fresh(read)) return;
+    const landed = kept.start(read);
     let cancelled = false;
     void loadSignInDetails()
       .catch((e: unknown) => ({
@@ -136,11 +141,12 @@ export function useSignInDetails(): { state: SignInState; reload: () => void } {
             ? { status: 'ready', details: result.details }
             : { status: 'error', error: result.error },
         );
+        if (result.ok) landed();
       });
     return () => {
       cancelled = true;
     };
-  }, [version]);
+  }, [version, kept]);
 
   const reload = useCallback(() => {
     setVersion((v) => v + 1);

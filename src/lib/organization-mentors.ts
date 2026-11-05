@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { toOrganizationMark } from '@/lib/members';
 import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
@@ -69,12 +70,16 @@ export async function removeOrganizationPerson(
 /** The organizations whose mentor the signed-in member is, for Me. Empty on failure. */
 export function useMyMentorOrganizations(memberId: string | null): RepresentedOrganization[] {
   const [organizations, setOrganizations] = useState<RepresentedOrganization[]>([]);
+  const kept = useKeptRead();
 
   useEffect(() => {
     if (!memberId) {
       setOrganizations([]);
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    if (kept.fresh(memberId)) return;
+    const landed = kept.start(memberId);
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
     void (async () => {
@@ -87,6 +92,7 @@ export function useMyMentorOrganizations(memberId: string | null): RepresentedOr
         };
         if (aborted()) return;
         setOrganizations(error ? [] : (data ?? []).map(toOrganizationMark));
+        if (!error) landed();
       } catch {
         if (aborted()) return;
         setOrganizations([]);
@@ -95,7 +101,7 @@ export function useMyMentorOrganizations(memberId: string | null): RepresentedOr
     return () => {
       controller.abort();
     };
-  }, [memberId]);
+  }, [memberId, kept]);
 
   return organizations;
 }

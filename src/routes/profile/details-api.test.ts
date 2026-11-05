@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ownRowChanged } from '@/lib/own-row';
 import {
   detailsPercent,
   listInWords,
@@ -188,6 +189,7 @@ describe('the spinal cord answer, loaded and saved', () => {
     const loaded = await loadDetails();
     expect(loaded.ok && loaded.details.injuryType).toBe('quad');
     db.row = row({ exact_level: null });
+    ownRowChanged();
     const blank = await loadDetails();
     expect(blank.ok && blank.details.injuryType).toBeNull();
     expect(db.updates).toEqual([]);
@@ -226,6 +228,7 @@ describe('show me on the map', () => {
     expect(db.selected).toContain('show_on_map');
     expect(off.ok && off.details.showOnMap).toBe(false);
     db.row = { display_name: 'Dana', state: 'CA' };
+    ownRowChanged();
     const unset = await loadDetails();
     expect(unset.ok && unset.details.showOnMap).toBe(true);
   });

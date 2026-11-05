@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { AccountContext } from '@/lib/account-context';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { ownRowChanged, readOwnRow } from '@/lib/own-row';
 import { forgetThisDevice } from '@/lib/push/notifications';
 import { forgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
@@ -96,6 +97,8 @@ export function useAccount(): Account {
   return shared ?? own;
 }
 
+const GUARD_COLUMNS = ['id', 'is_admin', 'display_name', 'status'];
+
 function same(a: Account, b: Account): boolean {
   return (
     a.status === b.status &&
@@ -128,13 +131,17 @@ export function useOwnAccount({
   // A good answer is in hand, so a failed refresh need not replace it.
   const known = useRef(false);
   const [attempt, setAttempt] = useState(0);
+  // When this screen was asked for: the door's read must be no older.
+  const [opened, setOpened] = useState(() => ({ refresh, at: Date.now() }));
+  if (opened.refresh !== refresh) setOpened({ refresh, at: Date.now() });
+
   const retry = useCallback(() => {
+    ownRowChanged();
     known.current = false;
     setAccount((current) => ({ ...current, status: 'loading' }));
     setAttempt((current) => current + 1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `refresh` is only a trigger to read again.
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
@@ -150,6 +157,8 @@ export function useOwnAccount({
     };
 
     let revision = attempt;
+    // This run's screen: a row read before it is not enough for the door.
+    let since = opened.at;
     // Whose membership this run has read or is reading.
     let reading: string | null | undefined;
     // getSession waits for the client to restore its session, and answers
@@ -166,20 +175,31 @@ export function useOwnAccount({
         return;
       }
       try {
-        const result = await supabase
-          .from('members')
-          .select('id, is_admin, display_name, status')
-          .eq('id', userId)
-          .abortSignal(controller.signal)
-          .maybeSingle();
+        // The shared row (lib/own-row.ts), but only one read since this
+        // screen opened: a pause still shows on the next screen.
+        const shared = await readOwnRow(GUARD_COLUMNS, { since });
         if (aborted() || request !== revision) return;
-        if (result.error) throw result.error;
-        const row = result.data;
+        if (shared?.error) throw shared.error;
+        // Another account's row, signed in meanwhile: read alone.
+        let row =
+          shared && (shared.row === null || shared.row.id === userId) ? shared.row : undefined;
+        if (row === undefined) {
+          const result = await supabase
+            .from('members')
+            .select(GUARD_COLUMNS.join(', '))
+            .eq('id', userId)
+            .abortSignal(controller.signal)
+            .maybeSingle();
+          if (aborted() || request !== revision) return;
+          if (result.error) throw result.error;
+          row = result.data as Record<string, unknown> | null;
+        }
         settle({
           status: statusFor(row),
           userId,
           isAdmin: Boolean(row?.is_admin),
-          displayName: row?.display_name ? String(row.display_name) : null,
+          displayName:
+            typeof row?.display_name === 'string' && row.display_name ? row.display_name : null,
         });
       } catch (error) {
         if (aborted() || request !== revision) return;
@@ -219,6 +239,8 @@ export function useOwnAccount({
       if (event === 'INITIAL_SESSION' || !answered) return;
       const userId = session?.user.id ?? null;
       if (event !== 'USER_UPDATED' && userId !== null && userId === reading) return;
+      ownRowChanged();
+      since = Date.now();
       void resolve(userId);
     });
 
@@ -226,7 +248,7 @@ export function useOwnAccount({
       controller.abort();
       sub.subscription.unsubscribe();
     };
-  }, [attempt, enabled, refresh]);
+  }, [attempt, enabled, opened]);
 
   return useMemo(() => ({ ...account, retry }), [account, retry]);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -20,12 +21,16 @@ export interface MyOrganizationsState {
 
 export function useMyOrganizations(memberId: string | null): MyOrganizationsState {
   const [state, setState] = useState<MyOrganizationsState>({ ids: new Set(), loading: true });
+  const kept = useKeptRead();
 
   useEffect(() => {
     if (!memberId) {
       setState({ ids: new Set(), loading: false });
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    if (kept.fresh(memberId)) return;
+    const landed = kept.start(memberId);
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
     void (async () => {
@@ -41,6 +46,7 @@ export function useMyOrganizations(memberId: string | null): MyOrganizationsStat
           return;
         }
         setState({ ids: new Set(data ?? []), loading: false });
+        landed();
       } catch {
         if (aborted()) return;
         setState({ ids: new Set(), loading: false });
@@ -49,7 +55,7 @@ export function useMyOrganizations(memberId: string | null): MyOrganizationsStat
     return () => {
       controller.abort();
     };
-  }, [memberId]);
+  }, [memberId, kept]);
 
   return state;
 }

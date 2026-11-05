@@ -4,6 +4,7 @@ import { POST_COLUMNS, type PostRow, toPost } from '@/lib/chat/topics';
 import type { ChatPost, ChatRoom } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import type { HomeTopic, HomeTopicSummary } from '@/lib/home/types';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -160,10 +161,14 @@ export function useHomeTopics(): HomeTopicsState {
     loading: true,
     error: null,
   });
+  const kept = useKeptRead();
 
   useEffect(() => {
+    // Shown again within the minute, nothing changed (lib/kept-reads.ts).
+    if (kept.fresh('home')) return;
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
+    const landed = kept.start('home');
     const fail = (error: string) => {
       setState({ topics: [], posts: [], loading: false, error });
     };
@@ -211,6 +216,7 @@ export function useHomeTopics(): HomeTopicsState {
             .filter((author): author is ChatAuthorRow => Boolean(author)),
         );
         setState({ topics, posts, loading: false, error: null });
+        landed();
       } catch (e) {
         if (aborted()) return;
         fail(describeThrown(e, ATTEMPT));
@@ -221,7 +227,7 @@ export function useHomeTopics(): HomeTopicsState {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [kept]);
 
   return state;
 }

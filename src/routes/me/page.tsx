@@ -14,6 +14,7 @@ import { isEventOver } from '@/lib/event-over';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
 import { useInvitePermissions } from '@/lib/invite-permissions';
+import { useKeptRead } from '@/lib/kept-reads';
 import { useOwnMember } from '@/lib/members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { isNative } from '@/lib/standalone';
@@ -214,6 +215,8 @@ export default function MePage() {
     return when !== undefined && isEventOver(when);
   }).length;
 
+  const strikesKept = useKeptRead();
+  // The answers and details come from the row the door shares (lib/own-row.ts).
   useEffect(() => {
     void loadAnswers().then((result) => {
       // With the declines, so "rather not say" counts towards the ring the way
@@ -221,9 +224,12 @@ export default function MePage() {
       // unfinished profile for ever — see 20260917030000.
       if (result.ok) setPercent(progressOf(result.answers, result.declined).percent);
     });
-    if (userId) {
+    if (userId && !strikesKept.fresh(userId)) {
+      const landed = strikesKept.start(userId);
       void loadMyStrikes(userId).then((result) => {
-        if (result.ok) setStrikes(result.strikes);
+        if (!result.ok) return;
+        setStrikes(result.strikes);
+        landed();
       });
     }
     void loadDetails().then((result) => {
@@ -234,7 +240,7 @@ export default function MePage() {
         setShowOnMap(result.details.showOnMap);
       }
     });
-  }, [userId]);
+  }, [userId, strikesKept]);
 
   const feedbackRoom = appFeedbackRoom(useChatRooms().rooms);
   // An org admin makes QR codes for their organization (20261028960000).

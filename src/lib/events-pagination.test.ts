@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { Activity, createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAttendeesByEvent, useEvents } from '@/lib/events';
+import { keptReadsStale } from '@/lib/kept-reads';
 import { pagedDatabase } from '@/test/paged-database';
 
 const state = vi.hoisted(() => {
@@ -124,6 +125,8 @@ describe('a kept tab showing again', () => {
     seen.length = 0;
     tab.mode = 'hidden';
     rerender();
+    // Another screen was open meanwhile, so the tab reads again (lib/kept-reads.ts).
+    keptReadsStale();
     tab.mode = 'visible';
     rerender();
     await waitFor(() => {

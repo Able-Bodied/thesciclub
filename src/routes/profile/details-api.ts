@@ -1,5 +1,6 @@
 import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
+import { columnsOf, readOwnRow } from '@/lib/own-row';
 import { thumbPath, uploadPhoto } from '@/lib/photos';
 import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
@@ -156,15 +157,27 @@ export function listInWords(items: string[]): string {
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
-export async function loadDetails(): Promise<
-  { ok: true; details: MemberDetails } | { ok: false; error: string }
-> {
-  const result = await getSupabase().from('members').select(COLUMNS).maybeSingle();
-  if (result.error)
-    return { ok: false, error: describeError(result.error, 'Could not load your details.') };
-  if (!result.data) return { ok: false, error: 'Your profile could not be found.' };
-
-  const row = result.data as Record<string, unknown>;
+/** `fresh`: a form about to be saved over reads the row now, not the shared copy. */
+export async function loadDetails({
+  fresh = false,
+}: {
+  fresh?: boolean;
+} = {}): Promise<{ ok: true; details: MemberDetails } | { ok: false; error: string }> {
+  const shared = await readOwnRow(columnsOf(COLUMNS), fresh ? { since: Date.now() } : {});
+  if (shared?.error) {
+    return {
+      ok: false,
+      error: describeError(shared.error, 'Could not load your details.'),
+    };
+  }
+  let row = shared?.row;
+  if (!shared) {
+    const result = await getSupabase().from('members').select(COLUMNS).maybeSingle();
+    if (result.error)
+      return { ok: false, error: describeError(result.error, 'Could not load your details.') };
+    row = result.data;
+  }
+  if (!row) return { ok: false, error: 'Your profile could not be found.' };
   return {
     ok: true,
     details: {

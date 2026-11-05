@@ -10,6 +10,7 @@ import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
+import { keptReadsStale } from '@/lib/kept-reads';
 import { prefetchMap } from '@/lib/map';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import { OpenedNotification } from '@/lib/push/opened-notification';
@@ -156,6 +157,10 @@ export function KeptTabs() {
   const current = TABS.find(([path]) => pathname === path || pathname === `${path}/`)?.[0];
   const [opened, setOpened] = useState<readonly string[]>(current ? [current] : []);
   if (current && !opened.includes(current)) setOpened([...opened, current]);
+  // Another screen may change what a tab shows: its next show reads again.
+  useEffect(() => {
+    if (!current) keptReadsStale();
+  }, [current]);
   return TABS.filter(([path]) => opened.includes(path) || path === current).map(
     ([path, Screen]) => (
       // No Suspense of its own: a tab's first script then arrives inside the

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -53,6 +54,7 @@ export function useOrganizationFollows(): FollowsState {
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const kept = useKeptRead();
 
   useEffect(() => {
     if (!memberId) {
@@ -61,48 +63,56 @@ export function useOrganizationFollows(): FollowsState {
       setLoading(false);
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    if (kept.fresh(memberId)) return;
+    const landed = kept.start(memberId);
     const controller = new AbortController();
     const { signal } = controller;
 
-    async function load(id: string) {
+    async function load(id: string): Promise<boolean> {
       const { data, error: failure } = await getSupabase()
         .from('organization_follows')
         .select('organization_id')
         .eq('member_id', id)
         .abortSignal(signal);
-      if (signal.aborted) return;
+      if (signal.aborted) return false;
       if (failure) {
         // A database that predates 20260917020000 has no such table, and the
         // screens that read this should lose a button rather than a page.
         setFollowing(new Set());
         setError(describeError(failure, 'Could not load who you follow.'));
         setLoading(false);
-        return;
+        return false;
       }
       setFollowing(new Set((data as { organization_id: string }[]).map((r) => r.organization_id)));
       setError(null);
       setLoading(false);
+      return true;
     }
 
     // Apart, and allowed to fail: a database before 20261031010000 has none.
-    async function loadRequests(id: string) {
+    async function loadRequests(id: string): Promise<boolean> {
       const { data } = await getSupabase()
         .from('organization_join_requests')
         .select('organization_id')
         .eq('member_id', id)
         .abortSignal(signal);
-      if (signal.aborted) return;
+      if (signal.aborted) return false;
       setRequested(
         new Set(((data ?? []) as { organization_id: string }[]).map((r) => r.organization_id)),
       );
+      return true;
     }
 
-    void load(memberId);
-    void loadRequests(memberId);
+    void Promise.all([load(memberId), loadRequests(memberId)])
+      .then(([follows, requests]) => {
+        if (follows && requests) landed();
+      })
+      .catch(() => undefined);
     return () => {
       controller.abort();
     };
-  }, [memberId]);
+  }, [memberId, kept]);
 
   const toggle = useCallback(
     (organizationId: string) => {

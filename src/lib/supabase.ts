@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { watchForAppleRefreshToken } from '@/lib/apple-web-token';
+import { noticeWrites } from '@/lib/kept-reads';
 import { timedFetch } from '@/lib/page-speed';
 import { watchForRecoveryLink } from '@/lib/recovery-link';
 import { watchSignIns } from '@/lib/sign-in-record';
@@ -33,8 +34,9 @@ export function getSupabase(): SupabaseClient {
   // (src/lib/url-session.ts). Passkeys are a Supabase beta behind
   // VITE_PASSKEYS (src/lib/passkeys.ts).
   const detectSessionInUrl = acceptSessionFromUrl(sessionStorageKey(url));
-  // Every request is timed for page speed (src/lib/page-speed.ts).
-  const global = { fetch: timedFetch() };
+  // Every request is timed for page speed (src/lib/page-speed.ts); a write
+  // lets the kept tabs' reads go (src/lib/kept-reads.ts).
+  const global = { fetch: noticeWrites(timedFetch()) };
   client = import.meta.env.VITE_PASSKEYS
     ? createClient(url, key, {
         auth: { detectSessionInUrl, experimental: { passkey: true } },
