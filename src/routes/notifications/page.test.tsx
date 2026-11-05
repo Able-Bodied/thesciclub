@@ -87,6 +87,14 @@ describe('the notifications list', () => {
     expect(screen.getByText('Try a ROHO.')).toBeInTheDocument();
   });
 
+  it('shows a kind this build does not know, instead of failing', async () => {
+    db.pages = [[item({ id: '1', kind: 'a_later_kind' as AppNotification['kind'] })]];
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: /Something new in the club/ }),
+    ).toBeInTheDocument();
+  });
+
   it('clears the bell once they are on screen, and only when something was new', async () => {
     db.pages = [[item({ id: '1' })]];
     renderPage();

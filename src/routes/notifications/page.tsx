@@ -1,6 +1,7 @@
 import {
   AtSign,
   Ban,
+  Bell,
   CalendarDays,
   Flag,
   HandCoins,
@@ -208,7 +209,8 @@ export default function NotificationsPage() {
 }
 
 function NotificationRow({ item, onOpen }: { item: AppNotification; onOpen: () => void }) {
-  const Icon = KIND_ICON[item.kind];
+  // A kind added after this build gets the bell, not a crash.
+  const Icon = Object.hasOwn(KIND_ICON, item.kind) ? KIND_ICON[item.kind] : Bell;
   const sentence = notificationSentence(item);
   return (
     <button
