@@ -69,6 +69,11 @@ export interface RealtimeRowsOptions {
    * can fetch just that row. Reconnects and focus still call `onChange`.
    */
   onRow?: (row: Record<string, unknown>, event: 'INSERT' | 'UPDATE') => void;
+  /**
+   * Given, a return calls this instead of `onChange`: for a read that goes
+   * with the screen's own catch-up rather than beside it.
+   */
+  onReturn?: () => void;
 }
 
 /**
@@ -87,6 +92,7 @@ export function useRealtimeRows({
   onChange,
   enabled = true,
   onRow,
+  onReturn,
 }: RealtimeRowsOptions) {
   // The callback is a new function on every render of the caller. Held in a ref
   // so that the effect below depends on what it is watching — the table and the
@@ -95,6 +101,8 @@ export function useRealtimeRows({
   latest.current = onChange;
   const latestRow = useRef(onRow);
   latestRow.current = onRow;
+  const latestReturn = useRef(onReturn);
+  latestReturn.current = onReturn;
 
   useEffect(() => {
     if (!enabled) return;
@@ -140,7 +148,10 @@ export function useRealtimeRows({
       });
 
     // Focus or shown again, heard once (src/lib/page-return.ts).
-    const stopReturn = onPageReturn(fire);
+    const stopReturn = onPageReturn(() => {
+      if (latestReturn.current) latestReturn.current();
+      else fire();
+    });
 
     return () => {
       stopReturn();

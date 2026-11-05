@@ -8,6 +8,7 @@ import { unreadChanged } from '@/lib/chat/unread';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { useKeptRead } from '@/lib/kept-reads';
 import { announceNotificationsChanged } from '@/lib/notifications';
+import { holdReturn } from '@/lib/page-return';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -469,16 +470,16 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
       if (!threadId || !through || document.visibilityState !== 'visible') return;
       if (marked.current === through) return;
       marked.current = through;
+      const mark = getSupabase()
+        .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
+        .then(() => {
+          unreadChanged();
+          // Its notifications are seen now, so the icon drops by them.
+          announceNotificationsChanged();
+        });
       // The badges wait for it, so the new message's own count sees it read.
-      holdBadgesFor(
-        getSupabase()
-          .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
-          .then(() => {
-            unreadChanged();
-            // Its notifications are seen now, so the icon drops by them.
-            announceNotificationsChanged();
-          }),
-      );
+      holdBadgesFor(mark);
+      holdReturn(mark);
     },
     [threadId],
   );
@@ -543,6 +544,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
   const refresh = useCallback((): Promise<void> => {
     if (refreshing.current) {
       again.current = true;
+      holdReturn(refreshing.current);
       return refreshing.current;
     }
     const signal = life.current?.signal;
@@ -558,6 +560,8 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
       if (refreshing.current === run) refreshing.current = null;
     });
     refreshing.current = run;
+    // A return's catch-up: what counts after it waits for it and its mark.
+    holdReturn(run);
     return run;
   }, [fetchNewest]);
 

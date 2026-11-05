@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { useKeptRead } from '@/lib/kept-reads';
+import { onReturnSettled, returnPending } from '@/lib/page-return';
 import { getSupabase } from '@/lib/supabase';
 
 const CHANGED = 'club-post-views-changed';
@@ -35,6 +36,18 @@ export function usePostViews(
   const shown = useRef<string | null>(null);
   const kept = useKeptRead();
   const [visited, setVisited] = useState(!afterVisit);
+  // New posts on a return wait for its read mark, then read once.
+  const waited = useRef(false);
+
+  useEffect(
+    () =>
+      onReturnSettled(() => {
+        if (!waited.current) return;
+        waited.current = false;
+        setAttempt((n) => n + 1);
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (visited) return;
@@ -68,6 +81,10 @@ export function usePostViews(
     const again = shown.current === key;
     if (!again) setState({ byPost: new Map(), loading: true });
     if (!visited) return;
+    if (returnPending()) {
+      waited.current = true;
+      return;
+    }
     // A kept tab shown again within the minute (lib/kept-reads.ts).
     const read = `${memberId}|${key}|${attempt}`;
     if (kept.fresh(read)) return;

@@ -16,7 +16,6 @@ import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
 import { usePostLikes } from '@/lib/chat/likes';
 import { useReactions } from '@/lib/chat/reactions';
-import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { saveKey, useTopicSaves } from '@/lib/chat/saves';
@@ -33,6 +32,7 @@ import {
   sendPost,
   threadPosts,
   useTopicPosts,
+  useTopicRealtime,
 } from '@/lib/chat/topics';
 import type { ChatPost } from '@/lib/chat/types';
 import { usePostViews } from '@/lib/chat/views';
@@ -117,10 +117,8 @@ export default function TopicPage() {
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
-  const { topic, posts, lastReadAt, loading, error, reload, movedTo } = useTopicPosts(
-    roomId,
-    topicId,
-  );
+  const topicPosts = useTopicPosts(roomId, topicId);
+  const { topic, posts, lastReadAt, loading, error, reload, movedTo } = topicPosts;
   // Block from a post's •••: hidden here at once, and by the database on the
   // next read. Focus then goes to the heading, as the post is gone.
   const blocks = useMyBlocks();
@@ -179,18 +177,7 @@ export default function TopicPage() {
   const views = usePostViews(standingIds, { afterVisit: true });
   const saves = useTopicSaves(topicId);
 
-  useRealtimeRows({
-    table: 'chat_posts',
-    filter: topicId ? `topic_id=eq.${topicId}` : undefined,
-    onChange: () => {
-      reload();
-      // An edit arrives as an update to the post; its earlier version is a
-      // new row here.
-      edits.reload();
-      likes.reload();
-    },
-    enabled: Boolean(topicId),
-  });
+  useTopicRealtime(topicId, topicPosts, edits, likes);
 
   const authors = useChatAuthors([topic?.authorId ?? null, ...posts.map((post) => post.authorId)]);
   // An "@" suggests the people already in the topic first, then everybody else

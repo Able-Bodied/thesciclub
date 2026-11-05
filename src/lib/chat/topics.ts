@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { flushTopicRead, markTopicRead } from '@/lib/chat/topic-read-mark';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { missingFunction } from '@/lib/device';
+import { holdReturn } from '@/lib/page-return';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -351,6 +353,8 @@ export interface TopicPostsState {
   loading: boolean;
   error: string | null;
   reload: () => void;
+  /** Reload, and know when it has landed. */
+  refresh: () => Promise<void>;
   /**
    * The room the topic is in now, when the address names another: it was
    * moved (chat_move_topic) after the link was made. Null otherwise.
@@ -509,11 +513,40 @@ export function useTopicPosts(
     };
   }, [topicId]);
 
-  const reload = useCallback(() => {
-    void load();
+  const refresh = useCallback(() => {
+    const run = load();
+    // A return's catch-up: what counts after it waits for it and its mark.
+    holdReturn(run);
+    return run;
   }, [load]);
+  const reload = useCallback(() => {
+    void refresh();
+  }, [refresh]);
 
-  return { topic, posts, lastReadAt, loading, error, reload, movedTo };
+  return { topic, posts, lastReadAt, loading, error, reload, refresh, movedTo };
+}
+
+/**
+ * A topic's posts, live. A change (and a reconnect or return) reads the posts
+ * again; the likes go after them, so new posts and missed likes are one read.
+ */
+export function useTopicRealtime(
+  topicId: string | undefined,
+  posts: Pick<TopicPostsState, 'refresh'>,
+  edits: { reload: () => void },
+  likes: { reload: () => void },
+): void {
+  useRealtimeRows({
+    table: 'chat_posts',
+    filter: topicId ? `topic_id=eq.${topicId}` : undefined,
+    onChange: () => {
+      void posts.refresh().then(likes.reload);
+      // An edit arrives as an update to the post; its earlier version is a
+      // new row here.
+      edits.reload();
+    },
+    enabled: Boolean(topicId),
+  });
 }
 
 export type ChatWriteResult<T> = { ok: true; value: T } | { ok: false; error: string };

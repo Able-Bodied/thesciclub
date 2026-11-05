@@ -3,6 +3,7 @@ import { useAnnounce } from '@/lib/announce';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { onReturnSettled, pageHidden } from '@/lib/page-return';
 import { readInBatches } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -71,6 +72,9 @@ export function useReactions(
   const storeNow = useRef(store);
   storeNow.current = store;
   const controllers = useRef(new Set<AbortController>());
+  // Back from hidden: everything is read again, once, with the screen's own
+  // catch-up (its new messages or posts in the same read).
+  const catchUp = useRef(false);
 
   const read = useCallback(
     async (targets: readonly string[]) => {
@@ -145,6 +149,7 @@ export function useReactions(
       setStore({ scope, byTarget: new Map() });
       setError(null);
     }
+    catchUp.current = false;
     void read(wanted.filter((t) => !asked.current.ids.has(t)));
   }, [scope, wanted, read]);
 
@@ -159,6 +164,22 @@ export function useReactions(
   const reload = useCallback(() => {
     void read(wantedNow.current);
   }, [read]);
+
+  // On return, read nothing yet: the screen's list changing reads it all, or,
+  // with no change, the return's end does.
+  const readOnReturn = useCallback(() => {
+    asked.current.ids.clear();
+    catchUp.current = true;
+  }, []);
+  useEffect(
+    () =>
+      onReturnSettled(() => {
+        if (!catchUp.current || pageHidden()) return;
+        catchUp.current = false;
+        void read(wantedNow.current.filter((t) => !asked.current.ids.has(t)));
+      }),
+    [read],
+  );
 
   // A live change is applied as its row; one that is not shaped as expected
   // is read again instead.
@@ -193,6 +214,7 @@ export function useReactions(
     filter,
     onChange: reload,
     onRow,
+    onReturn: readOnReturn,
     enabled: live && Boolean(within && memberId && key),
   });
 

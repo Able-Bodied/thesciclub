@@ -1,7 +1,7 @@
 import { announcePostViewsChanged } from '@/lib/chat/views';
 import { missingFunction, viewDevice } from '@/lib/device';
 import { announceNotificationsChanged } from '@/lib/notifications';
-import { onPageReturn, pageHidden } from '@/lib/page-return';
+import { holdReturn, onPageReturn, pageHidden } from '@/lib/page-return';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -39,7 +39,7 @@ function waitForReturn() {
 function send(topicId: string, post: string, mark: Mark) {
   const supabase = getSupabase();
   // `.then`, not `void`: a request is only sent when awaited or thenned.
-  void supabase
+  const sent = supabase
     .rpc('chat_mark_topic_read_through', { topic: topicId, post, device: viewDevice() })
     .then(({ error }) =>
       missingFunction(error)
@@ -55,6 +55,8 @@ function send(topicId: string, post: string, mark: Mark) {
       }
       announceNotificationsChanged();
     });
+  // On a return, the badges and the view counts wait for it.
+  holdReturn(sent);
 }
 
 function fire(topicId: string, mark: Mark) {

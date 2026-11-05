@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useAccount } from '@/lib/account';
 import { useRealtimeRows } from '@/lib/chat/realtime';
-import { onPageReturn, pageHidden } from '@/lib/page-return';
+import { onReturnSettled, pageHidden, returnPending } from '@/lib/page-return';
 import { onReadElsewhere } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
 
@@ -106,8 +106,8 @@ let reading = 0;
 
 function run() {
   timer = null;
-  // Hidden: the return recounts. Mid-read: the read's end asks again.
-  if (pageHidden() || reading > 0) return;
+  // Hidden or mid-return: the return recounts. Mid-read: its end asks again.
+  if (pageHidden() || reading > 0 || returnPending()) return;
   lastRun = Date.now();
   void load();
 }
@@ -139,11 +139,14 @@ function cancel() {
   timer = null;
 }
 
-// Back in front: one recount at once (within the limit); the socket may have
-// slept, and nothing was counted while hidden.
-function onReturn() {
-  if (timer || mounted === 0 || !reader.key) return;
-  const wait = lastRun + BADGE_MS - Date.now();
+// Back in front, once the screen's catch-up has landed: one recount (within
+// the limit). After a held return, SETTLE_MS more, so a read mark's echoes
+// are in it too.
+function onReturn(held: boolean) {
+  if (mounted === 0 || !reader.key) return;
+  if (held) cancel();
+  else if (timer) return;
+  const wait = Math.max(held ? SETTLE_MS : 0, lastRun + BADGE_MS - Date.now());
   if (wait <= 0) run();
   else timer = setTimeout(run, wait);
 }
@@ -155,7 +158,7 @@ function start() {
   // A read in another tab (src/lib/read-elsewhere.ts).
   stopHearing = onReadElsewhere(badgesChanged);
   window.addEventListener(NOTIFICATIONS_CHANGED, badgesChanged);
-  stopReturn = onPageReturn(onReturn);
+  stopReturn = onReturnSettled(onReturn);
   // At once on opening; hidden, on the return.
   if (!pageHidden()) {
     lastRun = Date.now();
@@ -214,6 +217,8 @@ export function useBadgeCounts(): BadgeCounts {
   return useSyncExternalStore(subscribe, () => counts);
 }
 
+const ignore = () => undefined;
+
 /**
  * The tab bar's realtime for every badge: this member's notifications (one
  * per unmuted message, reply or mention), and their own conversation rows (a
@@ -231,12 +236,15 @@ export function useBadgeRealtime(): void {
     table: 'notifications',
     filter: memberId ? `member_id=eq.${memberId}` : undefined,
     onChange: badgesChanged,
+    // The return's own recount covers it.
+    onReturn: ignore,
     enabled: Boolean(memberId),
   });
   useRealtimeRows({
     table: 'chat_thread_members',
     filter: readerId ? `member_id=eq.${readerId}` : undefined,
     onChange: badgesChanged,
+    onReturn: ignore,
     enabled: Boolean(readerId),
   });
 }
