@@ -6,6 +6,7 @@ import { toLinkPreview } from '@/lib/chat/link-preview';
 import { CHAT_NOTICES, type ChatMessage, type ChatNotice, type ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { announceNotificationsChanged } from '@/lib/notifications';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
@@ -251,12 +252,14 @@ export function useMyThreads(): MyThreadsState {
   // The read in flight, so a reload cancels the one before it and unmounting
   // cancels whichever is running. The same shape as useChatRooms.
   const inFlight = useRef<AbortController | null>(null);
+  const kept = useKeptRead();
 
   const load = useCallback(async () => {
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
     const aborted = () => controller.signal.aborted;
+    const landed = kept.start('threads');
 
     try {
       const { data, error: failure } = (await getSupabase()
@@ -274,20 +277,22 @@ export function useMyThreads(): MyThreadsState {
       setThreads((data ?? []).map(toThread));
       setError(null);
       setLoading(false);
+      landed();
     } catch (e) {
       if (aborted()) return;
       setThreads([]);
       setError(describeThrown(e, 'Could not load your conversations.'));
       setLoading(false);
     }
-  }, []);
+  }, [kept]);
 
   useEffect(() => {
-    void load();
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    if (!kept.fresh('threads')) void load();
     return () => {
       inFlight.current?.abort();
     };
-  }, [load]);
+  }, [load, kept]);
 
   const reload = useCallback(() => {
     void load();

@@ -7,6 +7,7 @@ import {
   type RoomStats,
 } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -103,11 +104,13 @@ export function useChatRooms(): ChatRoomsState {
   // keyed on it would do the same job and would leave the effect with a
   // dependency it never reads.
   const inFlight = useRef<AbortController | null>(null);
+  const kept = useKeptRead();
 
   const load = useCallback(async () => {
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
+    const landed = kept.start('rooms');
     // Read through a call: the type checker narrows `signal.aborted` to false
     // after the first check and flags every later one as dead code.
     const aborted = () => controller.signal.aborted;
@@ -132,20 +135,22 @@ export function useChatRooms(): ChatRoomsState {
       setRooms((data as ChatRoomRow[]).map(toRoom));
       setError(null);
       setLoading(false);
+      landed();
     } catch (e) {
       if (aborted()) return;
       setRooms([]);
       setError(describeThrown(e, 'Could not load the rooms.'));
       setLoading(false);
     }
-  }, []);
+  }, [kept]);
 
   useEffect(() => {
-    void load();
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    if (!kept.fresh('rooms')) void load();
     return () => {
       inFlight.current?.abort();
     };
-  }, [load]);
+  }, [load, kept]);
 
   const reload = useCallback(() => {
     void load();
@@ -411,12 +416,14 @@ export function useRoomStats(roomId?: string): {
   // The same shape as useChatRooms above, and for the same reason: a counter in
   // state would leave the effect with a dependency it never reads.
   const inFlight = useRef<AbortController | null>(null);
+  const kept = useKeptRead();
 
   const load = useCallback(async () => {
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
     const aborted = () => controller.signal.aborted;
+    const landed = kept.start(roomId ?? '');
 
     try {
       let query = getSupabase()
@@ -455,19 +462,20 @@ export function useRoomStats(roomId?: string): {
         ),
       );
       setLoading(false);
+      landed();
     } catch {
       if (aborted()) return;
       setStats(new Map());
       setLoading(false);
     }
-  }, [roomId]);
+  }, [roomId, kept]);
 
   useEffect(() => {
-    void load();
+    if (!kept.fresh(roomId ?? '')) void load();
     return () => {
       inFlight.current?.abort();
     };
-  }, [load]);
+  }, [load, kept, roomId]);
 
   const reload = useCallback(() => {
     void load();

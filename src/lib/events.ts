@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import type { EventWhen } from '@/lib/event-over';
 import { preparePhoto } from '@/lib/image';
+import { useKeptRead } from '@/lib/kept-reads';
 import { PHOTOS_BUCKET } from '@/lib/photos';
 import { readInBatches, readPages } from '@/lib/read-pages';
 import { calendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
@@ -284,14 +285,18 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
   const reload = useCallback(() => {
     setRound((n) => n + 1);
   }, []);
+  const kept = useKeptRead();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
     if (idsKey === null) {
       shown.current = null;
       setState({ events: [], loading: true, error: null });
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    const read = `${query}#${round}`;
+    if (kept.fresh(read)) return;
+    const landed = kept.start(read);
     const again = shown.current === query;
     const controller = new AbortController();
     const { signal } = controller;
@@ -385,6 +390,7 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
           loading: false,
           error: null,
         });
+        landed();
       } catch (e) {
         if (aborted()) return;
         fail(describeThrown(e, 'Could not load events.'));
@@ -395,7 +401,7 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
     return () => {
       controller.abort();
     };
-  }, [from, to, id, organizationId, idsKey, query, round]);
+  }, [from, to, id, organizationId, idsKey, query, round, kept]);
 
   return { ...state, reload };
 }
@@ -466,9 +472,11 @@ export function useViewerEvents(memberId: string | null): ViewerState {
   // run the same code after a write. A refetch counter in the dependency array
   // would do the same thing while reading as a dependency the effect does not
   // actually use.
+  const kept = useKeptRead();
   const load = useCallback(
     async (signal: AbortSignal) => {
       const aborted = () => signal.aborted;
+      const landed = kept.start(memberId ?? '');
       if (!memberId) {
         setRsvps(new Map());
         setWhens(new Map());
@@ -500,22 +508,23 @@ export function useViewerEvents(memberId: string | null): ViewerState {
         setWhens(new Map(dated));
         setError(null);
         setLoading(false);
+        landed();
       } catch (e) {
         if (aborted()) return;
         setError(describeThrown(e, 'Could not load your events.'));
         setLoading(false);
       }
     },
-    [memberId],
+    [memberId, kept],
   );
 
   useEffect(() => {
     const controller = new AbortController();
-    void load(controller.signal);
+    if (!kept.fresh(memberId ?? '')) void load(controller.signal);
     return () => {
       controller.abort();
     };
-  }, [load]);
+  }, [load, kept, memberId]);
 
   const reload = useCallback(() => {
     void load(new AbortController().signal);

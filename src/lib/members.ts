@@ -1,6 +1,8 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
-import { describeError, describeThrown } from '@/lib/describe-error';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
+import { columnsOf, readOwnRow } from '@/lib/own-row';
 import { readPages } from '@/lib/read-pages';
 import {
   holdFacesFresh,
@@ -610,6 +612,24 @@ export interface OwnMemberState {
   error: string | null;
 }
 
+const OWN_MEMBER_COLUMNS =
+  'id, display_name, username, type, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name, birth_date, created_at, is_admin, wants_to_mentor';
+
+/** The row the door and Me share (lib/own-row.ts), alone if it can't be. */
+async function readOwnMember(
+  signal: AbortSignal,
+): Promise<{ data: Record<string, unknown> | null; error: Failure | null }> {
+  const shared = await readOwnRow(columnsOf(OWN_MEMBER_COLUMNS));
+  if (shared?.error) return { data: null, error: shared.error };
+  if (shared) return { data: shared.row, error: null };
+  const { data, error } = await getSupabase()
+    .from('members')
+    .select(OWN_MEMBER_COLUMNS)
+    .abortSignal(signal)
+    .maybeSingle();
+  return { data: data as Record<string, unknown> | null, error };
+}
+
 export function useOwnMember(userId: string | null): OwnMemberState {
   const [state, setState] = useState<OwnMemberState>({
     member: null,
@@ -617,12 +637,16 @@ export function useOwnMember(userId: string | null): OwnMemberState {
     loading: true,
     error: null,
   });
+  const kept = useKeptRead();
 
   useEffect(() => {
     if (!userId) {
       setState({ member: null, invitedBy: null, loading: false, error: null });
       return;
     }
+    // Me shown again within the minute (lib/kept-reads.ts).
+    if (kept.fresh(userId)) return;
+    const landed = kept.start(userId);
     const controller = new AbortController();
     const { signal } = controller;
     const aborted = () => signal.aborted;
@@ -631,13 +655,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
       try {
         const supabase = getSupabase();
         const [own, inviter] = await Promise.all([
-          supabase
-            .from('members')
-            .select(
-              'id, display_name, username, type, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name, birth_date, created_at, is_admin, wants_to_mentor',
-            )
-            .abortSignal(signal)
-            .maybeSingle(),
+          readOwnMember(signal),
           // A function, not a join: the invite row itself is not readable by
           // the member it admitted, and should not be.
           supabase.rpc('my_invited_by'),
@@ -653,7 +671,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
           });
           return;
         }
-        const row = own.data as Record<string, unknown> | null;
+        const row = own.data;
         setState({
           member: row
             ? {
@@ -681,6 +699,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
           loading: false,
           error: null,
         });
+        landed();
       } catch (e) {
         if (aborted()) return;
         setState({
@@ -696,7 +715,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
     return () => {
       controller.abort();
     };
-  }, [userId]);
+  }, [userId, kept]);
 
   return state;
 }

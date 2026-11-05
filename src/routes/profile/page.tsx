@@ -68,7 +68,8 @@ export default function ProfileSurveyPage() {
 
   useEffect(() => {
     if (account.status !== 'member') return;
-    void loadAnswers().then((result) => {
+    // Saved over screen by screen: the row as it is now.
+    void loadAnswers({ fresh: true }).then((result) => {
       if (result.ok) {
         setAnswers(result.answers);
         setDeclined(result.declined);

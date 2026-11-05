@@ -58,7 +58,8 @@ export default function ProfileDetailsPage() {
 
   useEffect(() => {
     if (account.status !== 'member') return;
-    void loadDetails().then((result) => {
+    // Saved over: the row as it is now.
+    void loadDetails({ fresh: true }).then((result) => {
       if (result.ok) {
         setDetails(result.details);
         setBirthParts(partsFromIso(result.details.birthDate));

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Failure } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -67,11 +68,15 @@ function useYesOrNo(question: string, memberId: string | null): boolean | null {
     memberId: null,
     yes: null,
   });
+  const kept = useKeptRead();
   useEffect(() => {
     if (!memberId) {
       setState({ memberId, yes: false });
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    if (kept.fresh(memberId)) return;
+    const landed = kept.start(memberId);
     const controller = new AbortController();
     void (async () => {
       try {
@@ -80,6 +85,7 @@ function useYesOrNo(question: string, memberId: string | null): boolean | null {
           .abortSignal(controller.signal)) as { data: boolean | null; error: Failure | null };
         if (controller.signal.aborted) return;
         setState({ memberId, yes: error ? false : Boolean(data) });
+        if (!error) landed();
       } catch {
         if (!controller.signal.aborted) setState({ memberId, yes: false });
       }
@@ -87,7 +93,7 @@ function useYesOrNo(question: string, memberId: string | null): boolean | null {
     return () => {
       controller.abort();
     };
-  }, [question, memberId]);
+  }, [question, memberId, kept]);
   return state.memberId === memberId ? state.yes : null;
 }
 

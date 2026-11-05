@@ -4,6 +4,7 @@ import { useAnnounce } from '@/lib/announce';
 import type { ChatWriteResult } from '@/lib/chat/topics';
 import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { useKeptRead } from '@/lib/kept-reads';
 import { readInBatches, readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -174,6 +175,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const pending = useRef(new Set<string>());
   // The posts whose likes are drawn; read again, they stay up meanwhile.
   const shown = useRef<string | null>(null);
+  const kept = useKeptRead();
 
   useEffect(() => {
     // Read, not only depended on: biome counts an unread dependency as a
@@ -187,6 +189,10 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
       setError(null);
       return;
     }
+    // A kept tab shown again within the minute (lib/kept-reads.ts).
+    const read = `${memberId}|${key}|${attempt}`;
+    if (kept.fresh(read)) return;
+    const landed = kept.start(read);
     const controller = new AbortController();
     const ids = key.split(',');
     const again = shown.current === key;
@@ -222,6 +228,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
         setKnown(new Set(ids));
         setError(null);
         setSettled(key);
+        landed();
       } catch (e) {
         if (controller.signal.aborted || again) return;
         setByPost(EMPTY);
@@ -235,7 +242,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
     return () => {
       controller.abort();
     };
-  }, [memberId, key, attempt]);
+  }, [memberId, key, attempt, kept]);
 
   const toggle = useCallback(
     (postId: string) => {

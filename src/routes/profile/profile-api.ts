@@ -1,4 +1,5 @@
 import { describeError } from '@/lib/describe-error';
+import { readOwnRow } from '@/lib/own-row';
 import { directoryChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import {
@@ -50,9 +51,16 @@ export interface OwnPlace {
 
 /** Where the member lives, for the organizations near them. Null if it cannot be read. */
 export async function loadOwnPlace(): Promise<OwnPlace | null> {
+  const shared = await readOwnRow(['city', 'state']);
+  if (shared) {
+    const { row } = shared;
+    return row ? { city: textOrNull(row.city), state: textOrNull(row.state) } : null;
+  }
   const { data, error } = await getSupabase().from('members').select('city, state').maybeSingle();
   return error || !data ? null : data;
 }
+
+const textOrNull = (value: unknown) => (typeof value === 'string' ? value : null);
 
 /** What the row says somebody has declined, with anything unexpected dropped. */
 export function declinedFrom(row: Record<string, unknown>): Set<string> {
@@ -63,13 +71,28 @@ export function declinedFrom(row: Record<string, unknown>): Set<string> {
 
 /** Whether the member has a picture up, for Home's card. */
 export async function hasPhoto(): Promise<boolean> {
+  const shared = await readOwnRow(['photo_path']);
+  if (shared) return Boolean(shared.row?.photo_path);
   const { data } = await getSupabase().from('members').select('photo_path').maybeSingle();
   return Boolean((data as { photo_path?: string | null } | null)?.photo_path);
 }
 
-export async function loadAnswers(): Promise<
+/** `fresh`: a form about to be saved over reads the row now, not the shared copy. */
+export async function loadAnswers({
+  fresh = false,
+}: {
+  fresh?: boolean;
+} = {}): Promise<
   { ok: true; answers: Answers; declined: Set<string> } | { ok: false; error: string }
 > {
+  const shared = await readOwnRow(COLUMNS, fresh ? { since: Date.now() } : {});
+  if (shared?.error) {
+    return {
+      ok: false,
+      error: describeError(shared.error, 'Could not load your answers.'),
+    };
+  }
+  if (shared) return answersFrom(shared.row ?? {});
   // Asked for once with the newest columns and once without.
   //
   // This project deploys the app ahead of its migrations often enough that it
@@ -95,8 +118,14 @@ export async function loadAnswers(): Promise<
     }
     result = withoutNewest;
   }
+  return answersFrom((result.data ?? {}) as Record<string, unknown>);
+}
 
-  const row = (result.data ?? {}) as Record<string, unknown>;
+function answersFrom(row: Record<string, unknown>): {
+  ok: true;
+  answers: Answers;
+  declined: Set<string>;
+} {
   const answers: Answers = {};
   for (const question of QUESTIONS) {
     const value = row[question.column];
