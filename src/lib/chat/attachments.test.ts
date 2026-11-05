@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   attachmentFolder,
   attachmentProblem,
+  isMemberPhoto,
   MAX_ATTACHMENTS,
   MAX_SOURCE_BYTES,
 } from '@/lib/chat/attachments';
@@ -54,5 +55,17 @@ describe('attachmentFolder', () => {
   it('puts a thread photograph under threads/ and a room photograph under rooms/', () => {
     expect(attachmentFolder('thread', 'abc')).toBe('threads/abc');
     expect(attachmentFolder('room', 'bowel')).toBe('rooms/bowel');
+  });
+});
+
+describe('isMemberPhoto', () => {
+  it('is a face, and not a logo, an event picture or a review picture', () => {
+    expect(isMemberPhoto('0b6e6c1a-1111-4f00-9f00-000000000001/profile-1a2b.webp')).toBe(true);
+    expect(isMemberPhoto('u1/profile.jpg')).toBe(true);
+    expect(isMemberPhoto('seed/c85c10bf.webp')).toBe(true);
+    expect(isMemberPhoto('organizations/aby.png')).toBe(false);
+    expect(isMemberPhoto('organizations/o1/5c1e.webp')).toBe(false);
+    expect(isMemberPhoto('events/e1/9f2a.webp')).toBe(false);
+    expect(isMemberPhoto('reviews/r1/77aa.jpg')).toBe(false);
   });
 });

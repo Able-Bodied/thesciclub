@@ -1,4 +1,4 @@
-import { forgetSignedUrls, thumbPath } from '@/lib/chat/attachments';
+import { forgetSignedUrls, isMemberPhoto, thumbPath } from '@/lib/chat/attachments';
 import type { MapLibreMap } from '@/lib/map';
 import { photoBroke } from '@/lib/shared-reads';
 import { type Badge, pixelRatio, put } from '@/routes/map/organization-badges';
@@ -111,7 +111,7 @@ async function decode(path: string, url: string): Promise<Badge | null> {
     if (!response.ok) {
       // The file is gone (a changed photo) or the URL is: sign again, read again.
       forgetSignedUrls('photos', [path, thumbPath(path)]);
-      photoBroke();
+      if (isMemberPhoto(path)) photoBroke();
       return null;
     }
     const picture = await createImageBitmap(await response.blob());

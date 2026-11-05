@@ -142,6 +142,29 @@ describe('usePhotoUrl', () => {
     expect(screen.getByTestId('u1/profile-old.webp')).toHaveTextContent('initials');
   });
 
+  // The robots, 2026-11-04: three refused logos read the directory again.
+  it('reads nothing again for a refused logo, event picture or review picture', async () => {
+    const paths = [
+      'organizations/aby.png',
+      'organizations/o1/5c1e.webp',
+      'events/e1/9f2a.webp',
+      'reviews/r1/77aa.jpg',
+    ];
+    for (const path of paths) storage.refuse.add(path);
+    render(
+      <>
+        {paths.map((path) => (
+          <Face key={path} path={path} />
+        ))}
+      </>,
+    );
+    await waitFor(() => {
+      expect(storage.calls).toHaveLength(1);
+    });
+    await act(() => new Promise((r) => setTimeout(r, 10)));
+    expect(broke.count).toBe(0);
+  });
+
   it('keeps the two buckets apart: a chat path is signed from chat', async () => {
     const { result } = renderHook(() => useAttachmentUrls(['rooms/bowel/x.webp']));
     await waitFor(() => {

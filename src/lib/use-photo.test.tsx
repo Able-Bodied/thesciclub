@@ -49,4 +49,16 @@ describe('a face whose file is gone', () => {
       'https://signed/m1/profile-new.webp',
     );
   });
+
+  // The robots, 2026-11-04: a logo that will not load is not a changed face.
+  it('reads nothing again for a logo that will not load', () => {
+    spies.broke.mockClear();
+    const { container } = render(
+      <MemberAvatar id="o1" displayName="Aby" photoPath="organizations/aby.png" />,
+    );
+    const img = container.querySelector('img');
+    if (!img) throw new Error('no logo drawn');
+    fireEvent.error(img);
+    expect(spies.broke).not.toHaveBeenCalled();
+  });
 });

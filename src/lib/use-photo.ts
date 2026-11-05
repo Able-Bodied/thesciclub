@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { forgetSignedUrls, thumbPath } from '@/lib/chat/attachments';
+import { forgetSignedUrls, isMemberPhoto, thumbPath } from '@/lib/chat/attachments';
 import { PHOTOS_BUCKET, type PhotoSize, usePhotoUrl } from '@/lib/photos';
 import { photoBroke } from '@/lib/shared-reads';
 
@@ -18,7 +18,7 @@ export function usePhoto(
     if (!url || !path) return;
     setBroken(url);
     forgetSignedUrls(PHOTOS_BUCKET, [path, thumbPath(path)]);
-    photoBroke();
+    if (isMemberPhoto(path)) photoBroke();
   }, [url, path]);
   return { url: url === broken ? null : url, onError };
 }
