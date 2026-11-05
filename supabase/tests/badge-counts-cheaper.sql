@@ -1,5 +1,5 @@
 -- ============================================================================
--- The cheaper bell gives the same numbers (20261105020000)
+-- The cheaper bell gives the same numbers (20261105101000)
 -- ============================================================================
 -- my_badge_counts, my_unseen_notification_count() and
 -- my_unseen_notification_count_outside_chat(), read as each member, against
@@ -27,7 +27,7 @@
 
 begin;
 
--- The reference: the bell and Me's dot before 20261105020000, word for word.
+-- The reference: the bell and Me's dot before 20261105101000, word for word.
 create function pg_temp.old_bell() returns integer language sql stable set search_path = '' as $ref$
   select count(*)::integer from (
     -- my_notifications(null, 100)'s rows: its joins that the WHERE reads.

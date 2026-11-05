@@ -1,5 +1,5 @@
 -- ============================================================================
--- A reaction says which conversation or topic it is in (20261105040000)
+-- A reaction says which conversation or topic it is in (20261105103000)
 -- ============================================================================
 -- A reaction made as a signed-in member carries its message's conversation
 -- or its post's topic, through every change of emoji, and cannot be pointed
@@ -150,7 +150,7 @@ rollback to -- A column the table does not have is refused, so the two above wer
 savepoint no_such_column;
 
 \echo '== 6. rows from before are filled by the migration =='
-\ir ../undo/20261105040000.sql
+\ir ../undo/20261105103000.sql
 select pg_temp.check_true(not exists (
   select 1 from information_schema.columns
    where table_schema = 'public' and table_name = 'chat_message_reactions' and column_name = 'thread_id'),
@@ -164,7 +164,7 @@ insert into public.chat_message_reactions (target_id, member_id, emoji) values
 insert into public.chat_post_reactions (target_id, member_id, emoji) values
   ('11050400-0000-0000-0001-000000000002', 'aaaaaaaa-1105-0400-0000-00000000000a', '💪');
 create temp table notified_before on commit drop as select count(*) as n from public.notifications;
-\ir ../migrations/20261105040000_reactions_say_where_they_are.sql
+\ir ../migrations/20261105103000_reactions_say_where_they_are.sql
 select pg_temp.check_true(
   pg_temp.message_where('11050400-0000-0000-0003-000000000002') = '11050400-0000-0000-0002-000000000001'
   and pg_temp.message_where('11050400-0000-0000-0003-000000000001') = '11050400-0000-0000-0002-000000000001'

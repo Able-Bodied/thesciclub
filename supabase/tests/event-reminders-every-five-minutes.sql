@@ -1,5 +1,5 @@
 -- ============================================================================
--- Event reminders every five minutes (20261105030000)
+-- Event reminders every five minutes (20261105102000)
 -- ============================================================================
 -- The job is scheduled every 5 minutes, once. Stepping time in 5-minute
 -- steps (events moved back 5 minutes per run), each ten-minutes-before and

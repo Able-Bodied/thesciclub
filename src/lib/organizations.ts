@@ -141,7 +141,7 @@ function forgetDirectory() {
 onForgetSharedReads(forgetDirectory);
 onCalendarChanged(forgetDirectory);
 
-/** 20261105010000: the same rows, its places read in one pass. */
+/** 20261105100000: the same rows, its places read in one pass. */
 const DIRECTORY_VIEW =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, summary, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places';
 const DIRECTORY =
@@ -174,7 +174,7 @@ function readOrganizations(): Promise<OrganizationsRead> {
   const read = (async (): Promise<OrganizationsRead> => {
     try {
       let { data, error } = await readDirectory(DIRECTORY_VIEW, 'organization_directory');
-      // Until 20261105010000 is live: the embedded places.
+      // Until 20261105100000 is live: the embedded places.
       if (error?.code === 'PGRST205' || error?.code === '42P01')
         ({ data, error } = await readDirectory(DIRECTORY));
       // Until 20261103030000, and before it 20261028700000, is live: without them.

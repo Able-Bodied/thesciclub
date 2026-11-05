@@ -186,7 +186,7 @@ export function useReactions(
     },
     [scope, read],
   );
-  // Filtered by the column 20261105040000 adds, not by RLS alone.
+  // Filtered by the column 20261105103000 adds, not by RLS alone.
   const filter = within ? `${kind === 'post' ? 'topic_id' : 'thread_id'}=eq.${within}` : undefined;
   useRealtimeRows({
     table,

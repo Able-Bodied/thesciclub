@@ -1,4 +1,4 @@
--- Undo for 20261105040000_reactions_say_where_they_are.sql: reactions without
+-- Undo for 20261105103000_reactions_say_where_they_are.sql: reactions without
 -- their conversation or topic, and chat_threads back in supabase_realtime.
 -- Ship the app that subscribes without the filters first.
 

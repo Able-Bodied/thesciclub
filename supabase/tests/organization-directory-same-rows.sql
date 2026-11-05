@@ -1,5 +1,5 @@
 -- ============================================================================
--- The directory reads its places once (20261105010000)
+-- The directory reads its places once (20261105100000)
 -- ============================================================================
 -- The app's directory read, as PostgREST sends it, from the view and from
 -- the table with embedded places (the read until now), compared as each

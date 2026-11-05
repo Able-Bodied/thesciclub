@@ -14,7 +14,7 @@
 -- my_unseen_notification_count_outside_chat() now read it, so the rules
 -- stay in one place; my_badge_counts reads it once for both.
 -- Chat dot and icon unchanged. Probe: badge-counts-cheaper.sql.
--- Undo: supabase/undo/20261105020000.sql.
+-- Undo: supabase/undo/20261105101000.sql.
 -- ============================================================================
 
 create or replace function private.my_unseen_counts(out unseen integer, out unseen_outside_chat integer)
@@ -102,7 +102,7 @@ as $$
 $$;
 
 comment on function private.my_unseen_counts() is
-  'The bell and Me''s dot from one pass. See 20261105020000.';
+  'The bell and Me''s dot from one pass. See 20261105101000.';
 
 revoke all on function private.my_unseen_counts() from public, anon;
 grant execute on function private.my_unseen_counts() to authenticated;

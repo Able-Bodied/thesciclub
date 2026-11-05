@@ -221,7 +221,7 @@ describe('the directory before ZIP codes are in the database', () => {
   });
 });
 
-// 20261105010000: one read, its places already joined.
+// 20261105100000: one read, its places already joined.
 describe('the directory once its view is in the database', () => {
   it('is read from the view alone', async () => {
     directory.view = true;

@@ -28,7 +28,7 @@ select o.id, o.short_code, o.name, o.city, o.description, o.tags, o.can_invite,
   ) p on p.organization_id = o.id;
 
 comment on view public.organization_directory is
-  'The directory with each organization''s places, read in one pass. See 20261105010000.';
+  'The directory with each organization''s places, read in one pass. See 20261105100000.';
 
 revoke all on public.organization_directory from public, anon, authenticated;
 grant select on public.organization_directory to anon, authenticated;

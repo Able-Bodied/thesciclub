@@ -1,4 +1,4 @@
--- Undo for 20261105020000_the_bell_reads_each_rule_once.sql: the bell and
+-- Undo for 20261105101000_the_bell_reads_each_rule_once.sql: the bell and
 -- Me's dot as 20261104205000 wrote them, my_badge_counts as 20261104211000
 -- did, and the shared count dropped.
 

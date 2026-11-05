@@ -17,7 +17,7 @@
 -- and every message updates its row (chat_bump_thread).
 --
 -- Deploy before the app that filters on these columns. Undo:
--- supabase/undo/20261105040000.sql. Probe: supabase/tests/reactions-say-where.sql.
+-- supabase/undo/20261105103000.sql. Probe: supabase/tests/reactions-say-where.sql.
 -- ============================================================================
 
 alter table public.chat_message_reactions add column if not exists thread_id uuid;

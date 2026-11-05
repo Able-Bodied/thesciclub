@@ -1,20 +1,41 @@
--- Undo for 20261105030000_event_reminders_every_five_minutes.sql: every
--- minute again, and the body of 20261031070000 (from pg_get_functiondef on a
--- fresh stack, 2026-11-05). Compare with the live definition before release.
+-- ============================================================================
+-- Event reminders every five minutes, looking only at events in their window
+-- ============================================================================
+-- Free plan, 2026-11-05: push-event-reminders ran every minute and its
+-- follow-up branch joined every check-in ever made. The owner approved every
+-- 5 minutes: a reminder can arrive up to 5 minutes later.
+--
+-- Each branch's window is wider than 5 minutes, and the *_sent tables still
+-- record each member once, so no reminder is skipped or sent twice:
+--   day ahead      due at day_ahead_at, open until 12 h before: unchanged.
+--   ten minutes    the owner, 2026-11-05: start in (now + 5 min,
+--                  now + 15 min 30 s], each member once. On-time runs send
+--                  10 to 15 min 30 s before (the run before took the rest;
+--                  30 s of overlap absorbs a late start). After a missed or
+--                  very late run, what it had goes late, 5 to 10 minutes
+--                  before; so does an RSVP or event made that late. Never
+--                  under 5 minutes, never twice.
+--   check in       end + 30 min, open 15 minutes: unchanged, now prefiltered
+--                  on coalesce(end_time, start_time) in (now - 4h45, now - 30m].
+--   follow-up      10am the day after, open an hour: now from events that
+--                  ended 6 h to 2 days ago (due is 8 to 36 h after, DST
+--                  included), not from all check-ins.
+-- One index on coalesce(end_time, start_time) serves both prefilters (and
+-- event-registrations-expire). Otherwise as 20261031070000.
+--
+-- Probe: event-reminders-every-five-minutes.sql.
+-- Undo: supabase/undo/20261105102000.sql.
+-- ============================================================================
 
-do $$
-begin
-  perform cron.unschedule(jobid) from cron.job where jobname = 'push-event-reminders';
-  perform cron.schedule('push-event-reminders', '* * * * *', 'select public.push_event_reminders()');
-end;
-$$;
+create index if not exists events_end_or_start_idx
+  on public.events ((coalesce(end_time, start_time)));
 
-CREATE OR REPLACE FUNCTION public.push_event_reminders()
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+create or replace function public.push_event_reminders()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
 declare
   run_at timestamptz := clock_timestamp();
   recorded integer;
@@ -52,8 +73,8 @@ begin
     join public.event_rsvps rv on rv.event_id = e.id and rv.status = 'going'
     join public.members r on r.id = rv.member_id and r.status = 'active'
    where not e.all_day
-     and e.start_time > now() + interval '1 minute'
-     and e.start_time <= now() + interval '10 minutes'
+     and e.start_time > now() + interval '5 minutes'
+     and e.start_time <= now() + interval '15 minutes 30 seconds'
   on conflict do nothing;
   get diagnostics recorded = row_count;
   if recorded > 0 then
@@ -77,6 +98,8 @@ begin
     join public.members r on r.id = rv.member_id and r.status = 'active'
    where not e.all_day
      and e.start_time <= now()
+     and coalesce(e.end_time, e.start_time) > now() - interval '4 hours 45 minutes'
+     and coalesce(e.end_time, e.start_time) <= now() - interval '30 minutes'
      and coalesce(e.end_time, e.start_time + interval '4 hours') + interval '30 minutes' <= now()
      and coalesce(e.end_time, e.start_time + interval '4 hours') + interval '45 minutes' > now()
      and not exists (
@@ -98,8 +121,8 @@ begin
   -- At 10am the day after an event, to whoever checked in.
   insert into public.event_followups_sent (event_id, member_id, batch)
   select e.id, c.member_id, run_at
-    from public.event_check_ins c
-    join public.events e on e.id = c.event_id
+    from public.events e
+    join public.event_check_ins c on c.event_id = e.id
     left join public.data_feeds f on f.id = e.feed_id
     join public.members r on r.id = c.member_id and r.status = 'active'
     cross join lateral (
@@ -109,7 +132,9 @@ begin
       ) as due
       from (select coalesce(e.timezone, f.timezone, 'America/Los_Angeles') as zone) z
     ) d
-   where d.due <= now()
+   where coalesce(e.end_time, e.start_time) > now() - interval '2 days'
+     and coalesce(e.end_time, e.start_time) <= now() - interval '6 hours'
+     and d.due <= now()
      and d.due > now() - interval '1 hour'
   on conflict do nothing;
   get diagnostics recorded = row_count;
@@ -123,6 +148,11 @@ begin
     perform public.push_notify_send('event_followup', jsonb_build_object('batch', run_at));
   end if;
 end;
-$function$;
+$$;
 
-drop index if exists public.events_end_or_start_idx;
+do $$
+begin
+  perform cron.unschedule(jobid) from cron.job where jobname = 'push-event-reminders';
+  perform cron.schedule('push-event-reminders', '*/5 * * * *', 'select public.push_event_reminders()');
+end;
+$$;
