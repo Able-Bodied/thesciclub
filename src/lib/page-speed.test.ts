@@ -45,6 +45,13 @@ describe('what a request asked for', () => {
     expect(endpointOf(`${BASE}/storage/v1/object/avatars/me.jpg`)).toBe('storage');
   });
 
+  // The load-test branch's own calls.
+  it('names the badge and topic calls', () => {
+    for (const name of ['my_badge_counts', 'chat_topic_for', 'chat_topics_page']) {
+      expect(endpointOf(`${BASE}/rest/v1/rpc/${name}`)).toBe(`rpc:${name}`);
+    }
+  });
+
   it('ignores what is not the club', () => {
     expect(endpointOf('https://example.com/x')).toBeNull();
     expect(endpointOf('not a url')).toBeNull();
