@@ -61,6 +61,23 @@ describe('AppNav', () => {
   });
 });
 
+describe('the bar’s realtime', () => {
+  // A club-wide chat_messages feed ran every member's read rules on every
+  // message; each unmuted message writes the reader a notification instead.
+  it('holds no message subscription of its own, only the badges’ filtered ones', async () => {
+    const { useRealtimeRows } = await import('@/lib/chat/realtime');
+    const { useBadgeRealtime } = await import('@/lib/badges');
+    vi.mocked(useRealtimeRows).mockClear();
+    render(
+      <MemoryRouter initialEntries={['/events']}>
+        <AppNav />
+      </MemoryRouter>,
+    );
+    expect(useRealtimeRows).not.toHaveBeenCalled();
+    expect(useBadgeRealtime).toHaveBeenCalled();
+  });
+});
+
 describe('the bar on a scroll', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

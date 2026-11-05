@@ -32,8 +32,8 @@ import { tellOtherTabs } from '@/lib/read-elsewhere';
  *    refetch on every navigation: the dot then moves exactly when the fact
  *    moves, instead of on every tap anywhere in the app.
  *
- * Also: a new message (the tab bar's realtime), a read in another tab
- * (src/lib/read-elsewhere.ts) and a read on another device (useBadgeRealtime).
+ * Also: a new message (its notification row, useBadgeRealtime), a read in
+ * another tab (src/lib/read-elsewhere.ts) and a read on another device.
  *
  * A failure leaves the count at zero and says nothing. The dot is a hint; an
  * error message in the tab bar is not.
