@@ -107,10 +107,15 @@ interface Sample {
 }
 
 /**
- * One visit in this many is measured (the owner, 2026-11-04). Raise it as the
- * club grows: 5 past about 500 members, 10 past about 2,000.
+ * One visit in this many is measured, decided once per page load (the owner,
+ * 2026-11-05: 1 in 10 on the free plan; it was 3).
  */
-export const ONE_VISIT_IN = 3;
+export const ONE_VISIT_IN = 10;
+
+/** Whether this page load is measured: random, one in ONE_VISIT_IN. */
+export function measuredVisit(random: () => number = Math.random): boolean {
+  return random() * ONE_VISIT_IN < 1;
+}
 
 /** Enough to see a pattern; past it, a long visit stops reporting requests. */
 const MAX_REQUESTS_PER_VISIT = 300;
@@ -214,7 +219,7 @@ function record(endpoint: string, ms: number, ok: boolean) {
  * than imported so the club's client can use timedFetch without a cycle.
  * Most visits are not measured (ONE_VISIT_IN), and send nothing.
  */
-export function startPageSpeed(send: Sender, measured = Math.random() * ONE_VISIT_IN < 1): void {
+export function startPageSpeed(send: Sender, measured = measuredVisit()): void {
   if (!measured) {
     skipped = true;
     queue = [];

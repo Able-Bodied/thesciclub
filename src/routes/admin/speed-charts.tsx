@@ -273,7 +273,7 @@ export function SpeedTrendChart({ points, unit }: { points: TrendPoint[]; unit: 
               </p>
             ))}
             <p className="text-ink2 tabular-nums">
-              {point.loads} {point.loads === 1 ? 'load' : 'loads'}
+              {point.loads} sampled {point.loads === 1 ? 'load' : 'loads'}
             </p>
           </div>
         ) : null}
@@ -349,7 +349,7 @@ export function RequestBars({ rows }: { rows: RequestBar[] }) {
                   Typical {seconds(row.p50)} · slow end {seconds(row.p90)}
                 </p>
                 <p className="text-ink2 tabular-nums">
-                  {row.samples} {row.samples === 1 ? 'request' : 'requests'}
+                  {row.samples} sampled {row.samples === 1 ? 'request' : 'requests'}
                   {row.failed ? ` · ${String(row.failed)} failed` : ''}
                 </p>
               </div>
