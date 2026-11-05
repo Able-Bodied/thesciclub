@@ -53,6 +53,7 @@ describe('the Privacy Policy', () => {
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
     expect(notes[0]).toMatch(/Changed: a notification of a group message now names the group/);
+    expect(notes[0]).toMatch(/Changed: a busy conversation notifies you at most once every two/);
     expect(notes[1]).toMatch(/Added: the app measures how long it takes to load/);
     expect(notes[1]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
     expect(notes[1]).toMatch(/Changed: trusted partners are now called verified professionals/);
@@ -127,6 +128,16 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/a token for your iPhone/);
     expect(section).toHaveTextContent(/so Apple\s+could read them on the way/);
     expect(section).toHaveTextContent(/how many kinds of\s+notification you have not opened yet/);
+  });
+
+  // 20261105110000.
+  it('says a busy conversation notifies at most every two minutes, and not while open', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(
+      /at most one notification every two minutes while it stays unread, saying how many messages are new, and none while you have it open/,
+    );
   });
 
   it('says a like or a reaction tells the author who', () => {

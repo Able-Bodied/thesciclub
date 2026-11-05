@@ -160,6 +160,18 @@ describe('NotificationSettings', () => {
       ).toBeInTheDocument();
     });
 
+    // 20261105110000, the owner's wording.
+    it('says a busy conversation notifies at most every 2 minutes', async () => {
+      hook.state = 'on';
+      render(<NotificationSettings userId="u1" />);
+      await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
+      expect(
+        screen.getByText(
+          /A busy conversation notifies you at most every 2 minutes, saying how many are new, and not while you have it open\./,
+        ),
+      ).toBeInTheDocument();
+    });
+
     it('offer each kind as a switch that says whether it is on', async () => {
       hook.state = 'on';
       kinds.muted = new Set(['group_add']);

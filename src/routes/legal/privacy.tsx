@@ -29,6 +29,11 @@ export default function PrivacyPage() {
             <b>Changed:</b> a notification of a group message now names the group, so the group’s
             name can show on your lock screen (see Notifications).
           </li>
+          <li>
+            <b>Changed:</b> a busy conversation notifies you at most once every two minutes while it
+            stays unread, saying how many messages are new, and not while you have it open (see
+            Notifications).
+          </li>
         </List>
       </Note>
       <Note title="What changed on November 4, 2026">
@@ -443,7 +448,8 @@ export default function PrivacyPage() {
           → Settings. They reach your device through its notification service: Apple’s on an iPhone,
           iPad or Mac, Google’s on Android or in Chrome, or your browser maker’s. A notification can
           show the first words of a message, and the name of the group it was sent in, on your lock
-          screen.
+          screen. For a conversation, you get at most one notification every two minutes while it
+          stays unread, saying how many messages are new, and none while you have it open.
         </P>
         <P>
           In the iPhone app, notifications go through Apple Push Notification service, and the

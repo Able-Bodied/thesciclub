@@ -102,8 +102,9 @@ function NotificationKinds({
         <fieldset id="notification-kinds" className="pt-1">
           <legend className="sr-only">Also notify me about</legend>
           <p className="text-[0.75rem] text-grey leading-[1.45]">
-            Messages and replies to your topics always notify; mute a conversation, topic or room
-            where it is.
+            Messages and replies to your topics always notify. A busy conversation notifies you at
+            most every 2 minutes, saying how many are new, and not while you have it open. Mute a
+            conversation, topic or room where it is.
           </p>
           {muted ? (
             <ul className="mt-2">
