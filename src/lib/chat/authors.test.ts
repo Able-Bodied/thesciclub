@@ -119,4 +119,27 @@ describe('fetchChatAuthors', () => {
     await fetchChatAuthors(['a']);
     expect(asked).toEqual([['a'], ['a']]);
   });
+
+  // A changed photo: the old file is gone, so the kept path would draw broken.
+  it('reads kept authors again after a photo fails or this device changes its profile', async () => {
+    const data = rows.map((row) => ({ ...row }));
+    const { fetchChatAuthors } = await loadWithClient(data);
+    const reads = await import('@/lib/shared-reads');
+    await fetchChatAuthors(['a', 'b']);
+    Object.assign(data[0] ?? {}, { photo_path: 'a/profile-new.webp' });
+    data.pop(); // b is now hidden from the reader
+    reads.photoBroke();
+    const after = await fetchChatAuthors(['a', 'b']);
+    expect(asked).toEqual([
+      ['a', 'b'],
+      ['a', 'b'],
+    ]);
+    expect(after.get('a')?.photoPath).toBe('a/profile-new.webp');
+    expect(after.has('b')).toBe(false);
+    // Nothing stale now: no third read.
+    await fetchChatAuthors(['a']);
+    reads.directoryChanged();
+    await fetchChatAuthors(['a']);
+    expect(asked).toHaveLength(3);
+  });
 });

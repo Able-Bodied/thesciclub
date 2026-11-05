@@ -1,7 +1,7 @@
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import type { OwnMember } from '@/lib/members';
 import { useMyMentorOrganizations } from '@/lib/organization-mentors';
-import { usePhotoUrl } from '@/lib/photos';
+import { usePhoto } from '@/lib/use-photo';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 import { RolePill } from '@/routes/peers/role-pill';
 import { cityAndState, injuryLabel } from '@/types/domain';
@@ -42,7 +42,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 export function MeHero({ member }: { member: OwnMember }) {
   const wide = useWideLayout();
   // An 88px square: the small copy fills it on a 3x screen.
-  const photo = usePhotoUrl(member.photoPath, 'thumb');
+  const { url: photo, onError } = usePhoto(member.photoPath, 'thumb');
   const [from, to] = gradientFor(member.id);
   const age = ageFrom(member.birthDate);
   // Which organizations made them a mentor, with each one's logo (20261028000000).
@@ -61,6 +61,7 @@ export function MeHero({ member }: { member: OwnMember }) {
             <img
               src={photo}
               alt=""
+              onError={onError}
               className="absolute inset-0 h-full w-full object-cover object-[50%_32%]"
             />
           ) : (

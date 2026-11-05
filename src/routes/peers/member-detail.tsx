@@ -16,7 +16,7 @@ import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { useMemberOrganizations } from '@/lib/organization-members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
-import { usePhotoUrl } from '@/lib/photos';
+import { usePhoto } from '@/lib/use-photo';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { ItemActions } from '@/routes/chat/item-actions';
 import { ReportSheet } from '@/routes/chat/report-sheet';
@@ -487,7 +487,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   // Before the early returns: hooks cannot run conditionally, and every
   // branch below this either renders the profile or does not need the list.
   const account = useAccount();
-  const photo = usePhotoUrl(member?.photoPath);
+  const { url: photo, onError: photoFailed } = usePhoto(member?.photoPath);
   // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
   const [photoOpen, setPhotoOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
@@ -777,9 +777,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   fetchPriority="high"
                   decoding="async"
                   className="absolute inset-0 h-full w-full object-cover object-[50%_26%]"
-                  onError={(e) => {
-                    e.currentTarget.remove();
-                  }}
+                  onError={photoFailed}
                 />
               ) : null}
               {/* A short scrim at the top for the back button and the chip

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { usePhotoUrl } from '@/lib/photos';
+import { usePhoto } from '@/lib/use-photo';
 import { cn } from '@/lib/utils';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 
@@ -31,7 +31,7 @@ export function MemberAvatar({
   className?: string | undefined;
 }) {
   // A face beside a name is small: the small copy, not the 800px photograph.
-  const photo = usePhotoUrl(photoPath, 'thumb');
+  const { url: photo, onError } = usePhoto(photoPath, 'thumb');
   const [from, to] = gradientFor(id);
 
   return (
@@ -53,6 +53,8 @@ export function MemberAvatar({
           // A face per post in a long topic: fetched as the reader nears it.
           loading="lazy"
           decoding="async"
+          // A changed photo's old file: initials instead of a broken image.
+          onError={onError}
           className="absolute inset-0 h-full w-full object-cover object-[50%_32%]"
         />
       ) : (

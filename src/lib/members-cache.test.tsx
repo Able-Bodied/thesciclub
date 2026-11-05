@@ -5,7 +5,12 @@ import type { Account } from '@/lib/account';
 import { AccountContext } from '@/lib/account-context';
 import { blockMember } from '@/lib/blocks';
 import { DIRECTORY_FRESH_MS, useBrowseMembers } from '@/lib/members';
-import { directoryChanged, forgetSharedReads } from '@/lib/shared-reads';
+import {
+  directoryChanged,
+  forgetSharedReads,
+  PHOTO_RECHECK_MS,
+  photoBroke,
+} from '@/lib/shared-reads';
 
 /** One directory read shared by every screen, for one signed-in member. */
 
@@ -154,10 +159,11 @@ describe('the shared directory', () => {
 
   it('is read again after this device blocks someone', async () => {
     await loaded();
+    // The block is what takes Cal out of the read.
+    db.rows['member-a'] = [row('b', 'Bea')];
     await act(async () => {
       await blockMember('c');
     });
-    db.rows['member-a'] = [row('b', 'Bea')];
     const after = await loaded();
     expect(names(after.result.current.members)).toEqual(['Bea']);
     expect(db.reads).toHaveLength(2);
@@ -168,6 +174,38 @@ describe('the shared directory', () => {
     directoryChanged();
     await loaded();
     expect(db.reads).toHaveLength(2);
+  });
+
+  it('redraws a screen already open when this device changes its own profile', async () => {
+    const open = await loaded();
+    db.rows['member-a'] = [row('b', 'Bea (new photo)'), row('c', 'Cal')];
+    directoryChanged();
+    await waitFor(() => {
+      expect(names(open.result.current.members)).toEqual(['Bea (new photo)', 'Cal']);
+    });
+    expect(open.result.current.loading).toBe(false);
+  });
+
+  it('reads again behind what is shown when a photo will not load, once per 30 s', async () => {
+    const open = await loaded();
+    const now = Date.now();
+    db.rows['member-a'] = [row('b', 'Bea'), row('c', 'Cal (changed)')];
+    photoBroke(now);
+    await waitFor(() => {
+      expect(names(open.result.current.members)).toEqual(['Bea', 'Cal (changed)']);
+    });
+    expect(db.reads).toHaveLength(2);
+    // A screen of failing faces is still one read.
+    photoBroke(now + 1);
+    photoBroke(now + PHOTO_RECHECK_MS - 1);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(db.reads).toHaveLength(2);
+    photoBroke(now + PHOTO_RECHECK_MS);
+    await waitFor(() => {
+      expect(db.reads).toHaveLength(3);
+    });
   });
 
   it('draws a kept read over a minute old and reads again behind it', async () => {

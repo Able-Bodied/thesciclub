@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PartnerLabel } from '@/components/partner-label';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
+import { usePhoto } from '@/lib/use-photo';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
@@ -101,7 +102,7 @@ export function MemberCard({ member, onOpen, priority = false }: MemberCardProps
 function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
   const { organizations } = useOrganizations();
   // The small copy draws at once; the photograph covers it once it is in.
-  const small = usePhotoUrl(member.photoPath, 'thumb');
+  const { url: small, onError: smallFailed } = usePhoto(member.photoPath, 'thumb');
   const photo = usePhotoUrl(member.photoPath);
   const [loaded, setLoaded] = useState<string | null>(null);
   const [from, to] = gradientFor(member.id);
@@ -143,9 +144,7 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
           fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[50%_28%]"
-          onError={(e) => {
-            e.currentTarget.remove();
-          }}
+          onError={smallFailed}
         />
       ) : null}
       {photo && photo !== small ? (

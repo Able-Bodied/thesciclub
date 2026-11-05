@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { readInBatches } from '@/lib/read-pages';
-import { onForgetSharedReads } from '@/lib/shared-reads';
+import { onDirectoryChanged, onForgetSharedReads, onPhotoBroke } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import { type InjuryType, injuryLabel } from '@/types/domain';
 
@@ -50,9 +50,22 @@ const missing = new Set<string>();
 export function resetChatAuthors(): void {
   cache.clear();
   missing.clear();
+  stale.clear();
 }
 // At sign-out too: the next member on the phone reads authors as themselves.
 onForgetSharedReads(resetChatAuthors);
+
+// Kept authors to read again; drawn as they were until the read lands.
+const stale = new Set<string>();
+const authorWatchers = new Set<() => void>();
+function readAuthorsAgain(): void {
+  for (const id of cache.keys()) stale.add(id);
+  missing.clear();
+  for (const watcher of authorWatchers) watcher();
+}
+// A face changed: this device's own, or another member's whose old file is gone.
+onDirectoryChanged(readAuthorsAgain);
+onPhotoBroke(readAuthorsAgain);
 
 /** What a face and a byline need, read alone or embedded in another read. */
 export const AUTHOR_COLUMNS =
@@ -98,7 +111,10 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
 
 /** Authors that came embedded in another read (Home's topics). */
 export function rememberChatAuthors(rows: readonly ChatAuthorRow[]): void {
-  for (const row of rows) cache.set(row.id, toAuthor(row));
+  for (const row of rows) {
+    cache.set(row.id, toAuthor(row));
+    stale.delete(row.id);
+  }
 }
 
 /**
@@ -107,7 +123,9 @@ export function rememberChatAuthors(rows: readonly ChatAuthorRow[]): void {
  * Exported for the one caller that needs authors outside a component.
  */
 export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatAuthor>> {
-  const wanted = [...new Set(ids)].filter((id) => !cache.has(id) && !missing.has(id));
+  const wanted = [...new Set(ids)].filter(
+    (id) => (!cache.has(id) || stale.has(id)) && !missing.has(id),
+  );
   if (wanted.length > 0) {
     const { data, error } = await readInBatches<ChatAuthorRow>(wanted, (batch) =>
       getSupabase().from('chat_authors').select(AUTHOR_COLUMNS).in('id', batch),
@@ -116,6 +134,12 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
     // screens draw an unnamed tile meanwhile, which is what they draw for a
     // removed member — wrong for a moment rather than broken.
     if (!error) {
+      const found = new Set((data ?? []).map((row) => row.id));
+      for (const id of wanted) {
+        stale.delete(id);
+        // Read again and not there now: gone, as a first read would say.
+        if (!found.has(id)) cache.delete(id);
+      }
       for (const row of data ?? []) cache.set(row.id, toAuthor(row));
       for (const id of wanted) if (!cache.has(id)) missing.add(id);
     }
@@ -131,13 +155,23 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
  */
 export function useChatAuthors(ids: (string | null)[]): Map<string, ChatAuthor> {
   const [byId, setById] = useState<Map<string, ChatAuthor>>(() => new Map(cache));
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    const watcher = () => {
+      setRound((n) => n + 1);
+    };
+    authorWatchers.add(watcher);
+    return () => {
+      authorWatchers.delete(watcher);
+    };
+  }, []);
 
   // The identity of `ids` changes on every render of the caller, so the effect
   // is keyed on the ids themselves rather than on the array.
   const key = [...new Set(ids.filter((id): id is string => Boolean(id)))].sort().join(',');
 
   useEffect(() => {
-    if (!key) return;
+    if (!key || round < 0) return;
     let live = true;
     void fetchChatAuthors(key.split(',')).then((map) => {
       if (live) setById(map);
@@ -145,7 +179,7 @@ export function useChatAuthors(ids: (string | null)[]): Map<string, ChatAuthor> 
     return () => {
       live = false;
     };
-  }, [key]);
+  }, [key, round]);
 
   // Authors already known (remembered with the read that named them) are
   // drawn on the first render, not "…" until the effect has run.

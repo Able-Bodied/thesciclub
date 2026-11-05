@@ -45,3 +45,27 @@ export function onDirectoryChanged(listener: () => void): void {
 export function directoryChanged(): void {
   for (const listener of directoryListeners) listener();
 }
+
+const photoListeners = new Set<() => void>();
+/** At most one re-read per this long, however many faces fail at once. */
+export const PHOTO_RECHECK_MS = 30_000;
+let lastPhotoRecheck: number | null = null;
+
+/** For a kept read that names photographs, to read again behind what it shows. */
+export function onPhotoBroke(listener: () => void): void {
+  photoListeners.add(listener);
+}
+
+/**
+ * A photograph would not load: likely changed elsewhere, its old file gone.
+ * Kept reads are read again behind what they show, once per PHOTO_RECHECK_MS.
+ */
+export function photoBroke(now = Date.now()): void {
+  if (lastPhotoRecheck !== null && now - lastPhotoRecheck < PHOTO_RECHECK_MS) return;
+  lastPhotoRecheck = now;
+  for (const listener of photoListeners) listener();
+}
+
+onForgetSharedReads(() => {
+  lastPhotoRecheck = null;
+});

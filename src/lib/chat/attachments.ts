@@ -248,6 +248,15 @@ export function resetAttachmentUrls(): void {
   }
 }
 
+/** Drop these paths' URLs, so the next ask signs again (or finds no file). */
+export function forgetSignedUrls(bucket: SignedBucket, paths: readonly string[]): void {
+  for (const path of paths) {
+    signed.delete(cacheKey(bucket, path));
+    missingCopies.delete(cacheKey(bucket, path));
+  }
+  if (bucket === KEPT_BUCKET) saveKept();
+}
+
 /** What the cache already holds for these paths, unexpired. */
 function cachedUrls(bucket: SignedBucket, paths: readonly string[]): Map<string, string> {
   const now = Date.now();

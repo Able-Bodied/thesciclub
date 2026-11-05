@@ -316,15 +316,16 @@ export async function savePhoto(
   const upload = await uploadPhoto(path, blob);
   if (upload.error) return { ok: false, error: describeError(upload.error, PHOTO_REFUSAL) };
 
-  await removeOtherPhotos(userId, path);
-
   // The description was of the picture this one replaces.
   const { error } = await supabase
     .from('members')
     .update({ photo_path: path, photo_alt: null })
     .eq('id', userId);
-  if (!error) directoryChanged();
   if (error) return { ok: false, error: describeError(error, PHOTO_REFUSAL) };
+  // Only once the row names the new file: before, a refused update left it
+  // naming a deleted one.
+  await removeOtherPhotos(userId, path);
+  directoryChanged();
   return { ok: true, path };
 }
 
@@ -337,7 +338,7 @@ export async function savePhoto(
  * `profile.jpg` and `profile.jpeg`. A photograph named on a report stays:
  * storage skips what its policy refuses, and says nothing.
  *
- * Runs after the upload, never before, and its failure is not the caller's: a
+ * Runs after the row moves, never before, and its failure is not the caller's: a
  * failure here costs some bytes, the other way round costs the photograph.
  */
 async function removeOtherPhotos(userId: string, keep: string): Promise<void> {

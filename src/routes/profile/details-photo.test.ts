@@ -7,6 +7,7 @@ const db = vi.hoisted(() => ({
   removed: [] as string[][],
   updates: [] as Record<string, unknown>[],
   existing: ['profile.webp', 'profile.jpg'],
+  updateError: null as { message: string } | null,
 }));
 
 vi.mock('@/lib/image', () => ({
@@ -39,7 +40,7 @@ vi.mock('@/lib/supabase', () => ({
     from: () => ({
       update: (values: Record<string, unknown>) => {
         db.updates.push(values);
-        return { eq: () => Promise.resolve({ error: null }) };
+        return { eq: () => Promise.resolve({ error: db.updateError }) };
       },
     }),
   }),
@@ -49,6 +50,7 @@ beforeEach(() => {
   db.uploads = [];
   db.removed = [];
   db.updates = [];
+  db.updateError = null;
 });
 
 describe('savePhoto', () => {
@@ -73,5 +75,13 @@ describe('savePhoto', () => {
     await savePhoto('u1', new File(['x'], 'me.png', { type: 'image/png' }));
     expect(db.removed).toEqual([['u1/profile.webp', 'u1/profile.jpg']]);
     for (const kept of db.uploads) expect(db.removed.flat()).not.toContain(kept);
+  });
+
+  it('keeps the old file when the row is not moved to the new one', async () => {
+    db.updateError = { message: 'TypeError: Failed to fetch' };
+    const result = await savePhoto('u1', new File(['x'], 'me.png', { type: 'image/png' }));
+    expect(result.ok).toBe(false);
+    // The row still names the old photograph, so it must still be there.
+    expect(db.removed).toEqual([]);
   });
 });

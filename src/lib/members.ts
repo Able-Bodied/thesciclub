@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
-import { onDirectoryChanged, onForgetSharedReads } from '@/lib/shared-reads';
+import { onDirectoryChanged, onForgetSharedReads, onPhotoBroke } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { BrowseMember, InjuryType, MemberType, RepresentedOrganization } from '@/types/domain';
 import { memberType } from '@/types/domain';
@@ -193,7 +193,21 @@ function forgetDirectory() {
   heldDirectory = null;
 }
 onForgetSharedReads(forgetDirectory);
-onDirectoryChanged(forgetDirectory);
+
+/** Screens showing the directory, told to read it again. */
+const directoryWatchers = new Set<() => void>();
+const tellWatchers = () => {
+  for (const watcher of directoryWatchers) watcher();
+};
+onDirectoryChanged(() => {
+  forgetDirectory();
+  tellWatchers();
+});
+// Another member's photo changed: read again behind what is shown.
+onPhotoBroke(() => {
+  if (heldDirectory?.value) heldDirectory.at = 0;
+  tellWatchers();
+});
 
 /** A deck's read serves a picker too; not the other way round. */
 const covers = (held: HeldDirectory, use: DirectoryUse) => held.use === 'deck' || use === 'names';
@@ -265,6 +279,17 @@ const LOADING: MembersState = { members: [], loading: true, error: null, signedO
 export function useBrowseMembers(use: DirectoryUse = 'deck'): MembersState {
   const knownUser = useContext(AccountContext)?.userId ?? null;
   const [state, setState] = useState<MembersState>(() => keptFor(knownUser, use) ?? LOADING);
+  // Bumped when the kept read is let go or goes stale, so this screen reads again.
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    const watcher = () => {
+      setRound((n) => n + 1);
+    };
+    directoryWatchers.add(watcher);
+    return () => {
+      directoryWatchers.delete(watcher);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -314,11 +339,12 @@ export function useBrowseMembers(use: DirectoryUse = 'deck'): MembersState {
       }
     }
 
+    if (round < 0) return;
     void load();
     return () => {
       cancelled = true;
     };
-  }, [use]);
+  }, [use, round]);
 
   return state;
 }
