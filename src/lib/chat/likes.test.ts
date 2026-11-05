@@ -328,6 +328,35 @@ describe('usePostLikes', () => {
     expect(db.writes[1]).toEqual(['delete', 'chat_post_likes', { post_id: 'p1', member_id: 'me' }]);
   });
 
+  it('is loading, not unliked, from the first render posts arrive in', async () => {
+    db.rows = [{ post_id: 'p1', member_id: 'me' }];
+    const seen: { loading: boolean; liked: boolean }[] = [];
+    const { result, rerender } = renderHook(
+      ({ ids }) => {
+        const state = usePostLikes(ids);
+        seen.push({
+          loading: state.loading,
+          liked: state.byPost.get('p1')?.includes('me') ?? false,
+        });
+        return state;
+      },
+      { initialProps: { ids: [] as string[] } },
+    );
+    seen.length = 0;
+    // A topic's posts landing: the same render must not offer "Like".
+    rerender({ ids: ['p1'] });
+    expect(seen[0]).toEqual({ loading: true, liked: false });
+    // And a tap from that state writes nothing.
+    act(() => {
+      result.current.toggle('p1');
+    });
+    expect(db.writes).toEqual([]);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(seen.filter((s) => !s.loading).every((s) => s.liked)).toBe(true);
+  });
+
   it('reads again on reload', async () => {
     const { result } = renderHook(() => usePostLikes(['p1']));
     await waitFor(() => {

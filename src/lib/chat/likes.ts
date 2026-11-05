@@ -157,8 +157,11 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const key = [...new Set(postIds)].sort().join(',');
 
   const [byPost, setByPost] = useState<LikesByPost>(EMPTY);
-  const [loading, setLoading] = useState(false);
+  // The ids whose read has finished. Loading is worked out from it, so a
+  // render with new posts never shows them unliked before the effect runs.
+  const [settled, setSettled] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loading = memberId !== null && key !== '' && settled !== key;
   const [failure, setFailure] = useState<PostLikesState['failure']>(null);
   // Bumped by reload, so the effect runs again for the same ids.
   const [attempt, setAttempt] = useState(0);
@@ -174,14 +177,13 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
     if (!memberId || key === '') {
       shown.current = null;
       setByPost(EMPTY);
-      setLoading(false);
+      setSettled(null);
       setError(null);
       return;
     }
     const controller = new AbortController();
     const ids = key.split(',');
     const again = shown.current === key;
-    if (!again) setLoading(true);
 
     async function load() {
       try {
@@ -205,18 +207,18 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
           if (again) return;
           setByPost(EMPTY);
           setError(describeError(failed, 'Could not load the likes.'));
-          setLoading(false);
+          setSettled(key);
           return;
         }
         shown.current = key;
         setByPost(groupLikes(data ?? []));
         setError(null);
-        setLoading(false);
+        setSettled(key);
       } catch (e) {
         if (controller.signal.aborted || again) return;
         setByPost(EMPTY);
         setError(describeThrown(e, 'Could not load the likes.'));
-        setLoading(false);
+        setSettled(key);
       }
     }
 
@@ -228,7 +230,8 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
 
   const toggle = useCallback(
     (postId: string) => {
-      if (!memberId || pending.current.has(postId)) return;
+      // Not before the reader's own like is known: a tap would undo it.
+      if (!memberId || loading || error || pending.current.has(postId)) return;
       const wasLiked = (byPost.get(postId) ?? []).includes(memberId);
       pending.current.add(postId);
       setFailure(null);
@@ -254,12 +257,12 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
           done(describeThrown(e, wasLiked ? UNLIKE_FAILED : LIKE_FAILED));
         });
     },
-    [memberId, byPost, announce],
+    [memberId, loading, error, byPost, announce],
   );
 
   const reload = useCallback(() => {
     setAttempt((n) => n + 1);
   }, []);
 
-  return { byPost, loading, error, failure, toggle, reload };
+  return { byPost, loading, error: loading ? null : error, failure, toggle, reload };
 }
