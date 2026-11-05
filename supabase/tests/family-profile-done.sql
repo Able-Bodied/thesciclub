@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Probe: family and professionals finish without the injury questions
--- (20261104130000)
+-- (20261104130000, 20261104140000)
 -- ============================================================================
 -- Every check prints PASS or raises FAIL.
 --
@@ -30,6 +30,10 @@ select ('aaaaaaaa-1108-0000-0000-00000000000' || x)::uuid, 'peer', 'active', 'Pr
        '1980-01-01', 'T1–T6', 'CA', false, kind, 'Female', array['English'], 'A bio',
        array['Travel'], 'Married', false, 'Bachelor''s degree', 'Before', 'Teaching'
   from (values ('a', 'family'), ('b', 'professional'), ('c', 'quad'), ('d', null)) v(x, kind);
+
+-- Children, and no "before or after your injury" for them (20261104140000).
+update public.members set has_children = true, education_when = null
+ where id in ('aaaaaaaa-1108-0000-0000-00000000000a', 'aaaaaaaa-1108-0000-0000-00000000000b');
 
 create function pg_temp.check_true(ok boolean, label text) returns void language plpgsql as $$
 begin if ok is distinct from true then raise exception 'FAIL: %', label; end if; raise notice 'PASS: %', label; end $$;

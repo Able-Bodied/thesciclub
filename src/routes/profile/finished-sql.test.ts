@@ -2,20 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { DECLINABLE_DETAILS } from '@/routes/profile/details-api';
 import { QUESTIONS, SPECIFICS_FOR } from '@/routes/profile/questions';
 import REMINDERS from '../../../supabase/migrations/20261022040000_finish_your_profile_reminders.sql?raw';
-import LATEST from '../../../supabase/migrations/20261104130000_family_and_professionals_skip_the_injury_questions.sql?raw';
+import LATEST from '../../../supabase/migrations/20261104140000_family_and_professionals_skip_before_or_after.sql?raw';
 
 /**
  * The reminders decide "finished" in the database (member_details_done,
  * member_profile_done), restating Me's rings. A question or a detail added
  * here and not there would remind somebody who had finished, or never remind
  * somebody who had not. A later migration that restates either function
- * should point this file at itself (20261104130000 restates the profile's).
+ * should point this file at itself (20261104140000 restates the profile's).
  */
 
 const COUNTED = QUESTIONS.filter((q) => !q.uncounted);
 
 const ABOUT_AN_INJURY = [
   'howInjured',
+  'childrenWhen',
+  'educationWhen',
   'independence',
   'employment',
   'interests',
@@ -51,9 +53,7 @@ describe('the database’s idea of finished', () => {
 
   it('has a condition for each question that applies only sometimes', () => {
     const sometimes = QUESTIONS.filter((q) => q.onlyIf).map((q) => q.key);
-    expect(sometimes.sort()).toEqual(
-      ['childrenWhen', 'detail', ...ABOUT_AN_INJURY.filter((k) => k !== 'detail')].sort(),
-    );
+    expect(sometimes.sort()).toEqual([...ABOUT_AN_INJURY].sort());
     for (const specific of SPECIFICS_FOR) expect(profile).toContain(`'${specific}'`);
   });
 

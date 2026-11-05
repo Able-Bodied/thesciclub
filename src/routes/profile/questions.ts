@@ -301,7 +301,7 @@ export const QUESTIONS: Question[] = [
     title: 'Before or after your injury?',
     kind: 'one',
     options: BEFORE_AFTER,
-    onlyIf: (a) => a.hasChildren === true,
+    onlyIf: (a) => a.hasChildren === true && aboutAnInjury('childrenWhen')(a),
   },
 
   {
@@ -334,6 +334,7 @@ export const QUESTIONS: Question[] = [
     title: 'Before or after your injury?',
     kind: 'one',
     options: BEFORE_AFTER,
+    onlyIf: aboutAnInjury('educationWhen'),
   },
 
   {

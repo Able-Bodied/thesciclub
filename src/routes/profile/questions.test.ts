@@ -224,8 +224,19 @@ describe('family and professionals', () => {
     for (const title of INJURY_SCREENS) expect(shown).toContain(title);
   });
 
+  it('are not asked before or after an injury', () => {
+    const answers: Answers = { [KIND_KEY]: 'professional', hasChildren: true };
+    const asked = applicableQuestions(answers).map((q) => q.key);
+    expect(asked).toContain('education');
+    expect(asked).not.toContain('childrenWhen');
+    expect(asked).not.toContain('educationWhen');
+    expect(applicableQuestions({ hasChildren: true }).map((q) => q.key)).toEqual(
+      expect.arrayContaining(['childrenWhen', 'educationWhen']),
+    );
+  });
+
   it('finish without them', () => {
-    const answers: Answers = { [KIND_KEY]: 'family', hasChildren: false };
+    const answers: Answers = { [KIND_KEY]: 'family', hasChildren: true };
     for (const q of applicableQuestions(answers)) {
       if (q.key in answers) continue;
       answers[q.key] = q.kind === 'many' ? ['x'] : q.kind === 'yesno' ? true : 'answered';
