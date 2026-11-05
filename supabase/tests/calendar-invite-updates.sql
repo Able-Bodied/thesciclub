@@ -2,8 +2,8 @@
 -- A calendar invitation that changes: a meeting link added after it was sent
 -- ============================================================================
 -- The owner, 2026-11-01: an invitation sent with no link, then updated with a
--- Google Meet. An update replaces the event, so it has a new id and loses its
--- RSVPs (section 2 says so until that changes).
+-- Google Meet. Since 20261105140000 an update changes the event in place, so
+-- it keeps its id and its RSVPs (section 2).
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -55,7 +55,7 @@ insert into public.event_rsvps (event_id, member_id, status)
 select first_event, 'aaaaaaaa-c0c1-0000-0000-00000000000a', 'going' from probe_ids;
 
 \echo ''
-\echo '== 2. updated with a Meet (expect updated, the Meet, online; same event f; RSVPs 0) =='
+\echo '== 2. updated with a Meet (expect updated, the Meet, online; same event t; RSVPs 1) =='
 set local role service_role;
 select r ->> 'outcome' from (select public.calendar_invite_receive('rep@probe.example', true, null,
   base || '{"uid":"probe-update@google.com","sequence":1,"url":"https://meet.google.com/abc-defg-hij","format":"online"}') r from probe_payload) s;

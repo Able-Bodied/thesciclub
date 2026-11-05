@@ -298,6 +298,23 @@ describe('what the sender is told', () => {
     expect(told(updated)[0]?.text).toContain('choose all guests');
   });
 
+  // The owner, 2026-11-05 (20261105120000).
+  it('says when it joined the event already in the club, and that cancelling leaves it', () => {
+    const text = told({ ...updated, outcome: 'added', joined: true })[0]?.text ?? '';
+    expect(text).toContain('the invitation joined that event');
+    expect(text).toContain('cancelling the invitation leaves it');
+    expect(text).not.toContain('cancelling it takes the event off');
+  });
+
+  it('a cancelled one that joined says the event stays, and where to delete it', () => {
+    const [mail] = told({ outcome: 'cancelled', kept: true, event: 'e1' });
+    expect(mail?.subject).toBe('Still on The SCI Club: Friday Happy Hour');
+    expect(mail?.text).toContain('https://thesciclub.com/events/e1');
+    expect(told({ outcome: 'cancelled' })[0]?.subject).toBe(
+      'Taken off The SCI Club: Friday Happy Hour',
+    );
+  });
+
   it('a change to one date that was not copied is said, not dropped', () => {
     const reason =
       'A change to one date of a repeating event is not copied; change it in the club.';
