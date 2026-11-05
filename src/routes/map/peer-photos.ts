@@ -1,4 +1,6 @@
+import { forgetSignedUrls, thumbPath } from '@/lib/chat/attachments';
 import type { MapLibreMap } from '@/lib/map';
+import { photoBroke } from '@/lib/shared-reads';
 import { type Badge, pixelRatio, put } from '@/routes/map/organization-badges';
 
 /**
@@ -86,9 +88,11 @@ export function drawPhotoBox(look: { photo: Picture } | { one: true }): Badge | 
 }
 
 let one: Badge | null | undefined;
-/** By photograph path: the finished box, or null when it failed. */
-const finished = new Map<string, Badge | null>();
+/** By photograph path: the finished box. */
+const finished = new Map<string, Badge>();
 const loading = new Map<string, Promise<Badge | null>>();
+/** By path, the URL that failed: a new URL for the same path is tried again. */
+const failedUrl = new Map<string, string>();
 const sources = new WeakMap<MapLibreMap, Map<string, PhotoSource>>();
 /** Which members' boxes each map was given, so only those follow a change. */
 const drawn = new WeakMap<MapLibreMap, Set<string>>();
@@ -98,12 +102,18 @@ export function forgetPhotoBoxes(): void {
   one = undefined;
   finished.clear();
   loading.clear();
+  failedUrl.clear();
 }
 
-async function decode(url: string): Promise<Badge | null> {
+async function decode(path: string, url: string): Promise<Badge | null> {
   try {
     const response = await fetch(url, { mode: 'cors', referrerPolicy: 'no-referrer' });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      // The file is gone (a changed photo) or the URL is: sign again, read again.
+      forgetSignedUrls('photos', [path, thumbPath(path)]);
+      photoBroke();
+      return null;
+    }
     const picture = await createImageBitmap(await response.blob());
     const badge = drawPhotoBox({ photo: picture });
     picture.close();
@@ -117,8 +127,11 @@ async function decode(url: string): Promise<Badge | null> {
 function load(path: string, url: string): Promise<Badge | null> {
   let pending = loading.get(path);
   if (!pending) {
-    pending = decode(url).then((badge) => {
-      finished.set(path, badge);
+    pending = decode(path, url).then((badge) => {
+      if (badge) {
+        finished.set(path, badge);
+        failedUrl.delete(path);
+      } else failedUrl.set(path, url);
       loading.delete(path);
       return badge;
     });
@@ -140,7 +153,7 @@ function draw(map: MapLibreMap, memberId: string): void {
   }
   if (one === undefined) one = drawPhotoBox({ one: true });
   put(map, id, one);
-  if (!source?.url || finished.has(source.photoPath)) return;
+  if (!source?.url || failedUrl.get(source.photoPath) === source.url) return;
   const path = source.photoPath;
   void load(path, source.url).then((badge) => {
     if (badge && sources.get(map)?.get(memberId)?.photoPath === path) put(map, id, badge);
