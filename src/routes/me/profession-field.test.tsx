@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Card =
-  | { ok: true; value: { title: string; heading: null; body: null } | null }
+  | { ok: true; value: { title: string | null; heading: null; body: null } | null }
   | { ok: false; error: string };
 
 const state = vi.hoisted(() => ({
@@ -35,7 +35,7 @@ describe('your profession', () => {
     const field = await screen.findByLabelText('Your profession');
     expect(field).toHaveValue('Physical therapist');
     expect(
-      screen.getByText('Shown beside your name as “Professional · Physical therapist”.'),
+      screen.getByText('Shown beside your name as “Verified professional · Physical therapist”.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
     await userEvent.clear(field);
@@ -46,6 +46,18 @@ describe('your profession', () => {
       expect(state.announce).toHaveBeenCalledWith('Your profession is saved.');
     });
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  });
+
+  // The owner, 2026-11-04: made one with no title, they write it here.
+  it('asks a new verified professional to write theirs', async () => {
+    state.card = { ok: true, value: { title: null, heading: null, body: null } };
+    render(<ProfessionField />);
+    const field = await screen.findByLabelText('Your profession');
+    expect(field).toHaveValue('');
+    expect(screen.getByText(/You are a verified professional/)).toBeInTheDocument();
+    await userEvent.type(field, 'Physical therapist');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(state.save).toHaveBeenCalledWith('Physical therapist');
   });
 
   it('will not save one shorter than two letters', async () => {

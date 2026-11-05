@@ -6,8 +6,9 @@ import { fetchMyPartnerCard, setMyProfessionalTitle } from '@/lib/partner-hub';
 const MAX = 80;
 
 /**
- * A professional writes the profession shown beside their name (the owner,
- * 2026-11-04; 20261104100000): "Professional · Physical therapist, SCI-FIT".
+ * A verified professional writes the profession shown beside their name (the
+ * owner, 2026-11-04; 20261104100000, 20261104160000): "Verified professional ·
+ * Physical therapist, SCI-FIT". Nobody else does, not even when they are made one.
  */
 export function ProfessionField() {
   const id = useId();
@@ -22,8 +23,8 @@ export function ProfessionField() {
     void fetchMyPartnerCard().then((result) => {
       if (!live) return;
       if (result.ok && result.value) {
-        setSaved(result.value.title);
-        setDraft(result.value.title);
+        setSaved(result.value.title ?? '');
+        setDraft(result.value.title ?? '');
       } else if (!result.ok) setError(result.error);
     });
     return () => {
@@ -68,6 +69,7 @@ export function ProfessionField() {
         Your profession
       </label>
       <p id={`${id}-hint`} className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+        {saved === '' ? 'You are a verified professional. Write your profession for members. ' : ''}
         Shown beside your name as “{PARTNER_ROLE_NAME} · {clean || 'your profession'}”.
       </p>
       {saved !== null ? (

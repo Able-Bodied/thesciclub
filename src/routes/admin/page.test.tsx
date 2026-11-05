@@ -54,7 +54,7 @@ const api = vi.hoisted(() => ({
   /** Open reports, for the count in the Reports tab's label. */
   openReports: 0,
   /** member id → professional title (20261029100000). */
-  partners: new Map<string, string>(),
+  partners: new Map<string, string | null>(),
   partnerCalls: [] as [string, string | null][],
 }));
 
@@ -194,13 +194,13 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
     api.typeCalls.push([id, type]);
     return Promise.resolve({ ok: true });
   },
-  setPartner: (id: string, title: string) => {
+  setPartner: (id: string, title: string | null) => {
     api.partnerCalls.push([id, title]);
-    api.partners.set(id, title);
+    api.partners.set(id, title ?? api.partners.get(id) ?? null);
     return Promise.resolve({ ok: true });
   },
   removePartner: (id: string) => {
-    api.partnerCalls.push([id, null]);
+    api.partnerCalls.push([id, 'removed']);
     api.partners.delete(id);
     return Promise.resolve({ ok: true });
   },
@@ -344,23 +344,37 @@ beforeEach(() => {
   confirmSpy.mockClear();
 });
 
-// 20261029100000.
-describe('professionals', () => {
-  it('makes a member a professional with the profession shown beside their name', async () => {
+// 20261029100000; verified, with no title asked for, 20261104160000.
+describe('verified professionals', () => {
+  it('makes a member one without asking for their profession', async () => {
     renderAdmin();
     await manage();
-    await userEvent.click(await screen.findByRole('button', { name: 'Make professional' }));
-    const save = screen.getByRole('button', { name: 'Save' });
-    expect(save).toBeDisabled();
-    await userEvent.type(
-      screen.getByLabelText('Profession shown beside their name'),
-      ' Physical therapist, SCI-FIT ',
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Make verified professional' }),
     );
-    await userEvent.click(save);
+    expect(screen.queryByLabelText('Profession shown beside their name')).toBeNull();
+    expect(screen.getByText(/They write their profession themselves, on Me/)).toBeInTheDocument();
+    const make = screen.getAllByRole('button', { name: 'Make verified professional' }).at(-1);
+    if (!make) throw new Error('no button');
+    await userEvent.click(make);
+    await waitFor(() => {
+      expect(api.partnerCalls).toEqual([['m1', null]]);
+    });
+    expect(await screen.findByText('No profession yet. They write it on Me.')).toBeInTheDocument();
+  });
+
+  it('can still change the profession they wrote', async () => {
+    api.partners = new Map([['m1', 'Physical therapist']]);
+    renderAdmin();
+    await manage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Change profession' }));
+    const field = screen.getByLabelText('Profession shown beside their name');
+    await userEvent.clear(field);
+    await userEvent.type(field, ' Physical therapist, SCI-FIT ');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(api.partnerCalls).toEqual([['m1', 'Physical therapist, SCI-FIT']]);
     });
-    expect(await screen.findByText('Physical therapist, SCI-FIT')).toBeInTheDocument();
   });
 
   it('shows the title, and removes the role after asking', async () => {
@@ -368,11 +382,11 @@ describe('professionals', () => {
     renderAdmin();
     await manage();
     expect(await screen.findByText('Peer support, SCVMC')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove as professional' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as verified professional' }));
     expect(api.partnerCalls).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove the role' }));
     await waitFor(() => {
-      expect(api.partnerCalls).toEqual([['m1', null]]);
+      expect(api.partnerCalls).toEqual([['m1', 'removed']]);
     });
   });
 
@@ -380,7 +394,7 @@ describe('professionals', () => {
     api.members = [member({ isSeed: true })];
     renderAdmin();
     await manage();
-    expect(screen.queryByRole('button', { name: 'Make professional' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make verified professional' })).toBeNull();
   });
 });
 

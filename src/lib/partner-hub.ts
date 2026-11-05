@@ -381,7 +381,8 @@ export async function withdrawIntroduction(id: string): Promise<Result<null>> {
 /* ----------------------------------------------------------------- title */
 
 export interface PartnerCard {
-  title: string;
+  /** Null until they write one on Me (20261104160000). */
+  title: string | null;
   heading: string | null;
   body: string | null;
 }
@@ -391,7 +392,7 @@ export async function fetchMyPartnerCard(): Promise<Result<PartnerCard | null>> 
   if (!result.ok) return result;
   const row = (
     result.value as
-      | { title: string; card_heading: string | null; card_body: string | null }[]
+      | { title: string | null; card_heading: string | null; card_body: string | null }[]
       | null
   )?.[0];
   return {

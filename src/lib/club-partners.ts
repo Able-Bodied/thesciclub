@@ -3,18 +3,19 @@ import type { Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Professionals (20261029100000; called trusted partners until the owner,
- * 2026-11-04): an administrator makes them, such as a hospital's peer support
- * lead or a physical therapist, and each names their profession on Me
- * (20261104100000). Shown beside their name. The code still says partner. Nothing here is the permission
- * check; the database decides, and these only choose what to draw.
+ * Verified professionals (20261029100000; trusted partners, then professionals,
+ * until the owner, 2026-11-04): an administrator makes them, such as a
+ * hospital's peer support lead or a physical therapist, and each names their
+ * profession on Me (20261104160000). Shown beside their name with a mark. The
+ * code still says partner. Nothing here is the permission check; the database
+ * decides, and these only choose what to draw.
  */
 
 /** What the role is called wherever it is shown. One place to rename it. */
-export const PARTNER_ROLE_NAME = 'Professional';
+export const PARTNER_ROLE_NAME = 'Verified professional';
 
-/** member id → title, e.g. "Physical therapist, SCI-FIT". */
-export type PartnerTitles = ReadonlyMap<string, string>;
+/** member id → title, e.g. "Physical therapist, SCI-FIT"; null until they write one. */
+export type PartnerTitles = ReadonlyMap<string, string | null>;
 
 let titles: Promise<PartnerTitles> | null = null;
 
@@ -24,13 +25,13 @@ export function fetchPartnerTitles(): Promise<PartnerTitles> {
     // A failure, or no client at all as in tests, draws no label until asked again.
     const failed = () => {
       titles = null;
-      return new Map<string, string>();
+      return new Map<string, string | null>();
     };
     try {
       const { data, error } = (await getSupabase()
         .from('club_partners')
         .select('member_id, title')) as {
-        data: { member_id: string; title: string }[] | null;
+        data: { member_id: string; title: string | null }[] | null;
         error: Failure | null;
       };
       if (error) return failed();
