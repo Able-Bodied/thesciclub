@@ -76,8 +76,8 @@ export function AppNav() {
   const lit = litTab(location.pathname, location.state);
   // On a phone only: a desktop's bar is at the top, out of the way already, and
   // a narrow desktop window keeps its bottom bar still.
-  const { hidden, show } = useHideOnScroll(wide === false && touchScreen(), location.pathname);
   const bar = useRef<HTMLElement | null>(null);
+  const { hidden, show } = useHideOnScroll(wide === false && touchScreen(), location.pathname, bar);
 
   // The bar is mounted on every screen, which makes it the right place for the
   // one subscription that has to survive navigation: somebody writing to you

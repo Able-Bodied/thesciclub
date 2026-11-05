@@ -66,7 +66,17 @@ describe('the bar on a scroll', () => {
     vi.unstubAllGlobals();
   });
 
-  function scrollOn({ coarse, wide }: { coarse: boolean; wide: boolean }) {
+  function scrollOn({
+    coarse,
+    wide,
+    height = 2000,
+    bar = 60,
+  }: {
+    coarse: boolean;
+    wide: boolean;
+    height?: number;
+    bar?: number;
+  }) {
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('pointer') ? coarse : wide,
       addEventListener: () => undefined,
@@ -79,9 +89,9 @@ describe('the bar on a scroll', () => {
       </MemoryRouter>,
     );
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    Object.defineProperty(nav, 'offsetHeight', { value: 60 });
+    Object.defineProperty(nav, 'offsetHeight', { value: bar });
     const box = screen.getByTestId('box');
-    Object.defineProperty(box, 'scrollHeight', { value: 2000 });
+    Object.defineProperty(box, 'scrollHeight', { value: height });
     Object.defineProperty(box, 'clientHeight', { value: 600 });
     Object.defineProperty(box, 'scrollTop', { value: 300 });
     // The reader's own scroll: only that moves the bar (hide-on-scroll.ts).
@@ -92,6 +102,21 @@ describe('the bar on a scroll', () => {
 
   it('goes on a phone', () => {
     expect(scrollOn({ coarse: true, wide: false }).style.marginBottom).toBe('-60px');
+  });
+
+  // 200 to scroll, 110 once a 90 bar has gone: it would only bounce.
+  it('stays on a page that would keep too little room without it', () => {
+    const nav = scrollOn({ coarse: true, wide: false, height: 800, bar: 90 });
+    expect(nav.style.marginBottom).toBe('');
+  });
+
+  // In the column, not over it: what is above always ends at the bar's top.
+  it('sits under the screen rather than over it, clear of the home indicator', () => {
+    const nav = scrollOn({ coarse: true, wide: false, height: 600 });
+    expect(nav.className).not.toMatch(/\b(fixed|absolute|sticky)\b/);
+    expect(nav.className).toContain('order-last');
+    expect(nav.className).toContain('pb-[max(0.5rem,env(safe-area-inset-bottom))]');
+    expect(nav.style.marginBottom).toBe('');
   });
 
   it('stays in a narrow window on a computer', () => {

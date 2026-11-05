@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 
 /** Less than this is a finger settling, not a direction. */
 const SLOP = 8;
 /** Near the top of a page the bar always shows. */
 const NEAR_TOP = 40;
-/** A page with no more to scroll than this would only jump as the bar went. */
+/** Room a page must keep with the bar gone, or it only jumps as the bar goes. */
 const LEAST_ROOM = 120;
 /** A scroll this soon after a touch, wheel or key is the reader's own. */
 export const INTENT_MS = 500;
@@ -27,7 +27,11 @@ export function touchScreen(): boolean {
  * scroll being caught on its way down the page though it does not bubble. A
  * change of `place` brings the bar back: nobody arrives on a screen without it.
  */
-export function useHideOnScroll(enabled: boolean, place: string) {
+export function useHideOnScroll(
+  enabled: boolean,
+  place: string,
+  bar: RefObject<HTMLElement | null>,
+) {
   const [hidden, setHidden] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `place` is why it runs again.
@@ -60,8 +64,25 @@ export function useHideOnScroll(enabled: boolean, place: string) {
       if (SCROLL_KEYS.has(event.key)) intent();
     };
     const theirs = () => touching || Date.now() - lastIntent <= INTENT_MS;
+    // Room left with the bar gone, the same whether it is shown, hidden or
+    // on its way. A page that kept less pulled itself back near the top as
+    // the bar went, which brought the bar back: the bounce (the owner,
+    // 2026-11-04).
+    const roomHidden = (box: HTMLElement) => {
+      const nav = bar.current;
+      const height = nav?.offsetHeight ?? 0;
+      const away = nav ? -Number.parseFloat(getComputedStyle(nav).marginBottom) || 0 : 0;
+      const gone = Math.min(Math.max(away, 0), height);
+      return box.scrollHeight - box.clientHeight + gone - height;
+    };
+    // The page that sent the bar away brings it back once it lacks the room
+    // (shorter now, or the window resized).
+    let owner: HTMLElement | null = null;
+    const recheck = () => {
+      if (owner?.isConnected && roomHidden(owner) < LEAST_ROOM) setHidden(false);
+    };
     const seen = new WeakMap<HTMLElement, number>();
-    const heights = new WeakMap<HTMLElement, number>();
+    const sizes = new WeakMap<HTMLElement, string>();
     const onScroll = (event: Event) => {
       const box = event.target;
       if (!(box instanceof HTMLElement)) return;
@@ -71,18 +92,25 @@ export function useHideOnScroll(enabled: boolean, place: string) {
       // The bar going or coming resizes the box, which moves a page scrolled to
       // its end (or a chat holding its newest message in view) by itself. That
       // is not the reader turning, and taking it for one sets the bar going
-      // and coming for ever (the owner's video, 2026-11-03).
-      const height = heights.get(box);
-      heights.set(box, box.clientHeight);
-      if (height !== undefined && height !== box.clientHeight) {
+      // and coming for ever (the owner's video, 2026-11-03). So does its
+      // content changing size.
+      const was = sizes.get(box);
+      const size = `${box.clientHeight} ${box.scrollHeight}`;
+      sizes.set(box, size);
+      if (was !== undefined && was !== size) {
         seen.set(box, top);
+        recheck();
         return;
       }
       const before = seen.get(box) ?? 0;
       if (Math.abs(top - before) < SLOP && top > NEAR_TOP) return;
       seen.set(box, top);
       if (top <= NEAR_TOP) setHidden(false);
-      else if (room >= LEAST_ROOM && theirs()) setHidden(top > before);
+      else if (roomHidden(box) < LEAST_ROOM) recheck();
+      else if (theirs()) {
+        owner = box;
+        setHidden(top > before);
+      }
     };
     const listen = { capture: true, passive: true } as const;
     document.addEventListener('scroll', onScroll, listen);
@@ -92,7 +120,9 @@ export function useHideOnScroll(enabled: boolean, place: string) {
     document.addEventListener('touchcancel', onTouchEnd, listen);
     document.addEventListener('wheel', intent, listen);
     document.addEventListener('keydown', onKey, listen);
+    window.addEventListener('resize', recheck);
     return () => {
+      window.removeEventListener('resize', recheck);
       document.removeEventListener('scroll', onScroll, { capture: true });
       document.removeEventListener('touchstart', onTouchStart, { capture: true });
       document.removeEventListener('touchmove', intent, { capture: true });
@@ -101,7 +131,7 @@ export function useHideOnScroll(enabled: boolean, place: string) {
       document.removeEventListener('wheel', intent, { capture: true });
       document.removeEventListener('keydown', onKey, { capture: true });
     };
-  }, [enabled]);
+  }, [enabled, bar]);
 
   return {
     hidden,
