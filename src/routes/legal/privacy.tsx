@@ -23,6 +23,14 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 5, 2026">
+        <List>
+          <li>
+            <b>Changed:</b> a notification of a group message now names the group, so the group’s
+            name can show on your lock screen (see Notifications).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 4, 2026">
         <List>
           <li>
@@ -434,7 +442,8 @@ export default function PrivacyPage() {
           Notifications are off until you turn them on, and you can choose which kinds you get on Me
           → Settings. They reach your device through its notification service: Apple’s on an iPhone,
           iPad or Mac, Google’s on Android or in Chrome, or your browser maker’s. A notification can
-          show the first words of a message on your lock screen.
+          show the first words of a message, and the name of the group it was sent in, on your lock
+          screen.
         </P>
         <P>
           In the iPhone app, notifications go through Apple Push Notification service, and the
