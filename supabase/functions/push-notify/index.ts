@@ -47,6 +47,8 @@ const SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://thesciclub.netlify.app
 const APNS = apnsKeys((name) => Deno.env.get(name));
 // The day-before email (20261028980000): Resend, as send-invite, from the
 // same address. Without them the daily run sends pushes only.
+/** How long a message's push waits before asking who is still owed it. */
+const MESSAGE_WAIT_MS = 3000;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const EMAIL_FROM = Deno.env.get('INVITE_FROM') ?? '';
 
@@ -132,6 +134,10 @@ Deno.serve(async (request) => {
   if (typeof event !== 'string' || !EVENTS.has(event) || typeof key !== 'object' || key === null) {
     return reply(400, { error: 'expected { event, key }' });
   }
+
+  // A member with the conversation open marks the message read within a
+  // second; asked after that, push_owed no longer owes them this push.
+  if (event === 'message') await new Promise((done) => setTimeout(done, MESSAGE_WAIT_MS));
 
   const owedResponse = await rpc('push_owed', { p_secret: secret, p_event: event, p_key: key });
   if (!owedResponse.ok) {
