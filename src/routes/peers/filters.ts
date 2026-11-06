@@ -181,6 +181,20 @@ export function memberPlaces(
 }
 
 /** The organizations with a place within so many miles of the reader. */
+/** How far each placed organization's nearest place is from home, in miles. */
+export function organizationMiles(
+  contents: Pick<MapContents, 'home' | 'organizations'>,
+): Map<string, number> {
+  const miles = new Map<string, number>();
+  const { home } = contents;
+  if (!home) return miles;
+  for (const place of contents.organizations) {
+    const away = milesBetween(home, place);
+    miles.set(place.id, Math.min(away, miles.get(place.id) ?? away));
+  }
+  return miles;
+}
+
 export function organizationsWithin(
   contents: Pick<MapContents, 'home' | 'organizations'>,
   miles: number,

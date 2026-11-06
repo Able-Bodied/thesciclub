@@ -123,6 +123,27 @@ export function byCalendarActivity(
 }
 
 /**
+ * Nearest first (the owner, 2026-11-05), to the mile, then busiest, then by
+ * name. One with no place on the map follows, busiest first. With no home to
+ * measure from, `byCalendarActivity`.
+ */
+export function byNearestThenActivity(
+  miles: ReadonlyMap<string, number>,
+  counts: Map<string, number>,
+): (a: Organization, b: Organization) => number {
+  const busiest = byCalendarActivity(counts);
+  return (a, b) => {
+    const ma = miles.get(a.id);
+    const mb = miles.get(b.id);
+    if (ma === undefined || mb === undefined) {
+      if (ma !== mb) return ma === undefined ? 1 : -1;
+      return busiest(a, b);
+    }
+    return Math.round(ma) - Math.round(mb) || busiest(a, b);
+  };
+}
+
+/**
  * The card is a div and the name is the button, which it was not before.
  *
  * The whole row used to be one `<button>`, and Follow cannot live inside one —
@@ -252,6 +273,8 @@ export function useDirectory(
   events: ClubEvent[],
   following: ReadonlySet<string>,
   filters: DirectoryFilters,
+  /** Miles to each placed organization; empty with no home to measure from. */
+  milesAway: ReadonlyMap<string, number> = new Map(),
 ) {
   // One read of every grant, shared by the list, its sheet and the map.
   const grants = useGrantsByOrganization();
@@ -268,8 +291,12 @@ export function useDirectory(
             today,
           }),
         )
-        .sort(byCalendarActivity(counts)),
-    [organizations, filters, grants, counts, following, today],
+        .sort(
+          milesAway.size > 0
+            ? byNearestThenActivity(milesAway, counts)
+            : byCalendarActivity(counts),
+        ),
+    [organizations, filters, grants, counts, following, today, milesAway],
   );
   return { shown, grants, counts, today };
 }
@@ -283,6 +310,7 @@ export function OrganizationList({
   onOpen,
   filters: given,
   onFiltersChange,
+  milesAway,
 }: {
   organizations: Organization[];
   /** Used only to count what each organization is running. */
@@ -294,6 +322,8 @@ export function OrganizationList({
   /** Held by the screen, so its map shows what the list does; else its own. */
   filters?: DirectoryFilters;
   onFiltersChange?: (next: DirectoryFilters) => void;
+  /** Miles to each placed organization, for nearest first. */
+  milesAway?: ReadonlyMap<string, number>;
 }) {
   const [own, setOwn] = useState<DirectoryFilters>(NO_FILTERS);
   const filters = given ?? own;
@@ -302,7 +332,13 @@ export function OrganizationList({
     if (onFiltersChange) onFiltersChange(next);
     else setOwn(next);
   };
-  const { shown, grants, counts, today } = useDirectory(organizations, events, following, filters);
+  const { shown, grants, counts, today } = useDirectory(
+    organizations,
+    events,
+    following,
+    filters,
+    milesAway,
+  );
   const filtered = directoryFilterCount({ ...filters, withinMiles: null }) > 0;
   const toggle = (key: DirectoryChip) => {
     setFilters((f) => ({ ...f, [key]: !f[key] }));

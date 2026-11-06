@@ -44,7 +44,7 @@ import { groupBySeries } from '@/routes/events/series-groups';
 import { type MapProblem, MapProblemNote, MapView } from '@/routes/map/map-view';
 import { canShowOnMap, mapLinkFor, SHOW_PARAM } from '@/routes/map/show-on-map';
 import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
-import { milesForEnough, organizationsWithin } from '@/routes/peers/filters';
+import { milesForEnough, organizationMiles, organizationsWithin } from '@/routes/peers/filters';
 import {
   type ClubEvent,
   DEFAULT_WITHIN_MILES,
@@ -237,6 +237,12 @@ export default function EventsPage() {
     const near = organizationsWithin({ ...directoryMap.contents, home }, miles);
     return organizations.filter(({ id }) => !placed.has(id) || near.has(id));
   }, [organizations, directory.withinMiles, directory.query, directoryMap.contents, place]);
+  // Nearest first, from the same place the distance is measured from.
+  const milesAway = useMemo(
+    () =>
+      organizationMiles({ ...directoryMap.contents, home: place ?? directoryMap.contents.home }),
+    [directoryMap.contents, place],
+  );
   const changeDirectory = (next: DirectoryFilters) => {
     chosenMiles.current = next.withinMiles !== milesAtStart;
     setDirectory(next);
@@ -567,6 +573,7 @@ export default function EventsPage() {
               onToggleFollow={follows.toggle}
               filters={directory}
               onFiltersChange={changeDirectory}
+              milesAway={milesAway}
               onOpen={(id) => {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}

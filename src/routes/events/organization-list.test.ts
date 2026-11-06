@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_TYPES, tapTypeChip, typeChipOn } from '@/lib/organization-categories';
 import {
   byCalendarActivity,
+  byNearestThenActivity,
   matchesDirectory,
   NO_FILTERS,
 } from '@/routes/events/organization-list';
@@ -43,6 +44,37 @@ describe('byCalendarActivity', () => {
     expect([...all].sort(byCalendarActivity(new Map())).map((o) => o.name)).toEqual([
       'Angel City Sports',
       'Craig Hospital',
+    ]);
+  });
+});
+
+describe('byNearestThenActivity', () => {
+  const all = [
+    org('far', 'Far Away Sports'),
+    org('quiet', 'Quiet Near'),
+    org('busy', 'Busy Near'),
+    org('national', 'National Funder'),
+    org('close', 'Closest Gym'),
+  ];
+  const miles = new Map([
+    ['far', 240],
+    ['quiet', 12.2],
+    ['busy', 11.8],
+    ['close', 3],
+  ]);
+  const counts = new Map([
+    ['busy', 9],
+    ['far', 50],
+    ['national', 4],
+  ]);
+
+  it('puts the nearest first, the busier first at the same mile, and the unplaced last', () => {
+    expect([...all].sort(byNearestThenActivity(miles, counts)).map((o) => o.id)).toEqual([
+      'close',
+      'busy',
+      'quiet',
+      'far',
+      'national',
     ]);
   });
 });
