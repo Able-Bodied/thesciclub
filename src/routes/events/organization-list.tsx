@@ -238,8 +238,10 @@ export function directoryFilterCount(
 export function eventCounts(events: ClubEvent[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const event of events) {
-    if (!event.organizationId) continue;
-    counts.set(event.organizationId, (counts.get(event.organizationId) ?? 0) + 1);
+    // Its co-hosts count it too (20261105170000).
+    for (const id of [event.organizationId, ...event.cohostIds]) {
+      if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
   }
   return counts;
 }

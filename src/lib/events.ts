@@ -67,7 +67,8 @@ const LIST_COLUMNS =
  * more reads, by id, once the events had come: a second round trip before
  * Home or Events could draw (2026-10-22).
  */
-const EMBEDDED = 'event_tags(tag_id), event_rsvp_counts(going_count, interested_count)';
+const EMBEDDED =
+  'event_tags(tag_id), event_rsvp_counts(going_count, interested_count), event_cohosts(organization_id)';
 
 /**
  * Reads that are the same for every viewer (the tag taxonomy, the calendar
@@ -133,6 +134,7 @@ interface EventRow {
   /** Embedded (EMBEDDED). No row in the counts view is nobody yet. */
   event_tags?: { tag_id: string }[] | null;
   event_rsvp_counts?: Omit<CountRow, 'event_id'>[] | null;
+  event_cohosts?: { organization_id: string }[] | null;
 }
 
 interface TagRow {
@@ -225,6 +227,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       format: row.event_format as ClubEvent['format'],
       organizationId: row.organization_id,
       hostName: row.host_name,
+      cohostIds: (row.event_cohosts ?? []).map((c) => c.organization_id),
       handAdded: row.feed_id === null,
       seriesId: row.series_id,
       photoPath: row.photo_path,
@@ -330,6 +333,17 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
             supabase.from('data_feeds').select('id, timezone').order('id').range(first, last),
           ),
         );
+        // An organization's page lists the events it co-hosts too.
+        let cohosted: string[] = [];
+        if (organizationId) {
+          const links = (await supabase
+            .from('event_cohosts')
+            .select('event_id')
+            .eq('organization_id', organizationId)
+            .abortSignal(signal)) as { data: { event_id: string }[] | null };
+          if (aborted()) return;
+          cohosted = (links.data ?? []).map((link) => link.event_id);
+        }
         // Typed as the full list: the rows are EventRow either way.
         const columns = (id ? EVENT_COLUMNS : LIST_COLUMNS) as typeof EVENT_COLUMNS;
         const readRange = (batch: string[] | null) =>
@@ -342,7 +356,12 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
             if (from) query = query.gte('start_time', from);
             if (to) query = query.lte('start_time', to);
             if (id) query = query.eq('id', id);
-            if (organizationId) query = query.eq('organization_id', organizationId);
+            if (organizationId) {
+              query =
+                cohosted.length > 0
+                  ? query.or(`organization_id.eq.${organizationId},id.in.(${cohosted.join(',')})`)
+                  : query.eq('organization_id', organizationId);
+            }
             if (batch) query = query.in('id', batch);
             return query.range(first, last).abortSignal(signal);
           });

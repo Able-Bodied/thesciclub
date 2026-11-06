@@ -751,6 +751,8 @@ export interface ClubEvent {
   organizationId: string | null;
   /** The feed's own name for the host, when it is not a club organization. */
   hostName: string | null;
+  /** Organizations hosting it beside organizationId (20261105170000). */
+  cohostIds: string[];
   /**
    * Added in the app by an administrator or a member who speaks for its
    * organization, rather than read from a calendar. Only these can be changed

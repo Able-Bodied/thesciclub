@@ -78,6 +78,7 @@ export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
     format: 'in_person',
     organizationId: null,
     hostName: null,
+    cohostIds: [],
     tags: [],
     goingCount: 0,
     interestedCount: 0,

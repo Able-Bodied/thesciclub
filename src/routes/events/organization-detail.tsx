@@ -116,7 +116,11 @@ export default function OrganizationDetailPage() {
   // The next few, so the rest of the page is not a long scroll away (the owner,
   // 2026-11-01).
   const upcoming = events
-    .filter((event) => event.organizationId === organization.id && !isPastEvent(event))
+    .filter(
+      (event) =>
+        (event.organizationId === organization.id || event.cohostIds.includes(organization.id)) &&
+        !isPastEvent(event),
+    )
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
   const hiddenUpcoming = allUpcoming ? 0 : Math.max(0, upcoming.length - UPCOMING_SHOWN);
 

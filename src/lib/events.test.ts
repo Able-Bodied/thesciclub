@@ -100,6 +100,14 @@ describe('toEvents', () => {
     expect(event?.interestedCount).toBe(0);
   });
 
+  it('lists co-hosts, and none when the read has no co-host rows', () => {
+    expect(join()[0]?.cohostIds).toEqual([]);
+    const [event] = join({
+      events: [eventRow({ event_cohosts: [{ organization_id: 'o2' }, { organization_id: 'o3' }] })],
+    });
+    expect(event?.cohostIds).toEqual(['o2', 'o3']);
+  });
+
   it('takes the counts when there are some', () => {
     const [event] = join({
       counts: [{ event_id: 'e1', going_count: 3, interested_count: 5 }],

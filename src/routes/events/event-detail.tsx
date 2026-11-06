@@ -23,6 +23,7 @@ import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
+import { EventCohosts } from '@/routes/events/event-cohosts';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { EventGroupCard } from '@/routes/events/event-group-card';
@@ -63,7 +64,7 @@ export default function EventDetailPage() {
     id: id ?? '00000000-0000-0000-0000-000000000000',
   });
   const { byEvent, reload: reloadAttendees } = useAttendeesByEvent(id ? [id] : []);
-  const { byId: organizationsById } = useOrganizations();
+  const { byId: organizationsById, organizations } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const account = useAccount();
   const mine = useMyOrganizations(memberId);
@@ -165,10 +166,11 @@ export default function EventDetailPage() {
   const reachesHost = rsvpReachesHost(event, organization);
   const canChange = account.status === 'member' && mayChangeEvent(event, account.isAdmin, mine.ids);
   // Its org admins too, whose imported events they cannot change.
-  const canSeeCheckIns =
-    canChange ||
-    (account.status === 'member' &&
-      (account.isAdmin || (event.organizationId !== null && mine.ids.has(event.organizationId))));
+  // The lead host's admins, or an administrator: imported events too.
+  const managesHosts =
+    account.status === 'member' &&
+    (account.isAdmin || (event.organizationId !== null && mine.ids.has(event.organizationId)));
+  const canSeeCheckIns = canChange || managesHosts;
 
   return (
     <>
@@ -415,12 +417,12 @@ export default function EventDetailPage() {
             }}
           />
 
-          {host ? (
+          {host || event.cohostIds.length > 0 || managesHosts ? (
             <>
               <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
                 Hosted by
               </h2>
-              {organization ? (
+              {!host ? null : organization ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -447,6 +449,14 @@ export default function EventDetailPage() {
                   {host}
                 </p>
               )}
+              <EventCohosts
+                event={event}
+                organizations={organizations}
+                byId={organizationsById}
+                manages={managesHosts}
+                mine={mine.ids}
+                onChanged={() => reload?.()}
+              />
             </>
           ) : null}
 

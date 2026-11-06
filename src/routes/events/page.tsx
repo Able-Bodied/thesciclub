@@ -262,7 +262,11 @@ export default function EventsPage() {
         matchesEventSearch(
           event,
           eventSearch,
-          event.organizationId ? organizationsById.get(event.organizationId)?.name : undefined,
+          // The lead host and its co-hosts, so either name finds it.
+          [event.organizationId, ...event.cohostIds]
+            .map((id) => (id ? organizationsById.get(id)?.name : undefined))
+            .filter(Boolean)
+            .join(' ') || undefined,
         ),
       ),
     [eventSearch, organizationsById],
