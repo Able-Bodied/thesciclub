@@ -20,7 +20,9 @@ export function OrganizationPicker({
   value,
   onChange,
   none,
+  noneValue = '',
   placeholder,
+  labelClassName = 'block font-bold text-[0.8125rem] text-ink',
   disabled = false,
   className,
 }: {
@@ -33,6 +35,9 @@ export function OrganizationPicker({
   onChange: (id: string) => void;
   /** The choice with no organization, if there is one. */
   none?: string | undefined;
+  /** Its value, when '' is the placeholder's. */
+  noneValue?: string;
+  labelClassName?: string;
   /** Shown first while nothing is chosen. */
   placeholder?: string;
   disabled?: boolean;
@@ -51,7 +56,7 @@ export function OrganizationPicker({
 
   return (
     <div>
-      <label htmlFor={id} className="block font-bold text-[0.8125rem] text-ink">
+      <label htmlFor={id} className={labelClassName}>
         {label}
       </label>
       <select
@@ -78,7 +83,7 @@ export function OrganizationPicker({
             <option value={chosenElsewhere.id}>{chosenElsewhere.name}</option>
           </optgroup>
         ) : null}
-        {none !== undefined && placeholder === undefined ? <option value="">{none}</option> : null}
+        {none !== undefined ? <option value={noneValue}>{none}</option> : null}
       </select>
 
       {rest.length > 0 && !disabled ? (

@@ -7,6 +7,7 @@ import { makeOrganization } from '@/test/factory';
 const organizations = [
   makeOrganization({ id: 'borp', name: 'BORP', city: 'Berkeley', state: 'CA' }),
   makeOrganization({ id: 'hf', name: 'High Fives', city: 'Truckee', state: 'NV' }),
+  makeOrganization({ id: 'far', name: 'Faraway Rugby', city: 'Bend', state: 'OR' }),
 ];
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'member', userId: 'u1', isAdmin: true, displayName: 'A' }),
@@ -14,6 +15,8 @@ vi.mock('@/lib/account', () => ({
 vi.mock('@/lib/organization-representatives', () => ({
   useMyOrganizations: () => ({ ids: new Set(), loading: false }),
 }));
+// Theirs are listed; the rest are a search (the owner, 2026-11-05).
+vi.mock('@/lib/organization-members', () => ({ useMemberOrganizations: () => ['borp', 'hf'] }));
 vi.mock('@/lib/organizations', () => ({
   useOrganizations: () => ({
     organizations,
@@ -56,5 +59,15 @@ describe("an event's state on its form", () => {
     await userEvent.selectOptions(state, 'OR');
     await userEvent.selectOptions(host, 'borp');
     expect(state).toHaveValue('OR');
+  });
+
+  it('lists the organizations they belong to, and finds the rest by search', async () => {
+    renderForm();
+    const host = await screen.findByLabelText('Who is hosting it?');
+    expect(screen.queryByRole('option', { name: 'Faraway Rugby' })).toBeNull();
+    await userEvent.type(screen.getByLabelText('Or find another organization'), 'bend');
+    await userEvent.click(screen.getByRole('button', { name: 'Faraway Rugby' }));
+    expect(host).toHaveValue('far');
+    expect(screen.getByLabelText('State')).toHaveValue('OR');
   });
 });

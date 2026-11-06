@@ -1,5 +1,5 @@
-import { SquarePen } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { Search, SquarePen } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
@@ -16,6 +16,7 @@ import {
   type ChatThread,
 } from '@/lib/chat/types';
 import { useCoalesced } from '@/lib/use-coalesced';
+import { matchesChatSearch, SEARCH_FROM, splitShown } from '@/routes/chat/conversation-filters';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { RoomCard, RoomCategoryLabel } from '@/routes/chat/room-card';
 import { ThreadRow } from '@/routes/chat/thread-row';
@@ -40,11 +41,12 @@ import { ThreadRow } from '@/routes/chat/thread-row';
  * state explains the policy rather than apologising for a lack of content.
  *
  * ---------------------------------------------------------------------------
- * No search box
+ * Searching your chats
  * ---------------------------------------------------------------------------
- * The mock's chat header has one. Search across messages and posts is not in
- * this build, and a field that takes words and does nothing with them is worse
- * than no field: it is the one control on the screen somebody will try first.
+ * Past ten conversations the ask box gives way to a search of their names
+ * (the owner, 2026-11-05). It finds conversations and rooms by name, not
+ * what was said in them. Past the three latest of each kind, a conversation
+ * waits behind More direct chats or More group chats unless it is unread.
  */
 
 const SEGMENTS: [ChatSegment, string][] = [
@@ -120,18 +122,44 @@ export default function ChatPage() {
   // and `chat_open_direct` re-selects it by direct_key, so tapping Message
   // again lands in the same thread. A group is listed from the moment it is
   // made: somebody named it and chose who is in it, which is already a thing.
-  const conversations = threads.filter(
-    (thread) =>
-      (segment === 'all' || thread.kind === (segment === 'direct' ? 'direct' : 'group')) &&
-      (thread.kind !== 'direct' || thread.lastAt !== null),
-  );
+  const listed = threads.filter((thread) => thread.kind !== 'direct' || thread.lastAt !== null);
 
   const authors = useChatAuthors(
     threads.flatMap((thread) => [thread.otherMemberId, thread.lastAuthorId]),
   );
+
+  // More than ten and the ask box gives way to a search of them (the owner,
+  // 2026-11-05). Asking is still on Home.
+  const [search, setSearch] = useState('');
+  const searchable = listed.length > SEARCH_FROM;
+  const searching = searchable && search.trim() !== '';
+  const conversations = listed.filter(
+    (thread) =>
+      (segment === 'all' || thread.kind === (segment === 'direct' ? 'direct' : 'group')) &&
+      (!searching ||
+        matchesChatSearch(
+          thread,
+          thread.otherMemberId ? (authors.get(thread.otherMemberId) ?? null) : null,
+          search,
+        )),
+  );
   // Who started the member rooms. The seeded twelve have no starter, so on the
   // ordinary day this asks for nothing.
   const roomStarters = useChatAuthors(rooms.map((room) => room.createdBy));
+
+  const shownRooms = searching
+    ? grouped
+        .map(
+          ([category, inCategory]) =>
+            [
+              category,
+              inCategory.filter((room) =>
+                room.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+              ),
+            ] as const,
+        )
+        .filter(([, inCategory]) => inCategory.length > 0)
+    : grouped;
 
   const showRooms = segment === 'all' || segment === 'rooms';
   const showConversations = segment !== 'rooms';
@@ -167,11 +195,32 @@ export default function ChatPage() {
         <div className="mx-auto w-full max-w-[720px]">
           {/* Asking from Chat too, the same box as Home's (the owner,
               2026-10-10): General unless another room is picked. */}
-          <QuickAsk rooms={rooms} className="mb-3.5" />
+          {searchable ? (
+            <label className="relative mb-3.5 block">
+              <span className="sr-only">Search your chats</span>
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-grey"
+              />
+              <input
+                type="search"
+                autoComplete="off"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                }}
+                placeholder="Search your chats"
+                className="min-h-[46px] w-full rounded-[13px] border-[1.6px] border-line bg-paper py-2 pr-3 pl-10 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
+              />
+            </label>
+          ) : (
+            <QuickAsk rooms={rooms} className="mb-3.5" />
+          )}
           {showConversations ? (
             <Conversations
               segment={segment}
               threads={conversations}
+              searching={searching}
               loading={threadsLoading}
               error={threadsError}
               authors={authors}
@@ -205,6 +254,10 @@ export default function ChatPage() {
                   </p>
                   <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
                 </div>
+              ) : searching && shownRooms.length === 0 ? (
+                <p className="py-6 text-center text-[0.875rem] text-grey leading-relaxed">
+                  No room by that name.
+                </p>
               ) : grouped.length === 0 ? (
                 <p className="py-10 text-center text-[0.875rem] text-grey leading-relaxed">
                   No rooms are open yet.
@@ -212,7 +265,7 @@ export default function ChatPage() {
                   The seeded ones open a few at a time, and anybody can start one.
                 </p>
               ) : (
-                grouped.map(([category, inCategory]) => (
+                shownRooms.map(([category, inCategory]) => (
                   <section key={category}>
                     <RoomCategoryLabel category={category} />
                     {inCategory.map((room) => (
@@ -254,6 +307,7 @@ export default function ChatPage() {
 function Conversations({
   segment,
   threads,
+  searching,
   loading,
   error,
   authors,
@@ -261,6 +315,7 @@ function Conversations({
 }: {
   segment: ChatSegment;
   threads: ChatThread[];
+  searching: boolean;
   loading: boolean;
   error: string | null;
   authors: Map<string, ChatAuthor>;
@@ -271,6 +326,10 @@ function Conversations({
   const pictures = useAttachmentUrls(
     threads.flatMap((thread) => (thread.photoPath ? [thread.photoPath] : [])),
   );
+  const [opened, setOpened] = useState<{ direct: boolean; group: boolean }>({
+    direct: false,
+    group: false,
+  });
 
   if (loading) {
     return <LoadingCards label="Loading your conversations…" count={4} height={64} rows />;
@@ -287,21 +346,33 @@ function Conversations({
     );
   }
 
+  // A search lists everything it finds.
+  const { shown: recent, more } = searching
+    ? { shown: threads, more: { direct: [], group: [] } }
+    : splitShown(threads);
+  const rows = (list: ChatThread[]) => (
+    <div className="rounded-[14px] border border-line bg-paper px-3.5">
+      {list.map((thread) => (
+        <ThreadRow
+          key={thread.id}
+          thread={thread}
+          other={thread.otherMemberId ? (authors.get(thread.otherMemberId) ?? null) : null}
+          lastAuthor={thread.lastAuthorId ? (authors.get(thread.lastAuthorId) ?? null) : null}
+          viewerId={viewerId}
+          pictureUrl={thread.photoPath ? pictures.get(thread.photoPath) : null}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <>
-      {threads.length > 0 ? (
-        <div className="rounded-[14px] border border-line bg-paper px-3.5">
-          {threads.map((thread) => (
-            <ThreadRow
-              key={thread.id}
-              thread={thread}
-              other={thread.otherMemberId ? (authors.get(thread.otherMemberId) ?? null) : null}
-              lastAuthor={thread.lastAuthorId ? (authors.get(thread.lastAuthorId) ?? null) : null}
-              viewerId={viewerId}
-              pictureUrl={thread.photoPath ? pictures.get(thread.photoPath) : null}
-            />
-          ))}
-        </div>
+      {recent.length > 0 ? (
+        rows(recent)
+      ) : searching ? (
+        <p className="py-6 text-center text-[0.875rem] text-grey leading-relaxed">
+          No chat by that name.
+        </p>
       ) : (
         <p className="py-8 text-center text-[0.875rem] text-grey leading-relaxed">
           {segment === 'groups' ? (
@@ -319,6 +390,30 @@ function Conversations({
           )}
         </p>
       )}
+
+      {(['direct', 'group'] as const).map((kind) => {
+        const hidden = more[kind];
+        if (hidden.length === 0) return null;
+        const label = kind === 'direct' ? 'direct chats' : 'group chats';
+        return (
+          <div key={kind} className="mt-3">
+            <button
+              type="button"
+              aria-expanded={opened[kind]}
+              onClick={() => {
+                setOpened((was) => ({ ...was, [kind]: !was[kind] }));
+              }}
+              className="flex min-h-[44px] w-full items-center justify-between rounded-[13px] border border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-ink transition-colors hover:bg-tint"
+            >
+              <span>
+                {opened[kind] ? 'Fewer' : 'More'} {label}
+              </span>
+              <span className="font-normal text-grey">{hidden.length}</span>
+            </button>
+            {opened[kind] ? <div className="mt-2">{rows(hidden)}</div> : null}
+          </div>
+        );
+      })}
 
       {segment === 'groups' || segment === 'all' ? <NewGroupLink /> : null}
     </>

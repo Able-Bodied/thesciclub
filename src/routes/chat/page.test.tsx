@@ -482,3 +482,59 @@ describe('starting something from Chat', () => {
     expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
   });
 });
+
+// The owner, 2026-11-05: "I have too many chats open."
+describe('a long list of chats', () => {
+  const OLD = '2026-09-10T10:00:00Z';
+
+  it('lists the three latest of each, the rest behind More, unless unread', async () => {
+    const names = ['Ann', 'Bo', 'Cy', 'Di', 'Ed'];
+    db.authors = new Map(names.map((name) => [name, author({ id: name, displayName: name })]));
+    db.threads = [
+      ...names.map((name) => thread({ id: name, otherMemberId: name, unread: name === 'Ed' })),
+      ...['One', 'Two', 'Three', 'Four'].map((name) =>
+        thread({ id: name, kind: 'group', name: `${name} ride`, otherMemberId: null }),
+      ),
+    ];
+    renderPage();
+    for (const name of ['Ann', 'Bo', 'Cy', 'Ed', 'One ride', 'Two ride', 'Three ride']) {
+      expect(await screen.findByText(name)).toBeInTheDocument();
+    }
+    expect(screen.queryByText('Di')).toBeNull();
+    expect(screen.queryByText('Four ride')).toBeNull();
+    const more = screen.getByRole('button', { name: /More direct chats/ });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(more);
+    expect(screen.getByText('Di')).toBeInTheDocument();
+    expect(screen.queryByText('Four ride')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /More group chats/ }));
+    expect(screen.getByText('Four ride')).toBeInTheDocument();
+  });
+
+  it('keeps the ask box for ten or fewer', () => {
+    db.threads = Array.from({ length: 10 }, (_, i) => thread({ id: `t${String(i)}` }));
+    renderPage();
+    expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox', { name: 'Search your chats' })).toBeNull();
+  });
+
+  it('searches them by name instead past ten, hidden ones too', async () => {
+    db.authors = new Map([
+      ['jan', author({ id: 'jan' })],
+      ['kim', author({ id: 'kim', displayName: 'Kim Park', username: 'kimp' })],
+    ]);
+    db.threads = [
+      ...Array.from({ length: 10 }, (_, i) => thread({ id: `t${String(i)}` })),
+      thread({ id: 'old', otherMemberId: 'kim', lastAt: OLD, lastMessageAt: OLD }),
+    ];
+    renderPage();
+    expect(screen.queryByRole('textbox', { name: 'Ask or post to the club' })).toBeNull();
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search your chats' }), 'kimp');
+    expect(screen.getByText('Kim Park')).toBeInTheDocument();
+    expect(screen.queryByText('Jan')).toBeNull();
+    expect(screen.queryByRole('button', { name: /More direct chats/ })).toBeNull();
+    await userEvent.clear(screen.getByRole('searchbox', { name: 'Search your chats' }));
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search your chats' }), 'nobody');
+    expect(screen.getByText('No chat by that name.')).toBeInTheDocument();
+  });
+});

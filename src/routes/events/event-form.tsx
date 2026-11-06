@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { OrganizationPicker } from '@/components/organization-picker';
 import { SegmentPills } from '@/components/segment-pills';
 import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
@@ -20,6 +21,7 @@ import {
   saveMorePhotos,
   useEvents,
 } from '@/lib/events';
+import { useMemberOrganizations } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
@@ -49,6 +51,7 @@ import {
   TITLE_MAX,
 } from '@/routes/events/event-draft';
 import { MorePicturesField } from '@/routes/events/more-pictures-field';
+import type { Organization } from '@/types/domain';
 import {
   EVENT_FORMAT_LABELS,
   EVENT_FORMATS,
@@ -81,6 +84,8 @@ export default function EventFormPage() {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
   const mine = useMyOrganizations(memberId);
+  // Listed first, with a search for the rest (the owner, 2026-11-05).
+  const memberOf = useMemberOrganizations(memberId ?? undefined);
   const { organizations, loading: organizationsLoading } = useOrganizations();
   const { events, loading: eventsLoading } = useEvents({
     id: id ?? '00000000-0000-0000-0000-000000000000',
@@ -169,6 +174,7 @@ export default function EventFormPage() {
         }
         isAdmin={account.isAdmin}
         options={options}
+        yours={new Set([...mine.ids, ...memberOf])}
       />
     );
   return (
@@ -233,6 +239,7 @@ function EventForm({
   imported,
   isAdmin,
   options,
+  yours,
   hidden,
   top,
 }: {
@@ -256,7 +263,9 @@ function EventForm({
   /** A picture that did not go up when the event was saved, said on arrival. */
   initialFailure: string | null;
   isAdmin: boolean;
-  options: { id: string; name: string }[];
+  options: Organization[];
+  /** The organizations they run or belong to, listed first. */
+  yours: Set<string>;
 }) {
   const navigate = useNavigate();
   const announce = useAnnounce();
@@ -438,31 +447,29 @@ function EventForm({
           </p>
         ) : (
           <>
-            <label htmlFor="event-host" className={LABEL}>
-              Who is hosting it?
-            </label>
-            <select
+            <OrganizationPicker
               id="event-host"
+              label="Who is hosting it?"
+              labelClassName={LABEL}
+              yours={options.filter((o) => yours.has(o.id))}
+              others={options}
               value={draft.host}
-              onChange={(e) => {
-                set('host', e.target.value);
+              onChange={(host) => {
+                set('host', host);
                 // The state follows the host until somebody chooses one.
                 if (!stateChosen) {
-                  set('state', stateOfHost(e.target.value) ?? draft.state);
+                  set('state', stateOfHost(host) ?? draft.state);
                 }
               }}
+              placeholder="Choose…"
+              {...(isAdmin
+                ? {
+                    none: 'No organization — self or community hosted',
+                    noneValue: NO_ORGANIZATION,
+                  }
+                : {})}
               className={FIELD}
-            >
-              <option value="">Choose…</option>
-              {isAdmin ? (
-                <option value={NO_ORGANIZATION}>No organization — self or community hosted</option>
-              ) : null}
-              {options.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+            />
           </>
         )}
 
