@@ -365,10 +365,51 @@ function Conversations({
     </div>
   );
 
+  // Direct chats, then groups, each with its own More below it (the owner,
+  // 2026-11-05: "two sections instead of mixed"). Under All each is headed;
+  // the Direct and Groups segments are already one of them.
+  const sections = (['direct', 'group'] as const).flatMap((kind) => {
+    const listed = recent.filter((thread) => thread.kind === kind);
+    const hidden = more[kind];
+    return listed.length + hidden.length > 0 ? [{ kind, listed, hidden }] : [];
+  });
+
   return (
     <>
-      {recent.length > 0 ? (
-        rows(recent)
+      {sections.length > 0 ? (
+        sections.map(({ kind, listed, hidden }, index) => {
+          const label = kind === 'direct' ? 'direct chats' : 'group chats';
+          return (
+            <section key={kind} aria-label={kind === 'direct' ? 'Direct chats' : 'Group chats'}>
+              {segment === 'all' ? (
+                <h2
+                  className={`${index > 0 ? 'mt-4' : ''} mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]`}
+                >
+                  {kind === 'direct' ? 'Direct chats' : 'Group chats'}
+                </h2>
+              ) : null}
+              {listed.length > 0 ? rows(listed) : null}
+              {hidden.length > 0 ? (
+                <div className={listed.length > 0 ? 'mt-2' : ''}>
+                  <button
+                    type="button"
+                    aria-expanded={opened[kind]}
+                    onClick={() => {
+                      setOpened((was) => ({ ...was, [kind]: !was[kind] }));
+                    }}
+                    className="flex min-h-[44px] w-full items-center justify-between rounded-[13px] border border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-ink transition-colors hover:bg-tint"
+                  >
+                    <span>
+                      {opened[kind] ? 'Fewer' : 'More'} {label}
+                    </span>
+                    <span className="font-normal text-grey">{hidden.length}</span>
+                  </button>
+                  {opened[kind] ? <div className="mt-2">{rows(hidden)}</div> : null}
+                </div>
+              ) : null}
+            </section>
+          );
+        })
       ) : searching ? (
         <p className="py-6 text-center text-[0.875rem] text-grey leading-relaxed">
           No chat by that name.
@@ -390,30 +431,6 @@ function Conversations({
           )}
         </p>
       )}
-
-      {(['direct', 'group'] as const).map((kind) => {
-        const hidden = more[kind];
-        if (hidden.length === 0) return null;
-        const label = kind === 'direct' ? 'direct chats' : 'group chats';
-        return (
-          <div key={kind} className="mt-3">
-            <button
-              type="button"
-              aria-expanded={opened[kind]}
-              onClick={() => {
-                setOpened((was) => ({ ...was, [kind]: !was[kind] }));
-              }}
-              className="flex min-h-[44px] w-full items-center justify-between rounded-[13px] border border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-ink transition-colors hover:bg-tint"
-            >
-              <span>
-                {opened[kind] ? 'Fewer' : 'More'} {label}
-              </span>
-              <span className="font-normal text-grey">{hidden.length}</span>
-            </button>
-            {opened[kind] ? <div className="mt-2">{rows(hidden)}</div> : null}
-          </div>
-        );
-      })}
 
       {segment === 'groups' || segment === 'all' ? <NewGroupLink /> : null}
     </>

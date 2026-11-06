@@ -502,7 +502,13 @@ describe('a long list of chats', () => {
     }
     expect(screen.queryByText('Di')).toBeNull();
     expect(screen.queryByText('Four ride')).toBeNull();
-    const more = screen.getByRole('button', { name: /More direct chats/ });
+    // Two sections, each with its own More under it.
+    const direct = screen.getByRole('region', { name: 'Direct chats' });
+    const groups = screen.getByRole('region', { name: 'Group chats' });
+    expect(within(direct).getByText('Ed')).toBeInTheDocument();
+    expect(within(direct).queryByText('One ride')).toBeNull();
+    expect(within(groups).getByRole('button', { name: /More group chats/ })).toBeInTheDocument();
+    const more = within(direct).getByRole('button', { name: /More direct chats/ });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(more);
     expect(screen.getByText('Di')).toBeInTheDocument();
