@@ -622,6 +622,14 @@ All live. Migration headers and the files named say how and why.
   deploy <name>` (no `--linked`; add `--no-verify-jwt` where config.toml has
   it). **Never `supabase config push`** (placeholder Twilio credentials in
   config.toml).
+- **Tell the owner before pushing anything that could break an installed
+  iPhone app** (2026-11-05). The store app bundles its own build, so screen
+  changes are safe; old builds (1.0.5, 1.2.0) keep using the live database,
+  the edge functions, and the site pages the app opens (`/embed/youtube.html`,
+  `/auth/confirm.html`, `/reset-password`, `/join`, `/e/…`, `/terms`,
+  `/privacy`, `/.well-known/apple-app-site-association`). Removing or renaming
+  any of those, or changing what they accept, breaks it; adding is safe. Say
+  which build and what breaks, and wait for the owner's word.
 - **Commit small, one change each, each passing check alone.** Comments say
   why, briefly. No `Co-Authored-By: Claude` line.
 - **The repo is public: no real phone number, and nothing saying who is an
