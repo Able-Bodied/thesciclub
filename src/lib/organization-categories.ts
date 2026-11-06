@@ -18,13 +18,15 @@ export const ORGANIZATION_CATEGORIES = [
     id: 'team',
     label: 'Team sports & leagues',
     color: '#795548',
-    icon: 'M7 4h10v5a5 5 0 0 1-10 0Z M12 14v4 M8 20h8',
+    // A ball (the owner, 2026-11-05: a cup read as a wine glass).
+    icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M3 12h18 M12 3v18 M5.6 5.6c3 3 3 9.8 0 12.8 M18.4 5.6c-3 3-3 9.8 0 12.8',
   },
   {
     id: 'multi_sport',
     label: 'Multi-sport programs',
     color: '#e8590c',
-    icon: 'M3 12h4l3-8 4 16 3-8h4',
+    // A trophy, not a heartbeat line, which read as medical.
+    icon: 'M7 4h10v4a5 5 0 0 1-10 0Z M7 6H4.5a2.5 2.5 0 0 0 3 4 M17 6h2.5a2.5 2.5 0 0 1-3 4 M12 13v4 M8 20h8 M9 17h6',
   },
   {
     id: 'hospital',
@@ -46,7 +48,8 @@ export const ORGANIZATION_CATEGORIES = [
   },
   {
     id: 'funding',
-    label: 'Funding & research',
+    // Equipment loans and makers sit here too (2026-11-05).
+    label: 'Funding & equipment',
     color: '#00838f',
     icon: 'M12 3v18 M17 7c-1-2-9-3-9 1.500S17 12 17 16.500 9 21 8 17',
   },
