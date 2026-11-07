@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   current: null as MemberState | null,
   partner: false,
   // The viewer's own answer to "Which describes you best?".
-  myType: 'family' as string | null,
+  myType: null as string | null,
 }));
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<typeof ClubPartners>()),
