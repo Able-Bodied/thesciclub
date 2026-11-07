@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import {
+  currentAppleDevice,
   currentInstallPlatform,
   INSTALL_STEPS,
   type InstallPlatform,
@@ -99,7 +100,7 @@ function BrowserInstallNudge() {
             </p>
             <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
               {platform.startsWith('ios')
-                ? 'Open it in one tap, and get notifications on your iPhone.'
+                ? `Open it in one tap, and get notifications on your ${currentAppleDevice()}.`
                 : 'Open it in one tap, full screen, like any other app.'}
             </p>
             <button
@@ -239,7 +240,7 @@ export function InstallSheet({
         {ios ? (
           <p className="mt-4 text-[0.8125rem] text-grey leading-[1.5]">
             The Home Screen app should open already signed in. If it doesn't, sign in inside it. On
-            an iPhone, notifications only work from there.
+            an {currentAppleDevice()}, notifications only work from there.
           </p>
         ) : null}
         <button

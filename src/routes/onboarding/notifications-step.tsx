@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
+import { currentAppleDevice } from '@/lib/install';
 import { markNotificationsAsked, useDeviceNotifications } from '@/lib/push/notifications';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 
@@ -78,7 +79,9 @@ export function NotificationsStep({
         </>
       }
     >
-      <Question>{install ? 'Get notifications on your iPhone' : 'Turn on notifications?'}</Question>
+      <Question>
+        {install ? `Get notifications on your ${currentAppleDevice()}` : 'Turn on notifications?'}
+      </Question>
       <Sub>
         {install
           ? 'Add the club to your Home Screen: tap Share, then Add to Home Screen, and open it from there. You will sign in once more inside the app.'

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { installPlatform, NUDGE_SNOOZE_DAYS, nudgeSnoozed, snoozeNudge } from '@/lib/install';
+import {
+  appleDevice,
+  installPlatform,
+  NUDGE_SNOOZE_DAYS,
+  nudgeSnoozed,
+  snoozeNudge,
+} from '@/lib/install';
 
 const UA = {
   safari:
@@ -54,5 +60,23 @@ describe('not now', () => {
     snoozeNudge(now);
     expect(nudgeSnoozed(now + (NUDGE_SNOOZE_DAYS - 1) * 86_400_000)).toBe(true);
     expect(nudgeSnoozed(now + (NUDGE_SNOOZE_DAYS + 1) * 86_400_000)).toBe(false);
+  });
+});
+
+// The owner, 2026-11-07: an iPad was told "your iPhone".
+describe('appleDevice', () => {
+  it('says iPad for an iPad, whether it says iPad or asks for the desktop site', () => {
+    expect(appleDevice('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15')).toBe(
+      'iPad',
+    );
+    expect(
+      appleDevice('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15', 5),
+    ).toBe('iPad');
+  });
+
+  it('says iPhone for an iPhone', () => {
+    expect(
+      appleDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 5),
+    ).toBe('iPhone');
   });
 });

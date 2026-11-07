@@ -43,6 +43,17 @@ export function installPlatform(userAgent: string, touchPoints = 0): InstallPlat
   return 'desktop';
 }
 
+/** "iPad" or "iPhone", for an Apple device's words (the owner, 2026-11-07). Pure, for its test. */
+export function appleDevice(userAgent: string, touchPoints = 0): 'iPad' | 'iPhone' {
+  return userAgent.includes('iPad') || (userAgent.includes('Macintosh') && touchPoints > 1)
+    ? 'iPad'
+    : 'iPhone';
+}
+
+export function currentAppleDevice(): 'iPad' | 'iPhone' {
+  return appleDevice(navigator.userAgent, navigator.maxTouchPoints);
+}
+
 export function currentInstallPlatform(): InstallPlatform {
   return installPlatform(navigator.userAgent, navigator.maxTouchPoints);
 }
