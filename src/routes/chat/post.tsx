@@ -17,68 +17,25 @@ import { ViewCount } from '@/routes/chat/view-count';
 /**
  * One post in a topic, from the mock's `fpost()`.
  *
- * ---------------------------------------------------------------------------
- * A removed post is not drawn at all
- * ---------------------------------------------------------------------------
- * The owner, 2026-09-27: "Removed by its author." in a topic did not look good.
- * The topic page leaves removed posts out before they get here, so this only
- * ever draws a post that is standing. Underneath, removal is still soft — the
- * row stays for reports and moderation (20260927030000).
+ * Removed posts never get here: the topic page leaves them out (the owner, 2026-09-27). Removal
+ * is still soft underneath, for reports and moderation (20260927030000).
  *
- * ---------------------------------------------------------------------------
- * Former member
- * ---------------------------------------------------------------------------
- * A null author is somebody who has left the club. Their words stay and their
- * name does not, which is the owner's decision. There is nothing to link to and
- * nothing to make initials from, so the tile is the neutral one.
+ * A null author is a former member: words stay, name does not (the owner's decision); the tile
+ * is the neutral one.
  *
- * ---------------------------------------------------------------------------
- * The controls in one row, each named for its post
- * ---------------------------------------------------------------------------
- * Like, its count and views first, then Save (private, 2026-10-20), Edit
- * and Reply since 2026-09-29 (decisions 9 and 11), then Remove, or Report, or nothing. Report sits exactly where Remove sits, and
- * never beside it: the reader can take back what they wrote; on somebody
- * else's post they can hand it to the administrators. An administrator gets
- * Remove on everything, which is the stronger of the two — offering them
- * Report as well would be offering them a complaint addressed to themselves.
- * Edit is the author's alone, an administrator included: an administrator
- * removes, and does not rewrite somebody's words in their name. Block comes
- * last, on somebody else's (the owner, 2026-10-22).
+ * Controls: Like, count, views, Save (private, 2026-10-20), Edit and Reply (decisions 9 and 11),
+ * then Remove or Report in the same spot, never both: an administrator gets Remove on everything
+ * and no Report to themselves. Edit is the author's alone, administrators included. Block comes
+ * last, on somebody else's (the owner, 2026-10-22). Each control names its post for screen
+ * readers, and all are visible buttons, never gestures: members use mouth sticks and head
+ * pointers.
  *
- * Each control carries the post in its name — "Reply to Jan's post", "Remove
- * your post" — because a topic of twenty posts is otherwise a column of
- * twenty identical "Reply" buttons in a screen reader's list.
+ * Edit puts the words in the topic's composer and outlines the post; words only. Administrators
+ * see earlier versions from chat_edits.
  *
- * They are visible controls and not a long-press or a swipe. Members here
- * drive with limited hand function, a mouth stick or a head pointer, and a
- * gesture that has to be held or dragged is a control some of them do not
- * have.
- *
- * ---------------------------------------------------------------------------
- * Editing is the composer at the foot of the topic
- * ---------------------------------------------------------------------------
- * Pressing Edit puts the words in the topic's composer and outlines the post
- * meanwhile. An edit changes the words only. "Edited · 9:30am" sits under the
- * body afterwards, for everybody; an administrator also gets the earlier
- * versions, under a disclosure, from chat_edits.
- *
- * ---------------------------------------------------------------------------
- * Replies sit under the post they answer
- * ---------------------------------------------------------------------------
- * The topic page hands a top-level post its replies as `children`, drawn
- * inside the article, indented and unnumbered. Each reply can hold its own
- * conversation, and Reply answers that specific post (owner, 2026-10-09).
- *
- * **They can be hidden** — the owner, 2026-09-29, for the day a thread of
- * replies gets long. "Hide 3 replies" over the replies folds them away and
- * becomes "Show 3 replies"; the control names its post to a screen reader
- * and says `aria-expanded`. Shown by default on every visit: the words are
- * what a topic is for, and hiding is a reader's answer to one long thread
- * rather than a setting. The replies come back on their own when their
- * number changes — a reply you have just written under a folded post must
- * not land where you cannot see it — which is why what is stored is the
- * count at which they were hidden, not a flag. No control on a post with no
- * replies: a count of zero is not drawn.
+ * Replies come as `children`, indented; each can hold its own conversation (the owner,
+ * 2026-10-09). They can be hidden (the owner, 2026-09-29), shown by default on every visit. What
+ * is stored is the count when hidden, not a flag, so a new reply unfolds them.
  */
 export function Post({
   post,
@@ -175,11 +132,8 @@ export function Post({
   /** Lit up once: the post a notification or a link was about. */
   flash?: boolean;
   /**
-   * The post is the topic's title already, word for word: a question asked
-   * with no details. The page's header says the question, who asked it and
-   * when, so this draws only what can be done to it (likes, reply, remove)
-   * as a row under the header: no second card with the asker's name over
-   * nothing, and no Edit, which would edit a copy of the title.
+   * The post is the topic's title word for word (a question with no details): draw only its
+   * actions as a row under the header. No Edit, which would edit a copy of the title.
    */
   hideBody?: boolean;
   /**

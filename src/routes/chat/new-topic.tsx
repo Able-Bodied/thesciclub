@@ -16,51 +16,18 @@ import { appFeedbackRoom } from '@/routes/home/feedback-card';
 /**
  * Starting a topic: a title and the first post itself.
  *
- * ---------------------------------------------------------------------------
- * Two fields, and the second one is the post
- * ---------------------------------------------------------------------------
- * `chat_create_topic` writes the topic and its first post in one transaction,
- * so what is typed below the title is an ordinary post and can be removed like
- * any other. The screen says so in as many words, because a form with a
- * "title" and a "body" reads like a document and this is somebody putting
- * something to a room.
+ * `chat_create_topic` writes both in one transaction, so the body is an ordinary post. A topic is
+ * not always a question (the owner, 2026-09-20): tips and lists are topics too, so the copy never
+ * asks "what are you asking?".
  *
- * Which is not always a question, and the copy used to assume it was (owner,
- * 2026-09-20). A tip, a rolling list, or what happened to somebody are all
- * topics — the mock's own Funding room opens with "Rolling list. Post the
- * grant…" — and a screen that asks "what are you asking?" quietly turns a room
- * into a help desk and makes the person with an answer feel out of place in
- * it.
+ * On refusal the fields stay and the screen does not navigate; the database's own sentence is
+ * shown, since it says something useful (not a member, room closed).
  *
- * ---------------------------------------------------------------------------
- * The draft survives a refusal
- * ---------------------------------------------------------------------------
- * The fields are not cleared on failure and the screen does not navigate. What
- * somebody has just typed is the most expensive thing on the page — especially
- * when it was dictated — and the database's own sentence is shown rather than
- * "something went wrong", because the likely refusals here say something
- * useful: not a member of the room, or the room closed while they typed.
- *
- * ---------------------------------------------------------------------------
- * From Home, and sharing a photograph
- * ---------------------------------------------------------------------------
- * /home/new picks the kind and the room, then hands over to this screen with
- * `{ from: 'home', segment, kind }`. It is this screen rather than a second
- * form on Home because a topic is written one way, whoever starts it and
- * wherever from: the draft that survives a refusal, the files that go up and
- * come back out, and the sentence the database says no in are all here
- * already. What Home changes is small:
- *
- * - Back says "Home" and returns to the pill the member came from, and the
- *   topic they post is handed the same, so its back link does too.
- * - `kind: 'share'` is a photograph with a line about it — the mock's "Share
- *   something". The picker comes first, the title is asked for as "Say
- *   something about it", and the first post's words are optional once there
- *   is a photograph, which `chat_posts_check` already allows: words or a
- *   photograph. The title stays required. It is the line in the room's list,
- *   and a picture is not a line.
- *
- * Asking changes nothing but the back link: a question is an ordinary topic.
+ * /home/new hands over with `{ from: 'home', segment, kind }`, reusing this screen so a topic is
+ * written one way. Back says "Home" and returns to the member's pill, as does the posted topic's.
+ * `kind: 'share'` puts the photograph picker first and makes words optional once there is one
+ * (`chat_posts_check`); the title stays required, as it is the room's list line. Asking changes
+ * only the back link.
  */
 export default function NewTopicPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -335,10 +302,8 @@ export default function NewTopicPage() {
 }
 
 /**
- * What a screen opened from Home was handed, or null when it was not.
- *
- * Router state is not trusted: anything but `'share'` is asking, and the way
- * back is rebuilt by `backToHome`, which drops a segment that is not Home's.
+ * What a screen opened from Home was handed, or null. Router state is not trusted: anything but
+ * `'share'` is asking, and `backToHome` drops a segment that is not Home's.
  */
 function fromHome(
   state: unknown,
@@ -350,12 +315,9 @@ function fromHome(
 }
 
 /**
- * Why Post is not ready yet, or null when it is.
- *
- * Asking wants a title; its first post is optional and repeats the title
- * when left empty. Sharing wants a title and either words or a photograph,
- * which is the database's own rule for a post. Pure, and exported for its
- * test.
+ * Why Post is not ready yet, or null when it is. Asking wants a title (an empty first post
+ * repeats it); sharing wants a title and words or a photograph, the database's rule. Exported for
+ * its test.
  */
 export function topicProblem(
   title: string,

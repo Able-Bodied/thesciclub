@@ -7,115 +7,42 @@ import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
- * The box at the foot of a topic or a thread, which also edits a post or a
- * message there.
+ * The box at the foot of a topic or a thread; it also edits a post or message there.
  *
- * ---------------------------------------------------------------------------
- * A textarea, not the mock's input
- * ---------------------------------------------------------------------------
- * The mock uses a one-line `<input>`. Members here dictate, and what they
- * dictate is paragraphs — a bowel programme, what happened in the first year,
- * how a chair was funded. A single line that scrolls sideways hides everything
- * somebody has just said into a phone, and the people most likely to be
- * dictating are the people least able to scroll back through it.
+ * A growing textarea, not the mock's one-line input: members dictate paragraphs, and a line
+ * that scrolls sideways hides them.
  *
- * So it grows with what is typed, up to a point, and then scrolls.
+ * Height is scrollHeight plus the border, measured (offsetHeight - clientHeight), not counted:
+ * border-box makes scrollHeight short by the borders, and the used width shifts with zoom and
+ * pixel ratio. Short by 2px summons a scrollbar on Windows and Linux only (macOS/iOS overlay
+ * bars hide it). overflowY is hidden while growing and before measuring, since a showing bar
+ * narrows the box and inflates scrollHeight; auto only at the maximum.
  *
- * ---------------------------------------------------------------------------
- * Why the height is scrollHeight *plus the border*, and why you cannot see it
- * ---------------------------------------------------------------------------
- * `scrollHeight` measures the content box. Tailwind's preflight makes every
- * element `border-box`, so a height of `scrollHeight` is short by the two
- * borders — the content no longer fits the box it was just measured for, the
- * textarea decides it is overflowing, and a one-line composer gets a scrollbar
- * in it. Measured in Chromium on the empty composer: the old line gave
- * `height: 44px` with `clientHeight` 42 against `scrollHeight` 44, overflowing
- * by exactly the border; the current one gives 46px, 44 against 44, and no
- * scrollbar.
+ * `sendOnEnter`: Enter sends in a direct thread, breaks a paragraph in a topic; Shift+Enter is
+ * the other. Words and photographs survive a failed send: cleared only after the write returns.
  *
- * **The border is measured, not counted.** It is declared `border-[1.6px]` and
- * the browser reports a *used* width of 1px a side here, so 2px rather than
- * the 3.2px the stylesheet implies — and that rounding moves with the device
- * pixel ratio and the zoom. `offsetHeight - clientHeight` asks the browser the
- * same question the browser asks itself when it decides whether to draw a
- * scrollbar, which is the only number that can be right at every zoom.
+ * Photographs (up to four) go to `onSend` as files; the caller uploads them, as it knows the
+ * folder. Words are optional once there is one.
  *
- * **It only shows on Windows**, which is why this note exists rather than a
- * one-word comment. macOS and iOS draw overlay scrollbars that take no space
- * and fade out, so the box looks perfect on the machine most of this was
- * looked at on. Windows and most Linux desktops draw a real one, and two
- * missing pixels are enough to summon it.
+ * `editing` loads a post's or message's words here (the owner, 2026-10-22); the draft is put
+ * aside and returns on Cancel, Escape or save. Unchanged words just close the edit, since the
+ * database refuses a no-op edit.
  *
- * `overflowY` is managed here for the same reason. It is `hidden` while the
- * box is still growing — there is nothing to scroll to, so a scrollbar there
- * is only a scrollbar — and `auto` once the box is at its maximum and the
- * words really do run past it. It is also set to `hidden` *before* measuring,
- * because a scrollbar that is already showing narrows the box, changes where
- * the text wraps, and inflates the `scrollHeight` the next height is computed
- * from.
- *
- * ---------------------------------------------------------------------------
- * Enter means different things in the two places
- * ---------------------------------------------------------------------------
- * `sendOnEnter` is true in a direct thread, where messages are short and Enter
- * is what everybody's hands already do, and false in a topic, where a post is
- * several paragraphs and Enter has to be a paragraph break. Shift+Enter is the
- * other one in both.
- *
- * The draft survives a failure. Losing four paragraphs to a dropped connection
- * is the one thing this control must never do, so the text is only cleared
- * after the write comes back.
- *
- * ---------------------------------------------------------------------------
- * Photographs, since 2026-09-21
- * ---------------------------------------------------------------------------
- * A message may carry up to four, chosen with the button on the left and
- * shown in a strip above the box until Send. Words are optional once there is
- * a photograph — the row's own check says words *or* a picture. What is
- * chosen is handed to `onSend` as files; the caller uploads them, because the
- * folder they go in is the caller's to know (the thread's, the room's), and
- * the composer stays ignorant of storage. The strip survives a failure the
- * same way the words do.
- *
- * ---------------------------------------------------------------------------
- * Editing loads the words into this box — the owner, 2026-10-22
- * ---------------------------------------------------------------------------
- * `editing` puts a post's or a message's words here, under an "Editing" bar,
- * and Send saves them. The member's unsent draft is put aside and comes back
- * on Cancel, Escape or a save. Words only: the photographs stay as they are.
- * Unchanged words just close the edit, since the database refuses an edit
- * that changes nothing; blank words need photographs, as the row's own check.
- *
- * ---------------------------------------------------------------------------
- * The reply bar
- * ---------------------------------------------------------------------------
- * `replyingTo` draws "Replying to Jan" over the box with a way to stop, and
- * moves focus into the box, since pressing Reply on a post halfway up the
- * screen is a decision to write. The bar is the caller's state; this only
- * draws it and reports the ✕.
- *
- * `mentions` suggests members after an "@" (20261029070000), once a letter
- * follows it. `mentionScope` says where to look (the owner, 2026-10-29): a
- * conversation keeps to its members; a topic puts its own people first.
+ * `replyingTo` draws the reply bar and moves focus into the box. `mentions` suggests members
+ * after "@" (20261029070000); `mentionScope` says where to look (the owner, 2026-10-29).
  */
 /** About six lines. Mirrored by `max-h-[150px]` on the textarea below. */
 const MAX_HEIGHT = 150;
 
 /**
- * Grow the box to fit what is in it, up to MAX_HEIGHT.
- *
- * Measured from the element rather than counted from the text: a wrapped line
- * and a typed one are the same height, and only the browser knows where the
- * wrap fell. See the note above about the border and about Windows — the two
- * lines that look redundant are the ones that matter.
+ * Grow the box to fit, up to MAX_HEIGHT. Measured, not counted, as only the browser knows where
+ * lines wrap. See the header: the lines that look redundant are the ones that matter.
  */
 function fitToContent(element: HTMLTextAreaElement) {
   element.style.overflowY = 'hidden';
   element.style.height = 'auto';
-  // offsetHeight - clientHeight is the two vertical borders, as the browser
-  // actually used them. A vertical scrollbar takes width, not height, so it
-  // cannot get into this number — and overflowY is hidden above, so a bar left
-  // over from the last call cannot have narrowed the box and moved the wrap.
+  // offsetHeight - clientHeight is the borders as actually used; overflowY hidden above means a
+  // leftover scrollbar cannot have moved the wrap.
   const wanted = element.scrollHeight + (element.offsetHeight - element.clientHeight);
   element.style.height = `${Math.min(wanted, MAX_HEIGHT)}px`;
   element.style.overflowY = wanted > MAX_HEIGHT ? 'auto' : 'hidden';

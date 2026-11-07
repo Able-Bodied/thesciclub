@@ -16,75 +16,23 @@ import { EarlierVersions } from '@/routes/chat/earlier-versions';
 /**
  * What members have handed over, for an administrator.
  *
- * ---------------------------------------------------------------------------
- * A row is the report, not a window into the conversation
- * ---------------------------------------------------------------------------
- * The snapshot, where it was said in words, who wrote it, who reported it and
- * how many have. There is nothing here that opens a direct conversation and
- * there must never be: `admin_chat_reports()` returns no thread id at all, so
- * this screen could not offer one even if somebody added the button. That is
- * the point of the shape — the promise on /chat that a conversation is private
- * even from administrators has to survive somebody reporting a message out of
- * it, and a promise enforced by a returned column is one nobody can erode by
- * accident.
+ * A row is the report, never a window into a direct conversation: `admin_chat_reports()` returns
+ * no thread id, so the privacy promise on /chat cannot be eroded by adding a button. A post does
+ * carry its room and topic, since rooms are readable by every member anyway.
  *
- * A post is different and does carry its room and topic, because a room is
- * readable by every member including an administrator. Opening it discloses
- * nothing that was not already open, and reading the exchange around a post is
- * most of deciding what to do about it.
+ * No strike control here: a strike belongs on the member's row, with the whole picture, not on
+ * one message out of context. "Go to Bo" links the two. `report_count` is information, never a
+ * threshold.
  *
- * ---------------------------------------------------------------------------
- * Three actions, and the one that is deliberately missing
- * ---------------------------------------------------------------------------
- * Remove it, open the topic, go to the member. There is no strike control
- * here. Issuing one ends a membership at the third, and that decision belongs
- * on the member's row where the whole picture is — their other strikes, their
- * status, the Pause and Remove beside it. A second strike button on a screen
- * that shows one message out of context is how somebody gets struck for a
- * sentence rather than for what they have been doing. "Go to Bo" is the link
- * between the two, and it is a navigation rather than an action.
+ * No Remove for a direct message (the owner, 2026-09-21): it protects nobody, and the report
+ * keeps the copy. `contextKind` is recorded at filing, so this holds once the original is gone.
  *
- * Nothing is automatic at any number of reports either. `report_count` is
- * information, not a threshold.
+ * Names link to the profile, or to the member's row here when they have none (/peers/:id uses
+ * browse_members and cannot see members hidden from Peers); from chat_authors.has_profile.
  *
- * ---------------------------------------------------------------------------
- * Remove is not offered for a direct message
- * ---------------------------------------------------------------------------
- * The owner's call, 2026-09-21. Removing a post from a room or a message from
- * a group protects everybody else who can see it. Removing a message from a
- * direct conversation protects nobody: the reporter has already read it and
- * the sender wrote it. The remedy for a bad direct message is on the member's
- * row — a strike, a pause, or removal from the club — and the report keeps the
- * copy whatever happens, so nothing is lost by not offering the button. The
- * row says so in a sentence rather than leaving a gap where a control would
- * be. `contextKind` is recorded when the report is filed, so this still holds
- * once the original message is gone.
- *
- * ---------------------------------------------------------------------------
- * The two names are links
- * ---------------------------------------------------------------------------
- * Who reported and who was reported both open somewhere: the profile, when
- * that member has one, so an administrator can see who is talking about what
- * with one tap; otherwise their row on this screen, which is where somebody
- * hidden from Peers can still be found — /peers/:id is built on
- * browse_members and does not know they exist. A former member is a word, not
- * a link. Which of the two a name gets comes from chat_authors.has_profile.
- *
- * ---------------------------------------------------------------------------
- * Earlier versions, since 2026-09-29
- * ---------------------------------------------------------------------------
- * The snapshot is what the reporter saw. If the author edited the post or
- * message afterwards — or before, and the reporter saw the second version —
- * every earlier version is under "Earlier versions" beneath it, from
- * chat_edits (HANDOFF.md "What Home is", decision 10). Once the row itself is gone its
- * versions go with it; the snapshot is what survives.
- *
- * ---------------------------------------------------------------------------
- * Resolved reports collapse, and are not deleted
- * ---------------------------------------------------------------------------
- * The next administrator to look at somebody needs to know what was decided
- * about them last time, and "resolved" is not a decision — which is why the
- * sentence is required by the database rather than by this form.
+ * Earlier versions come from chat_edits (HANDOFF.md "What Home is", decision 10) and go with
+ * the row; the snapshot survives. Resolved reports collapse, not delete, and need a sentence
+ * (required by the database) so the next administrator knows what was decided.
  */
 export function ReportsSection({
   reports,
@@ -157,11 +105,8 @@ export function ReportsSection({
           setFailure(result.error);
           return;
         }
-        // The row is blanked by the function. Its photographs are not
-        // deleted — nothing named on a report can be, by anybody, so that the
-        // Settled list stays a record of what was decided about. See
-        // 20260918210000.
-        // Re-read, so the row stops offering to remove what is already gone.
+        // The row is blanked; its photographs stay, as nothing named on a report can be deleted
+        // (20260918210000). Re-read, so the row stops offering to remove what is gone.
         reload();
       })
       .catch((e: unknown) => {
@@ -499,10 +444,8 @@ function Where({
 }
 
 /**
- * A member's name, as a way to them: their profile when they have one, their
- * row on this screen when they are hidden from Peers, and a plain word once
- * they have left the club. `authors` may not have arrived yet, in which case
- * the row is the safe destination — it exists for every member.
+ * A member's name as a link: their profile if they have one, else their row here (it exists for
+ * every member, so it is also the safe default before `authors` arrives); a plain word once gone.
  */
 function MemberName({
   id,
@@ -544,13 +487,9 @@ function MemberName({
 }
 
 /**
- * What the reporter saw, kept whatever has happened to the original since.
- *
- * The words are a copy. The photographs are not — no SQL can copy a file — so
- * they are the originals, readable here only because the report names them
- * (20260918200000). They cannot be deleted once named, by the sender or by an
- * administrator (20260918210000), so taking the message back leaves the
- * evidence where it is. The sentence under the grid says so.
+ * What the reporter saw, kept whatever has happened since. The words are a copy; the photographs
+ * are the originals, readable via the report (20260918200000) and undeletable once named
+ * (20260918210000).
  */
 function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) {
   if (report.profile) {

@@ -34,69 +34,25 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 /**
  * One conversation: the bubbles, and the box to add to it.
  *
- * ---------------------------------------------------------------------------
- * Enter sends here, and breaks a line in a topic
- * ---------------------------------------------------------------------------
- * The opposite of a room. Messages are short and Enter is what everybody's
- * hands already do; Shift+Enter is the line break. A post in a room is
- * paragraphs and Enter has to be the break, so only the button sends there.
+ * Enter sends here (Shift+Enter breaks a line); in a topic only the button sends.
  *
- * ---------------------------------------------------------------------------
- * Scroll
- * ---------------------------------------------------------------------------
- * A conversation opens at the bottom, because the newest message is the one you
- * came for — the opposite of a topic, which opens at the first post you have
- * not read. When something new arrives the list follows it down only if the
- * reader was already at the bottom; somebody who has scrolled up is reading
- * something, and yanking them away mid-sentence is worse than making them tap a
- * pill to come back. `shouldFollowScroll` is where the threshold lives and is
- * tested in threads.test.ts.
+ * Opens at the bottom, and follows new messages down only if the reader was already there: a
+ * reader who scrolled up is reading. The threshold is `shouldFollowScroll` (threads.test.ts).
  *
- * ---------------------------------------------------------------------------
- * A group's header is a link, a pair's is not
- * ---------------------------------------------------------------------------
- * "N members" opens the members screen, where adding and leaving live. A direct
- * conversation has nothing behind its subtitle — the other member's level is a
- * fact about them, and their profile is the button already on the right.
+ * A group's "N members" links to the members screen; a pair's subtitle is not a link.
  *
- * ---------------------------------------------------------------------------
- * Talking to somebody who has left
- * ---------------------------------------------------------------------------
- * A direct thread whose other half has been removed from the club stays
- * readable — their words stay, anonymised, which is the owner's decision — and
- * loses its composer, because there is nobody to send to. It says so rather
- * than presenting a box that would fail.
+ * A direct thread whose other member was removed stays readable, anonymised (the owner's
+ * decision), and loses its composer, saying why.
  *
- * ---------------------------------------------------------------------------
- * Replies are quotes — since 2026-09-29; editing in the composer — 2026-10-22
- * ---------------------------------------------------------------------------
- * Reply on a bubble puts "Replying to Jan" over the composer and sends the
- * next message with `reply_to` set; the bubble that lands carries a quote of
- * the message it answers, and the list stays in time order (HANDOFF.md "What Home is",
- * decision 11 — a nest in a chat would break the one thing a conversation
- * is). Tapping a quote scrolls the quoted message into view and lights it
- * up once, with `prefers-reduced-motion` honoured for both. Edit on the
- * reader's own bubble puts its words in the composer and Send saves them; one
- * at a time, by id.
+ * Replies are quotes (2026-09-29), kept in time order, never nested (HANDOFF.md "What Home is",
+ * decision 11). Tapping a quote scrolls to it and lights it once, honouring reduced motion. Edit
+ * puts the words in the composer (2026-10-22).
  *
- * ---------------------------------------------------------------------------
- * Reporting is the one way anything said here reaches an administrator
- * ---------------------------------------------------------------------------
- * They are not in this conversation and cannot read it, which is right and is
- * what makes harassment in a direct message otherwise unactionable: the person
- * it happened to is the only witness. Report on somebody else's bubble hands
- * over that one message, its author and its time, and nothing else — not the
- * thread, not the message before it, not the reply. The sheet says so before
- * anything is sent.
+ * Reporting is the only way anything here reaches an administrator, who cannot read the thread:
+ * it hands over one message, its author and time, nothing else, and the sheet says so first.
  *
- * ---------------------------------------------------------------------------
- * A change to the group is a line, not a bubble — since 2026-09-30
- * ---------------------------------------------------------------------------
- * Renaming a group or changing its picture leaves a row marked as a notice
- * (20260930020000), drawn by `NoticeLine` in its place in time order. It
- * arrives over the same realtime as a message, and the reload that brings it
- * in re-reads the thread too, so the header's name and picture change for
- * everybody looking at the same moment.
+ * A group rename or picture change is a notice row (20260930020000), drawn by `NoticeLine`; its
+ * reload re-reads the thread, so the header updates for everybody.
  */
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
@@ -236,11 +192,8 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     [pin, snapToBottom],
   );
 
-  // Open at the bottom, once, on the first load that has anything in it; or
-  // on the message a notification was about (?message=), centred and lit up
-  // once, so a notification looked at later does not land on whatever was
-  // said since. Again whenever a new ?message= arrives while the page is
-  // open: a second notification pressed on the same conversation.
+  // Open at the bottom, once, on the first load with anything in it; or on the message a
+  // notification was about (?message=), centred and lit once. Again on each new ?message=.
   const [searchParams] = useSearchParams();
   const wantedMessage = searchParams.get('message');
   const { key: navigationKey } = useLocation();
@@ -330,10 +283,8 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   }
 
   /**
-   * Coming back down to the newest message takes the hold up again, without a
-   * jump. Only on the way down: a small scroll up stays within the slack, and
-   * taking the hold up then pulled the reader back to the bottom (the owner,
-   * 2026-10-26).
+   * Coming back down to the newest message takes the hold up again, without a jump. Only on the
+   * way down: doing it on a small scroll up pulled the reader back (the owner, 2026-10-26).
    */
   const lastTop = useRef(0);
   function onScroll() {
@@ -620,13 +571,8 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                     setEditingId(null);
                     setReplyingTo(message);
                   }}
-                  // An administrator can remove anybody's; everybody else only
-                  // their own. chat_remove_message decides — this only asks.
-                  // Own messages only, even for an administrator. They are in
-                  // this conversation as a member of it — a private thread they
-                  // could reach as an administrator would not be private — and
-                  // moderating one they are not in happens by an id somebody
-                  // hands them, which is not a screen. See 20260918100000.
+                  // Own messages only, even for an administrator: a thread they could reach as
+                  // one would not be private. See 20260918100000.
                   canRemove={message.authorId === account.userId}
                   onRemove={() => {
                     removeMessage(message.id);

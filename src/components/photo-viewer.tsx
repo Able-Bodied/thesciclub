@@ -14,53 +14,21 @@ import {
 } from '@/lib/photo-zoom';
 
 /**
- * A photograph over the whole page, to be looked at closely: the one-at-a-
- * time view of a message's or a post's photographs (src/routes/chat/
- * attachment-grid.tsx), and a member's own photograph from their profile
- * (src/routes/peers/member-detail.tsx), uncropped.
+ * A photograph over the whole page, uncropped: one at a time from a message's or post's
+ * photographs (src/routes/chat/attachment-grid.tsx), or a member's own (member-detail.tsx).
  *
- * ---------------------------------------------------------------------------
- * From one photograph to the next without going back
- * ---------------------------------------------------------------------------
- * When a message carries more than one, the open picture has a way to the
- * previous and the next: the arrow controls, the arrow keys, and a sideways
- * swipe. The label counts along ("2 of 4") so a screen reader knows it moved.
- * The ends do not wrap; the control at an end is disabled rather than hidden,
- * so the layout does not jump and a keyboard user is not left guessing.
+ * Several photographs: arrows, arrow keys and a sideways swipe step through; the label counts
+ * ("2 of 4") for screen readers. Ends don't wrap; the end control is disabled, not hidden.
  *
- * ---------------------------------------------------------------------------
- * The picture is a button, and the viewer closes three ways
- * ---------------------------------------------------------------------------
- * Tap, Enter or Space opens it; the close control, the backdrop and Escape all
- * close it. Members here drive with a switch, a head pointer or a keyboard as
- * often as a finger, and a viewer that closes only by tapping outside is a
- * trap for all three. The open picture takes focus so Escape reaches it.
+ * Closes by the close control, the backdrop or Escape: members use switches, head pointers and
+ * keyboards, so tap-outside alone would trap them.
  *
- * ---------------------------------------------------------------------------
- * The viewer is a dialog, and focus goes back where it came from
- * ---------------------------------------------------------------------------
- * It covers the page, so it says so: `role="dialog"` and `aria-modal`, and
- * Tab goes round its own controls instead of walking out into the chat that
- * is hidden behind it. When it closes, focus goes back to the tile that
- * opened it. Without that, a keyboard or switch user would land at the top of
- * the page and have to find their place in the conversation again.
+ * A dialog (`role="dialog"`, `aria-modal`) that keeps Tab inside and returns focus to the tile
+ * that opened it. The backdrop is out of the Tab order: it is for a pointer.
  *
- * The backdrop is out of the Tab order. It is there for a pointer. A keyboard
- * already has the close control and Escape, and a focus ring round the whole
- * screen would say nothing about where focus is.
- *
- * ---------------------------------------------------------------------------
- * Zooming in
- * ---------------------------------------------------------------------------
- * The owner, 2026-10-15: a photograph is opened to be looked at closely, and
- * the installed app turns pinching off for the page as a whole (InstalledApp).
- * So the viewer zooms the picture itself: pinch, a double tap, the mouse
- * wheel, and, for a switch, a head pointer or a keyboard, Zoom in and Zoom
- * out buttons and the + and - keys (0 goes back). Zoomed, one finger or the
- * arrow keys move round the picture, as far as its edges; a swipe steps to
- * the next photograph only when it is not zoomed. The sums are in
- * src/lib/photo-zoom.ts. A new photograph starts unzoomed.
- *
+ * Zooms the picture itself (the owner, 2026-10-15), as the installed app turns page pinching
+ * off (InstalledApp): pinch, double tap, wheel, Zoom buttons and +/- keys (0 resets). Zoomed,
+ * dragging or arrows pan; a swipe steps only unzoomed. Sums in src/lib/photo-zoom.ts.
  */
 
 /** A sideways swipe of at least this many px, and more sideways than up, steps. */
@@ -125,9 +93,8 @@ export function PhotoViewer({
   const lastTap = useRef<{ at: number; x: number; y: number } | null>(null);
 
   /**
-   * Where the fitted picture is, before it was moved or scaled. Read from the
-   * layout, which a transform does not change, rather than from what is on
-   * screen: mid-pinch, the screen is a frame behind the zoom being worked out.
+   * Where the fitted picture is before any move or scale: read from layout, not the screen,
+   * which lags a frame behind mid-pinch.
    */
   function box(): Box {
     const element = picture.current;

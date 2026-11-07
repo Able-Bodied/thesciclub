@@ -53,65 +53,26 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 /**
  * One topic: the question, every reply, and the box to add to it.
  *
- * ---------------------------------------------------------------------------
- * Enter breaks a line here, and does not send
- * ---------------------------------------------------------------------------
- * The opposite of a direct thread. A post in a room is paragraphs, and a member
- * dictating one will pause — a send bound to Enter would cut the answer in
- * half and publish the first sentence. Only the button sends.
+ * Enter breaks a line and does not send: a member dictating pauses, and Enter would publish half
+ * an answer.
  *
- * ---------------------------------------------------------------------------
- * Opening at the first unread post
- * ---------------------------------------------------------------------------
- * A topic somebody has read half of opens at the half they have not. A topic
- * they have never opened starts at the top, because for them the first unread
- * post *is* the question. The read row is fetched before this visit overwrites
- * it — see useTopicPosts — and the scroll happens once, on the first load, so
- * that a reply arriving later does not throw the reader back up the page.
+ * Opens at the first unread post (the top if never opened). The read row is fetched before this
+ * visit overwrites it (useTopicPosts), and the scroll happens once, so later replies don't move
+ * the reader.
  *
- * ---------------------------------------------------------------------------
- * Numbering
- * ---------------------------------------------------------------------------
- * "3/11" counts the posts still standing. A removed post is not drawn at all —
- * the owner's call, 2026-09-27, over the "Removed by its author." line that
- * used to hold its place — so the numbers close up when one goes. The row
- * stays underneath for reports and moderation (20260927030000); it is only
- * the screen that forgets it.
+ * "3/11" counts standing posts: removed ones are not drawn (the owner, 2026-09-27), though the
+ * row stays for reports (20260927030000).
  *
- * ---------------------------------------------------------------------------
- * Deleting a topic
- * ---------------------------------------------------------------------------
- * Administrators only, in the header, behind a confirm. It takes every post
- * with it; reports on them keep their own copy (20260927040000). The
- * photographs go through the storage API afterwards, as removing a post's do.
+ * Deleting a topic: administrators only, behind a confirm; reports keep their copy
+ * (20260927040000); photographs go through the storage API afterwards.
  *
- * ---------------------------------------------------------------------------
- * Editing, since 2026-09-29
- * ---------------------------------------------------------------------------
- * Edit on the reader's own standing post puts its words in the composer at
- * the foot, and Send saves them (composer.tsx); the opening post too, as its
- * Markdown. One post at a time, by id, so a removal arriving over the wire
- * ends the edit. `chat_edit_post` decides; a refusal keeps the words.
+ * Edit (2026-09-29) puts the reader's own post in the composer (composer.tsx), the opening post
+ * as Markdown. One at a time, by id, so a removal over the wire ends it.
  *
- * ---------------------------------------------------------------------------
- * Likes, since 2026-09-30
- * ---------------------------------------------------------------------------
- * One read of who likes the standing posts on screen (likes.ts). Likes are
- * not live, so it is read again whenever the posts are — a reply arriving is
- * the moment somebody is looking, and that is enough for a count that is not
- * urgent.
+ * Likes (likes.ts) are not live; read again whenever the posts are.
  *
- * ---------------------------------------------------------------------------
- * Reporting
- * ---------------------------------------------------------------------------
- * Whoever can remove a post does not get offered Report on it — an
- * administrator can take it down, and an author's own post is theirs. So the
- * control is drawn on exactly the posts the reader can neither remove nor has
- * written, and the sheet says what it will disclose before it discloses it.
- *
- * A former member's post is not reportable from here. A report names who wrote
- * it, and they have already left the club, which is the furthest a report
- * could go.
+ * Report is drawn only on posts the reader neither wrote nor can remove, and never on a former
+ * member's: they have already left, the furthest a report could go.
  */
 export default function TopicPage() {
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
@@ -157,10 +118,7 @@ export default function TopicPage() {
   // about when a removal arrives over the wire mid-decision.
   const [reportingId, setReportingId] = useState<string | null>(null);
 
-  // Live. A reply from somebody else appears without the reader doing
-  // anything, and a removal arrives as an UPDATE and redraws as the sentence
-  // that replaces it. The scroll is not affected: it happens once, on the
-  // first load, so a reply landing does not throw the reader up the page.
+  // Live: replies and removals arrive without reloading; the scroll is only on the first load.
   // Anybody who can read the post sees what it said before (20261029240000).
   const editedIds = useMemo(
     () => posts.filter((post) => post.editedAt !== null).map((post) => post.id),
@@ -199,16 +157,10 @@ export default function TopicPage() {
   // seed it. No membership since 20260930000000.
   const canPost = room !== null && (!closed || account.isAdmin);
 
-  // Where the reader had got to, captured on the first load and not recomputed:
-  // once they are reading, the page must stay where they put it.
-  //
-  // Or the post a notification was about: a reply or a like links to
-  // ?post=<id> (20261006000000), and the page opens on that post, centred and
-  // lit up once, rather than at the first unread one. A post since removed is
-  // not drawn, so the page falls back to where it would have opened anyway.
-  //
-  // Either way the place is held while photographs above it load and push it
-  // down, until the reader scrolls (lib/hold-scroll.ts).
+  // Where the reader had got to, captured on the first load and never recomputed. Or the post a
+  // notification links to (?post=<id>, 20261006000000), centred and lit once; a removed one falls
+  // back. The place is held while photographs above load, until the reader scrolls
+  // (lib/hold-scroll.ts).
   const [searchParams] = useSearchParams();
   const wanted = searchParams.get('post');
   const wantedNavigation = wanted ? `${wanted}:${location.key}` : null;

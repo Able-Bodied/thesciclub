@@ -14,67 +14,25 @@ import { SharedPostCard } from '@/routes/chat/shared-post-card';
 /**
  * One message, from the mock's `msgBubble()`.
  *
- * ---------------------------------------------------------------------------
- * Two shapes, and the reader's own is the one on the right
- * ---------------------------------------------------------------------------
- * Somebody else's message carries a face, a name and a level, and sits left
- * against paper. The reader's own is navy, on the right, and carries no avatar
- * and no name — they know who they are, and a column of your own face beside
- * your own words is the thing every chat app learned not to draw.
+ * Somebody else's: face, name and level, on the left. The reader's own: navy, on the right, no
+ * avatar or name.
  *
- * The level goes beside somebody else's name for the reason it goes everywhere
- * else in this club: it is the first thing a member reads another member by.
+ * A pending bubble is faded with "Sending…", never a made-up time; a refused write takes it
+ * back out and returns the words to the composer (threads.ts).
  *
- * ---------------------------------------------------------------------------
- * Pending
- * ---------------------------------------------------------------------------
- * A bubble the reader has sent and the database has not confirmed is drawn at
- * once and faded, with "Sending…" where its time would be. If the write is
- * refused the bubble is taken back out and the composer is handed the words
- * back — see threads.ts. What must never happen is a bubble that looks sent and
- * was not, which is why this says "Sending…" rather than a clock it has made up.
+ * The database blanks a removed body; this only picks the sentence for it. A null author is a
+ * former member: words stay, name does not.
  *
- * ---------------------------------------------------------------------------
- * Removed, and former members
- * ---------------------------------------------------------------------------
- * The database blanks the body, so there is nothing here deciding what to hide.
- * What is here is the sentence that goes in its place, and there are two of
- * them because they are two different facts: somebody thinking better of what
- * they said, and an administrator taking it down.
+ * A reply carries a quote at the top (2026-09-29; HANDOFF.md "What Home is", decision 11), not a
+ * nest. The quote's words come from `quoteText`, found by the thread page.
  *
- * A null author is somebody who has left the club. Their words stay and their
- * name does not.
+ * Edit (author only) and Reply, then Remove on yours or Report on theirs, never both. An
+ * administrator here is a member and gets the same: no Remove on others', or a private thread
+ * would not be. Controls name their message for screen readers, and are visible buttons, never
+ * gestures, for members using a mouth stick or head pointer. Block, after Report, names the member
+ * (the owner, 2026-10-22).
  *
- * ---------------------------------------------------------------------------
- * A reply is a quote, not a nest — since 2026-09-29
- * ---------------------------------------------------------------------------
- * A message that answers another carries a short quote of it at the top of
- * the bubble (HANDOFF.md "What Home is", decision 11). Tapping the quote scrolls the
- * quoted message into view and lights it up once. The list stays in time
- * order: a nest in a chat would break the one thing a conversation is. The
- * quote's words are `quoteText`'s — "Removed message", "Photograph" — and
- * the thread page finds them, since it holds the list.
- *
- * ---------------------------------------------------------------------------
- * Edit and Reply, then Remove on yours or Report on theirs
- * ---------------------------------------------------------------------------
- * Edit is the author's own: the words go into the composer at the foot of
- * the thread, and the bubble is outlined meanwhile. Reply is on every standing
- * bubble. Then Remove or Report, never both and never neither: your own
- * bubble carries Remove; somebody else's carries Report, which hands that
- * one message and nothing else in the conversation to the administrators. An
- * administrator in a conversation is a member of it and gets the same — the
- * thread screen has never offered them anybody else's Remove, because a
- * private thread they could moderate from the inside would not be private.
- *
- * Each control is named for its message — "Reply to Jan's message" — so a
- * conversation is not a column of identical buttons to a screen reader.
- * Block, after Report, names the member (the owner, 2026-10-22).
- * Visible controls, not a long-press and not a swipe. Members here drive with
- * limited hand function, a mouth stick or a head pointer.
- *
- * A shared post is a card under the words (shared-post-card.tsx), read with
- * the reader's own rights: it may say the post isn't available.
+ * A shared post is a card under the words (shared-post-card.tsx), read with the reader's rights.
  */
 export interface Quote {
   /** The quoted message's id, for the scroll. */

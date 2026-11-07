@@ -1,77 +1,28 @@
 /**
  * Getting a member's photograph down to a size the club can serve.
  *
- * ---------------------------------------------------------------------------
- * What was happening without this
- * ---------------------------------------------------------------------------
- * Both upload paths handed the raw `File` straight to storage, so whatever came
- * off the phone is what every member downloaded. Measured on the live bucket:
- * two members at 3088×2316 — 7.2 megapixels — weighing 1.9MB and 2.6MB, against
- * 26KB for the seeded photographs, which had been processed to 500px webp when
- * they were imported. Between 70 and 100 times the size.
+ * Raw phone uploads were 7 megapixels and ~2MB, 70-100 times the seeded photographs, downloaded
+ * even to fill a 34px square.
  *
- * The profile page draws these a few hundred pixels wide. The organization page
- * draws them at 34×34. A seven-megapixel image was being downloaded to fill a
- * 34 pixel square.
+ * Phones write EXIF orientation 6, so a big file appeared to load right to left (the owner's
+ * report). `imageOrientation: 'from-image'` bakes the rotation in once, at upload.
  *
- * ---------------------------------------------------------------------------
- * The rotation, which is the same bug wearing a different coat
- * ---------------------------------------------------------------------------
- * Both files carried EXIF orientation 6 — "rotate 90° clockwise" — because
- * that is what a phone writes when you hold it upright. A baseline JPEG decodes
- * top to bottom; rotate that 90° for display and the top row lands on the right
- * edge, so a slow load appears to fill in *right to left*. That is what the
- * owner reported, and it is not a rendering fault: it is the browser honouring
- * the rotation flag while decoding a file too big to arrive at once.
+ * WebKit (Safari, every iPhone browser) cannot encode webp: `toBlob('image/webp')` quietly
+ * returns a PNG, caught by the `blob.type` check. The fallback is JPEG, not the original, since
+ * 2026-09-29: the `chat` bucket takes 2MB at most, so phone photographs were refused.
  *
- * `imageOrientation: 'from-image'` bakes the rotation in here, once, at upload.
- * After that the stored file needs no flag and no viewer has to rotate anything.
- *
- * ---------------------------------------------------------------------------
- * Safari cannot write webp, so the second choice is JPEG
- * ---------------------------------------------------------------------------
- * WebKit — Safari, and every browser on an iPhone — cannot encode webp from a
- * canvas. `toBlob('image/webp')` does not fail; it hands back a PNG, and the
- * check on `blob.type` below is what catches that. Until 2026-09-29 catching
- * it meant falling back to the original file, which for a profile photograph
- * is merely large and for a chat photograph is refused outright: the `chat`
- * bucket takes 2MB at most, and a phone's JPEG is usually more. The owner
- * could not put a photograph on a topic from their phone, and the live bucket
- * showed why — every photograph sent from a phone before then was stored as
- * the original JPEG, not as webp.
- *
- * So the fallback is now a JPEG at the same size and quality, which every
- * browser can write. It is a little larger than the webp would have been and
- * far smaller than the original. The original is the last resort, kept for a
- * browser that cannot draw the image at all.
- *
- * ---------------------------------------------------------------------------
- * A failure here must never cost somebody their photograph
- * ---------------------------------------------------------------------------
- * Every step is best-effort and falls back to the original file. `savePhoto`
- * already refuses to let a failed upload cost somebody their signup; this is
- * the same rule one layer up. An unprocessed 2MB photograph is a slow profile.
- * A thrown exception is no profile at all.
+ * Every step is best-effort and falls back to the original file: a slow profile beats none.
  */
 
 /** The long edge, in CSS pixels, that a stored photograph is fitted to. */
 export const MAX_PHOTO_EDGE = 800;
 
-/**
- * webp at 0.82.
- *
- * Chosen against the seeded photographs, which are the reference for what the
- * deck should look like: they are 500px webp at roughly 26KB, and 800px at this
- * quality lands in the same neighbourhood while staying sharp on a profile page
- * at 2× density.
- */
+/** webp at 0.82: 800px lands near the seeded photographs' 26KB (500px webp), sharp at 2×. */
 const QUALITY = 0.82;
 
 /**
- * The encodings tried, in order, and the extension each is stored under.
- * webp first, for the bytes; JPEG where the browser cannot write webp, which
- * is WebKit. PNG is never asked for: a PNG of a photograph is larger than
- * the JPEG it came from.
+ * Encodings tried in order, with their stored extension. JPEG is for WebKit, which can't write
+ * webp. Never PNG: larger than the JPEG it came from.
  */
 const ENCODINGS: [type: string, ext: string][] = [
   ['image/webp', 'webp'],
@@ -79,15 +30,8 @@ const ENCODINGS: [type: string, ext: string][] = [
 ];
 
 /**
- * The size an image is drawn at, fitted inside a square of `max`.
- *
- * Never upscales. Somebody who uploads a 200px picture gets a 200px picture —
- * enlarging it would cost bytes to add nothing, and the initials tile is a
- * better answer to a tiny photograph than a blurry one.
- *
- * Rounded, because canvas dimensions are integers and a fractional height
- * silently truncates, which over a tall portrait is a visible crop rather than
- * a rounding error.
+ * The size an image is drawn at, fitted inside a square of `max`. Never upscales. Rounded, as a
+ * fractional canvas height truncates into a visible crop on a tall portrait.
  */
 export function fittedSize(
   width: number,
@@ -103,21 +47,13 @@ export function fittedSize(
 /** What `preparePhoto` hands back: the bytes to store, and the extension to store them under. */
 export interface PreparedPhoto {
   blob: Blob;
-  /**
-   * 'webp' when processing worked, 'jpg' where the browser could shrink the
-   * image but not write webp (Safari), and the original file's extension when
-   * it could do neither.
-   */
+  /** 'webp', 'jpg' where webp can't be written (Safari), or the original's extension. */
   ext: string;
 }
 
 /**
- * The extension to store an unprocessed file under.
- *
- * The dot has to be there. `'screenshot'.split('.').pop()` is `'screenshot'`,
- * so the obvious one-liner turns a filename with no extension into
- * `profile.screenshot` — which storage accepts, and which then serves with a
- * content type nothing can display. Found by the test for it, not by reading.
+ * The extension to store an unprocessed file under. Look for the dot: a naive split('.').pop()
+ * turns "screenshot" into `profile.screenshot`, served with a type nothing can display.
  */
 function originalExtension(file: File): string {
   const dot = file.name.lastIndexOf('.');
@@ -127,14 +63,9 @@ function originalExtension(file: File): string {
 }
 
 /**
- * Decode a file to a bitmap with its EXIF rotation applied.
- *
- * 'from-image' is what applies the rotation. Without it the canvas draws the
- * unrotated pixels and the flag is lost in the re-encode, which would leave
- * every one of these photographs on its side. A browser that refuses the
- * option is asked again without it: the spec's default has been 'from-image'
- * since 2023, so the plain call rotates too on anything recent, and a
- * photograph drawn on its side is still better than a photograph refused.
+ * Decode a file to a bitmap with its EXIF rotation applied ('from-image'); without it the flag
+ * is lost in the re-encode. A browser that refuses the option is asked again without it: the
+ * default is 'from-image' since 2023, and sideways beats refused.
  */
 async function decode(file: File): Promise<ImageBitmap> {
   try {
@@ -145,9 +76,8 @@ async function decode(file: File): Promise<ImageBitmap> {
 }
 
 /**
- * Ask the canvas for one encoding, and hand back the blob only if that is what
- * it is. `toBlob` does not fail for a type the browser cannot write; it hands
- * back a PNG and says nothing, which is the whole reason for the check.
+ * Ask the canvas for one encoding; the blob only if it is that type. `toBlob` quietly returns a
+ * PNG for a type it cannot write.
  */
 async function encode(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
   const blob = await new Promise<Blob | null>((resolve) => {
@@ -157,13 +87,8 @@ async function encode(canvas: HTMLCanvasElement, type: string): Promise<Blob | n
 }
 
 /**
- * Fit a chosen photograph to `MAX_PHOTO_EDGE` and re-encode it, as webp or,
- * where the browser cannot write webp, as JPEG.
- *
- * Returns the original file untouched if anything at all goes wrong — an older
- * browser without `createImageBitmap`, a canvas that will write neither, a
- * file that is not really an image. The caller cannot tell the difference and
- * does not need to; `ext` says which happened.
+ * Fit a photograph to `MAX_PHOTO_EDGE` and re-encode it as webp, or JPEG where webp can't be
+ * written. Returns the original untouched if anything goes wrong; `ext` says which happened.
  */
 export async function preparePhoto(
   file: File,
