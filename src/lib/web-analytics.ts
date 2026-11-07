@@ -1,65 +1,71 @@
+import { screenOf } from '@/lib/page-speed';
 import { isNative } from '@/lib/standalone';
-import { sessionStorageKey } from '@/lib/url-session';
 
 /**
- * Cloudflare Web Analytics (the owner, 2026-11-06): visits to the public
- * pages by people who are not signed in. Counts only, no cookies; members are
- * in Admin → Stats instead.
- *
- * Its script reports the page's address, query included, so it loads only on
- * the pages below with nothing in the address that could be a code. Not with a
- * session: an outside script could read it. Not in the store app. Once per
- * load, with its following of in-app navigation off.
+ * Cloudflare Web Analytics (the owner, 2026-11-06; everyone, signed in or not,
+ * 2026-11-07). Cloudflare's script never runs on the club's pages, where a
+ * session could be read: it runs in a hidden frame on another origin
+ * (count-worker/), which is told only the kind of page, /events/:id, never
+ * which one, a query or a code. Not in the store app.
  */
 
-/** From Cloudflare's dashboard. Public: it is in the page. Empty: nothing loads. */
-export const CF_ANALYTICS_TOKEN = 'ea21a9f0317846938ebd0abe64ea5aa6';
+/** The counting page (count-worker/); netlify.toml's frame-src names it. */
+export const COUNT_HOME = 'https://sciclub-count.thesciclub.workers.dev';
+/** Empty, nothing loads: COUNT_HOME once the Worker is deployed with its token. */
+const COUNT_ORIGIN = '';
 
-export const CF_BEACON_SRC = 'https://static.cloudflareinsights.com/beacon.min.js';
+/** After the first redirects (/ to /home), and off the first paint. */
+export const START_MS = 1000;
 
-const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const COUNTED = new RegExp(
-  `^/(e/${UUID}(/register)?|privacy|terms|delete-account|request-invite|join)/?$`,
-  'i',
-);
+let frame: HTMLIFrameElement | null = null;
+let ready = false;
+let starting = false;
+/** The kind the frame shows, and the kind open now. */
+let shown = '';
+let wanted = '';
 
-/** Whether this address may be reported: a public page, and no code in it. */
-export function countedPage(pathname: string, search: string, hash: string): boolean {
-  if (hash !== '' || !COUNTED.test(pathname)) return false;
-  if (search === '') return true;
-  // The welcome page a signed-out visitor is sent to.
-  return /^\/join\/?$/.test(pathname) && search === '?next=%2Fhome';
+function tell(origin: string): void {
+  if (!frame || !ready || wanted === shown) return;
+  frame.contentWindow?.postMessage(wanted, origin);
+  shown = wanted;
 }
 
-function signedIn(): boolean {
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  if (!url) return false;
-  try {
-    return window.localStorage.getItem(sessionStorageKey(url)) !== null;
-  } catch {
-    // Storage blocked: a session could still be in memory; count nothing.
-    return true;
+/** Counts this page by its kind; the frame follows each page after. */
+export function countVisit(pathname: string, origin: string = COUNT_ORIGIN): void {
+  if (origin === '' || isNative() || !import.meta.env.PROD) return;
+  wanted = screenOf(pathname);
+  if (frame) {
+    tell(origin);
+    return;
   }
-}
-
-let started = false;
-
-/** Loads Cloudflare's script if this page may be counted. */
-export function countVisit(
-  { pathname, search, hash }: { pathname: string; search: string; hash: string },
-  token = CF_ANALYTICS_TOKEN,
-): void {
-  if (started || token === '' || isNative() || !import.meta.env.PROD) return;
-  if (!countedPage(pathname, search, hash) || signedIn()) return;
-  started = true;
-  const script = document.createElement('script');
-  script.defer = true;
-  script.src = CF_BEACON_SRC;
-  script.dataset.cfBeacon = JSON.stringify({ token, spa: false });
-  document.head.append(script);
+  if (starting) return;
+  starting = true;
+  window.setTimeout(() => {
+    const made = document.createElement('iframe');
+    made.src = `${origin}${wanted}`;
+    made.title = 'Visit count';
+    made.tabIndex = -1;
+    made.setAttribute('aria-hidden', 'true');
+    // Its own origin, for Cloudflare's report; no top navigation, no popups.
+    made.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    made.referrerPolicy = 'no-referrer';
+    made.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+    made.addEventListener('load', () => {
+      ready = true;
+      tell(origin);
+    });
+    shown = wanted;
+    frame = made;
+    document.body.append(made);
+  }, START_MS);
 }
 
 /** For tests. */
 export function resetCountVisit(): void {
-  started = false;
+  frame?.remove();
+  frame = null;
+  ready = false;
+  starting = false;
+  shown = '';
+  wanted = '';
 }

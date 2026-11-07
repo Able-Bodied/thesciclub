@@ -13,7 +13,8 @@ export const IOS_APP_ORIGIN = 'capacitor://localhost';
 const DROPPED = new Set(['frame-ancestors', 'manifest-src', 'worker-src']);
 
 // Not in the app: Google's widget, until native sign-in, and Cloudflare's
-// analytics, which only counts the website (src/lib/web-analytics.ts).
+// analytics, which only counts the website (src/lib/web-analytics.ts); its
+// frame is dropped with frame-src below.
 const NOT_IN_THE_APP = ['accounts.google.com', 'cloudflareinsights.com'];
 
 /**

@@ -1,0 +1,17 @@
+# Cloudflare Web Analytics' counter, on an address of its own (src/index.ts).
+# Deployed by the owner, never by CI:
+#   pnpm count-worker:deploy
+name = "sciclub-count"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+# No preview URLs: the one address is the one the club's CSP frames.
+preview_urls = false
+
+[vars]
+# The site token of the Web Analytics site for sciclub-count.thesciclub.workers.dev
+# (Cloudflare → Web Analytics → Add a site). Public: it is in the page. Empty:
+# the page loads, and counts nothing.
+COUNT_TOKEN = ""
+# For a local test only (wrangler dev), never deployed:
+# DEV_ORIGIN = "http://localhost:4173"
