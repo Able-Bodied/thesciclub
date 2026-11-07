@@ -219,6 +219,51 @@ describe('the tab bar on a scroll', () => {
     now.mockRestore();
   });
 
+  // The owner, 2026-11-06, on an iPhone: down, back up, and down again with
+  // the finger never lifted, the bar did not go again.
+  it('goes again on the way back down when the phone stops telling of the finger', () => {
+    let at = 50_000;
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => at);
+    render(<Page />);
+    const box = screen.getByTestId('box');
+    fireEvent.touchStart(box);
+    scrollTo(box, 600, 2000, 600, true);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    scrollTo(box, 540, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    // The phone cancels the touch as the bar slides in; the page goes on
+    // following the finger up, a frame at a time, for over a second...
+    fireEvent.touchCancel(box);
+    for (let top = 530; top >= 300; top -= 10) {
+      at += 40;
+      scrollTo(box, top, 2000, 600, true);
+    }
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    // ...and then down again.
+    for (let top = 310; top <= 500; top += 10) {
+      at += 40;
+      scrollTo(box, top, 2000, 600, true);
+    }
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    now.mockRestore();
+  });
+
+  it('still leaves a scroll the page makes long after the reader stopped', () => {
+    let at = 80_000;
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => at);
+    render(<Page />);
+    const box = screen.getByTestId('box');
+    fireEvent.touchStart(box);
+    scrollTo(box, 300, 2000, 600, true);
+    scrollTo(box, 200, 2000, 600, true);
+    fireEvent.touchEnd(box);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    at += INTENT_MS + 1;
+    scrollTo(box, 1400, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    now.mockRestore();
+  });
+
   it('comes back on a tap that scrolls nothing, but not one into a box to type in', () => {
     render(<Page />);
     const box = screen.getByTestId('box');

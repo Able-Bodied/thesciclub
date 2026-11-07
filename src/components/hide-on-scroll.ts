@@ -122,6 +122,11 @@ export function useHideOnScroll(
         recheck();
         return;
       }
+      // A scroll that goes on from the reader's own stays theirs while it keeps
+      // moving. An iPhone can stop telling of the finger once the bar slides
+      // in, the page still following it, and the bar would not go again until
+      // the finger lifted (the owner, 2026-11-06).
+      if (theirs()) intent();
       const before = seen.get(box) ?? 0;
       if (Math.abs(top - before) < SLOP && top > NEAR_TOP) return;
       seen.set(box, top);
