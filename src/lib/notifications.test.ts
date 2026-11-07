@@ -127,6 +127,25 @@ describe('what a notification says', () => {
     );
   });
 
+  // 20261107100000: place is what the asker is to the reader.
+  it('says who asked to link as family, as what, and who said yes', () => {
+    expect(
+      notificationSentence(
+        n({ kind: 'family_link', actorName: 'Ana', place: 'child', detail: 'asked' }),
+      ),
+    ).toBe('Ana asked to be linked to you as family, as your child');
+    expect(
+      notificationSentence(
+        n({ kind: 'family_link', actorName: 'Ana', place: 'family', detail: 'asked' }),
+      ),
+    ).toBe('Ana asked to be linked to you as family');
+    expect(
+      notificationSentence(
+        n({ kind: 'family_link', actorName: 'Sam', place: 'spouse', detail: 'linked' }),
+      ),
+    ).toBe('Sam said yes: you are linked as family');
+  });
+
   // 20261029100000: a professional's introduction, and both saying yes.
   it('says who would introduce the member to whom, and when it opened', () => {
     expect(

@@ -1,5 +1,6 @@
 import { badgesChanged, NOTIFICATIONS_CHANGED, useBadgeCounts } from '@/lib/badges';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { familyAs } from '@/lib/family';
 import { californiaToday, grantDay } from '@/lib/grants';
 import { tellOtherTabs } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
@@ -56,7 +57,8 @@ export type NotificationKind =
   | 'calendar_invite'
   | 'organization_request'
   | 'introduction'
-  | 'event_notice';
+  | 'event_notice'
+  | 'family_link';
 
 interface Row {
   id: string;
@@ -225,6 +227,11 @@ export function notificationSentence(n: AppNotification): string {
       return n.detail === 'opened'
         ? `${name} said yes: ${n.place ?? 'your introduction'} is open`
         : `${name} would like to introduce you to ${n.place ?? 'another member'}`;
+    // place is what the actor is to the reader (20261107100000).
+    case 'family_link':
+      return n.detail === 'linked'
+        ? `${name} said yes: you are linked as family`
+        : `${name} asked to be linked to you as family${familyAs(n.place)}`;
     case 'group_add':
       return `${name} added you to ${n.place ?? 'a group'}`;
     case 'report':

@@ -634,6 +634,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'mention', label: 'Being mentioned in a post', who: 'all' },
   { kind: 'group_add', label: 'Being added to a group', who: 'all' },
   { kind: 'introduction', label: 'Introductions to another member', who: 'all' },
+  { kind: 'family_link', label: 'Family links', who: 'all' },
   { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
   { kind: 'invite_request', label: 'Somebody asking me for an invite', who: 'mentor' },
   { kind: 'join_request', label: 'Somebody asking to join my organization', who: 'mentor' },
