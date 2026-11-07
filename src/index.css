@@ -207,6 +207,17 @@
   --ring: var(--navy);
 }
 
+/*
+ * `md`, where the phone's layout gives way to the iPad's and the computer's:
+ * 704px rather than Tailwind's 768, so an iPad mini held upright (744) has the
+ * iPad's and not a phone's 480px column with dead margins (the owner,
+ * 2026-11-07). Every phone is narrower than 450. src/components/
+ * notification-bell.tsx (WIDE) says the same in a script.
+ */
+@theme {
+  --breakpoint-md: 44rem;
+}
+
 @theme inline {
   --color-navy: var(--navy);
   --color-navy-hi: var(--navy-hi);

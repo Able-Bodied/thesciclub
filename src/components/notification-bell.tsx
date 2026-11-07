@@ -100,7 +100,8 @@ function useRing(count: number, loaded: boolean | undefined): number {
   return ring;
 }
 
-const WIDE = '(min-width: 768px)';
+// Tailwind's `md`, as src/index.css sets it: 44rem (704px).
+const WIDE = '(min-width: 704px)';
 
 /**
  * Whether the desktop layout (`md`) is showing, so only the bell that can be

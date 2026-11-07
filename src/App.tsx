@@ -187,7 +187,8 @@ function AppShell() {
   // Widened beyond that rather than left as a 480px ribbon on a big screen —
   // the deck grids into the extra width.
   //
-  // The switch is `md` (768px) and not `lg`. At `lg` every window from 480 to
+  // The switch is `md` (704px, src/index.css: an iPad mini held upright is
+  // 744, 2026-11-07) and not `lg`. At `lg` every window from 480 to
   // 1023 got the ribbon: a browser that is not maximised, a laptop, or half a
   // screen showed a 480px column with ~260px of dead margin either side and the
   // tabs at the bottom, which reads as the app failing to fit rather than as a
