@@ -59,7 +59,7 @@ export function timeOfDay(iso: string, timezone: string): string {
 /**
  * The time range, or just the start when there is no end.
  *
- * An end time on a different day is shown with its date ("10:00am – 2 Sep,
+ * An end time on a different day is shown with its date ("10:00am – Sep 2,
  * 1:00pm"), because "10:00am – 1:00pm" for an overnight trip is wrong by a day
  * and looks right, which is the worst combination.
  */
@@ -82,11 +82,11 @@ export function timeRange(
   if (sameDay) return `${start} – ${timeOfDay(endIso, timezone)}`;
 
   const end = partsIn(endIso, timezone, { day: 'numeric', month: 'short' });
-  return `${start} – ${end.day} ${end.month}, ${timeOfDay(endIso, timezone)}`;
+  return `${start} – ${end.month} ${end.day}, ${timeOfDay(endIso, timezone)}`;
 }
 
 /**
- * An all-day event (20261021000000): "All day", or "All day, to 8 Nov" when it
+ * An all-day event (20261021000000): "All day", or "All day, to Nov 8" when it
  * runs over several days. Its end is the last day's 23:59.
  */
 function allDayRange(startIso: string, endIso: string | null, timezone: string): string {
@@ -94,15 +94,15 @@ function allDayRange(startIso: string, endIso: string | null, timezone: string):
   return `All day, to ${shortDate(endIso, timezone)}`;
 }
 
-/** "Sat 5 Sep · 10:00am" — the mock's `e.when`, used in the detail hero. Just the day when all day. */
+/** "Sat, Sep 5 · 10:00am", month first (the owner, 2026-11-07). Just the day when all day. */
 export function longWhen(iso: string, timezone: string, allDay = false): string {
   const parts = partsIn(iso, timezone, { weekday: 'short', day: 'numeric', month: 'short' });
-  const day = `${parts.weekday} ${parts.day} ${parts.month}`;
+  const day = `${parts.weekday}, ${parts.month} ${parts.day}`;
   return allDay ? day : `${day} · ${timeOfDay(iso, timezone)}`;
 }
 
 /**
- * A date inside a sentence: "14 Oct".
+ * A date inside a sentence: "Oct 14".
  *
  * `dateTileParts` upper-cases its month for the date tile, where it is set in
  * tracked-out small caps. The same string reads as shouting in prose, which is
@@ -110,7 +110,7 @@ export function longWhen(iso: string, timezone: string, allDay = false): string 
  */
 export function shortDate(iso: string, timezone: string): string {
   const parts = partsIn(iso, timezone, { day: 'numeric', month: 'short' });
-  return `${parts.day} ${parts.month}`;
+  return `${parts.month} ${parts.day}`;
 }
 
 /**

@@ -188,7 +188,7 @@ describe('EventDetailPage', () => {
   it('shows the event in its own timezone', () => {
     renderDetail();
     // 03:00 UTC on the 6th is the evening of the 5th in California.
-    expect(screen.getByText('Sat 5 Sep · 8:00pm')).toBeInTheDocument();
+    expect(screen.getByText('Sat, Sep 5 · 8:00pm')).toBeInTheDocument();
   });
 
   it('links the place to Google Maps, with the city it lacks', () => {

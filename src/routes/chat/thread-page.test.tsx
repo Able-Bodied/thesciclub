@@ -478,12 +478,12 @@ describe('dates in a conversation', () => {
     ];
     renderThread();
     const log = screen.getByRole('log');
-    const headings = ['Tue 1 Sep', 'Wednesday', 'Yesterday', 'Today'];
+    const headings = ['Tue, Sep 1', 'Wednesday', 'Yesterday', 'Today'];
     for (const day of headings) expect(within(log).getAllByText(day)).toHaveLength(1);
     // In order, each above its day's first message.
     const text = log.textContent;
     const at = (words: string) => text.indexOf(words);
-    expect(at('Tue 1 Sep')).toBeLessThan(at('Old.'));
+    expect(at('Tue, Sep 1')).toBeLessThan(at('Old.'));
     expect(at('Wednesday')).toBeLessThan(at('Earlier.'));
     expect(at('Later.')).toBeLessThan(at('Yesterday'));
     expect(at('Yesterday')).toBeLessThan(at('Last night.'));
@@ -501,7 +501,7 @@ describe('dates in a conversation', () => {
     fireEvent.pointerMove(log, { ...touch, clientX: 200, clientY: 204 });
     expect(log.style.transform).toBe('translateX(-64px)');
     const date = screen.getByTestId('swiped-date');
-    expect(date).toHaveTextContent(/Wed 16 Sep/);
+    expect(date).toHaveTextContent(/Wed, Sep 16/);
     expect(date).toHaveAttribute('aria-hidden', 'true');
     fireEvent.pointerUp(log, { ...touch, clientX: 200, clientY: 204 });
     expect(log.style.transform).toBe('');
@@ -940,7 +940,7 @@ describe('editing a message', () => {
     renderThread();
     expect(screen.getByText('Edited ·')).toHaveAttribute(
       'title',
-      expect.stringContaining('September 2026'),
+      expect.stringContaining('September 18, 2026'),
     );
   });
 

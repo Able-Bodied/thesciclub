@@ -75,11 +75,12 @@ export function chatTime(iso: string, now: Date = new Date(), timeZone?: string)
     partsIn(at, timeZone, { year: 'numeric' }).year ===
     partsIn(now, timeZone, { year: 'numeric' }).year;
   const parts = partsIn(at, timeZone, { day: 'numeric', month: 'short', year: 'numeric' });
-  return sameYear ? `${parts.day} ${parts.month}` : `${parts.day} ${parts.month} ${parts.year}`;
+  // Month first, as in the US (the owner, 2026-11-07).
+  return sameYear ? `${parts.month} ${parts.day}` : `${parts.month} ${parts.day}, ${parts.year}`;
 }
 
 /**
- * The same moment written out: "18 September 2026 at 9:30am".
+ * The same moment written out: "September 18, 2026 at 9:30am".
  *
  * For the one place a topic says when it started, where the short form would be
  * a bare weekday under a heading and answer nothing.
@@ -96,7 +97,7 @@ export function chatTimeLong(iso: string, timeZone?: string): string {
     hour12: true,
   });
   const clock = `${parts.hour}:${parts.minute}${(parts.dayPeriod ?? '').toLowerCase()}`;
-  return `${parts.day} ${parts.month} ${parts.year} at ${clock}`;
+  return `${parts.month} ${parts.day}, ${parts.year} at ${clock}`;
 }
 
 /** The clock inside a message bubble, including on older messages. */
@@ -114,7 +115,7 @@ export function sameChatDay(a: string, b: string, timeZone?: string): boolean {
 
 /**
  * The heading over a day's messages, as iMessage has: "Today", "Yesterday",
- * "Thursday", "Mon 3 Nov", "3 Nov 2025".
+ * "Thursday", "Mon, Nov 3", "Nov 3, 2025".
  */
 export function chatDayHeading(iso: string, now: Date = new Date(), timeZone?: string): string {
   const at = new Date(iso);
@@ -135,11 +136,11 @@ export function chatDayHeading(iso: string, now: Date = new Date(), timeZone?: s
   });
   const sameYear = parts.year === partsIn(now, timeZone, { year: 'numeric' }).year;
   return sameYear
-    ? `${parts.weekday} ${parts.day} ${parts.month}`
-    : `${parts.day} ${parts.month} ${parts.year}`;
+    ? `${parts.weekday}, ${parts.month} ${parts.day}`
+    : `${parts.month} ${parts.day}, ${parts.year}`;
 }
 
-/** A message's date and time, shown by a swipe: "Thu 6 Nov", "9:30 AM". */
+/** A message's date and time, shown by a swipe: "Thu, Nov 6", "9:30 AM". */
 export function messageDateTime(
   iso: string,
   now: Date = new Date(),
@@ -156,8 +157,8 @@ export function messageDateTime(
   const sameYear = parts.year === partsIn(now, timeZone, { year: 'numeric' }).year;
   return {
     date: sameYear
-      ? `${parts.weekday} ${parts.day} ${parts.month}`
-      : `${parts.day} ${parts.month} ${parts.year}`,
+      ? `${parts.weekday}, ${parts.month} ${parts.day}`
+      : `${parts.month} ${parts.day}, ${parts.year}`,
     time: messageTime(iso, timeZone),
   };
 }

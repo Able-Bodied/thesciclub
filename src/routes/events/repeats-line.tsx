@@ -19,7 +19,8 @@ export function whatRepeats(
   const said = repeatsLine(cadenceOfStarts(starts));
   const later = starts.filter((start) => Date.parse(start) > Date.parse(thisStart)).slice(0, 2);
   if (later.length === 0) return `${said} · this is the last date`;
-  return `${said} · next ${later.map((start) => longWhen(start, timezone, true)).join(', ')}`;
+  // "and": each date has a comma of its own ("Thu, Nov 12").
+  return `${said} · next ${later.map((start) => longWhen(start, timezone, true)).join(' and ')}`;
 }
 
 export function RepeatsLine({
