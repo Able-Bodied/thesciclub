@@ -9,7 +9,12 @@ import type * as Family from '@/lib/family';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
 
-const state = vi.hoisted(() => ({ current: null as MemberState | null, partner: false }));
+const state = vi.hoisted(() => ({
+  current: null as MemberState | null,
+  partner: false,
+  // The viewer's own answer to "Which describes you best?".
+  myType: 'family' as string | null,
+}));
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<typeof ClubPartners>()),
   useICanConnect: () => state.partner,
@@ -17,6 +22,12 @@ vi.mock('@/lib/club-partners', async (importOriginal) => ({
 }));
 vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
+  useOwnMember: () => ({
+    member: { injuryType: state.myType },
+    invitedBy: null,
+    loading: false,
+    error: null,
+  }),
 }));
 
 // Somebody is always signed in here. The Message button is not drawn without a
@@ -142,6 +153,7 @@ function renderDetail() {
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
   state.partner = false;
+  state.myType = 'family';
   chatRooms.rooms = [];
   blocks.ids = new Set();
   blocks.reload.mockReset();
@@ -295,6 +307,28 @@ describe('family links', () => {
     );
     expect(family.reload).toHaveBeenCalled();
     expect(screen.queryByRole('dialog', { name: 'Link Nicole as family' })).not.toBeInTheDocument();
+  });
+
+  // The owner, 2026-11-07: only a relative or spouse asks, on anyone's profile.
+  it('offers linking only to a member who said they are a relative or spouse', async () => {
+    const user = userEvent.setup();
+    state.myType = 'quad';
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.queryByRole('button', { name: 'Link Nicole as family…' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Block Nicole' })).toBeInTheDocument();
+  });
+
+  it('still lets anyone answer, and remove a link they are in', async () => {
+    const user = userEvent.setup();
+    state.myType = null;
+    family.links = [link({})];
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Remove family link' }));
+    expect(family.remove).toHaveBeenCalledWith('f1');
   });
 
   it('keeps the sheet open with the reason when the ask fails', async () => {

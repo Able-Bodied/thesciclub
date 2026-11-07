@@ -14,7 +14,7 @@ import { useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { removeFamilyLink, useMemberFamily } from '@/lib/family';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
-import { useBrowseMember } from '@/lib/members';
+import { useBrowseMember, useOwnMember } from '@/lib/members';
 import { useMemberOrganizations } from '@/lib/organization-members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhoto } from '@/lib/use-photo';
@@ -499,6 +499,8 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [choosingMentor, setChoosingMentor] = useState(false);
   const [linkingFamily, setLinkingFamily] = useState(false);
   const { family, reload: reloadFamily } = useMemberFamily(member?.id);
+  // Only a member who said they are a relative or spouse links family, of anyone (the owner, 2026-11-07).
+  const mayLinkFamily = useOwnMember(account.userId).member?.injuryType === 'family';
   const canConnect = useICanConnect(account.userId);
   const reports = useMyReports();
   const announce = useAnnounce();
@@ -656,7 +658,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   </button>
                 ) : null}
                 {/* Asked of the reader: answered on the page, not here. */}
-                {!ours ? (
+                {!ours && mayLinkFamily ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -665,7 +667,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   >
                     Link {member.displayName} as family…
                   </button>
-                ) : ours.state !== 'asked_of_me' ? (
+                ) : ours && ours.state !== 'asked_of_me' ? (
                   <button
                     type="button"
                     onClick={() => {
