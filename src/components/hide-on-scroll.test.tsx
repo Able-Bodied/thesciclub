@@ -201,6 +201,39 @@ describe('the tab bar on a scroll', () => {
     now.mockRestore();
   });
 
+  // The owner, 2026-11-06: it came back only at the top.
+  it('comes back on the way up even after the finger lifts, as a flick runs on', () => {
+    render(<Page />);
+    const box = screen.getByTestId('box');
+    scrollTo(box, 900);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    // The flick's momentum: no finger, no wheel, long after.
+    const now = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5_000);
+    scrollTo(box, 890, 2000, 600, true);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    scrollTo(box, 860, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    // Going away again still takes the reader's own scroll.
+    scrollTo(box, 1200, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    now.mockRestore();
+  });
+
+  it('comes back on a tap that scrolls nothing, but not one into a box to type in', () => {
+    render(<Page />);
+    const box = screen.getByTestId('box');
+    scrollTo(box, 900);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    const field = document.createElement('textarea');
+    box.appendChild(field);
+    fireEvent.touchStart(field);
+    fireEvent.touchEnd(field);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    fireEvent.touchStart(box);
+    fireEvent.touchEnd(box);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+  });
+
   it('does nothing where it is off', () => {
     render(<Page enabled={false} />);
     scrollTo(screen.getByTestId('box'), 300);

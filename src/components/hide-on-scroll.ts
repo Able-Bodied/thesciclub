@@ -6,6 +6,12 @@ const SLOP = 8;
 const NEAR_TOP = 40;
 /** Room a page must keep with the bar gone, or it only jumps as the bar goes. */
 const LEAST_ROOM = 120;
+/**
+ * Back up the page this far brings the bar back, whoever moved it: a flick's
+ * momentum runs on after the finger lifts, and the bar stayed away until the
+ * top (the owner, 2026-11-06). Only going needs the reader's own scroll.
+ */
+const BACK_UP = 24;
 /** A scroll this soon after a touch, wheel or key is the reader's own. */
 export const INTENT_MS = 500;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
@@ -25,7 +31,8 @@ export function touchScreen(): boolean {
  *
  * Every screen scrolls its own box, so this listens for all of them at once, a
  * scroll being caught on its way down the page though it does not bubble. A
- * change of `place` brings the bar back: nobody arrives on a screen without it.
+ * change of `place` brings the bar back: nobody arrives on a screen without it,
+ * and so does a tap that scrolled nothing (the owner, 2026-11-06).
  */
 export function useHideOnScroll(
   enabled: boolean,
@@ -45,17 +52,29 @@ export function useHideOnScroll(
     // its newest message is the page's, and hiding the bar for it resized the
     // list, which moved it again: the bounce on opening (2026-11-03).
     let touching = false;
+    let scrolledInTouch = false;
     let lastIntent = Number.NEGATIVE_INFINITY;
     const intent = () => {
       lastIntent = Date.now();
     };
     const onTouchStart = () => {
       touching = true;
+      scrolledInTouch = false;
       intent();
     };
-    const onTouchEnd = () => {
+    const onTouchEnd = (event: Event) => {
       touching = false;
       intent();
+      // A tap: a finger down and up with nothing scrolled between. Not one
+      // into a box to type in, which would move what is being written.
+      const field = event.target instanceof Element ? event.target : null;
+      if (
+        event.type === 'touchend' &&
+        !scrolledInTouch &&
+        !field?.closest('input, textarea, select, [contenteditable="true"]')
+      ) {
+        setHidden(false);
+      }
     };
     const onKey = (event: KeyboardEvent) => {
       // Typing in a box is not scrolling, whatever the key.
@@ -86,6 +105,7 @@ export function useHideOnScroll(
     const onScroll = (event: Event) => {
       const box = event.target;
       if (!(box instanceof HTMLElement)) return;
+      if (touching) scrolledInTouch = true;
       const room = box.scrollHeight - box.clientHeight;
       // Safari's rubber band at the bottom would read as turning back.
       const top = Math.min(box.scrollTop, room);
@@ -105,7 +125,7 @@ export function useHideOnScroll(
       const before = seen.get(box) ?? 0;
       if (Math.abs(top - before) < SLOP && top > NEAR_TOP) return;
       seen.set(box, top);
-      if (top <= NEAR_TOP) setHidden(false);
+      if (top <= NEAR_TOP || before - top >= BACK_UP) setHidden(false);
       else if (roomHidden(box) < LEAST_ROOM) recheck();
       else if (theirs()) {
         owner = box;
