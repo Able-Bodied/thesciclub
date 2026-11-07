@@ -14,50 +14,16 @@ import { ViewCount } from '@/routes/chat/view-count';
 import { byline, type CardLikes, RoomTag } from '@/routes/home/topic-card';
 
 /**
- * A photograph on Home, from the mock's `postCard`: a topic whose first post
- * carries one.
+ * A photograph on Home, from the mock's `postCard`: a topic whose first post carries one.
  *
- * ---------------------------------------------------------------------------
- * Not one link, because it holds buttons
- * ---------------------------------------------------------------------------
- * Each photograph is a button that opens its topic, and a button inside a
- * link is two controls fighting over one tap. So the parts are separate: the
- * name goes to the profile, the title and the replies go to the topic, and the
- * photographs open the topic too. The title link stretches over the card
- * so its body and background also open it; independent controls sit above
- * that link.
- *
- * ---------------------------------------------------------------------------
- * A single photograph fills the card
- * ---------------------------------------------------------------------------
- * `AttachmentGrid` is Chat's, and at its default it sizes one photograph for a
- * bubble: its own shape, no taller than 20rem. In a card that is a picture in
- * the left half with blank beside it. So this card passes `fill`: one
- * photograph is the full width at the mock's shape, cropped, and whole in the
- * viewer. Two to four already fill the width and are drawn as Chat draws them.
- *
- * ---------------------------------------------------------------------------
- * No city
- * ---------------------------------------------------------------------------
- * The mock puts the poster's city under their name. `ChatAuthor` leaves it out
- * on purpose, so a member hidden from Peers is not placed on a map by
- * something they wrote. Do not add one.
- *
- * ---------------------------------------------------------------------------
- * A comment is a reply
- * ---------------------------------------------------------------------------
- * The mock opens a comments sheet. Here "Reply" goes to the topic page, which
- * already has the replies, the composer, Report, Remove and Mute. A second
- * list of the same replies would be a second place for each of those to go
- * wrong.
- *
- * ---------------------------------------------------------------------------
- * A like is on the opening post
- * ---------------------------------------------------------------------------
- * HANDOFF.md "What Home is" step 3. The photograph is the opening post, so liking the card
- * likes that post, and the count here is the same rows the topic page counts
- * under it. Named for the topic's title, as Reply is. No opening post (it was
- * taken back) draws no likes, as it draws no photograph.
+ * - Not one link: the photos are buttons, and a button inside a link fights over the tap. The
+ *   title link stretches over the card; other controls sit above it.
+ * - `fill`: Chat's grid sizes one photo for a bubble, which leaves half a card blank.
+ * - No city: `ChatAuthor` leaves it out so a member hidden from Peers is not placed on a map.
+ *   Do not add one.
+ * - Reply goes to the topic page rather than a comments sheet, so Report, Remove and Mute live
+ *   in one place.
+ * - The like is on the opening post (HANDOFF.md "What Home is" step 3); no opening post, no likes.
  */
 export function PhotoCard({
   topic,
@@ -184,9 +150,8 @@ export function PhotoCard({
             {topic.replyCount} {topic.replyCount === 1 ? 'reply' : 'replies'}
           </Link>
         ) : null}
-        {/* Named for the topic: a feed of cards each with a link called
-            "Reply" is a links list of identical names. The visible word
-            starts the name, so a voice user saying "Reply" still reaches it. */}
+        {/* Named for the topic so a links list is not all "Reply"; the visible word
+            starts the name for voice control. */}
         <Link
           to={to}
           state={linkState}

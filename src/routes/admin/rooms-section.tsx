@@ -18,48 +18,14 @@ import { SmallButton } from '@/routes/admin/controls';
 /**
  * The discussion rooms, for an administrator.
  *
- * ---------------------------------------------------------------------------
- * Why this control exists at all
- * ---------------------------------------------------------------------------
- * CONTEXT.md records the objection that kept topic rooms deferred and it has
- * not stopped being true: the club has five members who are not seeded
- * directory rows, and a room of two dozen members is empty by construction.
- * The owner's answer is that rooms open one at a time, once there is somebody
- * to fill one, and this switch is the whole of that answer. Until it is
- * pressed, a member cannot see that the room exists.
+ * Rooms open one at a time, once there are members to fill them (CONTEXT.md); until opened, a
+ * member cannot see a room. Rows say what a member sees, not the flag. Closing confirms (it takes a
+ * room from members mid-conversation); opening does not. `admin_set_room_open` checks `is_admin()`
+ * itself; nothing here is the permission check.
  *
- * So the row leads with what a member would see, not with the room's own
- * state: "Nobody can see this room yet" rather than "closed". The
- * administrator is not managing a flag, they are deciding whether the club has
- * a room.
- *
- * Closing confirms and opening does not. Opening is additive and instantly
- * reversible; closing takes a room away from members who may be mid-
- * conversation in it, and the confirmation says that rather than asking "are
- * you sure".
- *
- * The refusal shown is the database's own sentence. `admin_set_room_open`
- * checks `is_admin()` itself — this component is the client asking, and
- * nothing here is the permission check.
- *
- * ---------------------------------------------------------------------------
- * Rooms members started are in the same list
- * ---------------------------------------------------------------------------
- * From 2026-09-20 any member can start a room, and one is open from the moment
- * it exists — there is nobody standing by to open it, and it is born with a
- * topic in it. So the switch on those rows is a Close and not an Open, and the
- * row names whoever started it. They are not a separate panel: an
- * administrator moderating rooms is doing one job, and splitting the list by
- * who happened to create a room would make them look in two places for it.
- *
- * ---------------------------------------------------------------------------
- * The room's name is a link, and that is the point of the whole panel
- * ---------------------------------------------------------------------------
- * An administrator can read and post in a closed room — see chat_can_post_in —
- * and that exemption exists so a room has something in it before a member is
- * let into it. Without a way in from here, the exemption is a policy nobody
- * can use. The topic count beside it is what tells them whether the seeding is
- * done.
+ * Member-started rooms (from 2026-09-20) are open from birth and sit in the same list, so
+ * moderating is one place. The name links in because admins may post in a closed room
+ * (chat_can_post_in) to seed it first.
  */
 
 const CATEGORY_DOT: Record<RoomCategory, string> = {
@@ -98,9 +64,7 @@ export function RoomsSection() {
         if (result.ok) {
           setFailure(null);
           reload();
-          // A closed room is outside chat_room_stats' own gate for everybody
-          // but an administrator, and its counts are gone from the answer the
-          // moment it shuts. Re-read both, or the row keeps a stale count.
+          // chat_room_stats gates on open rooms, so re-read or the count goes stale.
           reloadStats();
           return;
         }
@@ -251,12 +215,7 @@ export function RoomsSection() {
   );
 }
 
-/**
- * "no topics" · "1 topic" · "4 topics".
- *
- * Undefined means the counts have not arrived, not that there are none, so it
- * reads as the honest blank rather than as zero.
- */
+/** "no topics" · "1 topic" · "4 topics". Undefined means not loaded yet, not zero. */
 function topicsIn(count: number | undefined): string {
   if (count === undefined) return 'counting topics…';
   if (count === 0) return 'no topics yet';

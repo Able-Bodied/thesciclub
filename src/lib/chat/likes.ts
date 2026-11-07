@@ -11,48 +11,17 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * Likes on posts in rooms: who likes which, liking, and taking it back.
  *
- * The owner, 2026-09-29 (HANDOFF.md "What Home is" decision 4): likes, with names shown to
- * every member who can read the room. `chat_post_likes` (20260930010000)
- * holds a row per member per post and nothing else.
+ * The owner, 2026-09-29 (HANDOFF.md "What Home is" decision 4): names shown to every member who
+ * can read the room. `chat_post_likes` (20260930010000) is a row per member per post.
  *
- * ---------------------------------------------------------------------------
- * One read, and the count comes from the names
- * ---------------------------------------------------------------------------
- * `post_id, member_id` for the posts on screen. The count beside a Like
- * button and the list the count opens are the same rows, so they cannot
- * disagree — a count kept anywhere else would be a second number that can.
- * The select policy already lets a reader of the room see every row, so no
- * counts view is needed.
- *
- * No filter on the reader here, on purpose: this read *means* everybody's
- * likes. The table has one select policy, and 20260930010000 says why a
- * second one would need every "mine" read to say so; there is no "mine" read.
- *
- * ---------------------------------------------------------------------------
- * Liking is an insert that ignores a duplicate; taking it back is a delete
- * ---------------------------------------------------------------------------
- * `ignoreDuplicates` is `on conflict do nothing`, which needs only the insert
- * grant. There is no update grant on this table, so an upsert that updates
- * would be refused — HANDOFF.md, "An upsert is on conflict do update". A
- * second tap that lands before the first is one row either way.
- *
- * ---------------------------------------------------------------------------
- * Optimistic, and put back if it fails
- * ---------------------------------------------------------------------------
- * The button moves before the write lands, the way following an
- * organization does and joining a room did. A like is a one-tap opinion;
- * making somebody watch a spinner for it costs more than it is worth, and
- * the failure case is a button that returns to where it was with a sentence
- * under the post. While a post's write is in flight a second tap on it is
- * ignored, so that a like and its taking back cannot reach the database in
- * the wrong order and leave the screen saying the opposite of the table.
- *
- * ---------------------------------------------------------------------------
- * Not live
- * ---------------------------------------------------------------------------
- * The table is not in the realtime publication (a like is not urgent, and
- * the names would be on the wire). Screens call `reload` when they refetch
- * for another reason — the topic page does when a post arrives.
+ * - The count comes from the names, so the two cannot disagree. No reader filter: this read means
+ *   everybody's likes (20260930010000 says why there is one select policy).
+ * - Liking is `ignoreDuplicates` (on conflict do nothing): there is no update grant
+ *   (HANDOFF.md, "An upsert is on conflict do update").
+ * - Optimistic, put back on failure. A second tap while a write is in flight is ignored, so a like
+ *   and its undo cannot land out of order.
+ * - Not live: not in the realtime publication (not urgent, and names would be on the wire).
+ *   Screens call `reload` when they refetch anyway.
  */
 
 /** Who likes each post: member ids, oldest like first. Posts nobody likes are absent. */
@@ -78,9 +47,8 @@ export function groupLikes(rows: readonly LikeRow[]): Map<string, string[]> {
 }
 
 /**
- * The map with one member's like on one post set to `liked`. Pure, and a new
- * map every time, so React sees the change. A like goes at the end, which is
- * where the read would put it.
+ * The map with one member's like on one post set to `liked`. A new map every time; a like goes
+ * at the end, where the read would put it.
  */
 export function withLike(
   byPost: LikesByPost,
@@ -102,10 +70,8 @@ export function likesLabel(count: number): string {
   return `${count} ${count === 1 ? 'like' : 'likes'}`;
 }
 
-// The sentences are the plan's (HANDOFF.md "What Home is" step 3), except the one for
-// taking a like back, which it did not write. That one has no "refused": the
-// delete policy hides somebody else's row rather than refusing it, so the
-// only failures are the ones describeError sorts by itself.
+// From HANDOFF.md "What Home is" step 3. Unlike has no "refused": the delete policy hides
+// others' rows rather than refusing.
 const LIKE_FAILED = { attempt: 'Your like was not saved.', refused: 'You cannot like this.' };
 const UNLIKE_FAILED = { attempt: 'Your like is still there.' };
 
@@ -156,13 +122,11 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const account = useAccount();
   const announce = useAnnounce();
   const memberId = account.status === 'member' ? account.userId : null;
-  // The ids as one string, so the effect re-runs when the set changes and not
-  // when the caller builds a new array with the same ids in it.
+  // As one string, so a new array with the same ids does not re-run the effect.
   const key = [...new Set(postIds)].sort().join(',');
 
   const [byPost, setByPost] = useState<LikesByPost>(EMPTY);
-  // The ids whose read has finished. Loading is worked out from it, so a
-  // render with new posts never shows them unliked before the effect runs.
+  // Loading is derived from this, so new posts never flash unliked before the effect runs.
   const [settled, setSettled] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loading = memberId !== null && key !== '' && settled !== key;
@@ -178,8 +142,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const kept = useKeptRead();
 
   useEffect(() => {
-    // Read, not only depended on: biome counts an unread dependency as a
-    // spare one, and a re-run for the same ids is the whole point of it.
+    // Read so biome does not flag `attempt` as an unused dependency.
     if (attempt < 0) return;
     if (!memberId || key === '') {
       shown.current = null;
@@ -199,8 +162,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
 
     async function load() {
       try {
-        // A hundred posts at a time, and every page of each: one read was
-        // capped at 1,000 likes and carried every id in its URL.
+        // Batched and paged: one read was capped at 1,000 likes and put every id in the URL.
         const { data, error: failed } = await readInBatches<LikeRow>(ids, (batch) =>
           readPages<LikeRow>((first, last) =>
             getSupabase()

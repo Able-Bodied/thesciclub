@@ -9,47 +9,12 @@ import { cn } from '@/lib/utils';
 /**
  * The sheet that asks whether to hand one post, or one message, over.
  *
- * ---------------------------------------------------------------------------
- * It says what happens before it happens
- * ---------------------------------------------------------------------------
- * The paragraph at the top is the whole reason this is a sheet and not a
- * one-tap control. Reporting somebody is not undoable and not private from the
- * person reporting's point of view — their name goes with it — and a member
- * deciding whether to make a complaint about harassment is owed the shape of
- * what they are about to do before they do it, not a toast afterwards.
+ * A sheet, not a one-tap control, so the member reads what happens (not undoable, their name goes
+ * with it) before it happens. The wording is `reportPreamble` in reports.ts, tested there.
  *
- * The sentence itself lives in `reportPreamble` in reports.ts, tested there,
- * because it is a promise about what the club does with somebody's words and
- * the only copy of it should not be a JSX string.
- *
- * ---------------------------------------------------------------------------
- * A sibling of FilterSheetShell, not a use of it
- * ---------------------------------------------------------------------------
- * The build plan offered the shell "if it fits". It does not: its footer is
- * Clear and Apply over a live count, and its whole model is that the filters
- * have already taken effect by the time it closes. This one has a Send and a
- * Cancel, and nothing has happened until Send. Bending the shell to hold both
- * would leave one caller passing a `clearCount` that means nothing.
- *
- * What is copied deliberately is the geometry and the three ways out — the
- * close control, the backdrop and Escape. A sheet dismissable only by one tap
- * on one region is a trap for anybody on a keyboard or a switch, and on a wide
- * screen a full-bleed sheet puts Send a thousand pixels from the note somebody
- * just typed, which for a member driving a mouth stick is the interaction.
- *
- * Focus is the shell's too, through `useDialogFocus`: the title on open, Tab
- * round the note and the two buttons, and back on the Report control when it
- * closes. Until 2026-09-30 it moved none, so a keyboard opening it stayed on
- * Report behind the backdrop. When a report has gone, Report becomes
- * "Reported", and `ReportControl` moves focus onto those words.
- *
- * ---------------------------------------------------------------------------
- * The note is optional and the words are kept
- * ---------------------------------------------------------------------------
- * The snapshot is the report; the note is whatever the reporter wants to add,
- * and demanding one from somebody describing something that happened to them
- * is a toll. On a failure the sheet stays open with what they wrote still in
- * it — the same rule the composer follows, and for the same reason.
+ * Not FilterSheetShell (Clear/Apply over live filters); it copies its geometry, three ways out
+ * (close, backdrop, Escape) and `useDialogFocus`. Afterwards `ReportControl` moves focus to
+ * "Reported". The note is optional, and on failure the sheet keeps the words, as the composer does.
  */
 export function ReportSheet({
   kind,
@@ -100,14 +65,11 @@ export function ReportSheet({
 
   const sheet = (
     <>
-      {/* Named for what it does, and not "Cancel", which is the footer
-          button's name. Two controls with the same accessible name read as one
-          repeated control to a screen reader, and these are a screen apart. */}
+      {/* Not "Cancel": two controls with one name read as one to a screen reader. */}
       <button
         type="button"
         aria-label="Close without reporting"
-        // Out of the Tab order: it is there for a pointer, and a keyboard has
-        // Escape and Cancel.
+        // Pointer only; a keyboard has Escape and Cancel.
         tabIndex={-1}
         onClick={onCancel}
         className={cn('inset-0 bg-[rgba(10,20,35,.5)]', place, layer[0])}
@@ -160,8 +122,7 @@ export function ReportSheet({
             onChange={(event) => {
               setNote(event.target.value);
             }}
-            // Sized in em, so the box grows with the text rather than clipping
-            // it at the larger text sizes.
+            // In em, so it grows at larger text sizes.
             className="mt-2 min-h-[5em] w-full resize-y rounded-[13px] border-[1.6px] border-line bg-canvas px-[13px] py-[10px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-emphasis focus:bg-paper"
           />
           {problem ? (

@@ -54,48 +54,16 @@ import { membersWithin } from '@/routes/peers/filters';
 import type { ClubEvent, RsvpStatus } from '@/types/domain';
 
 /**
- * Home: what the club is doing, in one list.
+ * Home: recent topics, photographs, upcoming events and members, from the mock's `homePage()`.
+ * Every card leads to something that already exists; reporting, removal and mutes are theirs.
  *
- * Recent topics and photographs from the open rooms, upcoming events and
- * members worth meeting, from the mock's `homePage()`. Home adds no new kind
- * of content. Every card is a way in to a room, an event or a member that
- * already exists, and reporting, removal, notifications and mutes are theirs.
- * The dashed card at the top is the way to ask or share, and what it writes is
- * a topic in a room, through /home/new and the New topic screen.
- *
- * ---------------------------------------------------------------------------
- * A column, for the reason Events is one
- * ---------------------------------------------------------------------------
- * A feed is read down, not scanned across. `src/routes/events/page.tsx` says
- * why the column is capped: for a member driving a head pointer, distance on
- * screen is effort.
- *
- * ---------------------------------------------------------------------------
- * It reads once, on arrival, and does not subscribe
- * ---------------------------------------------------------------------------
- * Chat's screens are realtime and this one deliberately is not. A list that
- * reorders while somebody is reading it is a list they lose their place in,
- * and Home is for finding things, not for watching them. A new reply is on
- * the topic page and in the room, both live. Do not add a subscription here as
- * a fix for "Home did not update".
- *
- * ---------------------------------------------------------------------------
- * Everything waits for all three sources
- * ---------------------------------------------------------------------------
- * The mixed list is decided by `buildFeed`, which interleaves topics, events
- * and people. Drawing each source as it lands would re-mix the list under the
- * reader three times, so Everything says "Loading…" until all three have
- * settled. A single-kind pill waits for its own source only. A source that
- * fails says so once, at the top, and the rest of the list still draws.
- *
- * ---------------------------------------------------------------------------
- * The filter narrows what a pill drew, and lives in component state
- * ---------------------------------------------------------------------------
- * "Filter your feed" keeps the cards on this pill that are in a room or a
- * place (`filters.ts` says what matches what). It runs after the pill's list
- * is built, not before, so "2 of 8 match" means two of the eight cards that
- * were on screen. The choices are component state, as they are on Events: they
- * carry from one pill to the next, and a visit starts with none.
+ * - A capped column, as Events is (`src/routes/events/page.tsx`): distance is effort.
+ * - Reads once and does not subscribe: a list that reorders while read loses the reader's place.
+ *   Do not add a subscription as a fix for "Home did not update".
+ * - Everything waits for all three sources, so `buildFeed` does not re-mix under the reader. A
+ *   failed source says so once at the top; the rest still draws.
+ * - The filter (`filters.ts`) narrows the pill's built list, so "2 of 8 match" counts cards on
+ *   screen. Component state, as on Events: carries across pills, a visit starts with none.
  */
 
 const SEGMENTS: [HomeSegment, string][] = [
@@ -126,8 +94,7 @@ export default function HomePage() {
   const session = useSession();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
-  // In the URL, for the reason Events and Chat keep theirs there: back from a
-  // card lands on the pill it was opened from, and a pill can be linked to.
+  // In the URL, as on Events and Chat: back returns to the pill, and it can be linked.
   const [searchParams, setSearchParams] = useSearchParams();
   const fromUrl = searchParams.get('segment');
   const segment: HomeSegment = HOME_SEGMENTS.includes(fromUrl as HomeSegment)
@@ -135,8 +102,7 @@ export default function HomePage() {
     : 'everything';
   const setSegment = useCallback(
     (next: HomeSegment) => {
-      // Replace, not push: tapping through five pills should not mean five
-      // presses of back to leave.
+      // Replace, so five pills are not five presses of back.
       setSearchParams(next === 'everything' ? {} : { segment: next }, { replace: true });
     },
     [setSearchParams],
@@ -147,9 +113,7 @@ export default function HomePage() {
 
   const topicRead = useHomeTopics();
   const rooms = useChatRooms();
-  // Only the days Home shows (pickEvents): it read every event ever stored,
-  // and the import keeps them all. Fixed for the visit, so a re-render does
-  // not start another read.
+  // Only the days Home shows (pickEvents); it once read every stored event. Fixed per visit.
   const [eventWindow] = useState(() => {
     const to = new Date(Date.now() + (EVENT_HORIZON_DAYS + 1) * 86_400_000).toISOString();
     const from = dateWindowRange('any')?.from;
@@ -223,9 +187,7 @@ export default function HomePage() {
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
     events: eventsRead.loading || near.status === 'loading',
-    // A failed conversations read is not waited on and not reported: the cost
-    // is suggesting somebody the viewer already talks to, which is smaller
-    // than losing the suggestions.
+    // A failed conversations read is not waited on: a redundant suggestion beats none.
     people:
       membersRead.loading ||
       threadsRead.loading ||
@@ -266,9 +228,7 @@ export default function HomePage() {
       if (!memberId) return;
       setWriteError(null);
       void setRsvp(event.id, memberId, next).then((result) => {
-        // Re-read rather than patch, as Events does: the tallies come from
-        // the database, and a local edit would leave the number and the
-        // button disagreeing.
+        // Re-read rather than patch: the tallies come from the database.
         if (result.ok) {
           viewer.reload();
           eventsRead.reload?.();
@@ -436,12 +396,8 @@ export default function HomePage() {
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
-          {/* Before anything has loaded: asking should not wait for the
-              list. Typed into here and posted from here (the owner,
-              2026-10-09: the least friction there can be); the Photos pill
-              keeps its card to the photograph picker. Not on the Events pill
-              (the owner, 2026-10-10): a box to ask the club sat on top of a
-              list of events and read as part of it. */}
+          {/* Before the list loads. Posted from here (the owner, 2026-10-09); Photos keeps
+              its picker card. Not on Events (the owner, 2026-10-10): it read as an event. */}
           {segment === 'photos' ? (
             <ComposeCard segment={segment} linkState={linkState} />
           ) : segment === 'events' ? null : (
@@ -487,8 +443,7 @@ export default function HomePage() {
                   <SeeMore segment={segment} />
                 </>
               ) : failures.length > 0 ? null : items.length > 0 ? (
-                // The pill has cards and the filter kept none of them. The
-                // sentence names the filter, which is what is holding it shut.
+                // The pill has cards and the filter kept none.
                 <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
                   Nothing matches that yet. Try fewer filters.
                 </p>
@@ -563,13 +518,7 @@ function SeeMore({ segment }: { segment: HomeSegment }) {
   );
 }
 
-/**
- * Each empty pill says which emptiness it is, and where to go instead.
- *
- * An empty Topics pill is the ordinary day for this club: rooms open a few at
- * a time. The sentence says so rather than apologising, and the way out is a
- * link, not a button.
- */
+/** Each empty pill says which emptiness it is, and links to where to go instead. */
 function EmptyList({ segment }: { segment: HomeSegment }) {
   const empty: Record<HomeSegment, [string, [string, string] | null]> = {
     everything: ['Nothing here yet.', null],

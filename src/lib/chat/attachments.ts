@@ -7,46 +7,19 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * Photographs on a message or a post.
  *
- * ---------------------------------------------------------------------------
- * The limits, and where each one is enforced
- * ---------------------------------------------------------------------------
- * The owner's, 2026-09-21: photographs yes, video no, four at most, shrunk on
- * the phone before they go anywhere. Each limit is held in two places so that
- * a bypassed client is still held to it:
+ * Limits (the owner, 2026-09-21), each held twice so a bypassed client is still held:
  *
  *   four per message     here, and `cardinality(attachments) <= 4` on the row
  *   images only          here (`image/*`), and the bucket's allowed types
- *   10MB before reading  here — the file is refused before `createImageBitmap`
- *                        is asked to decode something that would take a phone
- *                        a minute; the bucket's own limit is 2MB, which is
- *                        after the shrink
- *   1,600px webp         `preparePhoto`, at a longer edge than a profile
- *                        picture gets, because what people share here is a
- *                        cushion, a catheter set-up, a wound — the detail is
- *                        the point. JPEG on an iPhone, where the browser
- *                        cannot write webp; see image.ts. Until 2026-09-29 it
- *                        fell back to the original there, which is usually
- *                        over the bucket's 2MB, so no photograph could be put
- *                        on a topic from a phone
+ *   10MB before reading  here, before `createImageBitmap` stalls a phone; bucket limit 2MB
+ *   1,600px webp         `preparePhoto`: detail matters (a wound, a set-up). JPEG on iPhone,
+ *                        which cannot write webp (image.ts); the old fallback broke phone uploads
  *
- * ---------------------------------------------------------------------------
- * The bucket is private, so every URL is signed and short-lived
- * ---------------------------------------------------------------------------
- * There is no public URL for a chat photograph and there must never be — see
- * 20260918200000. `useAttachmentUrls` asks storage for a signed URL under the
- * member's own token, which storage grants only if the select policy would
- * let them read the file. The URLs are cached for a little under their hour so
- * that scrolling a conversation does not re-sign every picture on every
- * render, and dropped before they expire so that a stale one is never drawn.
+ * The bucket is private; there must never be a public URL (20260918200000). URLs are signed
+ * under the member's token and cached just under their hour.
  *
- * ---------------------------------------------------------------------------
- * Upload first, then the row; delete what was uploaded if the row is refused
- * ---------------------------------------------------------------------------
- * The row names the paths, so the files have to exist first. If the insert is
- * then refused — the room closed, the membership paused — the files are
- * removed again rather than left as orphans nobody's message points at. A
- * file that outlives a failed delete is still behind the read policy, so the
- * cost is bytes, not disclosure.
+ * Upload first, then the row; if the row is refused, the files are deleted. A file surviving a
+ * failed delete is still behind the read policy: bytes, not disclosure.
  */
 
 export const CHAT_BUCKET: SignedBucket = 'chat';
@@ -87,11 +60,7 @@ export function attachmentFolder(kind: 'thread' | 'room', id: string): string {
   return kind === 'thread' ? `threads/${id}` : `rooms/${id}`;
 }
 
-/**
- * The bucket's own sentences — about mime types and sizes — are translated by
- * describeError; the one this screen owns is the policy's, which here means
- * the member is not in the thread or the room.
- */
+/** describeError handles the bucket's own errors; "refused" means not in the thread or room. */
 const UPLOAD_REFUSAL = {
   attempt: 'The photograph did not upload.',
   refused: 'You cannot add a photograph here.',
@@ -145,10 +114,8 @@ export async function deleteAttachments(paths: string[]): Promise<void> {
 }
 
 /**
- * The buckets read through signed URLs. `chat` from the start; `photos` —
- * every member photograph, the seeded directory's and the organizations'
- * logos — from HANDOFF.md "What Home is" step 6, part 2, through `usePhotoUrls` in
- * src/lib/photos.ts. One cache for both, so there is one thing to keep right.
+ * The buckets read through signed URLs, one cache for all. `photos` (faces, seeds, logos) from
+ * HANDOFF.md "What Home is" step 6, part 2, via `usePhotoUrls` in src/lib/photos.ts.
  */
 export type SignedBucket = 'chat' | 'photos' | 'link-previews';
 
@@ -159,17 +126,9 @@ const cacheKey = (bucket: SignedBucket, path: string) => `${bucket}\n${path}`;
 /**
  * The photos bucket's URLs outlive a reload; chat's do not.
  *
- * Measured on the local stack with 150ms of latency (HANDOFF.md, "Home, step
- * 6"): with the cache in memory only, reloading Peers drew its faces in about
- * 1,060ms against 580ms from public URLs. A reload forgot every URL, so each
- * face was signed again, and a new token is a new URL to the browser, so each
- * photograph was downloaded again rather than read from its cache. Reopening
- * the app is a reload. Kept here until they expire, the same URLs come back,
- * nothing is signed and the browser's cache answers.
- *
- * Only `photos`: a face is readable by every member already. A chat URL opens
- * a photograph from a private conversation, and stays in memory, where a
- * reload ends it. Both are forgotten on sign-out (signOut in account.tsx).
+ * A re-signed URL is a new URL, so the browser downloaded every face again (Peers reload 1,060ms
+ * vs 580ms; HANDOFF.md, "Home, step 6"). Only `photos`, readable by every member anyway; a chat
+ * URL opens a private photo, so it stays in memory. Both cleared on sign-out (account.tsx).
  */
 const KEPT_BUCKET: SignedBucket = 'photos';
 const KEPT_KEY = 'thesciclub.signed-photos';
@@ -212,8 +171,7 @@ function saveKept(): void {
 restoreKept();
 
 /**
- * Where a photograph's small copy is kept: beside it, in the same folder, so
- * every storage rule that covers the photograph covers the copy
+ * A small copy's path: same folder, so the same storage rules cover it
  * (`u1/profile-1a2b.webp` → `u1/profile-1a2b.thumb.webp`).
  */
 export function thumbPath(path: string): string {
@@ -223,20 +181,15 @@ export function thumbPath(path: string): string {
     : `${path}.thumb`;
 }
 
-/**
- * Small copies storage refused: not made yet. Not asked for again while the
- * page lives, so a screen of older photographs does not sign each missing
- * copy on every visit.
- */
+/** Small copies storage refused (not made yet); not asked for again while the page lives. */
 const missingCopies = new Set<string>();
 const isCopy = (path: string) => path.includes('.thumb.');
 /** Photographs storage refused, each counted as broken once (a changed photo). */
 const refusedPhotos = new Set<string>();
 
 /**
- * A member's face (`<id>/profile-….webp`, `seed/<id>.webp`), not a logo, an
- * event's picture or a review's: only a face can be changed by another member
- * behind a kept read, so only a face is worth reading members again for.
+ * A member's face (`<id>/profile-….webp`, `seed/<id>.webp`): the only photo another member can
+ * change behind a kept read, so the only one worth re-reading members for.
  */
 export function isMemberPhoto(path: string): boolean {
   const [folder, name, ...rest] = path.split('/');
@@ -288,13 +241,8 @@ function cachedUrls(bucket: SignedBucket, paths: readonly string[]): Map<string,
 }
 
 /**
- * Paths asked for in the same moment, signed in one request.
- *
- * The Peers deck draws twenty-odd faces and Home a dozen, each through its
- * own component, and each component asks for its own path. Signing as they
- * asked would be a request per face. Instead every path asked for before the
- * next turn of the event loop joins one batch per bucket, and the batch is
- * one `createSignedUrls` — the whole screen in one round trip.
+ * Paths asked for before the next event-loop turn, signed in one `createSignedUrls` per bucket,
+ * so a screen of faces is one round trip rather than one per face.
  */
 const queued = new Map<SignedBucket, { paths: Set<string>; done: Promise<void> }>();
 /** A path already being signed is waited on, not asked for twice. */
@@ -327,8 +275,7 @@ async function sign(bucket: SignedBucket, paths: string[]): Promise<void> {
       .storage.from(bucket)
       .createSignedUrls(paths, SIGNED_FOR_SECONDS);
     for (const row of data ?? []) {
-      // A path the policy refuses comes back with an error and no URL, and is
-      // simply not drawn — the same as a photograph that has been deleted.
+      // A refused path has no URL and is not drawn, as if deleted.
       if (row.signedUrl && row.path) {
         signed.set(cacheKey(bucket, row.path), { url: row.signedUrl, until: now + CACHE_FOR_MS });
       } else if (row.path && isCopy(row.path)) {
@@ -346,9 +293,7 @@ async function sign(bucket: SignedBucket, paths: string[]): Promise<void> {
       }
     }
   } catch {
-    // Offline, or the request failed: nothing is drawn but the initials or
-    // the tile, which is what a face without a photograph looks like anyway.
-    // The next screen to ask tries again.
+    // Offline or failed: initials or the tile are drawn; the next ask tries again.
   } finally {
     for (const path of paths) inFlight.delete(cacheKey(bucket, path));
   }
@@ -374,12 +319,8 @@ async function signUrls(bucket: SignedBucket, paths: string[]): Promise<Map<stri
 const NONE = new Map<string, string>();
 
 /**
- * Signed URLs for the paths given, as they arrive. A path with no URL yet — or
- * ever, if the policy refuses it — is absent from the map.
- *
- * What the cache already holds is there on the first render, so a face seen
- * a moment ago does not blink to its initials and back on the way to a
- * screen it was signed for.
+ * Signed URLs for the paths given, as they arrive; a path with no URL is absent. Cached URLs are
+ * there on the first render, so a face does not blink to its initials.
  */
 export function useAttachmentUrls(
   paths: readonly string[],

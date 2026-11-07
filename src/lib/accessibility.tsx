@@ -11,48 +11,13 @@ import {
 /**
  * Display and input preferences.
  *
- * ---------------------------------------------------------------------------
- * Why this is hand-built and not a library
- * ---------------------------------------------------------------------------
- * The products that market themselves as exactly this — an "accessibility
- * widget" you drop in and get a settings menu — are overlays: accessiBe,
- * UserWay, EqualWeb and the rest. They are not an option here, and the reason
- * is not taste.
+ * Hand-built, never an overlay widget (accessiBe, UserWay, EqualWeb): those inject ARIA and
+ * rewrite the DOM, often making things worse; the NFB condemned accessiBe in 2021 and the Overlay
+ * Fact Sheet is widely signed. What helps is correct semantics, big targets and a few real
+ * preferences. There are no Radix primitives; every control here is hand-written.
  *
- * They work by injecting ARIA and rewriting the DOM at runtime, and they
- * routinely make things worse for the people they claim to help: mislabelled
- * landmarks, hijacked keyboard handling, screen-reader output that fights the
- * real page. The National Federation of the Blind passed a resolution
- * condemning accessiBe in 2021; the Overlay Fact Sheet has been signed by
- * hundreds of accessibility practitioners, a great many of them disabled
- * people; and overlays have featured in ADA suits rather than preventing them.
- *
- * This is a club for people with spinal cord injuries. Shipping the thing that
- * disabled professionals have spent years asking sites not to ship would be a
- * poor look and a worse product.
- *
- * What actually helps is dull and specific: correct semantics, targets big
- * enough to hit, and a small number of real preferences. That is what this file
- * is.
- *
- * "Correct semantics" means hand-written here — a real `fieldset` with a
- * `legend`, real buttons with real pressed states. An earlier version of this
- * comment credited Radix primitives in src/components/ui/; that directory was
- * never populated and there are no primitives, so the claim was resting on
- * nothing. Every control in this app is its own.
- *
- * ---------------------------------------------------------------------------
- * Stored per device, not per member
- * ---------------------------------------------------------------------------
- * The right setting is a property of the machine and the input method, not of
- * the person: the same member may drive a phone with a thumb and a desktop with
- * a head pointer, and wants different answers on each. localStorage also means
- * the preference applies before any session exists, which matters because
- * events are public and somebody may arrive here without an account.
- *
- * The cost is that a new device starts from the defaults. That is the right
- * trade: a preference that follows you onto a machine you drive differently is
- * a preference in the wrong place.
+ * Stored per device in localStorage, not per member: the same member may use a thumb on a phone
+ * and a head pointer on a desktop, and it applies before any session exists (events are public).
  */
 
 export const TEXT_SIZES = ['normal', 'large', 'larger'] as const;
@@ -64,11 +29,7 @@ export const TEXT_SIZE_LABELS: Record<TextSize, string> = {
   larger: 'Larger',
 };
 
-/**
- * Light or dark. "system" follows the phone or computer, and is the default:
- * somebody whose phone is already dark gets a dark club without looking for
- * the setting. The colours are in src/index.css, under "dark".
- */
+/** Light or dark; "system" is the default. Colours are in src/index.css, under "dark". */
 export const APPEARANCES = ['system', 'light', 'dark'] as const;
 export type Appearance = (typeof APPEARANCES)[number];
 
@@ -78,15 +39,6 @@ export const APPEARANCE_LABELS: Record<Appearance, string> = {
   dark: 'Dark',
 };
 
-/**
- * The multiplier each step applies to the root font size.
- *
- * A multiplier rather than an absolute size, so it compounds with whatever the
- * member's browser is already set to instead of overriding it — somebody
- * running a 20px browser default who picks Large gets 23px, not 18.4px. Taking
- * their browser setting away from them would be a strange thing for this
- * screen in particular to do.
- */
 /**
  * Reduce motion. "system" follows the phone's own setting, as the CSS always
  * has; On and Off overrule it either way.
@@ -100,6 +52,7 @@ export const MOTION_LABELS: Record<Motion, string> = {
   off: 'Off',
 };
 
+/** Multiplies the root font size, so it compounds with the browser's own setting. */
 export const TEXT_SIZE_SCALE: Record<TextSize, number> = {
   normal: 1,
   large: 1.15,
@@ -107,19 +60,11 @@ export const TEXT_SIZE_SCALE: Record<TextSize, number> = {
 };
 
 export interface AccessibilityPreferences {
-  /**
-   * Multiplies the root font size, and so every `rem` in the type scale.
-   *
-   * Text only: spacing, images and the shell keep their pixel dimensions, so
-   * this is not a second copy of the browser's zoom. Controls still grow,
-   * because their heights are `min-h` around text that got bigger.
-   */
+  /** Multiplies the root font size: text only, not a second browser zoom. */
   textSize: TextSize;
   /**
-   * Enlarges controls that are smaller than the 44px target-size guideline
-   * without scaling text. Separate from `textSize` on purpose: somebody who
-   * reads fine but cannot hit a 28px button with a mouth stick wants this one
-   * and not the other.
+   * Enlarges controls under 44px without scaling text. Separate from `textSize`: a mouth-stick
+   * user may read fine but miss small buttons.
    */
   largeTargets: boolean;
   /** Light, dark, or whatever the device is set to. */
@@ -146,23 +91,14 @@ export const DEFAULT_PREFERENCES: AccessibilityPreferences = {
 
 const STORAGE_KEY = 'thesciclub.accessibility';
 
-/**
- * The defaults. Nothing is copied from the device: the settings that follow it
- * (appearance, motion) say "system" and ask it live, so a later change to the
- * phone's setting still reaches the app.
- */
+/** The defaults. Device-following settings say "system" and ask live, never copied. */
 export function systemDefaults(): AccessibilityPreferences {
   return DEFAULT_PREFERENCES;
 }
 
 /**
- * Read stored preferences, ignoring anything that is not a value we recognise.
- *
- * Exported so the parsing can be tested directly. Every field is validated
- * rather than trusted: this string is user-writable (devtools, a synced profile,
- * a stale version of the app), and a bad `textSize` would otherwise reach the
- * DOM as an attribute selector that matches nothing, leaving somebody stuck at
- * a size they did not choose with no way to see why.
+ * Read stored preferences, ignoring unrecognised values. Every field is validated: the string is
+ * writable (devtools, stale app), and a bad `textSize` would leave a member stuck at a wrong size.
  */
 export function parsePreferences(raw: string | null): Partial<AccessibilityPreferences> {
   if (!raw) return {};
@@ -203,12 +139,7 @@ interface AccessibilityValue {
 
 const AccessibilityContext = createContext<AccessibilityValue | null>(null);
 
-/**
- * Push the preferences onto the root element, where CSS can see them.
- *
- * Attributes rather than inline styles, so the rules live in src/index.css with
- * the rest of the design system and a reader can find them.
- */
+/** Push the preferences onto <html> as attributes; the rules live in src/index.css. */
 function applyToDocument(preferences: AccessibilityPreferences): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -219,8 +150,7 @@ function applyToDocument(preferences: AccessibilityPreferences): void {
   root.dataset.underlineLinks = preferences.underlineLinks ? 'on' : 'off';
   root.dataset.readableText = preferences.readableText ? 'on' : 'off';
   root.style.setProperty('--text-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
-  // index.html sets this before the first paint, from the same stored value,
-  // so the page is never drawn light and then switched.
+  // index.html also sets this before first paint, so there is no light flash.
   root.dataset.appearance = preferences.appearance;
   paintBrowserBar(preferences.appearance);
 }
@@ -239,11 +169,7 @@ export function motionReduced(): boolean {
   );
 }
 
-/**
- * The browser bar's colour: brand navy in light, as it has always been, and
- * the charcoal page in dark, so the top of the screen is not a strip of navy
- * over a dark page. index.html does the same before the first paint.
- */
+/** The browser bar's colour: navy in light, the charcoal page in dark. index.html matches. */
 export const BROWSER_BAR = { light: '#102A4C', dark: '#141619' } as const;
 
 function prefersDark(appearance: Appearance): boolean {
@@ -264,15 +190,11 @@ function paintBrowserBar(appearance: Appearance): void {
 }
 
 /**
- * Light, whatever the setting, for as long as the calling screen is up.
+ * Light, whatever the setting, while the calling screen is up.
  *
- * For /join (the owner, 2026-10-03): dark is for members, and somebody joining
- * or signing in has not agreed to anything yet. It also keeps the opt-in a
- * carrier's reviewer opens identical to the light screenshots registered with
- * them. An attribute of its own rather than a change to `appearance`, so the
- * member's choice is neither overwritten nor stored, and comes back by itself
- * when they leave. index.html sets the same attribute before the first paint
- * on /join, so a dark device never flashes dark there.
+ * For /join (the owner, 2026-10-03): dark is for members, and a carrier's reviewer must see the
+ * registered light screenshots. Its own attribute, so the member's choice is not overwritten.
+ * index.html sets it before first paint on /join.
  */
 export function useForceLight(): void {
   const { preferences } = useAccessibility();
@@ -290,9 +212,7 @@ export function useForceLight(): void {
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<AccessibilityPreferences>(() => {
-    // Read synchronously on first render so the interface does not paint at the
-    // wrong size and then jump — a flash of the wrong layout is disorienting
-    // for exactly the people most likely to have changed these.
+    // Read synchronously so the first paint is not at the wrong size and then jumps.
     let stored: string | null = null;
     try {
       stored = localStorage.getItem(STORAGE_KEY);
@@ -302,9 +222,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     return { ...systemDefaults(), ...parsePreferences(stored) };
   });
 
-  // Match my device follows the device while the app is open, not only when
-  // it starts: somebody whose computer turns dark at sunset gets the bar to
-  // match. The page colours need no help; the CSS media query does that.
+  // Repaint the browser bar if the device turns dark while open; CSS handles the page.
   useEffect(() => {
     if (preferences.appearance !== 'system' || typeof window.matchMedia !== 'function') return;
     const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -322,8 +240,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
     } catch {
-      // Storage unavailable. The preference still applies for this session,
-      // which is better than refusing to change it at all.
+      // Storage unavailable. The preference still applies for this session.
     }
   }, [preferences]);
 
@@ -342,13 +259,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * The preferences, and how to change them.
- *
- * Returns the defaults rather than throwing when there is no provider, so a
- * component rendered in isolation — a test, a story — does not have to be
- * wrapped just to read a value it may not use.
- */
+/** The preferences, and how to change them. Defaults without a provider (tests), no throw. */
 export function useAccessibility(): AccessibilityValue {
   const value = useContext(AccessibilityContext);
   if (value) return value;
