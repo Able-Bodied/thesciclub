@@ -29,6 +29,12 @@ export default function PrivacyPage() {
             <b>Added:</b> you can link another member as family, such as a spouse, parent or child.
             It shows on both of your profiles only once they say yes (see Who can see what).
           </li>
+          <li>
+            <b>Changed:</b> Cloudflare now counts visits to every page of the website, signed in or
+            not, but only the kind of page, such as an event page, never which one, and never who
+            you are. It runs apart from the club’s pages, where it cannot see your account (see
+            Service providers).
+          </li>
         </List>
       </Note>
       <Note title="What changed on November 6, 2026">
@@ -727,12 +733,14 @@ export default function PrivacyPage() {
             map it loads);
           </li>
           <li>
-            visit counts on the website (Cloudflare Web Analytics): when you are not signed in and
-            open a public page, such as an event page from a shared link, the welcome page or these
-            policies, Cloudflare counts the visit: the page, the site that sent you, your country,
-            the kind of device and browser, and how fast the page loaded. It uses no cookies, does
-            not recognize you from one visit to the next, and is never loaded while you are signed
-            in or in the iPhone app;
+            visit counts on the website (Cloudflare Web Analytics): when you open a page of the
+            website, signed in or not, Cloudflare counts the visit: the kind of page (such as an
+            event page, never which event or anything else in its address), your country, the kind
+            of device and browser, and how fast the page loaded. Like any web host, it sees your
+            device’s internet address. It runs in a hidden page of its own, apart from the club’s,
+            so it cannot see your account or anything on your screen, and it is told nothing about
+            who you are. It uses no cookies, does not recognize you from one visit to the next, and
+            is never loaded in the iPhone app;
           </li>
           <li>device notifications (Apple, Google, or your browser’s maker);</li>
           <li>Google or Apple, if you sign in with them.</li>

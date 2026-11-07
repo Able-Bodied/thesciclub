@@ -397,12 +397,12 @@ export function RouteChange() {
   return null;
 }
 
-/** Cloudflare's count of public-page visits, once the address settles (web-analytics.ts). */
+/** Cloudflare's count of visits, by kind of page (web-analytics.ts). */
 function CountVisit() {
-  const { pathname, search, hash } = useLocation();
+  const { pathname } = useLocation();
   useEffect(() => {
-    countVisit({ pathname, search, hash });
-  }, [pathname, search, hash]);
+    countVisit(pathname);
+  }, [pathname]);
   return null;
 }
 

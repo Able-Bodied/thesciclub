@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PHOTON_ORIGIN } from '@/lib/address-suggestions';
 import { appYoutubeEmbedUrl } from '@/lib/chat/link-preview';
 import { TILES_ORIGIN } from '@/lib/map/tiles';
-import { CF_BEACON_SRC } from '@/lib/web-analytics';
+import { COUNT_HOME } from '@/lib/web-analytics';
 import SHELL from '../index.html?raw';
 import { APP_FRAMES, nativeCsp, webCsp } from '../native-csp';
 import NETLIFY from '../netlify.toml?raw';
@@ -102,21 +102,21 @@ describe('the Content-Security-Policy', () => {
 
   // A video plays from YouTube's privacy-enhanced host; nothing else may be
   // framed inside the club, Instagram included (the owner, 2026-10-06).
-  it("frames only YouTube's privacy-enhanced player and Google's sign-in", () => {
+  it("frames only YouTube's privacy-enhanced player, Google's sign-in and the visit counter", () => {
     expect(directive('frame-src')).toEqual([
       'https://www.youtube-nocookie.com',
       'https://accounts.google.com/gsi/',
+      `${COUNT_HOME}/`,
     ]);
   });
 
-  // One file from Google, not the whole of accounts.google.com, and one from
-  // Cloudflare for signed-out visitors (src/lib/web-analytics.ts).
-  it("loads Google's sign-in script, Cloudflare's analytics and no other script from elsewhere", () => {
+  // One file from Google, not the whole of accounts.google.com. Cloudflare's
+  // analytics runs only in the counter's frame (src/lib/web-analytics.ts).
+  it("loads Google's sign-in script and no other script from elsewhere", () => {
     expect(directive('script-src').filter((s) => s.startsWith('https:'))).toEqual([
       'https://accounts.google.com/gsi/client',
-      CF_BEACON_SRC,
     ]);
-    expect(directive('connect-src')).toContain('https://cloudflareinsights.com/cdn-cgi/rum');
+    expect(policy).not.toContain('cloudflareinsights');
   });
 
   it('still lets no other site frame the club', () => {
