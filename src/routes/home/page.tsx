@@ -3,6 +3,7 @@ import { Fragment, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FilterButton } from '@/components/filter-button';
 import { LoadingCards } from '@/components/loading-cards';
+import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
@@ -121,6 +122,7 @@ const SOURCES: Record<HomeSegment, Source[]> = {
 export default function HomePage() {
   const navigate = useNavigate();
   const [searching, setSearching] = useState(false);
+  const wide = useWideLayout();
   const session = useSession();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
@@ -426,6 +428,9 @@ export default function HomePage() {
               setSheetOpen(true);
             }}
           />
+          {/* Back on Home, right of Filter (the owner, 2026-11-06). A desktop
+              has it in the top bar. */}
+          {wide !== true ? <NotificationBell variant="round" className="md:hidden" /> : null}
         </div>
       </header>
 

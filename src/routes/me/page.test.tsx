@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -229,16 +229,14 @@ describe('MePage', () => {
     expect(screen.getByText(/Signed in as/)).toBeInTheDocument();
   });
 
-  // The one tab with it (the owner, 2026-10-22), with a member row or without.
-  it('has the notifications bell in its header', () => {
+  // Back on Home (the owner, 2026-11-06), with a member row or without.
+  it('has no notifications bell', () => {
     renderMe();
-    expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument();
-  });
-
-  it('has the bell before the member row arrives too', () => {
+    expect(screen.queryByRole('link', { name: 'Notifications' })).toBeNull();
+    cleanup();
     own.member = null;
     renderMe();
-    expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Notifications' })).toBeNull();
   });
 
   it('says who vouched for you', () => {

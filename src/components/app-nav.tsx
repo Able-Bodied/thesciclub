@@ -65,8 +65,9 @@ export function AppNav() {
   const { count } = useUnreadThreads();
   // The bar is on every screen, so the app icon's number is kept here.
   useIconBadge();
-  // Red on Me, so a notification is not missed on a screen with no bell
-  // (the owner, 2026-11-01). Not for a conversation: Chat's own dot says that.
+  // Red on Home, where the bell is, so a notification is not missed on a
+  // screen with no bell (the owner, 2026-11-01; the bell back on Home
+  // 2026-11-06). Not for a conversation: Chat's own dot says that.
   const { count: unseen } = useUnseenNotifications(true);
   // And while their email waits to be confirmed (the owner, 2026-11-04).
   const unproven = useUnprovenEmail() !== null;
@@ -128,8 +129,8 @@ export function AppNav() {
               aria-label={
                 to === '/chat' && count > 0
                   ? 'Chat, something new'
-                  : to === '/me' && unseen > 0
-                    ? 'Me, new notifications'
+                  : to === '/home' && unseen > 0
+                    ? 'Home, new notifications'
                     : to === '/me' && unproven
                       ? 'Me, confirm your email'
                       : undefined
@@ -147,14 +148,15 @@ export function AppNav() {
                   on one line. */}
               <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
                 <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
-                {to === '/me' && unseen > 0 ? (
+                {to === '/home' && unseen > 0 ? (
                   <span
                     aria-hidden="true"
                     className="-top-0.5 -right-1 absolute grid h-[16px] w-[16px] place-items-center rounded-full bg-destructive-fill ring-2 ring-paper"
                   >
                     <Bell className="h-[10px] w-[10px] fill-white text-white" strokeWidth={2.4} />
                   </span>
-                ) : to === '/me' && unproven ? (
+                ) : null}
+                {to === '/me' && unproven ? (
                   <span
                     aria-hidden="true"
                     className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-destructive-fill ring-2 ring-paper"

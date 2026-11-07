@@ -1,4 +1,3 @@
-import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import type { OwnMember } from '@/lib/members';
 import { useMyMentorOrganizations } from '@/lib/organization-mentors';
 import { usePhoto } from '@/lib/use-photo';
@@ -40,7 +39,6 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 export function MeHero({ member }: { member: OwnMember }) {
-  const wide = useWideLayout();
   // An 88px square: the small copy fills it on a 3x screen.
   const { url: photo, onError } = usePhoto(member.photoPath, 'thumb');
   const [from, to] = gradientFor(member.id);
@@ -91,10 +89,6 @@ export function MeHero({ member }: { member: OwnMember }) {
             {member.isAdmin ? <Chip>Administrator</Chip> : null}
           </div>
         </div>
-        {/* A phone's way to the list; a desktop has it in the top bar. */}
-        {wide !== true ? (
-          <NotificationBell variant="plate" className="ml-auto self-start md:hidden" />
-        ) : null}
       </div>
     </div>
   );

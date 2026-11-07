@@ -153,10 +153,12 @@ describe('the Me tab', () => {
       </MemoryRouter>,
     );
 
-  it('says so when a notification is unseen', () => {
+  // On Home, where the bell is (the owner, 2026-11-06).
+  it('leaves an unseen notification to the Home tab', () => {
     unseen.count = 2;
     renderNav();
-    expect(screen.getByRole('link', { name: 'Me, new notifications' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home, new notifications' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Me' })).toBeInTheDocument();
     unseen.count = 0;
   });
 

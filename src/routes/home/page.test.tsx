@@ -272,6 +272,14 @@ it('has no Display button in its header', () => {
   expect(screen.queryByRole('button', { name: 'Display settings' })).toBeNull();
 });
 
+// The owner, 2026-11-06: the bell back on Home, right of Filter.
+it('has the notifications bell after Filter', () => {
+  renderPage();
+  const filter = screen.getByRole('button', { name: 'Filters' });
+  const bell = screen.getByRole('link', { name: 'Notifications' });
+  expect(filter.compareDocumentPosition(bell) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 // 2026-10-21: Home suggested events Events leaves out for distance.
 describe('events near home', () => {
   beforeEach(() => {
@@ -587,8 +595,10 @@ describe('Home', () => {
       if (link) {
         expect(screen.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
       } else {
-        // No link in the list: the way to ask is a box.
-        expect(screen.queryAllByRole('link')).toEqual([]);
+        // No link in the list, only the header's bell: the way to ask is a box.
+        expect(screen.queryAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
+          '/notifications',
+        ]);
         expect(
           screen.getByRole('textbox', { name: 'Ask or post to the club' }),
         ).toBeInTheDocument();
