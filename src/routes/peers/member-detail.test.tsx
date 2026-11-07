@@ -23,7 +23,7 @@ vi.mock('@/lib/club-partners', async (importOriginal) => ({
 vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
   useOwnMember: () => ({
-    member: { injuryType: state.myType },
+    member: { type: 'peer', injuryType: state.myType },
     invitedBy: null,
     loading: false,
     error: null,
@@ -318,6 +318,24 @@ describe('family links', () => {
     await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
     expect(screen.queryByRole('button', { name: 'Link Nicole as family…' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Block Nicole' })).toBeInTheDocument();
+  });
+
+  it('offers any other member linking only on a relative’s or spouse’s profile', async () => {
+    const user = userEvent.setup();
+    state.myType = 'quad';
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole', injuryType: 'family' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.getByRole('button', { name: 'Link Nicole as family…' })).toBeInTheDocument();
+  });
+
+  it('never offers it to a professional', async () => {
+    const user = userEvent.setup();
+    state.myType = 'professional';
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole', injuryType: 'family' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.queryByRole('button', { name: 'Link Nicole as family…' })).toBeNull();
   });
 
   it('still lets anyone answer, and remove a link they are in', async () => {

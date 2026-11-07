@@ -12,7 +12,7 @@ import { reportMember, useMyReports } from '@/lib/chat/reports';
 import { openDirect } from '@/lib/chat/threads';
 import { useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
-import { removeFamilyLink, useMemberFamily } from '@/lib/family';
+import { mayLinkFamily, removeFamilyLink, useMemberFamily } from '@/lib/family';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember, useOwnMember } from '@/lib/members';
 import { useMemberOrganizations } from '@/lib/organization-members';
@@ -499,8 +499,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [choosingMentor, setChoosingMentor] = useState(false);
   const [linkingFamily, setLinkingFamily] = useState(false);
   const { family, reload: reloadFamily } = useMemberFamily(member?.id);
-  // Only a member who said they are a relative or spouse links family, of anyone (the owner, 2026-11-07).
-  const mayLinkFamily = useOwnMember(account.userId).member?.injuryType === 'family';
+  const me = useOwnMember(account.userId).member;
   const canConnect = useICanConnect(account.userId);
   const reports = useMyReports();
   const announce = useAnnounce();
@@ -556,6 +555,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const canMessage = account.userId !== null && account.userId !== member.id;
   // The reader's own link with this member, if any (src/lib/family.ts).
   const ours = family.find((link) => link.memberId === account.userId);
+  const mayLink = me !== null && mayLinkFamily(me, member);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -658,7 +658,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   </button>
                 ) : null}
                 {/* Asked of the reader: answered on the page, not here. */}
-                {!ours && mayLinkFamily ? (
+                {!ours && mayLink ? (
                   <button
                     type="button"
                     onClick={() => {

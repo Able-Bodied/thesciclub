@@ -26,9 +26,9 @@ export default function PrivacyPage() {
       <Note title="What changed on November 7, 2026">
         <List>
           <li>
-            <b>Added:</b> a member who joined as a relative or spouse can link another member as
-            family, such as a spouse, parent or child. It shows on both of your profiles only once
-            the other says yes (see Who can see what).
+            <b>Added:</b> a member who joined as a relative or spouse and another member can link
+            each other as family, such as a spouse, parent or child. It shows on both of your
+            profiles only once the other says yes (see Who can see what).
           </li>
           <li>
             <b>Changed:</b> Cloudflare now counts visits to every page of the website, signed in or
@@ -575,12 +575,13 @@ export default function PrivacyPage() {
             notification.
           </li>
           <li>
-            <b>Family.</b> A member who joined as a relative or spouse can ask to link you as
-            family, and say how: spouse or partner, parent, child, brother or sister, or other
-            family. You are told who asked and as what. Until you say yes, only the two of you see
-            the request, and if you say no they are not told. Once you say yes, members who can see
-            both of your profiles see the link on each, with how you are related. Either of you can
-            remove it at any time, and a block between you removes it.
+            <b>Family.</b> A member who joined as a relative or spouse can ask any member to link as
+            family, and any other member, except a professional, can ask a relative or spouse. They
+            say how: spouse or partner, parent, child, brother or sister, or other family. You are
+            told who asked and as what. Until you say yes, only the two of you see the request, and
+            if you say no they are not told. Once you say yes, members who can see both of your
+            profiles see the link on each, with how you are related. Either of you can remove it at
+            any time, and a block between you removes it.
           </li>
           <li>
             <b>Being connected.</b> An org admin or a verified professional can connect two or more

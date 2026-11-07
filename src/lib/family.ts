@@ -45,6 +45,22 @@ export function familyAs(relation: string | null): string {
   }
 }
 
+interface Linker {
+  type: string;
+  injuryType: string | null;
+}
+
+/**
+ * Who may ask whom (the owner, 2026-11-07; private.may_link_family): a relative
+ * or spouse asks anyone; any other member, not a professional, asks a relative
+ * or spouse. Organization accounts are not family.
+ */
+export function mayLinkFamily(me: Linker, them: Linker): boolean {
+  if (me.type === 'organization' || them.type === 'organization') return false;
+  if (me.injuryType === 'family') return true;
+  return me.injuryType !== 'professional' && them.injuryType === 'family';
+}
+
 export function isRelation(value: string): value is Relation {
   return (RELATIONS as readonly string[]).includes(value);
 }

@@ -53,7 +53,7 @@ describe('the Privacy Policy', () => {
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
     expect(notes[0]).toMatch(
-      /Added: a member who joined as a relative or spouse can link another member/,
+      /Added: a member who joined as a relative or spouse and another member can link/,
     );
     expect(notes[0]).toMatch(/Changed: Cloudflare now counts visits to every page of the website/);
     expect(notes[1]).toMatch(
