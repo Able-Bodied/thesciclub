@@ -70,7 +70,8 @@ describe('introducing two members', () => {
     expect(screen.getByRole('button', { name: 'Remove Maya Local' })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('A note to both of them'), 'Both C6 in San Jose.');
     expect(
-      screen.getByText(/leave out health details\. 480 characters left\./),
+      // Long notes are welcome: no count until it is nearly full.
+      screen.getByText(/leave out health details\.$/),
     ).toBeInTheDocument();
     // The partner stays out of it unless they tick the box (the owner, 2026-10-29).
     expect(
@@ -139,12 +140,19 @@ describe('introducing two members', () => {
     expect(onSent).not.toHaveBeenCalled();
   });
 
-  it('will not send a note over 500 characters', async () => {
+  // The owner, 2026-11-06: no 500 limit; as long as a chat message.
+  it('takes a long note, counts down near 4,000, and will not send one over', async () => {
+    state.make.mockResolvedValue({ ok: true, value: 'g1' });
     open();
     await chooseMaya();
     const note = screen.getByLabelText('A note to both of them');
     await userEvent.click(note);
-    await userEvent.paste('x'.repeat(501));
+    await userEvent.paste('x'.repeat(1200));
+    expect(screen.queryByText(/characters left/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Connect them' })).toBeEnabled();
+    await userEvent.paste('x'.repeat(2700));
+    expect(screen.getByText(/100 characters left\./)).toBeInTheDocument();
+    await userEvent.paste('x'.repeat(101));
     expect(screen.getByText(/1 characters over\./)).toBeInTheDocument();
     expect(note).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('button', { name: 'Connect them' })).toBeDisabled();

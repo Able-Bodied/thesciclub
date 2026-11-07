@@ -8,7 +8,10 @@ import { getSupabase } from '@/lib/supabase';
  * yeses until it expires; whoever said yes is never told the other said no.
  */
 
-export const INTRODUCTION_NOTE_MAX = 500;
+/** As long as any chat message (the owner, 2026-11-06; 20261106040000). */
+export const INTRODUCTION_NOTE_MAX = 4000;
+/** The count of what is left shows only this close to the end. */
+export const INTRODUCTION_NOTE_WARN = 200;
 
 export type IntroductionStatus = 'asked' | 'opened' | 'declined' | 'withdrawn' | 'expired';
 

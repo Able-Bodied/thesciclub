@@ -149,4 +149,15 @@ savepoint s14c;
 select * from public.connections;
 rollback to savepoint s14c;
 
+\echo ''
+\echo '== 15. a long note, 3,000 characters, is fine; 4,001 is not (expect a uuid, then ERROR 4,000 characters or fewer) =='
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-c5c5-0000-0000-000000000001","role":"authenticated"}';
+select public.connect_members(array['eeeeeeee-c5c5-0000-0000-000000000005', 'ffffffff-c5c5-0000-0000-000000000006']::uuid[],
+  repeat('a', 3000)) is not null as made;
+savepoint s15;
+select public.connect_members(array['dddddddd-c5c5-0000-0000-000000000004', 'eeeeeeee-c5c5-0000-0000-000000000005']::uuid[],
+  repeat('a', 4001));
+rollback to savepoint s15;
+
 rollback;

@@ -7,6 +7,7 @@ import {
   defaultGroupName,
   fetchConnectionGroups,
   INTRODUCTION_NOTE_MAX,
+  INTRODUCTION_NOTE_WARN,
 } from '@/lib/introductions';
 import type { MentionCandidate } from '@/lib/mentions';
 import { cn } from '@/lib/utils';
@@ -395,7 +396,12 @@ function NoteField({ form, label, hint }: { form: ConnectForm; label: string; hi
         {label}
       </label>
       <p id={hintId} className="mt-0.5 text-[0.8125rem] text-grey leading-[1.45]">
-        {hint} {left >= 0 ? `${left} characters left.` : `${-left} characters over.`}
+        {hint}{' '}
+        {left < 0
+          ? `${-left} characters over.`
+          : left <= INTRODUCTION_NOTE_WARN
+            ? `${left} characters left.`
+            : null}
       </p>
       <textarea
         id={noteId}
