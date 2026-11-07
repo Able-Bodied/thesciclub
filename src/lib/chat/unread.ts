@@ -2,41 +2,16 @@ import { badgesChanged, useBadgeCounts } from '@/lib/badges';
 import { tellOtherTabs } from '@/lib/read-elsewhere';
 
 /**
- * How many conversations have something new in them.
+ * How many conversations have something new: the Chat tab's dot, in the shell on every screen,
+ * so it is its own call rather than derived from `useMyThreads` on /chat.
  *
- * One number, for the dot on the Chat tab. It is a separate call from
- * `useMyThreads` rather than a count derived from it, because the two live in
- * different places: the list is on /chat and the dot is in the shell, mounted
- * on every screen. Deriving one from the other would mean the shell holding a
- * list it never draws.
+ * `chat_unread_count()`, via `my_badge_counts()` (src/lib/badges.ts), follows
+ * `chat_my_threads()`, so "new" has one definition and the dot never points at a list with
+ * nothing bold. Except: a muted conversation is bold but adds no dot (20261104204000).
  *
- * The number is `chat_unread_count()`'s, asked through `my_badge_counts()`
- * with the other badges (src/lib/badges.ts). It follows `chat_my_threads()`,
- * so there is still only one definition of "new" — somebody else's words, newer
- * than you last looked. Two definitions is how a nav dot ends up pointing at a
- * list with nothing bold in it. One difference, the other way: a muted
- * conversation is bold in the list but leaves the dot (20261104204000).
- *
- * ---------------------------------------------------------------------------
- * What makes it re-ask
- * ---------------------------------------------------------------------------
- * None of it is a timer. Polling a database every thirty seconds
- * for a dot is a cost every member on a phone pays for something they notice
- * once.
- *
- *  - The window regaining focus. Coming back to the tab is when a stale dot is
- *    most visible.
- *  - `unreadChanged()`, which Chat calls when it has just done something that
- *    changes the answer — reading a conversation is the one that matters, and
- *    it happens on a screen that is not this one. A notifier rather than a
- *    refetch on every navigation: the dot then moves exactly when the fact
- *    moves, instead of on every tap anywhere in the app.
- *
- * Also: a new message (its notification row, useBadgeRealtime), a read in
- * another tab (src/lib/read-elsewhere.ts) and a read on another device.
- *
- * A failure leaves the count at zero and says nothing. The dot is a hint; an
- * error message in the tab bar is not.
+ * No timer polling. It re-asks on window focus, on `unreadChanged()` after Chat reads something,
+ * on a new message (useBadgeRealtime), and on a read in another tab (src/lib/read-elsewhere.ts)
+ * or device. A failure leaves zero, silently: the dot is a hint.
  */
 
 /** Tell the dot that the answer has changed. Called by threads.ts. */

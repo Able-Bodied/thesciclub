@@ -4,41 +4,11 @@ import { cn } from '@/lib/utils';
 import { setShowInBrowse } from '@/routes/profile/details-api';
 
 /**
- * Whether other members can find you, on the screen that tells you what the
- * club knows about you.
- *
- * ---------------------------------------------------------------------------
- * Why it is here and not only in Your details
- * ---------------------------------------------------------------------------
- * It was only in the details form, four fields below the fold, behind a Save.
- * That is a reasonable place to *set* it and a bad place to *find* it: a member
- * who hid themselves months ago and is wondering why nobody has been in touch
- * has no way to discover that they did, because Me said nothing about it. The
- * state is the point, so the state belongs on the screen about them.
- *
- * It writes immediately rather than waiting for a Save, because it is a switch
- * and not a form — see `setShowInBrowse`.
- *
- * And it is here and nowhere else. `/profile/details` carried it first, four
- * fields down behind a Save, which is where it was mistaken for part of
- * onboarding. `saveDetails` no longer writes `show_in_browse` at all, so a
- * details form opened before somebody hid themselves cannot put them back in
- * the deck when they press Save on a page that no longer shows the switch.
- *
- * Hidden is stated loudly. Being invisible is a thing a member chose, but it is
- * also the explanation for an empty inbox, and a quiet grey row would not
- * reach somebody who has forgotten.
- *
- * ---------------------------------------------------------------------------
- * Visibility, not "the deck"
- * ---------------------------------------------------------------------------
- * The owner's wording. "Show me in the deck" named an internal word for the
- * grid of cards on Peers — the app says "Peers" everywhere a member can see,
- * and "deck" appears nowhere on screen except here. Framed as visibility it
- * also says the right thing about what is at stake: not where a card is drawn,
- * but whether another member can find you at all.
- *
- * Both states still lead with what is true, which is the part worth keeping.
+ * Whether other members can find you, on Me, the screen about you. Only here: buried in the
+ * details form, a member who hid long ago could not find out why nobody gets in touch.
+ * `saveDetails` no longer writes `show_in_browse`, so a stale details form cannot unhide them.
+ * Writes at once, as a switch (see `setShowInBrowse`). Hidden is shown loudly, since it explains
+ * an empty inbox. "Visibility", not "the deck" (the owner's wording; members see "Peers").
  */
 export function DeckVisibility({
   userId,
@@ -85,9 +55,7 @@ export function DeckVisibility({
           <p className="font-extrabold font-head text-[0.96875rem] text-ink">
             {showInBrowse ? 'Visible' : 'Hidden'}
           </p>
-          {/* What the word means, once. "Visible" alone left the question of
-              to whom, on the one switch that decides whether anybody can find
-              you. */}
+          {/* "Visible" alone leaves the question of to whom. */}
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
             {showInBrowse
               ? 'Other members can find you in Peers.'

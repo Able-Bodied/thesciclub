@@ -11,40 +11,12 @@ import { organizationTown, placesOf } from '@/routes/events/organization-places'
 import type { ClubEvent, Organization } from '@/types/domain';
 
 /**
- * The organizations directory, from `orgList()` in the mock.
+ * The organizations directory, from `orgList()` in the mock, under Events because an organization
+ * matters here mostly as the one running things.
  *
- * It lives under the Events tab rather than in a tab of its own because that is
- * where the mock puts it, and the reason holds: an organization is mostly
- * interesting here as the thing running what you are looking at.
- *
- * ---------------------------------------------------------------------------
- * One list, not sections
- * ---------------------------------------------------------------------------
- * This was briefly split into "can let you in", "running events here" and
- * "worth knowing about". It was reverted, and the reasoning it was built on was
- * wrong in a specific way: everybody reading this screen is already a member.
- * Who can issue an invite matters to them perhaps once, when somebody they know
- * wants in — it is not the axis they scan the list on, and promoting it to a
- * section heading made three organizations look like the important ones.
- *
- * The chip already carries it, on the rows where it is true. That is the right
- * weight for a fact that is occasionally useful and never urgent.
- *
- * The event count stays, because "101 on the calendar" is what tells somebody
- * which of these is actually running things.
- *
- * ---------------------------------------------------------------------------
- * Ordered by that count, not by name
- * ---------------------------------------------------------------------------
- * Alphabetical put Ability360 — Phoenix, nothing on the calendar — at the top
- * and NorCal SCI, which is running 101 of the 124 events, seven rows down.
- * Only 5 of the 23 organizations host anything at all, and many of the rest are
- * nowhere near a member: Portland, Atlanta, Chicago, Short Hills.
- *
- * So the list opens with the ones a member can actually turn up to, and the
- * directory of bodies worth knowing about follows, alphabetically among
- * themselves. This is ordering, not the sectioning that was tried and reverted
- * above — there are no headings, and nothing is promoted to a category.
+ * One list, no sections: splitting by "can let you in" was tried and reverted, since every reader
+ * is already a member; the chip carries it. Busiest first, not alphabetical, when there is no home
+ * to measure from: alphabetical put an empty calendar above the body running most of the events.
  */
 
 export interface DirectoryFilters {
@@ -140,13 +112,8 @@ export function byNearestThenActivity(
 }
 
 /**
- * The card is a div and the name is the button, which it was not before.
- *
- * The whole row used to be one `<button>`, and Follow cannot live inside one —
- * a button inside a button is invalid HTML, and browsers resolve it by
- * discarding the inner one, so the follow would have been a dead region that
- * opened the organization instead. The opening control is now the badge, the
- * name and the line under it, which is everything somebody aims at anyway.
+ * The card is a div and the badge, name and line under it are the button: Follow cannot sit
+ * inside a `<button>` (invalid HTML; browsers drop the inner one).
  */
 export function OrganizationRow({
   organization,

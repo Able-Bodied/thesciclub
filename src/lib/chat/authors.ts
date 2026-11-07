@@ -14,38 +14,13 @@ import { type InjuryType, injuryLabel } from '@/types/domain';
 /**
  * Putting a name to somebody who wrote something.
  *
- * ---------------------------------------------------------------------------
- * Why this is not useBrowseMembers
- * ---------------------------------------------------------------------------
- * `browse_members` is the deck of people to meet: it hides members who turned
- * themselves off the directory and members who are not active. That is right
- * for a deck and wrong for a post. Somebody who wrote forty posts and then hid
- * themselves has not unwritten them, and through browse_members every one of
- * those posts would render as nobody.
+ * Not `browse_members`: that hides members off the directory or inactive, and their posts would
+ * render as nobody. `chat_authors` has every member row, byline columns only. Its `hasProfile`
+ * decides the /peers/:id link; never derive it client-side, or there are two directory rules.
+ * A null author is a removed member ("Deleted member"), never looked up.
  *
- * So this reads `chat_authors`, which carries every member row regardless, and
- * carries only enough to print a byline — a name, an avatar, a level. The
- * `hasProfile` flag is the view's own, and it is what decides whether the
- * avatar links to /peers/:id. The client must not work that out from the
- * columns itself, or the day the directory rule changes there will be two
- * rules.
- *
- * A null author is not in here at all: that is a removed member, and the
- * screens render "Deleted member" rather than looking anybody up.
- *
- * ---------------------------------------------------------------------------
- * The cache is module-level on purpose
- * ---------------------------------------------------------------------------
- * A topic screen asks for six authors, the room list asks for four more, and
- * walking back and forth between them would re-read the same handful of rows on
- * every navigation. Names do not change while somebody is reading a thread, and
- * a stale display name for the length of a session is a smaller problem than a
- * request per screen.
- *
- * It is a cache and not a store: a miss is fetched, a hit is not, and nothing
- * invalidates. `resetChatAuthors()` exists for tests, which would otherwise
- * leak one file's fixtures into the next — a failure mode this project has
- * already had with Testing Library renders.
+ * Module-level cache on purpose, so moving between screens does not re-read the same rows. It is
+ * re-read only when faces change (below). `resetChatAuthors()` also stops tests leaking fixtures.
  */
 
 const cache = new Map<string, ChatAuthor>();
@@ -161,9 +136,7 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
     const { data, error } = await readInBatches<ChatAuthorRow>(wanted, (batch) =>
       getSupabase().from('chat_authors').select(AUTHOR_COLUMNS).in('id', batch),
     );
-    // A failure leaves the ids uncached, so the next render tries again. The
-    // screens draw an unnamed tile meanwhile, which is what they draw for a
-    // removed member — wrong for a moment rather than broken.
+    // A failure leaves the ids uncached, so the next render tries again.
     if (!error) {
       const found = new Set((data ?? []).map((row) => row.id));
       for (const id of wanted) {

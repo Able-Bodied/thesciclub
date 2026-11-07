@@ -9,42 +9,17 @@ import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
 /**
- * Likes on a post: the Like button, the count beside it, and the list of who.
+ * Likes on a post: the button, the count and the list of who (the owner, 2026-09-29, HANDOFF.md
+ * "What Home is" decision 4). One `PostLikes` for topics and Home photos, so they cannot drift.
  *
- * The owner, 2026-09-29 (HANDOFF.md "What Home is" decision 4): likes with names shown.
- * Drawn under every post in a topic and on a photograph on Home, from
- * `PostLikes` in both places, so the two cannot drift into disagreeing about
- * what the states are called or what the count opens.
+ * As `follow-button.tsx`, the visible word is the state and `aria-pressed` carries it; the name
+ * says the action and the post ("Like Jan's post", the owner, 2026-09-30), or a topic is a column
+ * of identical buttons to a screen reader. The name starts with the visible word for voice users.
+ * Shown on every post, own ones and zero counts too (the owner, 2026-10-10).
  *
- * ---------------------------------------------------------------------------
- * The label says the state, and the name says the post
- * ---------------------------------------------------------------------------
- * As `follow-button.tsx`: the visible word is the state, "Like" then "Liked",
- * `aria-pressed` carries it, and the accessible name says what pressing does.
- * The name also says which post — "Like Jan's post", "3 likes on Jan's post"
- * — for the reason post.tsx gives: a topic of twenty posts is otherwise a
- * column of twenty identical buttons in a screen reader's list. The owner
- * chose that over the plan's bare "Like" on 2026-09-30. The visible word
- * starts the name, so a voice user saying "Like" still reaches it.
- *
- * ---------------------------------------------------------------------------
- * Every standing post, including your own (the owner, 2026-10-10)
- * ---------------------------------------------------------------------------
- * Zero is shown too, so a new post still has a visible like count.
- *
- * ---------------------------------------------------------------------------
- * The list is a dialog
- * ---------------------------------------------------------------------------
- * Built like report-sheet.tsx: `role="dialog"`, `aria-modal`, and three ways
- * out — Close, the backdrop and Escape. Its focus is `useDialogFocus`: to its
- * heading when it opens, round its own links and buttons, and back on the
- * count that opened it when it closes. The count is also focused by name on
- * close, because Safari does not focus a button that is clicked, so the hook
- * may have nothing to go back to. `fixed` rather than report-sheet's `absolute`, because it is
- * opened from inside a card or a post rather than from the page, as the
- * photograph viewer is. The line under the title says who else can see it,
- * because a name on a list is a thing somebody should know is public to the
- * room before they press Like.
+ * The list is a dialog like report-sheet.tsx, `fixed` since it opens from inside a card. The count
+ * is refocused by name on close: Safari does not focus a clicked button, so the hook may have
+ * nothing to return to. The subtitle says who can see the names before anyone presses Like.
  */
 
 /** Sized in em off its own letters, so it grows with the text-size setting. */
@@ -99,9 +74,7 @@ export function LikeButton({
         className,
       )}
     >
-      {/* Filled when liked. The mock fills it with a pale tint, which on paper
-          is next to invisible; the word carries the state for everybody, and
-          a solid thumb carries it at a glance too. */}
+      {/* Solid when liked: the mock's pale tint is next to invisible on paper. */}
       <ThumbsUp
         key={pulse}
         aria-hidden="true"

@@ -10,24 +10,13 @@
 @import "tw-animate-css";
 
 /*
- * Two faces, both served from this site rather than Google Fonts: the club is
- * private, and a font request to Google from every member's phone is a record
- * of who opened it, when. Both are under the SIL Open Font License, beside the
- * files in public/fonts/, and the service worker precaches them
- * (vite.config.ts).
+ * Two faces, self-hosted rather than Google Fonts: a font request to Google from every member's
+ * phone is a record of who opened the club, when. Both SIL OFL (licences in public/fonts/),
+ * precached by the service worker (vite.config.ts).
  *
- * Atkinson Hyperlegible Next is every word a member reads — body, labels,
- * buttons, names, numbers. The Braille Institute drew it for low-vision
- * readers: I, l and 1 differ, 0 and O differ, b/d and p/q are not mirrors.
- * The owner's brand sets Outfit for body copy too; Outfit's geometric I, l
- * and 1 are near-identical at caption size, and accessibility comes first
- * here (the owner's call, 2026-09-29). Variable, 200 to 800, so semibold and
- * extrabold are real weights.
- *
- * Outfit, the brand face from the owner's sci-club-logo/fonts/, is display
- * only: `font-display`, on text 22px and larger — page titles, names on a
- * profile, the welcome headline — where its letter shapes cost nothing and
- * carry the brand. Bold only, since nothing sets display type lighter.
+ * Atkinson Hyperlegible Next for every word read: I, l and 1 differ, b/d and p/q are not mirrors.
+ * The brand sets Outfit for body too, but its I, l, 1 blur at caption size; accessibility first
+ * (the owner, 2026-09-29). Outfit is display only (`font-display`, 22px and up), bold only.
  */
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
@@ -81,38 +70,19 @@
 /*
  * Design tokens for The SCI Club.
  *
- * The brand half of this file (--navy … --tint, --head, --body) follows the
- * owner's brand files (sci-club-logo/tokens.json, 2026-09-28), which replaced
- * the design mock's values: gold-500 #d4a83a for #c9a227, the navy-tinted
- * inks, and Outfit for display type (with Atkinson Hyperlegible Next for
- * everything else — see the @font-face comment above). Where a token kept the
- * mock's value, its comment says why. The mock itself was removed on
- * 2026-10-03 (`git show 3a9ddd0:docs/index.html`). The app as it looked
- * before is the git tag `brand-before-outfit`.
+ * The brand half (--navy … --tint, --head, --body) follows sci-club-logo/tokens.json (2026-09-28);
+ * where a token kept the design mock's value, its comment says why. The mock is at
+ * `git show 3a9ddd0:docs/index.html`; the look before the brand is tag `brand-before-outfit`.
+ * The shadcn half maps them to shadcn's names. Nothing reads them yet (src/components/ui/ is
+ * empty); kept for any shadcn component added later.
  *
- * The shadcn half below maps those same colours onto shadcn's semantic names.
- * **Nothing reads them.** The scaffold laid them down for generated components
- * in src/components/ui/, that directory was never populated, and every control
- * in this app is hand-written against the brand names directly. They are left
- * because they cost nothing and because adding a shadcn component later would
- * want them — not because a <Button> somewhere is quietly using them.
- *
- * Light and dark, from 2026-10-02. Dark is a soft charcoal with the brand's
- * gold for links and accents, measured pair by pair in theme-contrast.test.ts;
- * it lives in the dark block at the end of this file. It was first the
- * brand's Navy theme (sci-club-logo/tokens.json), navy page and navy cards,
- * and the owner found it too blue to be easy on the eyes (2026-10-03).
- *
- * Navy does jobs in light mode that come apart on a dark page, so it is
- * split by role:
- *   --plate     the header bands on Me, an event, an organization and a
- *               profile: brand navy in light, the card colour in dark.
- *   --navy      the brand navy itself, for navy words on a white chip over a
- *               photograph. The same in both themes.
+ * Dark (2026-10-02) is soft charcoal with gold accents, in the dark block at the end; the brand's
+ * Navy theme was too blue (the owner, 2026-10-03). Navy's light-mode jobs split by role, all navy
+ * in light:
+ *   --plate     header bands (Me, event, organization, profile); the card colour in dark.
+ *   --navy      the brand navy itself, e.g. navy words on a white chip over a photograph.
  *   --action    filled buttons and selected options; a muted slate in dark.
- *   --emphasis  links, outlines, focus borders, eyebrows, unread dots and
- *               progress. Gold in dark, as the brand sets links on dark.
- * In light mode all three are the same navy, so nothing there changed.
+ *   --emphasis  links, outlines, focus borders, eyebrows, unread dots, progress; gold in dark.
  */
 
 :root {
@@ -146,13 +116,8 @@
   /* The brand's ink and ink-muted: navy-tinted rather than neutral. */
   --ink: #0e2646;
   --ink2: #4a5b73;
-  /* 4.88:1 on --paper and 4.51:1 on --canvas. It was #7c8899, which is 3.60:1
-     on white — under AA for text this size, and this is the token the time and
-     place of an event are drawn in. Both grounds have to clear it: grey sits on
-     cards and on the page behind them, and the page is the darker of the two,
-     so measuring against white alone picks a colour that fails in half the
-     places it is used. The club already offers a text-size setting and bigger
-     tap targets; being legible at the default size belongs with them. */
+  /* 4.88:1 on --paper and 4.51:1 on --canvas: it must clear AA on both, since grey sits on cards
+     and on the darker page behind them. The old #7c8899 was 3.60:1 on white. */
   --grey: #667283;
   --line: #cbd3de;
   --tint: #e4e9f1;
@@ -193,19 +158,10 @@
 
   /* ------------------------------------------------- discussion rooms */
   /*
-   * The categories a room falls into. Body, Life and Kit are from the mock's
-   * CATCOL; Mind, Family and Places were added on 2026-09-21 once members
-   * could start rooms (see src/lib/chat/types.ts). A room is drawn with its
-   * category's colour on its label, its left border and its icon, so the six
-   * have to be tellable apart *and* readable as text on both grounds a room
-   * card is ever drawn on — --paper for the card and --canvas for the page
-   * behind it. theme-contrast.test.ts holds them to both; --room-life on
-   * --canvas is the tightest at 4.81:1, which is why the category label is not
-   * drawn any smaller than it is.
-   *
-   * Body is --navy-hi's hex. They are separate tokens rather than aliases
-   * because what they mean is "the Body rooms", not "the hover navy" — the
-   * day one moves, the other should not.
+   * Room categories (Mind, Family and Places added 2026-09-21; src/lib/chat/types.ts), drawn on a
+   * room's label, border and icon. Each must read as text on --paper and --canvas
+   * (theme-contrast.test.ts); --room-life on --canvas is tightest at 4.81:1, so the label is not
+   * drawn smaller. Body shares --navy-hi's hex but is its own token, so one can move alone.
    */
   --room-body: #1a3e70;
   --room-mind: #5b3d8f;
@@ -216,16 +172,9 @@
 
   /* --------------------------------------------------------- measures */
   /*
-   * The reading column for a date-ordered list.
-   *
-   * Wider than the phone shell so a desktop is not a 480px ribbon, and far
-   * narrower than the window so a card's title, host and buttons stay within
-   * one eye movement — and one short pointer movement — of each other. A
-   * member driving this with a head pointer or a mouth stick pays for width in
-   * effort, not just in aesthetics.
-   *
-   * Peers deliberately does not use this: a deck of faces is scanned across,
-   * so it grids into the full shell instead.
+   * The reading column for a date-ordered list: wider than the phone shell, narrow enough that a
+   * card's parts stay one short pointer move apart (a head pointer or mouth stick pays for width).
+   * Peers does not use it: a deck of faces grids into the full shell.
    */
   --events-measure: 720px;
   /* Me's two columns on a desktop: each about the width of one list above. */
@@ -326,14 +275,9 @@
     @apply border-border outline-ring/50;
     -webkit-tap-highlight-color: transparent;
   }
-  /* One focus ring for everything that can take focus, drawn only for keyboard
-     and switch users (:focus-visible), in navy on light and gold-300 on navy so
-     it is seen on both. The brand's own focus colour on light is gold-800; navy
-     is kept because it is 15:1 against 5.3:1, and this club drives with a
-     keyboard or a switch more often than most. The browser's own ring took --ring at half opacity from
-     the rule above, which on the canvas was a faint grey line — WAI tip 3,
-     "interactive elements are easy to identify", and this club drives with a
-     keyboard, a switch or a head pointer more often than most. */
+  /* One focus ring, for keyboard and switch users only (:focus-visible): navy on light, gold-300
+     on navy. Navy over the brand's gold-800 because it is 15:1 against 5.3:1; the browser's ring
+     from the rule above was a faint grey line on the canvas. */
   :focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
@@ -357,13 +301,8 @@
     font-family: var(--head);
   }
 
-  /*
-   * Tailwind 4's reset sets buttons to `cursor: default`, which is correct to
-   * the HTML spec and wrong for this app — almost every control here is a
-   * button, and a page where nothing indicates it can be clicked reads as
-   * inert. Restored for everything that actually does something, including the
-   * labels that wrap a hidden file input.
-   */
+  /* Tailwind 4's reset gives buttons `cursor: default`; nearly every control here is a button, so
+     the pointer comes back for anything that acts, file-input labels included. */
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   a[href],
@@ -392,27 +331,11 @@
 
 /* ---------------------------------------------------------------- text size */
 /*
- * Type is sized in `rem`, so it answers to two things at once.
- *
- * The first is the member's own browser setting, which this app ignored
- * entirely until the type scale was converted: every size was a hard pixel
- * value from the mock, so somebody who had set their browser to 20px because
- * they cannot comfortably read 16 still got our 14. That is a real defect, it
- * affected people who would never find an in-app control, and rem fixes it for
- * free.
- *
- * The second is the setting on the Me tab, which multiplies whatever the
- * browser already said rather than replacing it — a member at 20px who picks
- * Large gets 23, not 18.4. `--text-scale` is the multiplier; 100% is the
- * browser's own answer, whatever that is.
- *
- * This replaced a `zoom` implementation, which was honest about nothing: it
- * scaled the entire interface including spacing and images, which is what the
- * browser's own zoom already does, and left the browser font setting ignored.
- *
- * The store app's web view on an iPhone ignores the phone's Text Size, so the
- * app reads it and sets `--system-text-scale`, never below 1
- * (src/lib/native-shell.ts). The website never sets it.
+ * Type is sized in `rem`, so it follows the browser's font setting (the mock's hard pixels ignored
+ * it), and the Me tab's `--text-scale` multiplies that rather than replacing it: 20px browser plus
+ * Large is 23. Not `zoom`, which scaled everything and still ignored the browser setting.
+ * The store app's iPhone web view ignores the phone's Text Size, so src/lib/native-shell.ts sets
+ * `--system-text-scale` (never below 1); the website never sets it.
  */
 :root {
   font-size: calc(100% * var(--text-scale, 1) * var(--system-text-scale, 1));
@@ -420,25 +343,10 @@
 
 /* ------------------------------------------------------------ tap targets */
 /*
- * WCAG 2.2 puts the minimum target at 24px and the enhanced level at 44px.
- * Everything primary here already clears 44. This raises the small secondary
- * controls — the filter buttons, the segment pills, the clear ✕ on the Peers
- * search, the visibility switch, and every button on an /admin row — for
- * somebody driving a pointer with their head or a mouth stick, where a 30px
- * control is a genuinely hard thing to land on.
- *
- * Opting in is per control, by `data-target="small"`, and for a long time
- * exactly one control in the app had it: the Events filter button. The setting
- * worked — measured, the hit area goes 38px to 48px — and did almost nothing,
- * because the ninety-two buttons on /admin, the pills on both tabs and the
- * 26px clear ✕ were all missed. An earlier draft of this comment also named
- * "the dismiss ✕", which was removed from event cards when series grouping
- * landed. **Add the attribute when you add a control under 44px**; there is
- * nothing automatic about it.
- *
- * It grows the hit area without growing the drawn control, using a pseudo
- * element, so the layout does not reflow and the design does not turn into a
- * page of large grey circles.
+ * WCAG 2.2: 24px minimum, 44px enhanced. Primary controls already clear 44; this raises small ones
+ * for head-pointer and mouth-stick users, via a pseudo element so nothing reflows.
+ * Opt-in per control with `data-target="small"`. For a long time only one control had it and the
+ * setting did almost nothing. **Add the attribute when you add a control under 44px.**
  */
 :root[data-large-targets="on"] [data-target="small"] {
   position: relative;
@@ -641,23 +549,13 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
 
 /* ================================================================ dark */
 /*
- * The dark theme, chosen on Me → Display: Match my device (the default), Light
- * or Dark. src/lib/accessibility.tsx writes the choice onto <html> as
- * data-appearance, and index.html does the same before the first paint so a
- * dark phone never flashes white.
- *
- * Never on /join (data-force-light, set by useForceLight): somebody joining or
- * signing in sees the club in light until they are in it, and the opt-in they
- * agree to looks exactly like the screenshots in the text-message registration
- * (the owner, 2026-10-03).
- *
- * Written twice, because CSS cannot share a block between a media query and an
- * attribute selector: once for "Dark", once for "Match my device" on a device
- * set to dark. theme-contrast.test.ts fails if the two ever differ, and measures
- * every pair below that meets on a screen.
- *
- * --navy, --navy-hi, --navy-dp, --gold, --gold-hi and --on-gold are absent on
- * purpose: they are the brand's fixed colours and mean the same in both.
+ * The dark theme, from Me → Display, written to <html> as data-appearance by
+ * src/lib/accessibility.tsx, and by index.html before first paint so a dark phone never flashes
+ * white. Never on /join (data-force-light, useForceLight): the opt-in must match the screenshots in
+ * the text-message registration (the owner, 2026-10-03).
+ * Written twice (CSS cannot share a block between a media query and an attribute selector);
+ * theme-contrast.test.ts fails if they differ. The brand's fixed colours (--navy, --navy-hi,
+ * --navy-dp, --gold, --gold-hi, --on-gold) are absent on purpose.
  */
 :root[data-appearance="dark"]:not([data-force-light]) {
   color-scheme: dark;

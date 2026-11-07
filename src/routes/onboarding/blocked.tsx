@@ -6,42 +6,15 @@ import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
 import { InviteRequestPanel } from '@/routes/request-invite/request-panel';
 
 /**
- * The address is not on the list: refused at sign-up, before any email
- * (20261012040000), or confirmed and then found not invited, as Google and
- * Apple are after their round trip.
+ * The address is not on the list: refused at sign-up before any email (20261012040000), or
+ * signed in and found not invited (Google and Apple, after their round trip). A closed door,
+ * not an error, with a way forward.
  *
- * Written as a closed door rather than as an error, because it is one. It names
- * the organizations who can open it, so somebody who wants in knows exactly
- * what to do next — a dead end with no route out of it is the thing that makes
- * an invite-only product feel like a snub rather than a club.
- *
- * "Ask somebody you know for an invite" was removed (the owner, 2026-10-10).
- * This screen keeps the consultation link only.
- *
- * The owner, 2026-11-02: the address box for an invite at another email is
- * open from the start, and the main button is "Request an invite", which opens
- * the request form here and sends it to one person (20261102050000). Signing
- * out stays as a small link: signed in at an address with no invite and no
- * other, it is the only way back to the doors.
- *
- * ---------------------------------------------------------------------------
- * The list is read, not written here (until 2026-11-02)
- * ---------------------------------------------------------------------------
- * It used to be three hardcoded rows. That was wrong the moment Wheel with Me
- * stopped being able to issue invites: this screen would have kept telling a
- * newly injured person to contact a foundation that cannot add them, at the
- * worst possible moment to be sent to the wrong place.
- *
- * `can_invite` is the one fact that decides who belongs here, so the screen
- * asks the database for it: invite_request_choices() (20261029030000), which
- * also gives each organization's org admins by first name. Tapping one opens
- * the request form right here, with the refused address filled in (the
- * owner, 2026-10-28: "save them a click").
- *
- * When the query fails there is no fallback list, deliberately. The sentence
- * above it still says a member organization or a mentor has to invite the address,
- * and signing out still works — a shorter true page beats a complete
- * one that might name the wrong body.
+ * The owner, 2026-11-02: the other-address box is open from the start, and the main button
+ * opens the request form here (20261102050000). Sign out stays as a small link: with no invite
+ * it is the only way back. "Ask somebody you know" was removed (the owner, 2026-10-10).
+ * Until 2026-11-02 this screen listed inviting organizations from invite_request_choices()
+ * (20261029030000); never hardcode such a list, it goes stale and names the wrong body.
  */
 
 export function BlockedScreen({

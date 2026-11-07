@@ -15,38 +15,14 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * Direct conversations: the chat half of Chat.
  *
- * ---------------------------------------------------------------------------
- * The list comes from a function, the messages from the table
- * ---------------------------------------------------------------------------
- * `chat_my_threads()` answers four questions per conversation at once — who
- * the other member is, how big a group is, what was said last, and whether
- * there is anything new — because the alternative is four queries a row on a
- * phone. It is `security invoker`, so RLS is what scopes it and there is no
- * gate inside it to be wrong about.
+ * `chat_my_threads()` gives each row's other member, group size, last message and unread in one
+ * call (not four queries a row); it is `security invoker`, so RLS scopes it. Messages are read and
+ * written on `chat_messages` directly; only what touches another's row goes through a function
+ * (create, mark read by the server's clock, remove). The database blanks a removed body, so the
+ * words never arrive; no `chat_messages_visible` view, because realtime reads tables.
  *
- * Messages are read straight from `chat_messages` and written straight to it.
- * Only the things that touch somebody else's row go through a function:
- * creating the thread (it adds the other person), marking it read (the server's
- * clock), removing (the author or an administrator).
- *
- * A removed message comes back with an empty body because the database blanked
- * the column, so there is no client-side rule about what to hide and no way for
- * the words to arrive and be suppressed. The same reason there is no
- * `chat_messages_visible` view: realtime reads tables.
- *
- * ---------------------------------------------------------------------------
- * A thread's composer is optimistic; a topic's is not
- * ---------------------------------------------------------------------------
- * The one place in Chat where a write is drawn before the database has seen it.
- * A message is a sentence and the round trip is felt — a bubble that appears
- * half a second after you press send makes a conversation feel like a form. A
- * post in a room is four paragraphs somebody has just finished writing, and
- * nobody is watching for it to appear.
- *
- * Optimistic *with an undo*, the same shape as following an organization: the
- * bubble is appended, and if the write is refused it is taken back out and the
- * composer is handed its words and the reason. What must never happen is a
- * bubble that stays on screen having never been saved.
+ * Sending is optimistic, with an undo (a topic's post is not): a refused bubble is taken back out
+ * and its words returned. A bubble must never stay on screen having never been saved.
  */
 
 /**
@@ -155,18 +131,9 @@ function toMessage(row: MessageRow): ChatMessage {
 export type ChatWriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /**
- * What a conversation is called, and what goes under the name.
- *
- * Pure, and the one place the four cases are written down, so the list row and
- * the thread header cannot disagree about what to call the same conversation:
- *
- *  - a group is its name;
- *  - a direct thread is the other member's name;
- *  - a direct thread whose other half has left the club is "Deleted member" —
- *    their words stay and their name does not, which is the owner's decision;
- *  - a name still loading is an empty string rather than "Unknown", because it
- *    is about to be a name and a row that says Unknown and then says Jan has
- *    told the reader something untrue on the way.
+ * What a conversation is called, and what goes under the name. The one place, so list row and
+ * header agree: a group's name; the other member's name; "Deleted member" once they have left
+ * (the owner's decision); and '' while loading, not "Unknown", which would be untrue.
  */
 export function threadTitle(thread: ChatThread, otherName: string | null): string {
   if (thread.kind === 'group') return thread.name ?? 'Group';
@@ -175,15 +142,8 @@ export function threadTitle(thread: ChatThread, otherName: string | null): strin
 }
 
 /**
- * Whether the message list should follow a new message down.
- *
- * Only if the reader was already at the bottom, within a line or so. Somebody
- * who has scrolled up is reading something; yanking them to the newest message
- * takes the page away mid-sentence, which is worse than making them tap a pill
- * to go back down.
- *
- * Pure and tested, because the alternative is finding out on a real device that
- * the threshold was zero and nothing ever followed.
+ * Whether the message list should follow a new message down: only when the reader is already
+ * within a line of the bottom, so somebody scrolled up is not yanked mid-sentence.
  */
 export const FOLLOW_SCROLL_SLACK = 80;
 
@@ -195,17 +155,9 @@ export function shouldFollowScroll(distanceFromBottom: number): boolean {
 export const QUOTE_LENGTH = 80;
 
 /**
- * The words of a quote: what the answered message said, cut short.
- *
- * Pure, so the three special cases are tested without a screen: a message
- * that has been taken back reads "Removed message" — the quote stays, since
- * the reply still answers something, and a gap with a reason reads better
- * than a quote that silently disappears; a message that was a photograph
- * alone reads "Photograph", and a shared post alone "Shared post"; and one
- * not in the list at all, which a read
- * that is mid-flight can produce, reads "Earlier message" rather than
- * nothing. The cut is by characters and not words, since a message that is
- * one long word is still a message.
+ * The words of a quote, cut by characters (one long word is still a message). A taken-back message
+ * reads "Removed message" (the reply still answers something); a photograph or shared post alone
+ * reads "Photograph" or "Shared post"; one not loaded (a read mid-flight) reads "Earlier message".
  */
 export function quoteText(message: ChatMessage | undefined): string {
   if (!message) return 'Earlier message';
@@ -442,14 +394,10 @@ export interface ThreadMessagesState {
 }
 
 /**
- * One conversation: its row out of `chat_my_threads` (the other member, a
- * group's size and name) and its newest MESSAGE_PAGE messages, with Show
- * earlier for the rest. A live change fetches only that message; a reconnect
- * or a return reads the newest page again and lays it over what is loaded.
- * Then it marks the thread read, by the server's clock.
- *
- * A thread the viewer is not in comes back as `thread: null` with no error:
- * to them it is an absence, not a refusal.
+ * One conversation: its `chat_my_threads` row and newest MESSAGE_PAGE messages, with Show earlier
+ * for the rest. A live change fetches one message; a reconnect or return re-reads the newest page
+ * over what is loaded. Then it marks the thread read by the server's clock. A thread the viewer
+ * is not in is `thread: null` with no error: an absence, not a refusal.
  */
 export function useThreadMessages(threadId: string | undefined): ThreadMessagesState {
   const account = useAccount();
@@ -870,11 +818,8 @@ export async function sendMessage(
 ): Promise<ChatWriteResult<ChatMessage>> {
   const { data, error } = (await getSupabase()
     .from('chat_messages')
-    // Exactly the columns insert is granted on. created_at, removed_at,
-    // removed_by_admin and edited_at belong to the database — see
-    // 20260918070000 — and naming one here would fail with `permission
-    // denied`. reply_to is named only when there is one, so a plain message
-    // still lands on a database that predates the column.
+    // Only the columns insert is granted on (20260918070000); any other fails with
+    // `permission denied`. reply_to only when set, for databases without the column.
     .insert({
       thread_id: threadId,
       author_id: authorId,
@@ -891,13 +836,9 @@ export async function sendMessage(
 }
 
 /**
- * Change the words of the reader's own message.
- *
- * `chat_edit_message` decides and refuses in a sentence: the author only, and
- * only while the message is standing. The earlier version goes to
- * chat_edits, which an administrator reads on a report of it. A blank body
- * is refused unless the message has photographs, and an edit that changes
- * nothing is refused; the composer stops both before sending.
+ * Change the words of the reader's own message. `chat_edit_message` decides (author only, while
+ * standing, not blank without photographs, not unchanged) and keeps the old words in chat_edits
+ * for an administrator reading a report.
  */
 export async function editMessage(messageId: string, body: string): Promise<ChatWriteResult<null>> {
   const { error } = await getSupabase().rpc('chat_edit_message', {
