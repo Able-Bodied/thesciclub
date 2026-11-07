@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -64,6 +64,9 @@ const audience = vi.hoisted(() => ({
     audience: 'followers' | 'groups' | 'people' | 'organizations';
     organization: { id: string; name: string; shortCode: string; logoPath: null } | null;
   },
+  // What event_visibility gives this reader (20261107130000).
+  invitees: null as null | { id: string; displayName: string; username: string; photoPath: null }[],
+  addedBy: null as null | { id: string; displayName: string; photoPath: null },
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
@@ -76,8 +79,9 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
         mayChange: false,
         organizations: [],
         groups: null,
-        invitees: null,
+        invitees: audience.invitees,
         inviteeCount: 3,
+        addedBy: audience.addedBy,
       },
     }),
 }));
@@ -251,6 +255,34 @@ describe('EventDetailPage', () => {
       screen.getByText(/Nobody else can see it, in the app or from its link/),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Share the link to invite anyone/)).toBeNull();
+  });
+
+  // The owner, 2026-11-07: the count opens who is invited, and who organized it.
+  it('opens who is invited from the count, with who organized it', async () => {
+    const user = userEvent.setup();
+    audience.invitees = [
+      { id: 'u1', displayName: 'Bo Diaz', username: 'bo', photoPath: null },
+      { id: 'u2', displayName: 'Cy Ng', username: '', photoPath: null },
+    ];
+    audience.addedBy = { id: 'org1', displayName: 'Ana Ruiz', photoPath: null };
+    state.events = [makeEvent({ id: 'dinner', audience: 'people' })];
+    renderDetail('dinner');
+    await user.click(await screen.findByRole('button', { name: '3 people invited' }));
+    const sheet = screen.getByRole('dialog', { name: 'Who’s invited' });
+    expect(within(sheet).getByRole('link', { name: /Ana Ruiz/ })).toHaveAttribute(
+      'href',
+      '/peers/org1',
+    );
+    expect(within(sheet).getByRole('link', { name: /Bo Diaz/ })).toHaveAttribute(
+      'href',
+      '/peers/u1',
+    );
+    expect(within(sheet).getByText('Invited (3)')).toBeInTheDocument();
+    expect(within(sheet).getByText('1 more is not shown to you.')).toBeInTheDocument();
+    await user.click(within(sheet).getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog', { name: 'Who’s invited' })).toBeNull();
+    audience.invitees = null;
+    audience.addedBy = null;
   });
 
   it('tells a member outside an invite-only event only that it is invite only', async () => {

@@ -33,6 +33,7 @@ const club: EventVisibility = {
   groups: [],
   invitees: [],
   inviteeCount: 0,
+  addedBy: null,
 };
 
 function open(visibility = club, onSaved = vi.fn()) {

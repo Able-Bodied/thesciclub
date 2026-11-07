@@ -56,6 +56,7 @@ describe('the Privacy Policy', () => {
       /Added: a member who joined as a relative or spouse and another member can link/,
     );
     expect(notes[0]).toMatch(/Changed: Cloudflare now counts visits to every page of the website/);
+    expect(notes[0]).toMatch(/Added: everyone invited to an invite-only event sees who else/);
     expect(notes[1]).toMatch(
       /Changed: an org admin or a verified professional can connect two or more/,
     );

@@ -72,8 +72,11 @@ export interface EventVisibility {
   mayChange: boolean;
   organizations: VisibilityOrganization[];
   groups: string[] | null;
+  /** Organizers', its creator's, and on an invite-only event its guests' (20261107130000). */
   invitees: Invitee[] | null;
   inviteeCount: number;
+  /** Who added it, when the reader may see them. */
+  addedBy: { id: string; displayName: string; photoPath: string | null } | null;
 }
 
 interface VisibilityRow {
@@ -85,6 +88,7 @@ interface VisibilityRow {
     | { id: string; name: string; username: string | null; photo_path: string | null }[]
     | null;
   invitee_count: number;
+  added_by?: { id: string; name: string; photo_path: string | null } | null;
 }
 
 export async function fetchEventVisibility(
@@ -118,6 +122,13 @@ export async function fetchEventVisibility(
           photoPath: m.photo_path,
         })) ?? null,
       inviteeCount: row.invitee_count,
+      addedBy: row.added_by
+        ? {
+            id: row.added_by.id,
+            displayName: row.added_by.name,
+            photoPath: row.added_by.photo_path,
+          }
+        : null,
     },
   };
 }
