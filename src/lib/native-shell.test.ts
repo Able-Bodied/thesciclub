@@ -9,6 +9,16 @@ const native = vi.hoisted(() => ({
   calls: [] as string[],
   /** What the phone's Text Size reads as. */
   textSize: 1,
+  keyboard: new Map<string, (event: { keyboardHeight: number }) => void>(),
+}));
+
+vi.mock('@capacitor/keyboard', () => ({
+  Keyboard: {
+    addListener: (name: string, listener: (event: { keyboardHeight: number }) => void) => {
+      native.keyboard.set(name, listener);
+      return Promise.resolve({ remove: () => Promise.resolve() });
+    },
+  },
 }));
 
 vi.mock('@capacitor/app', () => ({
@@ -210,6 +220,19 @@ describe('starting the shell', () => {
     document.documentElement.style.removeProperty('--system-text-scale');
     vi.unstubAllGlobals();
     document.body.innerHTML = '';
+  });
+
+  // The owner, 2026-11-07: a chat's box was half under the keyboard.
+  it('makes room for the keyboard by its own height, and gives it back', () => {
+    const root = document.documentElement;
+    native.keyboard.get('keyboardWillShow')?.({ keyboardHeight: 336.4 });
+    expect(root.dataset.keyboard).toBe('');
+    expect(root.style.getPropertyValue('--keyboard-height')).toBe('336px');
+    native.keyboard.get('keyboardDidShow')?.({ keyboardHeight: 380 });
+    expect(root.style.getPropertyValue('--keyboard-height')).toBe('380px');
+    native.keyboard.get('keyboardWillHide')?.({ keyboardHeight: 0 });
+    expect(root.dataset.keyboard).toBeUndefined();
+    expect(root.style.getPropertyValue('--keyboard-height')).toBe('');
   });
 
   it('hides the splash and paints the status bar for the page', async () => {

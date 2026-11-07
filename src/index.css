@@ -722,6 +722,22 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
   min-height: calc(100dvh - env(safe-area-inset-top));
 }
 
+/* The keyboard up in the store app (src/lib/native-shell.ts sets its height):
+ * a full-height screen ends at its top, a longer page gets room to scroll a
+ * box above it, and a phone's tab bar steps aside while typing (the owner,
+ * 2026-11-07: a chat's box was half under the keyboard). */
+:root[data-native-app][data-keyboard] body {
+  padding-bottom: var(--keyboard-height, 0px);
+}
+:root[data-native-app][data-keyboard] .h-dvh {
+  height: calc(100dvh - env(safe-area-inset-top) - var(--keyboard-height, 0px));
+}
+@media (width < 44rem) {
+  :root[data-native-app][data-keyboard] nav[aria-label="Main"] {
+    display: none;
+  }
+}
+
 /*
  * The circle on Apple's button after a tap (opening-icon.tsx). Its timing is
  * all delay, which the kill switch above leaves alone: with reduced motion the

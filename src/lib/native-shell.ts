@@ -1,6 +1,7 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, type PluginListenerHandle, SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { Keyboard } from '@capacitor/keyboard';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TextZoom } from '@capacitor/text-zoom';
@@ -108,6 +109,28 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
   // index.css moves every screen below the status bar.
   document.documentElement.dataset.nativeApp = '';
 
+  // Room for the keyboard, from its own height: index.css takes it off every
+  // full-height screen and adds it below the rest (2026-11-07).
+  const root = document.documentElement;
+  const keyboardOpen = (height: number) => {
+    root.style.setProperty('--keyboard-height', `${String(Math.max(0, Math.round(height)))}px`);
+    root.dataset.keyboard = '';
+  };
+  const keyboardClosed = () => {
+    root.style.removeProperty('--keyboard-height');
+    delete root.dataset.keyboard;
+  };
+  listeners.push(
+    Keyboard.addListener('keyboardWillShow', ({ keyboardHeight }) => {
+      keyboardOpen(keyboardHeight);
+    }),
+    // Its height can change while it is up: the suggestions bar, another language.
+    Keyboard.addListener('keyboardDidShow', ({ keyboardHeight }) => {
+      keyboardOpen(keyboardHeight);
+    }),
+    Keyboard.addListener('keyboardWillHide', keyboardClosed),
+  );
+
   listeners.push(
     App.addListener('backButton', ({ canGoBack }) => {
       // Not one left open in a kept tab, hidden (App.tsx): its Escape is not listening.
@@ -185,6 +208,7 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
 
   return () => {
     delete document.documentElement.dataset.nativeApp;
+    keyboardClosed();
     document.removeEventListener('click', onClick, true);
     watch.disconnect();
     scheme.removeEventListener('change', paintBar);

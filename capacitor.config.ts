@@ -24,8 +24,11 @@ const config: CapacitorConfig = {
       showSpinner: false,
     },
     Keyboard: {
-      // The web view shrinks above the keyboard, so a focused box stays in sight.
-      resize: 'native',
+      // The web view keeps its size and the page makes room itself, from the
+      // keyboard's own height (src/lib/native-shell.ts, index.css). Shrinking
+      // the web view left a chat's box half under the keyboard on iOS 26
+      // (the owner, 2026-11-07).
+      resize: 'none',
       resizeOnFullScreen: true,
     },
     // Native Sign in with Apple and Google (src/lib/native-sign-in.ts). The
