@@ -15,6 +15,10 @@ import { cn } from '@/lib/utils';
  *
  * The pills are `aria-pressed` buttons, not tabs: a segment changes the content
  * below and nothing else, and there is no tab panel to be the tab of.
+ *
+ * They wrap rather than scroll: a row that ran off the side hid pills with
+ * nothing to say so, on a small phone or at a larger text size (the owner,
+ * 2026-11-06: every size of phone, iPad and computer).
  */
 export function SegmentPills<T extends string>({
   segments,
@@ -28,12 +32,7 @@ export function SegmentPills<T extends string>({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        'mx-auto flex w-full gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]',
-        className,
-      )}
-    >
+    <div className={cn('mx-auto flex w-full flex-wrap gap-[7px] py-[11px]', className)}>
       {segments.map(([segment, label]) => (
         <button
           key={segment}

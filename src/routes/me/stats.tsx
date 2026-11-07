@@ -37,7 +37,7 @@ function Stat({ value, label, to }: { value: number; label: string; to: string }
   return (
     <Link
       to={to}
-      className="flex min-h-[68px] flex-1 flex-col items-center justify-center rounded-[14px] border border-line bg-paper px-2 py-2.5 transition-colors hover:border-grey"
+      className="flex min-h-[68px] min-w-fit flex-1 basis-0 flex-col items-center justify-center rounded-[14px] border border-line bg-paper px-2 py-2.5 transition-colors hover:border-grey"
     >
       <span className="font-extrabold font-head text-[1.3125rem] text-emphasis leading-none">
         {value}
@@ -51,7 +51,9 @@ function Stat({ value, label, to }: { value: number; label: string; to: string }
 
 export function MeStats({ going, interested, beenTo }: MeStatsProps) {
   return (
-    <div className="flex gap-2.5">
+    // Equal and side by side while they fit; at a larger text size on a small
+    // phone, two and one rather than off the side (the owner, 2026-11-06).
+    <div className="flex flex-wrap gap-2.5">
       <Stat value={going} label="Going" to="/events?segment=going" />
       <Stat value={interested} label="Interested" to="/events?segment=interested" />
       {/* Always, including at zero.

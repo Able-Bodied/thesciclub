@@ -164,9 +164,11 @@ export default function PeersPage() {
           topics, interests and the bio. */}
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-2.5">
         <h1 className="sr-only">Peers</h1>
-        <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between gap-2">
+        {/* Wraps rather than cutting List and Map off a small phone at a larger
+            text size; they keep to the right (the owner, 2026-11-06). */}
+        <div className="mx-auto flex w-full max-w-[1100px] flex-wrap items-center justify-between gap-2">
           <TwoWayToggle label="Show" options={SEGMENTS} value={segment} onChange={setSegment} />
-          <ViewSwitch view={view} onChange={setView} />
+          <ViewSwitch view={view} onChange={setView} className="ml-auto" />
         </div>
         <div className="mx-auto flex w-full max-w-[1100px] items-center gap-2 py-2">
           <HeaderSearch

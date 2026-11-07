@@ -66,9 +66,11 @@ export function preloadMap(): void {
 export function ViewSwitch({
   view,
   onChange,
+  className,
 }: {
   view: ListOrMap;
   onChange: (next: ListOrMap) => void;
+  className?: string;
 }) {
   const option = (value: ListOrMap, label: string, Icon: typeof List) => (
     <button
@@ -90,10 +92,17 @@ export function ViewSwitch({
     </button>
   );
   return (
-    <fieldset className="flex flex-none rounded-full bg-tint p-0.5">
-      <legend className="sr-only">Show as</legend>
+    // A group, not a fieldset: Safari measured a fieldset narrower than its
+    // buttons, so the row did not wrap and Map ran off a phone at a larger
+    // text size (the owner, 2026-11-06).
+    // biome-ignore lint/a11y/useSemanticElements: Safari lays out a fieldset in a wrapping row too narrow; the group keeps its name.
+    <div
+      role="group"
+      aria-label="Show as"
+      className={cn('flex flex-none rounded-full bg-tint p-0.5', className)}
+    >
       {option('list', 'List', List)}
       {option('map', 'Map', MapPin)}
-    </fieldset>
+    </div>
   );
 }

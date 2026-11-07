@@ -66,7 +66,7 @@ export function NotificationBell({
       to="/notifications"
       aria-label={label}
       className={cn(
-        'relative flex items-center gap-2 rounded-xl px-3 py-1.5 font-bold text-[0.875rem] text-grey hover:bg-tint',
+        'relative flex items-center gap-2 rounded-xl px-2 py-1.5 font-bold text-[0.875rem] text-grey hover:bg-tint lg:px-3',
         className,
       )}
     >
@@ -78,7 +78,9 @@ export function NotificationBell({
         />
         {badge}
       </span>
-      <span>Notifications</span>
+      {/* The bell alone on an iPad held upright: the word did not fit beside
+          five tabs at a larger text size. Its name is the link's label. */}
+      <span className="hidden lg:inline">Notifications</span>
     </Link>
   );
 }

@@ -18,8 +18,15 @@ export function TwoWayToggle<T extends string>({
   onChange: (next: T) => void;
 }) {
   return (
-    <fieldset className="flex w-fit min-w-0 flex-none rounded-full bg-tint p-0.5">
-      <legend className="sr-only">{label}</legend>
+    // A group, not a fieldset: Safari measured a fieldset narrower than its
+    // buttons, so a row of them did not wrap and ran off a phone at a larger
+    // text size (the owner, 2026-11-06).
+    // biome-ignore lint/a11y/useSemanticElements: Safari lays out a fieldset in a wrapping row too narrow; the group keeps its name.
+    <div
+      role="group"
+      aria-label={label}
+      className="flex w-fit min-w-0 flex-none rounded-full bg-tint p-0.5"
+    >
       {options.map(([option, name]) => (
         <button
           key={option}
@@ -38,6 +45,6 @@ export function TwoWayToggle<T extends string>({
           {name}
         </button>
       ))}
-    </fieldset>
+    </div>
   );
 }

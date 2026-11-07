@@ -439,7 +439,9 @@ export default function EventsPage() {
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-2.5">
         <h1 className="sr-only">Events</h1>
-        <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center justify-between gap-2">
+        {/* Wraps rather than cutting List and Map off a small phone at a larger
+            text size; they keep to the right (the owner, 2026-11-06). */}
+        <div className="mx-auto flex w-full max-w-[var(--events-measure)] flex-wrap items-center justify-between gap-2">
           <TwoWayToggle
             label="Show"
             options={PILLS}
@@ -461,7 +463,7 @@ export default function EventsPage() {
               {showingList ? 'Event' : 'Organization'}
             </Link>
           ) : null}
-          <ViewSwitch view={view} onChange={setView} />
+          <ViewSwitch view={view} onChange={setView} className="ml-auto" />
         </div>
 
         <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center gap-2 py-2">

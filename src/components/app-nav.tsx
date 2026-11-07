@@ -137,9 +137,11 @@ export function AppNav() {
               }
               className={cn(
                 'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
-                // Icon over label on a phone, beside it on a desktop, where
-                // the row is wide and the stacked label is needlessly small.
-                'md:flex-row md:gap-2 md:px-3 md:py-1.5 md:text-[0.875rem]',
+                // Icon over label on a phone and an iPad held upright, beside
+                // it from a laptop's width, where the row is wide and the
+                // stacked label is needlessly small. Beside it on an upright
+                // iPad ran off at a larger text size (the owner, 2026-11-06).
+                'md:px-2.5 lg:flex-row lg:gap-2 lg:px-3 lg:py-1.5 lg:text-[0.875rem]',
                 isActive ? 'text-emphasis' : 'text-grey',
                 !isActive && 'md:hover:bg-tint',
               )}
