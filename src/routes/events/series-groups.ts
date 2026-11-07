@@ -106,17 +106,25 @@ export function groupBySeries(events: ClubEvent[]): SeriesGroup[] {
  * word for it.
  */
 export function cadenceOf(group: SeriesGroup): string | null {
-  const all = [group.lead, ...group.rest];
+  return cadenceOfStarts([group.lead, ...group.rest].map((event) => event.startTime));
+}
+
+/**
+ * The same, from the dates' starts in order: for an event's own page and
+ * Stats & controls, which have a series' dates but not a group (the owner,
+ * 2026-11-06).
+ */
+export function cadenceOfStarts(starts: readonly string[]): string | null {
   // Two occurrences give one gap, and one gap is not a rhythm — it is a
   // coincidence with a number attached. Two climbing meet-ups two days apart
   // were being announced as "Daily", which is a claim the data does not make.
   // Three occurrences, two gaps, before naming anything.
-  if (all.length < 3) return null;
+  if (starts.length < 3) return null;
 
   const days: number[] = [];
-  for (let i = 1; i < all.length; i += 1) {
-    const previous = Date.parse(all[i - 1]?.startTime ?? '');
-    const current = Date.parse(all[i]?.startTime ?? '');
+  for (let i = 1; i < starts.length; i += 1) {
+    const previous = Date.parse(starts[i - 1] ?? '');
+    const current = Date.parse(starts[i] ?? '');
     if (Number.isNaN(previous) || Number.isNaN(current)) continue;
     days.push(Math.abs(current - previous) / 86_400_000);
   }
@@ -140,4 +148,9 @@ export function cadenceOf(group: SeriesGroup): string | null {
   if (median >= 12 && median <= 16) return 'Fortnightly';
   if (median >= 26 && median <= 35) return 'Monthly';
   return 'Repeats';
+}
+
+/** "Repeats weekly", "Repeats twice a week", or just "Repeats". */
+export function repeatsLine(cadence: string | null): string {
+  return !cadence || cadence === 'Repeats' ? 'Repeats' : `Repeats ${cadence.toLowerCase()}`;
 }

@@ -27,6 +27,7 @@ const state = vi.hoisted(() => ({
 vi.mock('@/lib/events', async (importOriginal) => ({
   rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
   useEvents: () => ({ events: state.events, loading: false, error: null, reload: state.reload }),
+  fetchSeriesStarts: () => Promise.resolve([]),
   useAttendeesByEvent: () => ({
     byEvent: new Map(),
     loading: false,

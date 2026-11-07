@@ -401,3 +401,20 @@ describe('who can see each event', () => {
     expect(screen.queryByRole('button', { name: /Change who can see/ })).toBeNull();
   });
 });
+
+// The owner, 2026-11-06: a date of a repeating event says how often.
+describe('repeating events', () => {
+  it('tags each date of a weekly event, and not a one-off', async () => {
+    const week = (n: number) => new Date(Date.now() + (3 + 7 * n) * 86_400_000).toISOString();
+    state.events = [
+      event({ eventId: 'w1', title: 'Weekly ride', seriesId: 's1', startTime: week(0) }),
+      event({ eventId: 'w2', title: 'Weekly ride', seriesId: 's1', startTime: week(1) }),
+      event({ eventId: 'w3', title: 'Weekly ride', seriesId: 's1', startTime: week(2) }),
+      event({ eventId: 'one', title: 'Picnic', seriesId: null, startTime: week(0) }),
+    ];
+    show(<EventNoticesPanel {...PANEL} />);
+    expect(await screen.findAllByText(/· Repeats weekly$/)).toHaveLength(3);
+    const picnic = screen.getByRole('button', { name: /^Picnic/ });
+    expect(picnic).not.toHaveTextContent('Repeats');
+  });
+});

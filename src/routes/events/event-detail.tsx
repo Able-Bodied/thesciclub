@@ -39,6 +39,7 @@ import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
 import { PrivacyChip, privacyLabel } from '@/routes/events/privacy-chip';
+import { RepeatsLine } from '@/routes/events/repeats-line';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { ShareEventButton } from '@/routes/events/share-event';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
@@ -234,6 +235,12 @@ export default function EventDetailPage() {
                 className="underline decoration-[#B9CADF]/50 underline-offset-2 hover:text-white"
               />
             </p>
+            <RepeatsLine
+              seriesId={event.seriesId}
+              startTime={event.startTime}
+              timezone={event.timezone}
+              className="mt-1 text-[#B9CADF] text-[0.8125rem] leading-[1.42]"
+            />
             <OutOfStateMark state={event.state} onNavy className="mt-2" />
 
             {isOnline(event) || event.tags.length || privacyLabel(event.audience) ? (

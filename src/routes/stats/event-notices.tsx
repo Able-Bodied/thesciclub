@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { AudienceOrganization } from '@/routes/events/audience-field';
 import { audienceLabel } from '@/routes/events/event-audience-parts';
+import { cadenceOfStarts, repeatsLine } from '@/routes/events/series-groups';
 import { VisibilitySheet } from '@/routes/events/visibility-sheet';
 import { FIRST_PEOPLE } from '@/routes/stats/organization-people';
 
@@ -119,6 +120,9 @@ export function EventNoticesPanel({
   }, [load]);
 
   const shown = events ? (all ? events : events.slice(0, FIRST_PEOPLE)) : [];
+  // How often each repeating event repeats, from its dates in the list, as
+  // the Events list says it (the owner, 2026-11-06).
+  const repeats = repeatsBySeries(events ?? []);
 
   return (
     <div className="mt-4">
@@ -143,6 +147,7 @@ export function EventNoticesPanel({
               key={event.eventId}
               event={event}
               onSent={load}
+              repeats={event.seriesId ? repeats.get(event.seriesId) : undefined}
               organizationId={organizationId}
               organizationName={organizationName}
               organizations={organizations}
@@ -240,15 +245,28 @@ function EveryEventSwitch({ organizationId }: { organizationId: string }) {
   );
 }
 
+/** "Repeats weekly" for each series in the list, by its id. */
+export function repeatsBySeries(events: readonly EventNotices[]): Map<string, string> {
+  const starts = new Map<string, string[]>();
+  for (const event of events) {
+    if (event.seriesId)
+      starts.set(event.seriesId, [...(starts.get(event.seriesId) ?? []), event.startTime]);
+  }
+  return new Map([...starts].map(([id, list]) => [id, repeatsLine(cadenceOfStarts(list))]));
+}
+
 function EventRow({
   event,
   onSent,
+  repeats,
   organizationId,
   organizationName,
   organizations,
 }: {
   event: EventNotices;
   onSent: () => void;
+  /** "Repeats weekly", for a date of a repeating event. */
+  repeats: string | undefined;
   organizationId: string;
   organizationName: string;
   organizations: AudienceOrganization[];
@@ -304,6 +322,7 @@ function EventRow({
           <span className="mt-0.5 block text-[0.75rem] text-grey">
             {when(event)}
             {over ? ' · started' : ''}
+            {repeats ? ` · ${repeats}` : ''}
           </span>
           <span className="sr-only">{open ? ', hide who answered' : ', see who answered'}</span>
         </span>

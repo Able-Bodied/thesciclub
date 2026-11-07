@@ -677,6 +677,27 @@ export async function saveEvent(
 }
 
 /**
+ * The starts of a repeating event's dates, from five weeks back, in order:
+ * for its page to say how often it repeats and when next (the owner,
+ * 2026-11-06). Only the dates the viewer can see; empty if it fails.
+ */
+export async function fetchSeriesStarts(seriesId: string): Promise<string[]> {
+  try {
+    const since = new Date(Date.now() - 35 * 86_400_000).toISOString();
+    const { data, error } = (await getSupabase()
+      .from('events')
+      .select('start_time')
+      .eq('series_id', seriesId)
+      .gte('start_time', since)
+      .order('start_time')
+      .limit(30)) as { data: { start_time: string }[] | null; error: Failure | null };
+    return error ? [] : (data ?? []).map((row) => row.start_time);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Gives an event its video call link, or none (20261106070000): after the
  * event is saved, as its cover is, and on a date of a repeating event to that
  * date and every later one.
