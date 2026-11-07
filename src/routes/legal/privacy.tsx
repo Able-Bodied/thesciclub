@@ -23,6 +23,19 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 6, 2026">
+        <List>
+          <li>
+            <b>Changed:</b> an org admin or a verified professional can connect two or more members
+            at once, in a new group conversation or one that already exists (see Who can see what).
+          </li>
+          <li>
+            <b>Added:</b> an event can be private, for the members of chosen organizations or for
+            people its organizer invites. Nobody else can see it, in the app or from its link, and
+            each person invited is told (see Event hosts).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 5, 2026">
         <List>
           <li>
@@ -543,12 +556,12 @@ export default function PrivacyPage() {
             notification.
           </li>
           <li>
-            <b>Being connected.</b> An org admin or a verified professional can connect two members.
-            You are not asked first: you and the other member are added to a group conversation,
-            which opens with a line saying who connected you and their note, and you are told.
-            Whoever connected you is in it only if they chose to be, and can read it only then. You
-            can leave it, block or report anyone in it, at any time, and you will not be connected
-            to the same member twice.
+            <b>Being connected.</b> An org admin or a verified professional can connect two or more
+            members. You are not asked first: you are added to a group conversation, a new one or
+            one that already exists, with a line saying who connected you and their note, and you
+            are told. Whoever connected you is in it only if they chose to be, and can read it only
+            then. If they started the group, they can add more people to it later. You can leave it,
+            block or report anyone in it, at any time.
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it. If
@@ -621,15 +634,16 @@ export default function PrivacyPage() {
         {/* Public event pages and registrations, 2026-10-22 (20261022190000);
             every event's since 2026-10-29 (20261029110000). */}
         <P>
-          Every event has a public page that anyone with its link can open. It shows the event's
-          details only, never who is going or how many. Adding yourself to the club’s list there
-          shares your name, email address and phone number, if you give it, with the club’s
-          administrators and anybody in the club who manages that event, for that event only. It
-          does not register you with the host. The guest list also says whether the address belongs
-          to a member, or to somebody joining. The page then says what comes next for that address:
-          sign in if it is a member’s, create your account if it has an invitation, or ask for one.
-          If you then sign in or join with that address, it becomes your Going or Interested, and
-          the paragraph above applies.
+          Every event has a page that anyone with its link can open, unless it is private: an event
+          for the members of chosen organizations, or for people its organizer invited, opens only
+          for them. It shows the event's details only, never who is going or how many. Adding
+          yourself to the club’s list there shares your name, email address and phone number, if you
+          give it, with the club’s administrators and anybody in the club who manages that event,
+          for that event only. It does not register you with the host. The guest list also says
+          whether the address belongs to a member, or to somebody joining. The page then says what
+          comes next for that address: sign in if it is a member’s, create your account if it has an
+          invitation, or ask for one. If you then sign in or join with that address, it becomes your
+          Going or Interested, and the paragraph above applies.
         </P>
       </Section>
 

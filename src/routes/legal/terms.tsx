@@ -48,8 +48,8 @@ export default function TermsPage() {
             <b>Verified professionals.</b> We may make a member who works with people with spinal
             cord injuries a verified professional, shown with a verified mark and the profession
             they write. A verified professional can invite without a limit, make QR codes and links
-            that let people in until they expire, and connect two members, as an org admin can.
-            Connecting adds both to a group conversation without asking them first, and either can
+            that let people in until they expire, and connect members, as an org admin can.
+            Connecting adds them to a group conversation without asking them first, and anyone can
             leave it at any time. A verified professional’s word is not medical advice either, and
             we may end the role at any time.
           </li>
