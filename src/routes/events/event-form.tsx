@@ -357,7 +357,7 @@ function EventForm({
   // and for a club administrator the host too.
   const audienceOrganizations = options
     .filter((o) => adminOf.has(o.id) || (isAdmin && o.id === draft.host))
-    .map((o) => ({ id: o.id, name: o.name }));
+    .map((o) => ({ id: o.id, name: o.name, open: o.joinsNeedApproval !== true }));
   const chosenAudience = audience;
   const audienceChanged = isNew || !sameAudience(chosenAudience, initialChoice);
 

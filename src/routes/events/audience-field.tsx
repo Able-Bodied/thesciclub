@@ -23,6 +23,9 @@ import type { EventAudience } from '@/types/domain';
  * 20261106030000) are private: nobody else sees the event, even from its
  * link. Organizations lists the ones the organizer is an org admin of; an
  * old event for its host's followers reads as that one organization.
+ *
+ * An open organization lets anyone join, and so see it: the form says so
+ * (the owner, 2026-11-06).
  */
 
 export interface AudienceChoice {
@@ -38,6 +41,29 @@ export const CLUB_AUDIENCE: AudienceChoice = {
   organizations: [],
   people: [],
 };
+
+/** An organization the event can be for; `open` when anyone may join it. */
+export interface AudienceOrganization {
+  id: string;
+  name: string;
+  open?: boolean;
+}
+
+/** The chosen organizations anyone can join, by name. */
+export function openChosen(
+  choice: AudienceChoice,
+  organizations: AudienceOrganization[],
+): string[] {
+  if (choice.audience !== 'organizations') return [];
+  return organizations
+    .filter((o) => o.open === true && choice.organizations.includes(o.id))
+    .map((o) => o.name);
+}
+
+function listed(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
 
 /** Past this many groups, a list to choose from rather than a button each. */
 export const GROUP_BUTTONS_MAX = 6;
@@ -69,7 +95,7 @@ export function AudienceField({
   value: AudienceChoice;
   onChange: (next: AudienceChoice) => void;
   /** The organizations whose members may be chosen: those the organizer is an org admin of. */
-  organizations: { id: string; name: string }[];
+  organizations: AudienceOrganization[];
   labelClassName: string;
   hintClassName: string;
 }) {
@@ -88,6 +114,7 @@ export function AudienceField({
   );
   const chosenOrganizations = new Set(value.organizations);
   const isPrivate = value.audience === 'organizations' || value.audience === 'people';
+  const open = openChosen(value, organizations);
 
   function choose(audience: EventAudience) {
     // One organization to choose from: chosen with the option.
@@ -287,6 +314,12 @@ export function AudienceField({
             <p className={hintClassName}>Choose at least one group.</p>
           ) : null}
         </div>
+      ) : null}
+      {open.length > 0 ? (
+        <p className={hintClassName}>
+          Anyone can join {listed(open)}, so anyone who joins will see this. Turn on approval for
+          joins on {open.length === 1 ? 'its page' : 'their pages'} to keep it private.
+        </p>
       ) : null}
       {isPrivate ? (
         <p className={hintClassName}>

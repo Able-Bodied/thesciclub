@@ -179,7 +179,9 @@ export default function EventDetailPage() {
     .filter((orgId, index, all) => all.indexOf(orgId) === index)
     .flatMap((orgId) => {
       const found = organizationsById.get(orgId);
-      return found ? [{ id: found.id, name: found.name }] : [];
+      return found
+        ? [{ id: found.id, name: found.name, open: found.joinsNeedApproval !== true }]
+        : [];
     });
 
   return (

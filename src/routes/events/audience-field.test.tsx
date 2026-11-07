@@ -43,7 +43,7 @@ function Harness({
   seen,
 }: {
   start: AudienceChoice;
-  organizations?: { id: string; name: string }[];
+  organizations?: { id: string; name: string; open?: boolean }[];
   seen: AudienceChoice[];
 }) {
   const [value, setValue] = useState(start);
@@ -111,6 +111,38 @@ describe('Who in the club sees it', () => {
     await userEvent.click(screen.getByRole('button', { name: 'NorCal SCI' }));
     await userEvent.click(screen.getByRole('button', { name: 'SF Adaptive' }));
     expect(seen.at(-1)?.organizations).toEqual(['ncs', 'sf']);
+  });
+
+  // The owner, 2026-11-06: anyone can join an open organization, and so see it.
+  it('says when a chosen organization lets anyone join', async () => {
+    chats.threads = [];
+    render(
+      <Harness
+        start={CLUB_AUDIENCE}
+        organizations={[
+          { id: 'ncs', name: 'NorCal SCI', open: true },
+          { id: 'sf', name: 'SF Adaptive', open: false },
+          { id: 'rr', name: 'River Riders', open: true },
+        ]}
+        seen={[]}
+      />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: /Members of an organization/ }));
+    expect(screen.queryByText(/Anyone can join/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'SF Adaptive' }));
+    expect(screen.queryByText(/Anyone can join/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'NorCal SCI' }));
+    expect(
+      screen.getByText(
+        'Anyone can join NorCal SCI, so anyone who joins will see this. Turn on approval for joins on its page to keep it private.',
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'River Riders' }));
+    expect(
+      screen.getByText(/^Anyone can join NorCal SCI and River Riders, .* on their pages/),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /Invite only/ }));
+    expect(screen.queryByText(/Anyone can join/)).toBeNull();
   });
 
   it('invites people one by one', async () => {

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   type AudienceChoice,
   AudienceField,
+  type AudienceOrganization,
   audienceReady,
   sameAudience,
 } from '@/routes/events/audience-field';
@@ -41,7 +42,7 @@ export function VisibilitySheet({
   event: ClubEvent;
   visibility: EventVisibility;
   /** Whose members it can be for: the organizations they are an org admin of. */
-  organizations: { id: string; name: string }[];
+  organizations: AudienceOrganization[];
   onCancel: () => void;
   onSaved: () => void;
 }) {

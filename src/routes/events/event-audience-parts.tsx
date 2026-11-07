@@ -11,6 +11,7 @@ import {
   publicEventUrl,
 } from '@/lib/event-audience';
 import { useOrganizationFollows } from '@/lib/organization-follows';
+import type { AudienceOrganization } from '@/routes/events/audience-field';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { ShortLinkField, ShortLinkQr } from '@/routes/events/event-short-link';
 import { FollowButton } from '@/routes/events/follow-button';
@@ -75,7 +76,7 @@ export function EventAudienceSection({
   /** May change who sees it: an imported event's org admins too (20261106030000). */
   canSetVisibility?: boolean;
   /** The organizations they are an org admin of, for Members of an organization. */
-  adminOf?: { id: string; name: string }[];
+  adminOf?: AudienceOrganization[];
   onChanged?: () => void;
 }) {
   const announce = useAnnounce();
