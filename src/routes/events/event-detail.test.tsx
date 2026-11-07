@@ -67,6 +67,7 @@ const audience = vi.hoisted(() => ({
   // What event_visibility gives this reader (20261107130000).
   invitees: null as null | { id: string; displayName: string; username: string; photoPath: null }[],
   addedBy: null as null | { id: string; displayName: string; photoPath: null },
+  changedBy: [] as { id: string; displayName: string; photoPath: null }[],
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
@@ -82,6 +83,7 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
         invitees: audience.invitees,
         inviteeCount: 3,
         addedBy: audience.addedBy,
+        changedBy: audience.changedBy,
       },
     }),
 }));
@@ -265,6 +267,8 @@ describe('EventDetailPage', () => {
       { id: 'u2', displayName: 'Cy Ng', username: '', photoPath: null },
     ];
     audience.addedBy = { id: 'org1', displayName: 'Ana Ruiz', photoPath: null };
+    // The owner changed it after Ana added it.
+    audience.changedBy = [{ id: 'me', displayName: 'Alex', photoPath: null }];
     state.events = [makeEvent({ id: 'dinner', audience: 'people' })];
     renderDetail('dinner');
     await user.click(await screen.findByRole('button', { name: '3 people invited' }));
@@ -272,6 +276,11 @@ describe('EventDetailPage', () => {
     expect(within(sheet).getByRole('link', { name: /Ana Ruiz/ })).toHaveAttribute(
       'href',
       '/peers/org1',
+    );
+    expect(within(sheet).getByRole('link', { name: /Ana Ruiz.*Added it/ })).toBeInTheDocument();
+    expect(within(sheet).getByRole('link', { name: /Alex.*Changed it/ })).toHaveAttribute(
+      'href',
+      '/peers/me',
     );
     expect(within(sheet).getByRole('link', { name: /Bo Diaz/ })).toHaveAttribute(
       'href',
@@ -283,6 +292,7 @@ describe('EventDetailPage', () => {
     expect(screen.queryByRole('dialog', { name: 'Who’s invited' })).toBeNull();
     audience.invitees = null;
     audience.addedBy = null;
+    audience.changedBy = [];
   });
 
   it('tells a member outside an invite-only event only that it is invite only', async () => {

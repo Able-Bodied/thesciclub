@@ -10,7 +10,7 @@ const SUBHEADING =
   'mt-4 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
 
 /**
- * Who is invited to an invite-only event, and who added it (the owner,
+ * Who is invited to an invite-only event, and who added or changed it (the owner,
  * 2026-11-07): for its organizers and its guests alike (20261107130000).
  * A guest is shown only the members the directory shows them.
  */
@@ -33,6 +33,13 @@ export function InviteesSheet({
   const unseen = visibility.inviteeCount - invitees.length;
   const row = 'flex min-h-[48px] items-center gap-3 rounded-[12px] px-1.5 py-1.5 hover:bg-tint';
   const you = (id: string, name: string) => (id === readerId ? `${name} (you)` : name);
+  // Whoever added it, then whoever changed it or invited people (20261107140000).
+  const organizers = [
+    ...(visibility.addedBy ? [{ person: visibility.addedBy, did: 'Added it' }] : []),
+    ...visibility.changedBy
+      .filter((person) => person.id !== visibility.addedBy?.id)
+      .map((person) => ({ person, did: 'Changed it' })),
+  ];
 
   return createPortal(
     <>
@@ -66,17 +73,26 @@ export function InviteesSheet({
           </h2>
 
           <h3 className={SUBHEADING}>Organized by</h3>
-          {visibility.addedBy ? (
-            <Link to={`/peers/${visibility.addedBy.id}`} className={row}>
-              <MemberAvatar
-                id={visibility.addedBy.id}
-                displayName={visibility.addedBy.displayName}
-                photoPath={visibility.addedBy.photoPath}
-              />
-              <span className="font-bold text-[0.9375rem]">
-                {you(visibility.addedBy.id, visibility.addedBy.displayName)}
-              </span>
-            </Link>
+          {organizers.length > 0 ? (
+            <ul className="flex flex-col">
+              {organizers.map(({ person, did }) => (
+                <li key={person.id}>
+                  <Link to={`/peers/${person.id}`} className={row}>
+                    <MemberAvatar
+                      id={person.id}
+                      displayName={person.displayName}
+                      photoPath={person.photoPath}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold text-[0.9375rem]">
+                        {you(person.id, person.displayName)}
+                      </span>
+                      <span className="block text-[0.78125rem] text-grey">{did}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           ) : null}
           <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
             {organizationName ? `${organizationName}’s org admins` : 'Its organizers'} and the
