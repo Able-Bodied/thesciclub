@@ -7,6 +7,7 @@ import {
   useOrganizationRequests,
 } from '@/lib/organization-requests';
 import { useOrganizations } from '@/lib/organizations';
+import { matchesSearch } from '@/lib/search';
 import { SmallButton } from '@/routes/admin/controls';
 import { OrganizationEditor } from '@/routes/admin/organization-editor';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
@@ -18,17 +19,15 @@ import type { Organization } from '@/types/domain';
  * owner, 2026-10-28).
  */
 export function matchesOrganizationSearch(organization: Organization, search: string): boolean {
-  const words = search.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const text = [
-    organization.name,
-    organization.shortCode,
-    organizationTown(organization),
-    ...(organization.places ?? []).flatMap((place) => [place.label ?? '', place.city, place.state]),
-  ]
-    .join(' ')
-    .toLocaleLowerCase();
-  return words.every((word) => text.includes(word));
+  return matchesSearch(
+    [
+      organization.name,
+      organization.shortCode,
+      organizationTown(organization),
+      ...(organization.places ?? []).flatMap((place) => [place.label, place.city, place.state]),
+    ],
+    search,
+  );
 }
 
 /** Administrators manage the directory. Organization accounts edit only their

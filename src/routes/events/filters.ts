@@ -10,6 +10,7 @@
  */
 
 import { isEventOver } from '@/lib/event-over';
+import { matchesSearch } from '@/lib/search';
 import {
   type ClubEvent,
   type DateWindow,
@@ -177,22 +178,19 @@ export function matchesEventSearch(
   query: string,
   organizationName?: string,
 ): boolean {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const text = [
-    event.title,
-    event.detailSummary,
-    event.description,
-    event.location,
-    event.city,
-    event.hostName,
-    organizationName,
-    ...event.tags.map((tag) => tag.name),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return words.every((word) => text.includes(word));
+  return matchesSearch(
+    [
+      event.title,
+      event.detailSummary,
+      event.description,
+      event.location,
+      event.city,
+      event.hostName,
+      organizationName,
+      ...event.tags.map((tag) => tag.name),
+    ],
+    query,
+  );
 }
 
 export function filterEvents(

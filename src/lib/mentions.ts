@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { readInBatches, readPages } from '@/lib/read-pages';
+import { matchesSearch } from '@/lib/search';
 import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import { isValidUsername } from '@/lib/usernames';
@@ -164,17 +165,12 @@ export function suggestMentions(
   if (needle === '') return [];
   const among = scope.among ? new Set(scope.among) : null;
   const first = new Set(scope.first ?? []);
+  // The start of a word only (the owner, 2026-11-06): the @name, then a word
+  // of the name, then a later part of the @name ("parakh" of pranav.parakh).
   const rank = (member: MentionCandidate): number => {
     if (member.username.startsWith(needle)) return 0;
-    if (
-      member.displayName
-        .toLowerCase()
-        .split(/\s+/)
-        .some((word) => word.startsWith(needle))
-    ) {
-      return 1;
-    }
-    return member.username.includes(needle) ? 2 : -1;
+    if (matchesSearch(member.displayName, [needle])) return 1;
+    return matchesSearch(member.username, [needle]) ? 2 : -1;
   };
   return members
     .filter((member) => !among || among.has(member.id))

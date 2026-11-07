@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import type { HomeTopic } from '@/lib/home/types';
+import { matchesSearch, searchWords } from '@/lib/search';
 import { longWhen } from '@/routes/events/format';
 import type { BrowseMember, ClubEvent, Organization } from '@/types/domain';
 
@@ -17,17 +18,12 @@ export interface SearchSources {
 
 /** Every word somewhere in what is known of it, as the directory's search does. */
 function matching<T>(rows: readonly T[], words: string[], text: (row: T) => string): T[] {
-  return rows
-    .filter((row) => {
-      const haystack = text(row).toLowerCase();
-      return words.every((word) => haystack.includes(word));
-    })
-    .slice(0, EACH);
+  return rows.filter((row) => matchesSearch(text(row), words)).slice(0, EACH);
 }
 
 /** What a search finds, a few of each. Nothing for nothing typed. */
 export function searchHome(query: string, sources: SearchSources): SearchSources {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = searchWords(query);
   if (words.length === 0) return { topics: [], events: [], members: [], organizations: [] };
   return {
     topics: matching(sources.topics, words, (topic) => topic.title),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Failure } from '@/lib/describe-error';
+import { matchesSearch } from '@/lib/search';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -125,7 +126,7 @@ export function rankSimilar(words: readonly string[], rows: readonly Row[]): Sim
   return rows
     .map((row) => {
       const title = row.title.toLowerCase();
-      return { row, score: words.filter((word) => title.includes(word)).length };
+      return { row, score: words.filter((word) => matchesSearch(title, [word])).length };
     })
     .filter(({ score }) => score >= needed)
     .sort((a, b) => b.score - a.score)

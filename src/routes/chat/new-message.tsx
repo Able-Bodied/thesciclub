@@ -6,6 +6,7 @@ import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
 import { useBrowseMembers } from '@/lib/members';
+import { matchesSearch } from '@/lib/search';
 import { cityAndState, injuryLabel } from '@/types/domain';
 
 /**
@@ -32,12 +33,7 @@ export default function NewMessagePage() {
     const needle = filter.trim().toLowerCase();
     return members
       .filter((member) => member.id !== viewerId)
-      .filter(
-        (member) =>
-          needle === '' ||
-          member.displayName.toLowerCase().includes(needle) ||
-          (member.username ?? '').includes(needle.replace(/^@/, '')),
-      );
+      .filter((member) => matchesSearch([member.displayName, member.username], needle));
   }, [members, viewerId, filter]);
 
   function open(memberId: string) {

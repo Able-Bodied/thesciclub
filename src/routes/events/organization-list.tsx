@@ -4,6 +4,7 @@ import { FilterChip } from '@/components/filter-sheet-shell';
 import { californiaToday, type Grant, grantStatus, useGrantsByOrganization } from '@/lib/grants';
 import { NO_CATEGORY } from '@/lib/organization-categories';
 import { runsSport } from '@/lib/organization-sports';
+import { matchesSearch, searchWords } from '@/lib/search';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
@@ -89,19 +90,14 @@ export function matchesDirectory(
   filters: DirectoryFilters,
   facts: { grants: Grant[] | undefined; eventCount: number; following: boolean; today: string },
 ): boolean {
-  const words = filters.query.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = searchWords(filters.query);
   if (words.length > 0) {
-    const text = [
-      organization.name,
-      organization.city,
-      organization.description,
-      ...organization.tags,
-    ]
-      .join(' ')
-      .toLowerCase();
     // A search looks through the whole directory, whatever the chips say
     // (the owner, 2026-11-01).
-    return words.every((word) => text.includes(word));
+    return matchesSearch(
+      [organization.name, organization.city, organization.description, ...organization.tags],
+      words,
+    );
   }
   if (filters.hasGrants && (facts.grants ?? []).length === 0) return false;
   if (filters.grantsOpen && !hasOpenGrant(facts.grants, facts.today)) return false;

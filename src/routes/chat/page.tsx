@@ -15,6 +15,7 @@ import {
   type ChatSegment,
   type ChatThread,
 } from '@/lib/chat/types';
+import { matchesSearch } from '@/lib/search';
 import { useCoalesced } from '@/lib/use-coalesced';
 import { matchesChatSearch, SEARCH_FROM, splitShown } from '@/routes/chat/conversation-filters';
 import { QuickAsk } from '@/routes/chat/quick-ask';
@@ -151,12 +152,7 @@ export default function ChatPage() {
     ? grouped
         .map(
           ([category, inCategory]) =>
-            [
-              category,
-              inCategory.filter((room) =>
-                room.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
-              ),
-            ] as const,
+            [category, inCategory.filter((room) => matchesSearch(room.name, search))] as const,
         )
         .filter(([, inCategory]) => inCategory.length > 0)
     : grouped;

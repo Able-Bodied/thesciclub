@@ -12,6 +12,7 @@ import type { ChatThread } from '@/lib/chat/types';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { markdownToPlain } from '@/lib/markdown';
 import { useBrowseMembers } from '@/lib/members';
+import { matchesSearch } from '@/lib/search';
 import { canShareElsewhere, copyLink, shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site-origin';
 import { excerpt } from '@/routes/chat/reaction-bar';
@@ -85,7 +86,7 @@ function searchNeedle(search: string): string {
 }
 
 function matchesNeedle(needle: string, name: string, username: string | null | undefined): boolean {
-  return needle === '' || name.toLowerCase().includes(needle) || (username ?? '').includes(needle);
+  return matchesSearch([name, username], needle);
 }
 
 /** The value of a destination's radio button. */

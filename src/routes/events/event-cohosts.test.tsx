@@ -67,7 +67,8 @@ describe('EventCohosts', () => {
 
   it('adds a co-host found by search, leaving out the lead and those there already', async () => {
     const { onChanged } = show({ cohostIds: ['bee'], manages: true });
-    await userEvent.type(screen.getByLabelText('Add a co-host'), 'e');
+    // Every one is in Northern California; the search starts a word (2026-11-06).
+    await userEvent.type(screen.getByLabelText('Add a co-host'), 'north');
     const found = screen.getByRole('list', { name: 'Organizations found' });
     expect(found).toHaveTextContent('Cee Climbing');
     expect(found).not.toHaveTextContent('Lead Sports');

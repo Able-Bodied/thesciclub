@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useBrowseMembers } from '@/lib/members';
+import { matchesSearch } from '@/lib/search';
 import { cityAndState, injuryLabel } from '@/types/domain';
 
 /**
@@ -55,12 +56,7 @@ export function MemberPicker({
     const needle = filter.trim().toLowerCase();
     return members
       .filter((member) => !exclude.has(member.id))
-      .filter(
-        (member) =>
-          needle === '' ||
-          member.displayName.toLowerCase().includes(needle) ||
-          (member.username ?? '').includes(needle.replace(/^@/, '')),
-      );
+      .filter((member) => matchesSearch([member.displayName, member.username], needle));
   }, [members, exclude, filter]);
 
   const chosen = new Set(picked);

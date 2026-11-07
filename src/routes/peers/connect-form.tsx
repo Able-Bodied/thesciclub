@@ -10,6 +10,7 @@ import {
   INTRODUCTION_NOTE_WARN,
 } from '@/lib/introductions';
 import type { MentionCandidate } from '@/lib/mentions';
+import { matchesSearch } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useConnectableMembers } from '@/routes/peers/connect-fields';
 
@@ -263,7 +264,7 @@ function WhereChoice({ form }: { form: ConnectForm }) {
   const [typed, setTyped] = useState('');
   const groups = form.groups ?? [];
   const words = typed.trim().toLowerCase();
-  const shown = words ? groups.filter((g) => g.name.toLowerCase().includes(words)) : groups;
+  const shown = words ? groups.filter((g) => matchesSearch(g.name, words)) : groups;
 
   return (
     <fieldset className="mt-5">

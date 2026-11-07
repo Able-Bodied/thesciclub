@@ -8,6 +8,7 @@ import {
 } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { useKeptRead } from '@/lib/kept-reads';
+import { matchesSearch } from '@/lib/search';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -289,7 +290,7 @@ export function roomsMatching(rooms: ChatRoom[], name: string, limit = 5): ChatR
   const needle = normalizeRoomName(name).toLowerCase();
   if (needle.length < 2) return [];
   return rooms
-    .filter((room) => room.name.toLowerCase().includes(needle))
+    .filter((room) => matchesSearch(room.name, needle))
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .slice(0, limit);
 }

@@ -1,5 +1,6 @@
 import { threadTitle } from '@/lib/chat/threads';
 import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
+import { matchesSearch } from '@/lib/search';
 
 /**
  * Keeping a long Chat list short (the owner, 2026-11-05: "I have too many
@@ -40,10 +41,5 @@ export function matchesChatSearch(
   other: ChatAuthor | null,
   search: string,
 ): boolean {
-  const words = search.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const text = [threadTitle(thread, other?.displayName ?? null), other?.username ?? '']
-    .join(' ')
-    .toLocaleLowerCase();
-  return words.every((word) => text.includes(word));
+  return matchesSearch([threadTitle(thread, other?.displayName ?? null), other?.username], search);
 }

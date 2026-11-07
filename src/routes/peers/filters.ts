@@ -16,6 +16,7 @@
  */
 
 import type { MapContents, MapPoint } from '@/lib/map-data';
+import { matchesSearch } from '@/lib/search';
 import { canonicalTopicsOf } from '@/routes/peers/topics';
 import {
   type BrowseMember,
@@ -92,21 +93,9 @@ export function toggleFilter<K extends 'regions' | 'topics' | 'ages'>(
   return { ...filters, [key]: next };
 }
 
-/** Whether `q` begins a word somewhere in `text`. Both already lowercased. */
-function beginsAWord(text: string, q: string): boolean {
-  let at = text.indexOf(q);
-  while (at !== -1) {
-    if (at === 0 || !/[\p{L}\p{N}]/u.test(text[at - 1] ?? '')) return true;
-    at = text.indexOf(q, at + 1);
-  }
-  return false;
-}
-
 /** The start of any word of the name: "an" finds Mary Ann, "ry" finds nobody. */
-function matchesSearch(member: BrowseMember, search: string): boolean {
-  const q = search.trim().toLowerCase();
-  if (!q) return true;
-  return beginsAWord(member.displayName.toLowerCase(), q);
+function matchesMemberSearch(member: BrowseMember, search: string): boolean {
+  return matchesSearch(member.displayName, search);
 }
 
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
@@ -263,7 +252,7 @@ export function filterMembers(
       const hit = filters.topics.some((t) => theirs.has(t.toLowerCase()));
       if (!hit) return false;
     }
-    return matchesSearch(member, filters.search);
+    return matchesMemberSearch(member, filters.search);
   });
 
   return kept;

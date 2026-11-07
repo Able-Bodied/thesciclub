@@ -269,6 +269,7 @@ describe('the rooms that already exist under that name', () => {
     room({ id: 'bowel', name: 'Bowel management', sortOrder: 1 }),
     room({ id: 'bladder', name: 'Bladder & catheters', sortOrder: 2 }),
     room({ id: 'pain-1a2b', name: 'Shoulder pain', sortOrder: 1000, createdBy: 'ada' }),
+    room({ id: 'nerve', name: 'Nerve pain', sortOrder: 3 }),
   ];
 
   // One letter matches most of the twelve, and a list that is always there is
@@ -279,17 +280,20 @@ describe('the rooms that already exist under that name', () => {
     expect(roomsMatching(rooms, 'bl').map((r) => r.id)).toEqual(['bladder']);
   });
 
-  it('matches anywhere in the name, ignoring case', () => {
-    expect(roomsMatching(rooms, 'PAIN').map((r) => r.id)).toEqual(['pain-1a2b']);
+  // The start of a word, as every search (the owner, 2026-11-06).
+  it('matches the start of a word in the name, ignoring case', () => {
+    expect(roomsMatching(rooms, 'SHOULDER').map((r) => r.id)).toEqual(['pain-1a2b']);
     expect(roomsMatching(rooms, 'bl').map((r) => r.id)).toEqual(['bladder']);
+    expect(roomsMatching(rooms, 'ain')).toEqual([]);
+    expect(roomsMatching(rooms, 'cath').map((r) => r.id)).toEqual(['bladder']);
   });
 
   it('keeps the seeded rooms above the member-started ones', () => {
-    expect(roomsMatching(rooms, 'er').map((r) => r.id)).toEqual(['bladder', 'pain-1a2b']);
+    expect(roomsMatching(rooms, 'pain').map((r) => r.id)).toEqual(['nerve', 'pain-1a2b']);
   });
 
   it('caps the list', () => {
-    expect(roomsMatching(rooms, 'er', 1).map((r) => r.id)).toEqual(['bladder']);
+    expect(roomsMatching(rooms, 'pain', 1).map((r) => r.id)).toEqual(['nerve']);
   });
 
   it('finds the exact clash the database refused, whatever was typed', () => {

@@ -173,11 +173,11 @@ describe('Who in the club sees it', () => {
     render(<Harness start={CLUB_AUDIENCE} seen={seen} />);
     await userEvent.click(screen.getByRole('radio', { name: /Invite only/ }));
     await userEvent.type(screen.getByLabelText('Who is invited'), 'Ran');
+    // The start of a word (the owner, 2026-11-06): Ran, and not Pranav.
     const offered = await screen.findAllByRole('button', { name: /Ran|Pranav/ });
-    expect(offered).toHaveLength(2);
+    expect(offered).toHaveLength(1);
     expect(offered[0]).toHaveTextContent(/Ran$/);
     expect(offered[0]).not.toHaveTextContent('@');
-    expect(offered[1]).toHaveTextContent('Pranav Parakh@pranav.parakh');
     await userEvent.click(screen.getByRole('button', { name: /^R?Ran$/ }));
     expect(seen.at(-1)?.people.map((p) => p.id)).toEqual(['ran']);
   });
