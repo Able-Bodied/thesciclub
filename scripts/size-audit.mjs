@@ -14,7 +14,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium, webkit } from 'playwright';
 
-const BASE = process.env.SHOOT_BASE ?? 'http://localhost:5181';
+// No default: a port that is another worktree's app measures the wrong code (2026-11-06).
+const BASE = process.env.SHOOT_BASE;
+if (!BASE)
+  throw new Error('Set SHOOT_BASE to the address of the app to check, e.g. http://localhost:5191.');
 const EMAIL = process.env.SHOOT_EMAIL ?? 'sam@local.test';
 const PASSWORD = process.env.SHOOT_PASSWORD ?? 'local-dev-password';
 const OUT = 'screenshots/sizes';
@@ -24,6 +27,7 @@ export const SIZES = [
   { name: 'phone-375', width: 375, height: 667, touch: true },
   { name: 'phone-390', width: 390, height: 844, touch: true },
   { name: 'phone-430', width: 430, height: 932, touch: true },
+  { name: 'ipad-mini-744', width: 744, height: 1133, touch: true },
   { name: 'ipad-768', width: 768, height: 1024, touch: true },
   { name: 'ipad-820', width: 820, height: 1180, touch: true },
   { name: 'ipad-1024', width: 1024, height: 768, touch: true },
