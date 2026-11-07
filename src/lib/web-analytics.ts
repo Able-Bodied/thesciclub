@@ -11,8 +11,8 @@ import { isNative } from '@/lib/standalone';
 
 /** The counting page (count-worker/); netlify.toml's frame-src names it. */
 export const COUNT_HOME = 'https://sciclub-count.thesciclub.workers.dev';
-/** Empty, nothing loads: COUNT_HOME once the Worker is deployed with its token. */
-const COUNT_ORIGIN = '';
+/** Empty: nothing loads. */
+const COUNT_ORIGIN = COUNT_HOME;
 
 /** After the first redirects (/ to /home), and off the first paint. */
 export const START_MS = 1000;

@@ -12,6 +12,6 @@ preview_urls = false
 # The site token of the Web Analytics site for sciclub-count.thesciclub.workers.dev
 # (Cloudflare → Web Analytics → Add a site). Public: it is in the page. Empty:
 # the page loads, and counts nothing.
-COUNT_TOKEN = ""
+COUNT_TOKEN = "358dad18eda7485fb68f839d4d2e6f26"
 # For a local test only (wrangler dev), never deployed:
 # DEV_ORIGIN = "http://localhost:4173"
