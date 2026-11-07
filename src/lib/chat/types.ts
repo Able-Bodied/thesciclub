@@ -244,9 +244,10 @@ export interface ChatThread {
  * Written only by `chat_rename_group` and `chat_set_group_picture`
  * (20260930020000); a member cannot insert one. `renamed` carries the new
  * name as its body, `pictured` the new picture as its one attachment, and
- * `unpictured` neither.
+ * `unpictured` neither. `added` (chat_add_to_group, 20261106010000) has
+ * "Added Sam to the group" as its body and Sam as its subject.
  */
-export const CHAT_NOTICES = ['renamed', 'pictured', 'unpictured', 'introduced'] as const;
+export const CHAT_NOTICES = ['renamed', 'pictured', 'unpictured', 'introduced', 'added'] as const;
 export type ChatNotice = (typeof CHAT_NOTICES)[number];
 
 /** One message in a thread. */
@@ -276,6 +277,8 @@ export interface ChatMessage {
   linkPreview: LinkPreview | null;
   /** A post from a room this message shares, drawn as a card, or null. */
   sharedPostId: string | null;
+  /** On an `added` line, the member who was added. */
+  subjectId?: string | null;
   /**
    * True while this is a bubble the reader has sent and the database has not
    * confirmed. Never set on a row that came back from a read.

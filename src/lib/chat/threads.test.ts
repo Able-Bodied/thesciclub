@@ -128,6 +128,18 @@ describe('quoteText', () => {
 
 // One wording for a change to the group, in the conversation and the list.
 describe('noticeText', () => {
+  it('says who was added, and "you" to the one added', () => {
+    expect(noticeText('added', 'Jan', 'Added Sam Lee to the group')).toBe(
+      'Jan added Sam Lee to the group',
+    );
+    expect(noticeText('added', 'Jan', 'Added Sam Lee to the group', true, true)).toBe(
+      'Jan added you to the group',
+    );
+    expect(noticeText('added', 'You', 'Added a deleted member to the group', false)).toBe(
+      'You added a deleted member to the group',
+    );
+  });
+
   it('says who renamed the group and to what', () => {
     expect(noticeText('renamed', 'Jan', 'Tuesday swimmers')).toBe(
       'Jan renamed the group to “Tuesday swimmers”',

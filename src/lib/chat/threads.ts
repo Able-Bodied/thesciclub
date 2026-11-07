@@ -127,10 +127,11 @@ interface MessageRow {
   notice: string | null;
   link_preview: unknown;
   shared_post_id: string | null;
+  subject_id?: string | null;
 }
 
 const MESSAGE_COLUMNS =
-  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice, link_preview, shared_post_id';
+  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice, link_preview, shared_post_id, subject_id';
 
 function toMessage(row: MessageRow): ChatMessage {
   return {
@@ -147,6 +148,7 @@ function toMessage(row: MessageRow): ChatMessage {
     notice: toNotice(row.notice),
     linkPreview: toLinkPreview(row.link_preview),
     sharedPostId: row.shared_post_id ?? null,
+    subjectId: row.subject_id ?? null,
   };
 }
 
@@ -225,7 +227,16 @@ export function quoteText(message: ChatMessage | undefined): string {
  * same change two ways. `withName` is false in the list, where "Jan renamed
  * the group" is the whole of what fits and the new name is the row's title.
  */
-export function noticeText(notice: ChatNotice, who: string, body: string, withName = true): string {
+export function noticeText(
+  notice: ChatNotice,
+  who: string,
+  body: string,
+  withName = true,
+  addedYou = false,
+): string {
+  // The body is "Added Sam to the group"; `addedYou` when Sam is reading.
+  if (notice === 'added')
+    return `${who} added ${addedYou ? 'you to the group' : body.replace(/^Added /, '')}`;
   if (notice === 'renamed') {
     return withName && body ? `${who} renamed the group to “${body}”` : `${who} renamed the group`;
   }
@@ -734,6 +745,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
             notice: null,
             linkPreview: null,
             sharedPostId: null,
+            subjectId: null,
             pending: true,
           },
         ],

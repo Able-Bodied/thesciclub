@@ -963,6 +963,17 @@ describe('a change to the group', () => {
     expect(screen.queryByRole('button', { name: /Remove/ })).toBeNull();
   });
 
+  it('says who was added, and "you" to the member added', () => {
+    db.thread = group();
+    db.messages = [
+      message({ id: 'n1', notice: 'added', body: 'Added Sam Lee to the group', subjectId: 'sam' }),
+      message({ id: 'n2', notice: 'added', body: 'Added Me Myself to the group', subjectId: 'me' }),
+    ];
+    renderThread();
+    expect(screen.getByText(/Jan added Sam Lee to the group/)).toBeInTheDocument();
+    expect(screen.getByText(/Jan added you to the group/)).toBeInTheDocument();
+  });
+
   it('can be reported when somebody else made it', async () => {
     const user = userEvent.setup();
     db.thread = group();

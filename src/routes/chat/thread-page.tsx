@@ -574,6 +574,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                       : ((message.authorId ? authors.get(message.authorId)?.displayName : null) ??
                         'A deleted member')
                   }
+                  addedYou={message.subjectId === account.userId}
                   // As on a bubble: somebody else's, and not a former member's.
                   canReport={message.authorId !== null && message.authorId !== account.userId}
                   reported={reports.messageIds.has(message.id)}

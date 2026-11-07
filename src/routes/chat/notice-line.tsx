@@ -32,6 +32,7 @@ export function NoticeLine({
   message,
   notice,
   who,
+  addedYou = false,
   canReport,
   reported,
   onReport,
@@ -40,6 +41,8 @@ export function NoticeLine({
   notice: ChatNotice;
   /** "You", the member's name, or "A deleted member". */
   who: string;
+  /** On an `added` line, the reader is the one added. */
+  addedYou?: boolean;
   canReport: boolean;
   reported: boolean;
   onReport: () => void;
@@ -66,7 +69,7 @@ export function NoticeLine({
         <span>
           {message.removedAt !== null
             ? 'A line about a change to the group was removed by an administrator.'
-            : noticeText(notice, who, message.body)}
+            : noticeText(notice, who, message.body, true, addedYou)}
           <span aria-hidden="true"> · </span>
           <span className="whitespace-nowrap">{chatTime(message.createdAt)}</span>
         </span>
