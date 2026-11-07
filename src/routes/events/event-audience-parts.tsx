@@ -213,6 +213,7 @@ export function EventAudienceSection({
         <InviteesSheet
           visibility={listed}
           organizationName={organizationName}
+          hasCohosts={event.cohostIds.length > 0}
           readerId={readerId}
           onClose={() => {
             setListing(false);

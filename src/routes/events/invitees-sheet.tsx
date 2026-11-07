@@ -17,11 +17,14 @@ const SUBHEADING =
 export function InviteesSheet({
   visibility,
   organizationName,
+  hasCohosts = false,
   readerId,
   onClose,
 }: {
   visibility: EventVisibility;
   organizationName: string | null;
+  /** Its co-hosts' org admins see it too (20261107150000). */
+  hasCohosts?: boolean;
   readerId: string | null;
   onClose: () => void;
 }) {
@@ -95,8 +98,10 @@ export function InviteesSheet({
             </ul>
           ) : null}
           <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-            {organizationName ? `${organizationName}’s org admins` : 'Its organizers'} and the
-            club’s administrators can see it too.
+            {organizationName
+              ? `${organizationName}’s${hasCohosts ? ' and its co-hosts’' : ''} org admins`
+              : 'Its organizers'}{' '}
+            and the club’s administrators can see it too.
           </p>
 
           <h3 className={SUBHEADING}>Invited ({visibility.inviteeCount})</h3>

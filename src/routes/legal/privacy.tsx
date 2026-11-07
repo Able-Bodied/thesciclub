@@ -38,8 +38,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Added:</b> everyone invited to an invite-only event sees who else is invited and who
-            organized it: who added it, and anyone who changed it or invited people (see Event
-            hosts).
+            organized it: who added it, and anyone who changed it or invited people. A co-host’s org
+            admins see a private event as its host’s do (see Event hosts).
           </li>
         </List>
       </Note>
@@ -669,17 +669,18 @@ export default function PrivacyPage() {
         <P>
           Every event has a page that anyone with its link can open, unless it is private: an event
           for the members of chosen organizations, or for people its organizer invited, opens only
-          for them. Everyone invited to an invite-only event sees who else is invited, by name and
-          photograph, and who organized it: who added it, and anyone who changed it or invited
-          people, except members hidden from Peers or blocked either way. It shows the event's
-          details only, never who is going or how many. Adding yourself to the club’s list there
-          shares your name, email address and phone number, if you give it, with the club’s
-          administrators and anybody in the club who manages that event, for that event only. It
-          does not register you with the host. The guest list also says whether the address belongs
-          to a member, or to somebody joining. The page then says what comes next for that address:
-          sign in if it is a member’s, create your account if it has an invitation, or ask for one.
-          If you then sign in or join with that address, it becomes your Going or Interested, and
-          the paragraph above applies.
+          for them and its organizers: whoever added or changed it, the org admins of its host and
+          of any co-host, and the club’s administrators. Everyone invited to an invite-only event
+          sees who else is invited, by name and photograph, and who organized it: who added it, and
+          anyone who changed it or invited people, except members hidden from Peers or blocked
+          either way. It shows the event's details only, never who is going or how many. Adding
+          yourself to the club’s list there shares your name, email address and phone number, if you
+          give it, with the club’s administrators and anybody in the club who manages that event,
+          for that event only. It does not register you with the host. The guest list also says
+          whether the address belongs to a member, or to somebody joining. The page then says what
+          comes next for that address: sign in if it is a member’s, create your account if it has an
+          invitation, or ask for one. If you then sign in or join with that address, it becomes your
+          Going or Interested, and the paragraph above applies.
         </P>
       </Section>
 

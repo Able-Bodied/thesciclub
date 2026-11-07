@@ -287,6 +287,7 @@ describe('EventDetailPage', () => {
       '/peers/u1',
     );
     expect(within(sheet).getByText('Invited (3)')).toBeInTheDocument();
+    expect(sheet).toHaveTextContent('administrators can see it too.');
     expect(within(sheet).getByText('1 more is not shown to you.')).toBeInTheDocument();
     await user.click(within(sheet).getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog', { name: 'Who’s invited' })).toBeNull();
