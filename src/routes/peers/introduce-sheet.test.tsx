@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({ make: vi.fn(), announce: vi.fn(), groups: vi.f
 
 vi.mock('@/lib/mentions', async (importOriginal) => ({
   ...(await importOriginal<typeof Mentions>()),
-  loadMentionCandidates: () =>
+  loadMemberChoices: () =>
     Promise.resolve([
       { id: 'maya', displayName: 'Maya Local', username: 'maya', photoPath: null, photoAlt: null },
       { id: 'sam', displayName: 'Sam Lee', username: 'sam', photoPath: null, photoAlt: null },

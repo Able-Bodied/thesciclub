@@ -75,7 +75,7 @@ vi.mock('@/lib/chat/threads', () => ({
 }));
 vi.mock('@/lib/mentions', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  loadMentionCandidates: () => Promise.resolve([]),
+  loadMemberChoices: () => Promise.resolve([]),
 }));
 
 const { OrganizationPeople } = await import('@/routes/stats/organization-people');

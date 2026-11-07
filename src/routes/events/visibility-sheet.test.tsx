@@ -17,7 +17,7 @@ vi.mock('@/lib/chat/threads', async (importOriginal) => ({
 }));
 vi.mock('@/lib/mentions', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  loadMentionCandidates: () =>
+  loadMemberChoices: () =>
     Promise.resolve([
       { id: 'dee', displayName: 'Dee Lopez', username: 'dee', photoPath: null, photoAlt: null },
     ]),

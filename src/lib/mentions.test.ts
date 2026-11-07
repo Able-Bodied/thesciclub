@@ -113,21 +113,20 @@ async function loadWithClient(
             asked.push(names);
             return Promise.resolve({ data: rows, error: null });
           },
-          not: () => ({
+          order: () => ({
             order: () => ({
-              order: () => ({
-                range: () =>
-                  Promise.resolve({
-                    data:
-                      view === 'browse_members'
-                        ? [
-                            { id: 'me', display_name: 'Me', username: 'me' },
-                            { id: 'a', display_name: 'Ana', username: 'ana' },
-                          ]
-                        : [],
-                    error: null,
-                  }),
-              }),
+              range: () =>
+                Promise.resolve({
+                  data:
+                    view === 'browse_members'
+                      ? [
+                          { id: 'me', display_name: 'Me', username: 'me' },
+                          { id: 'a', display_name: 'Ana', username: 'ana' },
+                          { id: 'r', display_name: 'Ran', username: null },
+                        ]
+                      : [],
+                  error: null,
+                }),
             }),
           }),
         }),
@@ -155,5 +154,14 @@ describe('reading', () => {
   it('suggests Peers’ members with an @name, never the viewer', async () => {
     const { mentions } = await loadWithClient([]);
     expect((await mentions.loadMentionCandidates()).map((m) => m.username)).toEqual(['ana']);
+  });
+
+  // The owner, 2026-11-06: one without an @name is still invited by name.
+  it('offers everybody but the viewer to invite or connect, @name or not', async () => {
+    const { mentions } = await loadWithClient([]);
+    expect((await mentions.loadMemberChoices()).map((m) => [m.displayName, m.username])).toEqual([
+      ['Ana', 'ana'],
+      ['Ran', ''],
+    ]);
   });
 });

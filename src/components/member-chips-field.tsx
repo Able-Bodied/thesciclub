@@ -124,7 +124,9 @@ export function MemberChipsField({
                   </span>
                   <span className="min-w-0">
                     <span className="block font-bold">{m.displayName}</span>
-                    <span className="block text-[0.8125rem] text-grey">@{m.username}</span>
+                    {m.username ? (
+                      <span className="block text-[0.8125rem] text-grey">@{m.username}</span>
+                    ) : null}
                   </span>
                 </button>
               </li>

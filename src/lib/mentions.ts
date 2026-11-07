@@ -93,10 +93,11 @@ interface CandidateRow {
 let candidates: Promise<MentionCandidate[]> | null = null;
 
 /**
- * The members Peers shows (browse_members), with an @name, but not the viewer:
- * read once, when an "@" is first typed. Empty if it fails, and asked again.
+ * The members Peers shows (browse_members), but not the viewer: read once.
+ * One without an @name has an empty username. Empty if it fails, and asked
+ * again.
  */
-export function loadMentionCandidates(): Promise<MentionCandidate[]> {
+function loadPeers(): Promise<MentionCandidate[]> {
   candidates ??= (async () => {
     const supabase = getSupabase();
     const { data: session } = await supabase.auth.getSession();
@@ -105,18 +106,17 @@ export function loadMentionCandidates(): Promise<MentionCandidate[]> {
       supabase
         .from('browse_members')
         .select('id, display_name, username, photo_path, photo_alt')
-        .not('username', 'is', null)
         .order('display_name')
         .order('id')
         .range(from, to),
     );
     if (error) throw new Error(error.message);
     return (data ?? [])
-      .filter((row): row is CandidateRow & { username: string } => !!row.username && row.id !== me)
+      .filter((row) => row.id !== me)
       .map((row) => ({
         id: row.id,
         displayName: row.display_name,
-        username: row.username,
+        username: row.username ?? '',
         photoPath: row.photo_path,
         photoAlt: row.photo_alt,
       }));
@@ -125,6 +125,19 @@ export function loadMentionCandidates(): Promise<MentionCandidate[]> {
     return [];
   });
   return candidates;
+}
+
+/** Those with an @name, for @mentions: read when an "@" is first typed. */
+export async function loadMentionCandidates(): Promise<MentionCandidate[]> {
+  return (await loadPeers()).filter((member) => member.username !== '');
+}
+
+/**
+ * Everybody, @name or not, to invite or connect by name (the owner,
+ * 2026-11-06: a member without an @name could not be found).
+ */
+export function loadMemberChoices(): Promise<MentionCandidate[]> {
+  return loadPeers();
 }
 
 /**

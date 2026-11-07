@@ -54,7 +54,7 @@ vi.mock('@/lib/organizations', () => ({
 }));
 vi.mock('@/lib/mentions', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  loadMentionCandidates: () =>
+  loadMemberChoices: () =>
     Promise.resolve([
       { id: 'ana', displayName: 'Ana Ruiz', username: 'ana', photoPath: null, photoAlt: null },
       { id: 'bo', displayName: 'Bo Chan', username: 'bo', photoPath: null, photoAlt: null },

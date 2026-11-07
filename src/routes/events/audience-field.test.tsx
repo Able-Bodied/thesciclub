@@ -17,10 +17,18 @@ vi.mock('@/lib/chat/threads', () => ({
 
 vi.mock('@/lib/mentions', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  loadMentionCandidates: () =>
+  loadMemberChoices: () =>
     Promise.resolve([
       { id: 'dee', displayName: 'Dee Lopez', username: 'dee', photoPath: null, photoAlt: null },
       { id: 'eli', displayName: 'Eli Park', username: 'eli', photoPath: null, photoAlt: null },
+      {
+        id: 'pra',
+        displayName: 'Pranav Parakh',
+        username: 'pranav.parakh',
+        photoPath: null,
+        photoAlt: null,
+      },
+      { id: 'ran', displayName: 'Ran', username: '', photoPath: null, photoAlt: null },
     ]),
 }));
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
@@ -156,6 +164,22 @@ describe('Who in the club sees it', () => {
     expect(screen.getByText('1 invited. Add as many as you like.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Remove Dee Lopez' }));
     expect(seen.at(-1)?.people).toEqual([]);
+  });
+
+  // The owner, 2026-11-06: Ran, with no @name, could not be found.
+  it('finds a member with no @name by their name, first', async () => {
+    chats.threads = [];
+    const seen: AudienceChoice[] = [];
+    render(<Harness start={CLUB_AUDIENCE} seen={seen} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Invite only/ }));
+    await userEvent.type(screen.getByLabelText('Who is invited'), 'Ran');
+    const offered = await screen.findAllByRole('button', { name: /Ran|Pranav/ });
+    expect(offered).toHaveLength(2);
+    expect(offered[0]).toHaveTextContent(/Ran$/);
+    expect(offered[0]).not.toHaveTextContent('@');
+    expect(offered[1]).toHaveTextContent('Pranav Parakh@pranav.parakh');
+    await userEvent.click(screen.getByRole('button', { name: /^R?Ran$/ }));
+    expect(seen.at(-1)?.people.map((p) => p.id)).toEqual(['ran']);
   });
 
   it('chooses groups with a button each while there are few', async () => {
