@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { MemberAvatar } from '@/components/member-avatar';
@@ -8,13 +8,10 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { useIAmPartner, useICanConnect } from '@/lib/club-partners';
-import { describeThrown } from '@/lib/describe-error';
-import { INTRODUCTION_NOTE_MAX, makeIntroduction } from '@/lib/introductions';
-import type { MentionCandidate } from '@/lib/mentions';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import {
-  fetchMyIntroductions,
+  fetchMyConnections,
   fetchMyPartnerCard,
   fetchMyPeople,
   fetchOrganizationEvents,
@@ -22,7 +19,7 @@ import {
   fetchOrganizationWeeks,
   fetchPartnerStats,
   type HeldEvent,
-  type MadeIntroduction,
+  type MadeConnection,
   type OrganizationStats,
   type OrganizationWeek,
   type PartnerMember,
@@ -32,7 +29,13 @@ import {
   withdrawIntroduction,
 } from '@/lib/partner-hub';
 import { cn } from '@/lib/utils';
-import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/connect-fields';
+import {
+  type Connected,
+  ConnectFields,
+  ConnectMissing,
+  listNames,
+  useConnectForm,
+} from '@/routes/peers/connect-form';
 import { EventNoticesPanel } from '@/routes/stats/event-notices';
 import { OrganizationPeople } from '@/routes/stats/organization-people';
 import type { Organization } from '@/types/domain';
@@ -605,85 +608,50 @@ function Weeks({ organizationId }: { organizationId: string }) {
 
 function ConnectMembers({ onConnected }: { onConnected: () => void }) {
   const announce = useAnnounce();
-  const members = useConnectableMembers();
-  const [first, setFirst] = useState<MentionCandidate | null>(null);
-  const [second, setSecond] = useState<MentionCandidate | null>(null);
-  const [note, setNote] = useState('');
-  const [join, setJoin] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-  const others = (of: MentionCandidate | null) =>
-    members?.filter((member) => member.id !== of?.id) ?? null;
-  const ready =
-    first !== null && second !== null && note.trim() !== '' && note.length <= INTRODUCTION_NOTE_MAX;
+  const form = useConnectForm();
+  const [done, setDone] = useState<Connected | null>(null);
 
   function connect() {
-    if (busy || !first || !second) return;
-    setBusy(true);
-    setFailure(null);
     setDone(null);
-    makeIntroduction(first.id, second.id, note, join)
-      .then((result) => {
-        if (!result.ok) {
-          setFailure(result.error);
-          return;
-        }
-        const names = `${first.displayName} and ${second.displayName} are connected.`;
-        setDone(names);
-        announce(names);
-        setFirst(null);
-        setSecond(null);
-        setNote('');
-        setJoin(false);
-        onConnected();
-      })
-      .catch((e: unknown) => {
-        setFailure(describeThrown(e, 'Could not connect them.'));
-      })
-      .finally(() => {
-        setBusy(false);
-      });
+    void form.submit().then((result) => {
+      if (!result) return;
+      setDone(result);
+      announce(result.summary);
+      onConnected();
+    });
   }
 
   return (
     <section aria-labelledby="stats-connect-heading">
-      <SectionHeading id="stats-connect-heading">Connect two members</SectionHeading>
+      <SectionHeading id="stats-connect-heading">Connect members</SectionHeading>
       <div className="rounded-[14px] border border-line bg-paper p-3.5">
         <p className="text-[0.875rem] text-ink2 leading-[1.5]">
-          They are both added to a group conversation right away, and told you connected them.
-          Anybody in it can leave.
+          Introduce two or more people in a new group, or add people to a group you have. They are
+          added right away, and told you connected them. Anybody in it can leave.
         </p>
-        <MemberField
-          label="First member"
-          members={others(second)}
-          chosen={first}
-          onChoose={setFirst}
-        />
-        <MemberField
-          label="Second member"
-          members={others(first)}
-          chosen={second}
-          onChoose={setSecond}
-        />
-        <ConnectNote note={note} onNote={setNote} join={join} onJoin={setJoin} />
-        {failure ? (
-          <p
-            role="alert"
-            className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
-          >
-            {failure}
+        <ConnectFields form={form} />
+        {done ? (
+          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[11px] bg-tint px-3 py-2.5 font-semibold text-[0.875rem] text-ink">
+            {done.summary}
+            {done.canOpen ? (
+              <Link
+                to={`/chat/t/${done.threadId}`}
+                className="text-emphasis underline underline-offset-2"
+              >
+                Open the conversation
+              </Link>
+            ) : null}
           </p>
         ) : null}
-        {done ? <p className="mt-3 font-semibold text-[0.875rem] text-ink">{done}</p> : null}
         <button
           type="button"
           onClick={connect}
-          disabled={busy || !ready}
+          disabled={form.busy || form.missing !== null}
           className="mt-3 min-h-[48px] w-full rounded-xl bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi disabled:opacity-50"
         >
-          {busy ? 'Connecting…' : 'Connect them'}
+          {form.actionLabel}
         </button>
+        <ConnectMissing form={form} className="mt-1.5 text-center" />
       </div>
     </section>
   );
@@ -911,10 +879,16 @@ function MemberRow({ person }: { person: PartnerMember }) {
 
 /* --------------------------------------------------------- introductions */
 
-export function introductionStatus(intro: MadeIntroduction): string {
+/** Where they met, or how far a pair from before got. */
+export function connectionPlace(intro: MadeConnection): string {
+  if (intro.status !== 'opened' || intro.groupName === null) return introductionStatus(intro);
+  return intro.intoGroup ? `Added to “${intro.groupName}”` : `New group “${intro.groupName}”`;
+}
+
+export function introductionStatus(intro: MadeConnection): string {
   switch (intro.status) {
     case 'asked':
-      return intro.yeses === 1 ? 'Waiting: 1 of 2 said yes' : 'Waiting for both to answer';
+      return 'Waiting for both to answer';
     case 'opened':
       return 'Connected';
     case 'declined':
@@ -928,12 +902,12 @@ export function introductionStatus(intro: MadeIntroduction): string {
 
 function Introductions({ connected }: { connected: number }) {
   const announce = useAnnounce();
-  const [intros, setIntros] = useState<MadeIntroduction[] | null>(null);
+  const [intros, setIntros] = useState<MadeConnection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const result = await fetchMyIntroductions();
+    const result = await fetchMyConnections();
     if (result.ok) setIntros(result.value);
     else setError(result.error);
   }, []);
@@ -943,8 +917,8 @@ function Introductions({ connected }: { connected: number }) {
     if (connected >= 0) void load();
   }, [load, connected]);
 
-  async function withdraw(intro: MadeIntroduction) {
-    const names = `${intro.first.name} and ${intro.second.name}`;
+  async function withdraw(intro: MadeConnection) {
+    const names = listNames(intro.people.map((p) => p.name));
     if (
       !window.confirm(`Withdraw your introduction of ${names}?\n\nNeither will be asked again.`)
     ) {
@@ -987,16 +961,17 @@ function Introductions({ connected }: { connected: number }) {
             >
               <span className="min-w-0 flex-1 basis-[14rem]">
                 <span className="block font-bold text-[0.9375rem] text-ink">
-                  <Link to={`/peers/${intro.first.id}`} className="hover:underline">
-                    {intro.first.name}
-                  </Link>{' '}
-                  &{' '}
-                  <Link to={`/peers/${intro.second.id}`} className="hover:underline">
-                    {intro.second.name}
-                  </Link>
+                  {intro.people.map((person, index) => (
+                    <Fragment key={person.id}>
+                      {index === 0 ? null : index === intro.people.length - 1 ? ' & ' : ', '}
+                      <Link to={`/peers/${person.id}`} className="hover:underline">
+                        {person.name}
+                      </Link>
+                    </Fragment>
+                  ))}
                 </span>
                 <span className="mt-0.5 block text-[0.75rem] text-grey">
-                  {day(intro.createdAt)} · {introductionStatus(intro)}
+                  {day(intro.createdAt)} · {connectionPlace(intro)}
                 </span>
                 <span className="mt-0.5 line-clamp-2 block break-words text-[0.8125rem] text-ink2 leading-[1.45]">
                   {intro.note}

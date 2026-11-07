@@ -6,7 +6,7 @@ import type { Account } from '@/lib/account';
 import { AnnounceProvider } from '@/lib/announce';
 import type {
   HeldEvent,
-  MadeIntroduction,
+  MadeConnection,
   OrganizationStats,
   OrganizationWeek,
   PartnerPerson,
@@ -18,7 +18,8 @@ const state = vi.hoisted(() => ({
   account: null as Account | null,
   partner: true,
   people: [] as PartnerPerson[],
-  intros: [] as MadeIntroduction[],
+  intros: [] as MadeConnection[],
+  groups: [] as { id: string; name: string; members: number; mine: boolean; started: boolean }[],
   statsAsked: [] as number[],
   withdrawn: [] as string[],
   orgIds: new Set<string>(),
@@ -57,17 +58,19 @@ vi.mock('@/lib/mentions', async (importOriginal) => ({
     Promise.resolve([
       { id: 'ana', displayName: 'Ana Ruiz', username: 'ana', photoPath: null, photoAlt: null },
       { id: 'bo', displayName: 'Bo Chan', username: 'bo', photoPath: null, photoAlt: null },
+      { id: 'cy', displayName: 'Cy Park', username: 'cy', photoPath: null, photoAlt: null },
     ]),
 }));
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
 vi.mock('@/lib/introductions', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  makeIntroduction: (...args: unknown[]) => {
-    state.connected.push(args);
+  connectMembers: (input: unknown) => {
+    state.connected.push([input]);
     return Promise.resolve(
       state.connectError ? { ok: false, error: state.connectError } : { ok: true, value: 'made' },
     );
   },
+  fetchConnectionGroups: () => Promise.resolve({ ok: true, value: state.groups }),
 }));
 // Their own tests are event-notices.test.tsx; here, nothing to show.
 vi.mock('@/lib/event-notices', async (importOriginal) => ({
@@ -105,7 +108,7 @@ vi.mock('@/lib/partner-hub', async (importOriginal) => ({
   },
   fetchOrganizationWeeks: () => Promise.resolve({ ok: true, value: state.orgWeeks }),
   fetchMyPeople: () => Promise.resolve({ ok: true, value: state.people }),
-  fetchMyIntroductions: () => Promise.resolve({ ok: true, value: state.intros }),
+  fetchMyConnections: () => Promise.resolve({ ok: true, value: state.intros }),
   withdrawIntroduction: (id: string) => {
     state.withdrawn.push(id);
     state.intros = state.intros.map((i) => (i.id === id ? { ...i, status: 'withdrawn' } : i));
@@ -156,15 +159,18 @@ const member = (o: Partial<PartnerPerson & { kind: 'member' }> = {}): PartnerPer
   ...o,
 });
 
-const intro = (o: Partial<MadeIntroduction> = {}): MadeIntroduction => ({
+const intro = (o: Partial<MadeConnection> = {}): MadeConnection => ({
   id: 'i1',
   status: 'asked',
-  yeses: 1,
   note: 'You are both C6 and in San Jose.',
   createdAt: '2026-10-20T12:00:00Z',
   threadId: null,
-  first: { id: 'maya', name: 'Maya Ruiz', photoPath: null },
-  second: { id: 'sam', name: 'Sam Lee', photoPath: null },
+  groupName: null,
+  intoGroup: false,
+  people: [
+    { id: 'maya', name: 'Maya Ruiz', photoPath: null },
+    { id: 'sam', name: 'Sam Lee', photoPath: null },
+  ],
   ...o,
 });
 
@@ -185,6 +191,7 @@ beforeEach(() => {
   state.partner = true;
   state.people = [];
   state.intros = [];
+  state.groups = [];
   state.statsAsked = [];
   state.withdrawn = [];
   state.orgIds = new Set();
@@ -207,7 +214,7 @@ describe('Stats & controls', () => {
       await screen.findByText('This page is for org admins and verified professionals.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your numbers' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Connect two members' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Connect members' })).toBeNull();
   });
 
   it('shows a partner’s title, and no card, QR code or invite links', async () => {
@@ -418,9 +425,9 @@ describe('the tabs', () => {
     renderPage();
     expect(tabs()).toEqual(['Overview', 'People', 'Events', 'Connect', 'Your numbers']);
     expect(screen.getByRole('tab', { name: 'Overview', selected: true })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Connect two members' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Connect members' })).toBeNull();
     await userEvent.click(screen.getByRole('tab', { name: 'Connect' }));
-    expect(screen.getByRole('heading', { name: 'Connect two members' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Connect members' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Your organization' })).toBeNull();
   });
 
@@ -448,13 +455,16 @@ describe('the tabs', () => {
   });
 });
 
-describe('connecting two members', () => {
+describe('connecting members', () => {
+  async function add(section: HTMLElement, typed: string, name: RegExp) {
+    await userEvent.type(within(section).getByLabelText('Who are you introducing?'), typed);
+    await userEvent.click(await within(section).findByRole('button', { name }));
+  }
+
   async function fill() {
-    const section = screen.getByRole('region', { name: 'Connect two members' });
-    await userEvent.type(within(section).getByLabelText('First member'), 'ana');
-    await userEvent.click(await within(section).findByRole('button', { name: /Ana Ruiz/ }));
-    await userEvent.type(within(section).getByLabelText('Second member'), 'bo');
-    await userEvent.click(await within(section).findByRole('button', { name: /Bo Chan/ }));
+    const section = screen.getByRole('region', { name: 'Connect members' });
+    await add(section, 'ana', /Ana Ruiz/);
+    await add(section, 'bo', /Bo Chan/);
     await userEvent.type(
       within(section).getByLabelText('A note to both of them'),
       'You both race.',
@@ -462,27 +472,80 @@ describe('connecting two members', () => {
     return section;
   }
 
-  it('needs two members and a note, then connects them without asking', async () => {
+  it('needs two people and a note, says what is missing, then connects them', async () => {
     renderPage('connect');
-    const section = screen.getByRole('region', { name: 'Connect two members' });
-    const go = within(section).getByRole('button', { name: 'Connect them' });
-    expect(go).toBeDisabled();
+    const section = screen.getByRole('region', { name: 'Connect members' });
+    expect(within(section).getByRole('button', { name: 'Connect them' })).toBeDisabled();
+    expect(within(section).getByText('Choose at least two people.')).toBeInTheDocument();
     await fill();
     await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
-    expect(state.connected).toEqual([['ana', 'bo', 'You both race.', false]]);
+    expect(state.connected).toEqual([
+      [{ people: ['ana', 'bo'], note: 'You both race.', join: false, groupId: null, name: '' }],
+    ]);
     expect(
-      await within(section).findByText('Ana Ruiz and Bo Chan are connected.'),
+      await within(section).findByText('Ana Ruiz and Bo Chan are connected in “Ana & Bo”.'),
     ).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Connect them' })).toBeDisabled();
   });
 
-  it('never offers the same member twice', async () => {
+  it('connects three or more in a group they name', async () => {
     renderPage('connect');
-    const section = screen.getByRole('region', { name: 'Connect two members' });
-    await userEvent.type(within(section).getByLabelText('First member'), 'ana');
-    await userEvent.click(await within(section).findByRole('button', { name: /Ana Ruiz/ }));
-    await userEvent.type(within(section).getByLabelText('Second member'), 'ana');
+    const section = await fill();
+    await add(section, 'cy', /Cy Park/);
+    expect(within(section).getByLabelText('A note to everyone')).toHaveValue('You both race.');
+    expect(
+      within(section).getByText(/Leave it blank to call it “Ana, Bo & Cy”/),
+    ).toBeInTheDocument();
+    await userEvent.type(within(section).getByLabelText(/Group name/), 'Racers');
+    await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
+    expect(state.connected[0]?.[0]).toMatchObject({ people: ['ana', 'bo', 'cy'], name: 'Racers' });
+    expect(
+      await within(section).findByText('Ana Ruiz, Bo Chan and Cy Park are connected in “Racers”.'),
+    ).toBeInTheDocument();
+  });
+
+  it('never offers the same member twice, and a chosen one can be taken off', async () => {
+    renderPage('connect');
+    const section = screen.getByRole('region', { name: 'Connect members' });
+    await add(section, 'ana', /Ana Ruiz/);
+    await userEvent.type(within(section).getByLabelText('Who are you introducing?'), 'ana');
     expect(await within(section).findByText('Nobody matches that.')).toBeInTheDocument();
+    await userEvent.click(within(section).getByRole('button', { name: 'Remove Ana Ruiz' }));
+    expect(within(section).queryByRole('list', { name: 'Chosen' })).toBeNull();
+  });
+
+  it('adds one person to a group they have', async () => {
+    state.groups = [
+      { id: 'g1', name: 'Saturday riders', members: 4, mine: false, started: true },
+      { id: 'g2', name: 'Tuesday swimmers', members: 6, mine: true, started: false },
+    ];
+    renderPage('connect');
+    const section = screen.getByRole('region', { name: 'Connect members' });
+    await add(section, 'cy', /Cy Park/);
+    await userEvent.click(within(section).getByRole('radio', { name: /Existing group/ }));
+    expect(within(section).getByText('Choose a group.')).toBeInTheDocument();
+    await userEvent.click(within(section).getByRole('radio', { name: /Tuesday swimmers/ }));
+    // Already in it: nothing to join.
+    expect(
+      within(section).queryByRole('checkbox', { name: 'Join the conversation yourself' }),
+    ).toBeNull();
+    await userEvent.type(within(section).getByLabelText('A note to everyone'), 'Cy swims too.');
+    await userEvent.click(within(section).getByRole('button', { name: 'Add to the group' }));
+    expect(state.connected[0]?.[0]).toMatchObject({ people: ['cy'], groupId: 'g2', join: false });
+    expect(
+      await within(section).findByText('Cy Park was added to “Tuesday swimmers”.'),
+    ).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: 'Open the conversation' })).toHaveAttribute(
+      'href',
+      '/chat/t/made',
+    );
+  });
+
+  it('says when there are no groups yet', async () => {
+    renderPage('connect');
+    const section = screen.getByRole('region', { name: 'Connect members' });
+    await userEvent.click(within(section).getByRole('radio', { name: /Existing group/ }));
+    expect(await within(section).findByText(/You have no groups yet/)).toBeInTheDocument();
   });
 
   it('puts the connector in the conversation only if they tick it', async () => {
@@ -492,7 +555,7 @@ describe('connecting two members', () => {
       within(section).getByRole('checkbox', { name: 'Join the conversation yourself' }),
     );
     await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
-    expect(state.connected[0]?.[3]).toBe(true);
+    expect(state.connected[0]?.[0]).toMatchObject({ join: true });
   });
 
   it('says a refusal and keeps what was typed', async () => {
@@ -605,12 +668,35 @@ describe('introductions', () => {
   it('says how far each has got, opens the conversation, and withdraws one waiting', async () => {
     state.intros = [
       intro(),
-      intro({ id: 'i2', status: 'opened', yeses: 2, threadId: 't9' }),
-      intro({ id: 'i3', status: 'declined', yeses: 1 }),
+      intro({ id: 'i2', status: 'opened', threadId: 't9' }),
+      intro({ id: 'i3', status: 'declined' }),
+      intro({
+        id: 'c1',
+        status: 'opened',
+        groupName: 'Saturday riders',
+        intoGroup: true,
+        people: [{ id: 'cy', name: 'Cy Park', photoPath: null }],
+      }),
+      intro({
+        id: 'c2',
+        status: 'opened',
+        groupName: 'Racers',
+        people: [
+          { id: 'ana', name: 'Ana Ruiz', photoPath: null },
+          { id: 'bo', name: 'Bo Chan', photoPath: null },
+          { id: 'cy', name: 'Cy Park', photoPath: null },
+        ],
+      }),
     ];
     renderPage('connect');
     const list = screen.getByRole('region', { name: 'Introductions' });
-    expect(await within(list).findByText(/Waiting: 1 of 2 said yes/)).toBeInTheDocument();
+    expect(await within(list).findByText(/Waiting for both to answer/)).toBeInTheDocument();
+    expect(within(list).getByText(/Added to “Saturday riders”/)).toBeInTheDocument();
+    expect(within(list).getByText(/New group “Racers”/)).toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: 'Bo Chan' })).toHaveAttribute(
+      'href',
+      '/peers/bo',
+    );
     expect(within(list).getByText(/Didn’t go ahead/)).toBeInTheDocument();
     expect(within(list).getByRole('link', { name: 'Open the conversation' })).toHaveAttribute(
       'href',

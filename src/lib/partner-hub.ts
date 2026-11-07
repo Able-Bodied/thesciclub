@@ -167,48 +167,47 @@ export async function fetchPartnerStats(days: number): Promise<Result<PartnerSta
 
 export type IntroductionStatus = 'asked' | 'opened' | 'declined' | 'withdrawn' | 'expired';
 
-export interface MadeIntroduction {
+/** One connection made: a new group, people added to one, or a pair from before. */
+export interface MadeConnection {
   id: string;
   status: IntroductionStatus;
-  /** Of the two, how many said yes so far. */
-  yeses: number;
   note: string;
   createdAt: string;
-  /** Set once opened, while the partner is still in the conversation. */
+  /** Set while the connector is in the conversation. */
   threadId: string | null;
-  first: { id: string; name: string; photoPath: string | null };
-  second: { id: string; name: string; photoPath: string | null };
+  /** The group's name; null for a pair from before groups. */
+  groupName: string | null;
+  /** Added to a group that was there already. */
+  intoGroup: boolean;
+  /** Who was introduced, in the order chosen. */
+  people: { id: string; name: string; photoPath: string | null }[];
 }
 
-interface IntroductionRow {
+interface ConnectionRow {
   id: string;
   status: string;
-  yeses: number;
   note: string;
   created_at: string;
   thread_id: string | null;
-  first_id: string;
-  first_name: string;
-  first_photo: string | null;
-  second_id: string;
-  second_name: string;
-  second_photo: string | null;
+  group_name: string | null;
+  into_group: boolean;
+  people: { id: string; name: string; photo: string | null }[] | null;
 }
 
-export async function fetchMyIntroductions(): Promise<Result<MadeIntroduction[]>> {
-  const result = await call('my_introductions', {}, 'Could not load your introductions.');
+export async function fetchMyConnections(): Promise<Result<MadeConnection[]>> {
+  const result = await call('my_connections', {}, 'Could not load your introductions.');
   if (!result.ok) return result;
   return {
     ok: true,
-    value: ((result.value as IntroductionRow[] | null) ?? []).map((row) => ({
+    value: ((result.value as ConnectionRow[] | null) ?? []).map((row) => ({
       id: row.id,
       status: row.status as IntroductionStatus,
-      yeses: row.yeses,
       note: row.note,
       createdAt: row.created_at,
       threadId: row.thread_id,
-      first: { id: row.first_id, name: row.first_name, photoPath: row.first_photo },
-      second: { id: row.second_id, name: row.second_name, photoPath: row.second_photo },
+      groupName: row.group_name,
+      intoGroup: row.into_group,
+      people: (row.people ?? []).map((p) => ({ id: p.id, name: p.name, photoPath: p.photo })),
     })),
   };
 }

@@ -1,16 +1,14 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAnnounce } from '@/lib/announce';
-import { describeThrown } from '@/lib/describe-error';
 import { useDialogFocus } from '@/lib/dialog-focus';
-import { INTRODUCTION_NOTE_MAX, makeIntroduction } from '@/lib/introductions';
-import type { MentionCandidate } from '@/lib/mentions';
 import { cn } from '@/lib/utils';
-import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/connect-fields';
+import { ConnectFields, ConnectMissing, useConnectForm } from '@/routes/peers/connect-form';
 
 /**
- * An org admin or a partner connects the member whose profile this is to
- * another, at once (20261031110000). The geometry and the ways out are BlockSheet's.
+ * An org admin or a partner introduces the member whose profile this is to
+ * one or more others, in a new group or one they have (20261106020000). The
+ * geometry and the ways out are BlockSheet's.
  */
 export function IntroduceSheet({
   member,
@@ -26,41 +24,14 @@ export function IntroduceSheet({
   const dialog = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
   useDialogFocus(dialog, heading, onCancel);
-
-  const everyone = useConnectableMembers();
-  const members = everyone?.filter((m) => m.id !== member.id) ?? null;
-  const [chosen, setChosen] = useState<MentionCandidate | null>(null);
-  const [note, setNote] = useState('');
-  // Off unless ticked (the owner, 2026-10-29).
-  const [join, setJoin] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-
-  const ready = chosen !== null && note.trim() !== '' && note.length <= INTRODUCTION_NOTE_MAX;
+  const form = useConnectForm(member);
 
   function send() {
-    if (busy || !chosen) return;
-    if (note.trim() === '') {
-      setFailure('Write a note to both of them.');
-      return;
-    }
-    setBusy(true);
-    setFailure(null);
-    makeIntroduction(member.id, chosen.id, note, join)
-      .then((result) => {
-        if (!result.ok) {
-          setFailure(result.error);
-          return;
-        }
-        announce(`${member.displayName} and ${chosen.displayName} are connected.`);
-        onSent();
-      })
-      .catch((e: unknown) => {
-        setFailure(describeThrown(e, 'Could not connect them.'));
-      })
-      .finally(() => {
-        setBusy(false);
-      });
+    void form.submit().then((done) => {
+      if (!done) return;
+      announce(done.summary);
+      onSent();
+    });
   }
 
   return createPortal(
@@ -84,7 +55,7 @@ export function IntroduceSheet({
           'lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-3xl',
         )}
       >
-        <div className="flex-1 overflow-y-auto px-[18px] pt-5">
+        <div className="flex-1 overflow-y-auto px-[18px] pt-5 pb-4">
           <h2
             id={titleId}
             ref={heading}
@@ -94,43 +65,30 @@ export function IntroduceSheet({
             Introduce {member.displayName}
           </h2>
           <p className="mt-1.5 text-[0.9375rem] text-ink2 leading-[1.5]">
-            They are both added to a group conversation right away, and told you connected them.
+            Everyone is added to a group conversation right away, and told you connected them.
             Anybody in it can leave.
           </p>
-
-          <MemberField
-            label="Connect them to"
-            members={members}
-            chosen={chosen}
-            onChoose={setChosen}
-          />
-          <ConnectNote note={note} onNote={setNote} join={join} onJoin={setJoin} />
-
-          {failure ? (
-            <p
-              role="alert"
-              className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.875rem] text-destructive leading-[1.45]"
-            >
-              {failure}
-            </p>
-          ) : null}
+          <ConnectFields form={form} />
         </div>
-        <div className="flex flex-none flex-wrap items-center gap-2.5 border-line border-t px-[18px] pt-3 pb-6 lg:pb-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={send}
-            disabled={busy || !ready}
-            className="min-h-[48px] flex-1 rounded-xl bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-colors disabled:opacity-40"
-          >
-            {busy ? 'Connecting…' : 'Connect them'}
-          </button>
+        <div className="flex-none border-line border-t px-[18px] pt-3 pb-6 lg:pb-4">
+          <ConnectMissing form={form} className="mb-2" />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={send}
+              disabled={form.busy || form.missing !== null}
+              className="min-h-[48px] flex-1 rounded-xl bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-colors disabled:opacity-40"
+            >
+              {form.actionLabel}
+            </button>
+          </div>
         </div>
       </div>
     </>,

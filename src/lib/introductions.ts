@@ -84,6 +84,105 @@ export async function makeIntroduction(
   }
 }
 
+/**
+ * Connecting several members at once, or into a group (20261106020000):
+ * two or more into a new group, named or not, or one or more into a group
+ * the connector is in or started. Resolves to the group's id.
+ */
+export async function connectMembers(input: {
+  people: string[];
+  note: string;
+  join: boolean;
+  /** An existing group; null for a new one. */
+  groupId: string | null;
+  /** A new group's name; blank gives the default. */
+  name: string;
+}): Promise<Result<string>> {
+  try {
+    const { data, error } = (await getSupabase().rpc('connect_members', {
+      p_members: input.people,
+      p_note: input.note.trim(),
+      p_join: input.join,
+      p_group: input.groupId,
+      p_name: input.groupId ? null : input.name.trim() || null,
+    })) as { data: string | null; error: Failure | null };
+    if (error) {
+      if (error.code === '54000') return { ok: false, error: error.message };
+      return {
+        ok: false,
+        error: describeError(error, {
+          attempt: 'Could not connect them.',
+          duplicate: 'Those two have been connected already.',
+        }),
+      };
+    }
+    if (!data) return { ok: false, error: 'Could not connect them. Try again.' };
+    return { ok: true, value: data };
+  } catch (error) {
+    return { ok: false, error: describeThrown(error, 'Could not connect them.') };
+  }
+}
+
+/** A group a connector can bring people into. */
+export interface ConnectionGroup {
+  id: string;
+  name: string;
+  members: number;
+  /** The connector is in it. */
+  mine: boolean;
+  /** The connector started it by connecting people. */
+  started: boolean;
+}
+
+interface GroupRow {
+  thread_id: string;
+  name: string;
+  members: number;
+  i_am_in: boolean;
+  started: boolean;
+}
+
+/** Groups they started here, and plain groups they are in, newest first. */
+export async function fetchConnectionGroups(): Promise<Result<ConnectionGroup[]>> {
+  try {
+    const { data, error } = (await getSupabase().rpc('my_connection_groups')) as {
+      data: GroupRow[] | null;
+      error: Failure | null;
+    };
+    if (error) return { ok: false, error: describeError(error, 'Could not load your groups.') };
+    return {
+      ok: true,
+      value: (data ?? []).map((row) => ({
+        id: row.thread_id,
+        name: row.name,
+        members: row.members,
+        mine: row.i_am_in,
+        started: row.started,
+      })),
+    };
+  } catch (error) {
+    return { ok: false, error: describeThrown(error, 'Could not load your groups.') };
+  }
+}
+
+/**
+ * What a new group is called when not named, as connect_members names it:
+ * "Ada & Bo", "Ada, Bo & Cass", "Ada, Bo, Cass & 2 more".
+ */
+export function defaultGroupName(names: string[]): string {
+  const firsts = names.map((name) => name.trim().split(' ')[0] ?? name);
+  const [a, b, c] = firsts;
+  const name =
+    firsts.length <= 1
+      ? (a ?? '')
+      : firsts.length === 2
+        ? `${a} & ${b}`
+        : firsts.length === 3
+          ? `${a}, ${b} & ${c}`
+          : `${a}, ${b}, ${c} & ${firsts.length - 3} more`;
+  return name.slice(0, 60);
+}
+
 /** Resolves to the group's id once both said yes, or null while it waits. */
 export async function answerIntroduction(id: string, yes: boolean): Promise<Result<string | null>> {
   try {
