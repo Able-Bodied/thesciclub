@@ -23,6 +23,14 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 7, 2026">
+        <List>
+          <li>
+            <b>Added:</b> you can link another member as family, such as a spouse, parent or child.
+            It shows on both of your profiles only once they say yes (see Who can see what).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 6, 2026">
         <List>
           <li>
@@ -558,6 +566,14 @@ export default function PrivacyPage() {
             everyone in their organization by name, and, for each of its events, whether you said
             Going or Interested and, if they notified you of it, whether you opened the
             notification.
+          </li>
+          <li>
+            <b>Family.</b> A member can ask to link you as family, and say how: spouse or partner,
+            parent, child, brother or sister, or other family. You are told who asked and as what.
+            Until you say yes, only the two of you see the request, and if you say no they are not
+            told. Once you say yes, members who can see both of your profiles see the link on each,
+            with how you are related. Either of you can remove it at any time, and a block between
+            you removes it.
           </li>
           <li>
             <b>Being connected.</b> An org admin or a verified professional can connect two or more

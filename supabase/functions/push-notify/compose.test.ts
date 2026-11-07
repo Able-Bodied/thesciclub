@@ -272,6 +272,29 @@ describe('compose', () => {
     });
   });
 
+  // 20261107100000: subject is what the asker is to the reader.
+  it('asks for a family link, saying as what, and tells the asker of a yes', () => {
+    const asked = owed({
+      kind: 'family_link',
+      subject: 'parent',
+      detail: 'asked',
+      url: '/peers/m1',
+      tag: 'family:f1:asked',
+    });
+    expect(compose(asked)).toEqual({
+      title: 'Family link',
+      body: 'Bo asked to be linked to you as family, as your parent.',
+      url: '/peers/m1?n=family%3Af1%3Aasked',
+      tag: 'family:f1:asked',
+    });
+    expect(compose({ ...asked, subject: 'family' })?.body).toBe(
+      'Bo asked to be linked to you as family.',
+    );
+    expect(compose({ ...asked, detail: 'linked' })?.body).toBe(
+      'Bo said yes. You are linked as family.',
+    );
+  });
+
   it('tells the partner the introduction is open, and who said yes last', () => {
     expect(
       compose(

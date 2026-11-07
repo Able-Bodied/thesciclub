@@ -7,6 +7,7 @@ import {
   HandCoins,
   Handshake,
   Heart,
+  HeartHandshake,
   type LucideIcon,
   MessageCircle,
   SmilePlus,
@@ -69,6 +70,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   reaction: SmilePlus,
   mention: AtSign,
   introduction: Handshake,
+  family_link: HeartHandshake,
 };
 
 export default function NotificationsPage() {

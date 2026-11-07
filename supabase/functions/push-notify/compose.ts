@@ -47,6 +47,11 @@
  *   Asked            "Bo would like to introduce you to Ana" + the note, cut short
  *   Opened           "Ana & Sam is open"          + "Ana said yes." (to the partner)
  *
+ * And family links, 2026-11-07 (20261107100000):
+ *
+ *   Asked            "Family link" + "Bo asked to be linked to you as family, as your parent."
+ *   Linked           "Family link" + "Ana said yes. You are linked as family."
+ *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
  * who replied. Nothing here names a room or a topic — those are named for
@@ -169,6 +174,22 @@ function unread(owed: Owed): number | null {
   return n > 1 ? n : null;
 }
 
+/** ", as your child", or nothing for plain family (src/lib/family.ts). */
+export function familyAs(relation: string | null): string {
+  switch (relation) {
+    case 'spouse':
+      return ', as your spouse or partner';
+    case 'parent':
+      return ', as your parent';
+    case 'child':
+      return ', as your child';
+    case 'sibling':
+      return ', as your brother or sister';
+    default:
+      return '';
+  }
+}
+
 /** Null for a kind this file does not know, which is then not sent at all. */
 export function compose(owed: Owed): PushMessage | null {
   // The author can be gone by the time this runs; the name is not.
@@ -288,6 +309,23 @@ export function compose(owed: Owed): PushMessage | null {
         body: words(owed) || `${name} would like to introduce you to another member.`,
         ...where,
       };
+    // detail 'asked' or 'linked'; subject what the actor is to the reader
+    // (20261107100000).
+    case 'family_link': {
+      const as = familyAs(owed.subject);
+      if (owed.detail === 'linked') {
+        return {
+          title: 'Family link',
+          body: `${name} said yes. You are linked as family.`,
+          ...where,
+        };
+      }
+      return {
+        title: 'Family link',
+        body: `${name} asked to be linked to you as family${as}.`,
+        ...where,
+      };
+    }
     case 'group_add':
       return { title: 'Added to a group', body: `${name} added you to a group.`, ...where };
     case 'report':
