@@ -36,7 +36,9 @@ export function PrivacyChip({
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2.5 py-[5px] font-semibold text-[0.7375rem] leading-[1.25]',
-        onNavy ? 'bg-white text-ink' : 'bg-ink text-white',
+        // Navy, which stays navy in the dark theme; ink turns light there and
+        // made it light on white (the owner, 2026-11-06).
+        onNavy ? 'bg-white text-navy' : 'bg-navy text-white',
         className,
       )}
     >
