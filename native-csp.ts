@@ -12,8 +12,9 @@ export const IOS_APP_ORIGIN = 'capacitor://localhost';
 // worker-src, the map's worker falls back to script-src, the app's own files.
 const DROPPED = new Set(['frame-ancestors', 'manifest-src', 'worker-src']);
 
-// Not in the app: Google's widget, until native sign-in.
-const NOT_IN_THE_APP = ['accounts.google.com'];
+// Not in the app: Google's widget, until native sign-in, and Cloudflare's
+// analytics, which only counts the website (src/lib/web-analytics.ts).
+const NOT_IN_THE_APP = ['accounts.google.com', 'cloudflareinsights.com'];
 
 /**
  * The app frames only the club's YouTube page, which frames YouTube itself:

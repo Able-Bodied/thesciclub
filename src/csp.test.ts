@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PHOTON_ORIGIN } from '@/lib/address-suggestions';
 import { appYoutubeEmbedUrl } from '@/lib/chat/link-preview';
 import { TILES_ORIGIN } from '@/lib/map/tiles';
+import { CF_BEACON_SRC } from '@/lib/web-analytics';
 import SHELL from '../index.html?raw';
 import { APP_FRAMES, nativeCsp, webCsp } from '../native-csp';
 import NETLIFY from '../netlify.toml?raw';
@@ -108,11 +109,14 @@ describe('the Content-Security-Policy', () => {
     ]);
   });
 
-  // One file from Google, not the whole of accounts.google.com.
-  it("loads Google's sign-in script and no other script from elsewhere", () => {
+  // One file from Google, not the whole of accounts.google.com, and one from
+  // Cloudflare for signed-out visitors (src/lib/web-analytics.ts).
+  it("loads Google's sign-in script, Cloudflare's analytics and no other script from elsewhere", () => {
     expect(directive('script-src').filter((s) => s.startsWith('https:'))).toEqual([
       'https://accounts.google.com/gsi/client',
+      CF_BEACON_SRC,
     ]);
+    expect(directive('connect-src')).toContain('https://cloudflareinsights.com/cdn-cgi/rum');
   });
 
   it('still lets no other site frame the club', () => {
@@ -182,6 +186,7 @@ describe("the store app's Content-Security-Policy", () => {
       `${TILES_ORIGIN}/`,
     ]);
     expect(app).not.toContain('google.com');
+    expect(app).not.toContain('cloudflareinsights');
     expect(appDirective('object-src')).toEqual(["'none'"]);
   });
 

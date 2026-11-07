@@ -15,6 +15,7 @@ import { prefetchMap } from '@/lib/map';
 import { noteScreen } from '@/lib/page-speed';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import { OpenedNotification } from '@/lib/push/opened-notification';
+import { countVisit } from '@/lib/web-analytics';
 import DevLoginPage from '@/routes/dev-login/page';
 import HomePage from '@/routes/home/page';
 import DeleteAccountPage from '@/routes/legal/delete-account';
@@ -336,6 +337,7 @@ export default function App() {
         <LeaveHomeScreenHandoff />
         <RouteChange />
         <ScreenTimer />
+        <CountVisit />
         <FollowNotification />
         <AppRoutes />
       </AnnounceProvider>
@@ -391,6 +393,15 @@ export function RouteChange() {
       cancelAnimationFrame(frame);
     };
   }, [pathname]);
+  return null;
+}
+
+/** Cloudflare's count of public-page visits, once the address settles (web-analytics.ts). */
+function CountVisit() {
+  const { pathname, search, hash } = useLocation();
+  useEffect(() => {
+    countVisit({ pathname, search, hash });
+  }, [pathname, search, hash]);
   return null;
 }
 
