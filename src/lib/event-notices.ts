@@ -1,5 +1,6 @@
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
+import { EVENT_AUDIENCES, type EventAudience } from '@/types/domain';
 
 /**
  * An organization's people, and telling them about its events
@@ -98,6 +99,9 @@ export interface EventNotices {
   /** Its people who answered, notified or not (20261103085000). */
   peopleGoing: number;
   peopleInterested: number;
+  /** Who can see it, and its series (20261106060000). */
+  audience: EventAudience;
+  seriesId: string | null;
 }
 
 interface EventNoticesRow {
@@ -116,6 +120,8 @@ interface EventNoticesRow {
   last_sent_at: string | null;
   people_going: number;
   people_interested: number;
+  audience?: string | null;
+  series_id?: string | null;
 }
 
 /** Its upcoming events, and those of the past week someone was notified of. */
@@ -144,6 +150,10 @@ export async function fetchEventNotices(organizationId: string): Promise<Result<
       lastSentAt: row.last_sent_at,
       peopleGoing: row.people_going,
       peopleInterested: row.people_interested,
+      audience: (EVENT_AUDIENCES as readonly string[]).includes(row.audience ?? '')
+        ? (row.audience as EventAudience)
+        : 'club',
+      seriesId: row.series_id ?? null,
     })),
   };
 }

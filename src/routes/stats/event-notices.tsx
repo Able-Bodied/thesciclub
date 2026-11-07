@@ -1,7 +1,8 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Lock } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
+import { type EventVisibility, fetchEventVisibility } from '@/lib/event-audience';
 import {
   type EventNotices,
   fetchEventNotices,
@@ -14,11 +15,16 @@ import {
   setNotifiesMembers,
 } from '@/lib/event-notices';
 import { cn } from '@/lib/utils';
+import type { AudienceOrganization } from '@/routes/events/audience-field';
+import { audienceLabel } from '@/routes/events/event-audience-parts';
+import { VisibilitySheet } from '@/routes/events/visibility-sheet';
 import { FIRST_PEOPLE } from '@/routes/stats/organization-people';
 
 /**
  * Telling the organization's people about its events (20261103000000): every
- * new one, or one at a time, and who opened it and answered.
+ * new one, or one at a time, and who opened it and answered. Each says who
+ * can see it, and its org admins change that here as on its page (the owner,
+ * 2026-11-06).
  */
 
 const when = (event: EventNotices) =>
@@ -83,7 +89,16 @@ export function answerStatus(a: PersonAnswer): string {
   return a.seesEvent ? 'Not notified' : 'Can’t see this event';
 }
 
-export function EventNoticesPanel({ organizationId }: { organizationId: string }) {
+export function EventNoticesPanel({
+  organizationId,
+  organizationName,
+  organizations,
+}: {
+  organizationId: string;
+  organizationName: string;
+  /** Whose members an event can be for: those the viewer is an org admin of. */
+  organizations: AudienceOrganization[];
+}) {
   const [events, setEvents] = useState<EventNotices[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [all, setAll] = useState(false);
@@ -124,7 +139,14 @@ export function EventNoticesPanel({ organizationId }: { organizationId: string }
       ) : (
         <ul className="mt-2.5 space-y-2.5">
           {shown.map((event) => (
-            <EventRow key={event.eventId} event={event} onSent={load} />
+            <EventRow
+              key={event.eventId}
+              event={event}
+              onSent={load}
+              organizationId={organizationId}
+              organizationName={organizationName}
+              organizations={organizations}
+            />
           ))}
         </ul>
       )}
@@ -218,7 +240,19 @@ function EveryEventSwitch({ organizationId }: { organizationId: string }) {
   );
 }
 
-function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }) {
+function EventRow({
+  event,
+  onSent,
+  organizationId,
+  organizationName,
+  organizations,
+}: {
+  event: EventNotices;
+  onSent: () => void;
+  organizationId: string;
+  organizationName: string;
+  organizations: AudienceOrganization[];
+}) {
   const announce = useAnnounce();
   const [busy, setBusy] = useState<NoticeAudience | null>(null);
   const [said, setSaid] = useState<string | null>(null);
@@ -286,6 +320,14 @@ function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }
           ? 'Not notified yet.'
           : `Notified ${people(event.notified)} · ${String(event.opened)} opened · ${String(event.noAnswer)} no answer`}
       </p>
+      <WhoCanSee
+        event={event}
+        over={over}
+        organizationId={organizationId}
+        organizationName={organizationName}
+        organizations={organizations}
+        onSaved={onSent}
+      />
       {open ? <Answers key={round} eventId={event.eventId} /> : null}
       {buttons.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
@@ -316,6 +358,91 @@ function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }
         </p>
       ) : null}
     </li>
+  );
+}
+
+const PRIVATE = new Set(['followers', 'organizations', 'people']);
+
+/** Who can see it, and Change, which reads its details only when pressed. */
+function WhoCanSee({
+  event,
+  over,
+  organizationId,
+  organizationName,
+  organizations,
+  onSaved,
+}: {
+  event: EventNotices;
+  over: boolean;
+  organizationId: string;
+  organizationName: string;
+  organizations: AudienceOrganization[];
+  onSaved: () => void;
+}) {
+  const [visibility, setVisibility] = useState<EventVisibility | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function change() {
+    setBusy(true);
+    setError(null);
+    void fetchEventVisibility(event.eventId).then((result) => {
+      setBusy(false);
+      if (!result.ok) setError(result.error);
+      else if (!result.value?.mayChange) setError('You can’t change who sees this event.');
+      else setVisibility(result.value);
+    });
+  }
+
+  return (
+    <>
+      <div className="mt-2 flex items-center justify-between gap-3 border-line border-t pt-2">
+        <p className="flex min-w-0 items-center gap-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
+          {PRIVATE.has(event.audience) ? (
+            <Lock aria-hidden="true" className="h-[13px] w-[13px] flex-none" strokeWidth={2.4} />
+          ) : null}
+          <span>
+            Who can see it: {audienceLabel(event.audience, organizationName)}
+            {PRIVATE.has(event.audience) ? ' (private)' : ''}
+          </span>
+        </p>
+        {over ? null : (
+          <button
+            type="button"
+            onClick={change}
+            disabled={busy}
+            aria-label={`Change who can see ${event.title}`}
+            className="-my-1.5 min-h-[44px] flex-none rounded-[10px] px-3 font-bold text-[0.8125rem] text-emphasis hover:bg-tint disabled:opacity-50"
+          >
+            {busy ? 'Opening…' : 'Change'}
+          </button>
+        )}
+      </div>
+      {error ? (
+        <p role="alert" className="mt-1 text-[0.8125rem] text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {visibility ? (
+        <VisibilitySheet
+          event={{
+            id: event.eventId,
+            title: event.title,
+            seriesId: event.seriesId,
+            organizationId,
+          }}
+          visibility={visibility}
+          organizations={organizations}
+          onCancel={() => {
+            setVisibility(null);
+          }}
+          onSaved={() => {
+            setVisibility(null);
+            onSaved();
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 

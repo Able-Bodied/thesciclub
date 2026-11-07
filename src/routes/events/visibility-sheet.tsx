@@ -39,7 +39,7 @@ export function VisibilitySheet({
   onCancel,
   onSaved,
 }: {
-  event: ClubEvent;
+  event: Pick<ClubEvent, 'id' | 'title' | 'seriesId' | 'organizationId'>;
   visibility: EventVisibility;
   /** Whose members it can be for: the organizations they are an org admin of. */
   organizations: AudienceOrganization[];

@@ -189,7 +189,13 @@ function HubTabs({ choices, mine }: { choices: Organization[]; mine: Set<string>
           ) : null}
           {shown === 'events' && chosen ? (
             <>
-              <EventNoticesPanel organizationId={chosen.id} />
+              <EventNoticesPanel
+                organizationId={chosen.id}
+                organizationName={chosen.name}
+                organizations={choices
+                  .filter((o) => mine.has(o.id) || o.id === chosen.id)
+                  .map((o) => ({ id: o.id, name: o.name, open: o.joinsNeedApproval !== true }))}
+              />
               <HeldEvents organizationId={chosen.id} days={days} onDays={setDays} />
             </>
           ) : null}

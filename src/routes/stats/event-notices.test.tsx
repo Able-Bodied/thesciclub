@@ -47,6 +47,37 @@ vi.mock('@/lib/event-notices', async (importOriginal) => ({
   },
 }));
 
+const visibility = vi.hoisted(() => ({
+  mayChange: true,
+  saved: [] as [string, unknown][],
+}));
+vi.mock('@/lib/event-audience', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  fetchEventVisibility: () =>
+    Promise.resolve({
+      ok: true,
+      value: {
+        audience: 'club',
+        mayChange: visibility.mayChange,
+        organizations: [],
+        groups: [],
+        invitees: [],
+        inviteeCount: 0,
+      },
+    }),
+  setEventVisibility: (id: string, choice: unknown) => {
+    visibility.saved.push([id, choice]);
+    return Promise.resolve({ ok: true, value: 0 });
+  },
+}));
+vi.mock('@/lib/chat/threads', () => ({
+  useMyThreads: () => ({ threads: [], loading: false, error: null, reload: () => undefined }),
+}));
+vi.mock('@/lib/mentions', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  loadMentionCandidates: () => Promise.resolve([]),
+}));
+
 const { OrganizationPeople } = await import('@/routes/stats/organization-people');
 const { EventNoticesPanel } = await import('@/routes/stats/event-notices');
 
@@ -76,8 +107,16 @@ const event = (over: Partial<EventNotices> = {}): EventNotices => ({
   lastSentAt: null,
   peopleGoing: 2,
   peopleInterested: 1,
+  audience: 'club',
+  seriesId: null,
   ...over,
 });
+
+const PANEL = {
+  organizationId: 'o1',
+  organizationName: 'NorCal SCI',
+  organizations: [{ id: 'o1', name: 'NorCal SCI', open: true }],
+};
 
 function show(ui: React.ReactNode) {
   render(
@@ -174,7 +213,7 @@ describe('the people', () => {
 describe('notifying', () => {
   it('says what came of the notices, and offers each send', async () => {
     state.events = [event()];
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     expect(
       await screen.findByText('Notified 5 people · 3 opened · 3 no answer'),
     ).toBeInTheDocument();
@@ -192,7 +231,7 @@ describe('notifying', () => {
 
   it('sends to those who have not opened it, and says how many', async () => {
     state.events = [event()];
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     await userEvent.click(await screen.findByRole('button', { name: /haven’t opened/ }));
     expect(state.sent).toEqual([['e1', 'not_opened']]);
     expect(await screen.findAllByText('Notified 2 people.')).not.toHaveLength(0);
@@ -201,7 +240,7 @@ describe('notifying', () => {
   it('says why nobody was told', async () => {
     state.events = [event()];
     state.sentCount = 0;
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     await userEvent.click(await screen.findByRole('button', { name: /haven’t answered/ }));
     expect(
       await screen.findAllByText(
@@ -215,14 +254,14 @@ describe('notifying', () => {
       event({ eventId: 'past', startTime: new Date(Date.now() - 3_600_000).toISOString() }),
       event({ eventId: 'done', notOpened: 0, noAnswer: 0, canReach: 0 }),
     ];
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     await screen.findAllByText(/Notified 5 people/);
     expect(screen.queryByRole('button', { name: /Notify|Remind/ })).toBeNull();
   });
 
   it('holds reminders for 12 hours after the last notice, and says until when', async () => {
     state.events = [event({ lastSentAt: new Date(Date.now() - 3_600_000).toISOString() })];
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     expect(
       await screen.findByText(/^You can remind those who haven’t answered from /),
     ).toBeInTheDocument();
@@ -246,7 +285,7 @@ describe('notifying', () => {
         peopleInterested: 0,
       }),
     ];
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     expect(await screen.findAllByText('Not notified yet.')).toHaveLength(2);
     expect(screen.getByText('Your people: 2 going · 1 interested')).toBeInTheDocument();
     expect(screen.getByText('None of your people have answered yet.')).toBeInTheDocument();
@@ -279,8 +318,8 @@ describe('notifying', () => {
       answer({ id: 'd', name: 'Dee' }),
       answer({ id: 'e', name: 'Eli', seesEvent: false }),
     ];
-    show(<EventNoticesPanel organizationId="o1" />);
-    const title = await screen.findByRole('button', { name: /Handcycling/ });
+    show(<EventNoticesPanel {...PANEL} />);
+    const title = await screen.findByRole('button', { name: /^Handcycling/ });
     expect(title).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(title);
     expect(title).toHaveAttribute('aria-expanded', 'true');
@@ -298,7 +337,7 @@ describe('notifying', () => {
   });
 
   it('turns on notifying of every new event', async () => {
-    show(<EventNoticesPanel organizationId="o1" />);
+    show(<EventNoticesPanel {...PANEL} />);
     const toggle = await screen.findByRole('switch', { name: 'Notify them of every new event' });
     await vi.waitFor(() => {
       expect(toggle).toBeEnabled();
@@ -307,5 +346,58 @@ describe('notifying', () => {
     await userEvent.click(toggle);
     expect(state.switched).toEqual([['o1', true]]);
     expect(toggle).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
+// The owner, 2026-11-06: who can see each event, changed from here too.
+describe('who can see each event', () => {
+  beforeEach(() => {
+    visibility.mayChange = true;
+    visibility.saved = [];
+  });
+
+  it('says who can see it, and that a private one is private', async () => {
+    state.events = [event(), event({ eventId: 'e2', title: 'Members dinner', audience: 'people' })];
+    show(<EventNoticesPanel {...PANEL} />);
+    expect(await screen.findByText('Who can see it: Everyone in the club')).toBeInTheDocument();
+    expect(screen.getByText('Who can see it: Invite only (private)')).toBeInTheDocument();
+  });
+
+  it('changes it in the same sheet as the event’s page', async () => {
+    state.events = [event()];
+    show(<EventNoticesPanel {...PANEL} />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Change who can see Handcycling' }),
+    );
+    const sheet = await screen.findByRole('dialog', { name: 'Who can see it' });
+    await userEvent.click(within(sheet).getByRole('radio', { name: /Members of NorCal SCI/ }));
+    expect(
+      within(sheet).getByText(/^Anyone can join NorCal SCI, so anyone who joins will see this/),
+    ).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }));
+    expect(visibility.saved).toEqual([
+      ['e1', { audience: 'organizations', groups: [], organizations: ['o1'], people: [] }],
+    ]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('says so when they may not change it', async () => {
+    visibility.mayChange = false;
+    state.events = [event()];
+    show(<EventNoticesPanel {...PANEL} />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Change who can see Handcycling' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You can’t change who sees this event.',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('offers no change once it has started', async () => {
+    state.events = [event({ startTime: new Date(Date.now() - 3_600_000).toISOString() })];
+    show(<EventNoticesPanel {...PANEL} />);
+    expect(await screen.findByText('Who can see it: Everyone in the club')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Change who can see/ })).toBeNull();
   });
 });
