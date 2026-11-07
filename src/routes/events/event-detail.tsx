@@ -5,6 +5,7 @@ import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { useCheckInPhase } from '@/lib/check-ins';
+import { isPrivateAudience } from '@/lib/event-audience';
 import { useRecordEventView } from '@/lib/event-views';
 import {
   deleteEvent,
@@ -37,6 +38,7 @@ import { organizationTown } from '@/routes/events/organization-places';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
+import { PrivacyChip, privacyLabel } from '@/routes/events/privacy-chip';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { ShareEventButton } from '@/routes/events/share-event';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
@@ -171,6 +173,14 @@ export default function EventDetailPage() {
     account.status === 'member' &&
     (account.isAdmin || (event.organizationId !== null && mine.ids.has(event.organizationId)));
   const canSeeCheckIns = canChange || managesHosts;
+  // Who sees it: the same people, imported events included (20261106030000).
+  const canSetVisibility = canChange || managesHosts;
+  const adminOf = [...mine.ids, ...(account.isAdmin && organization ? [organization.id] : [])]
+    .filter((orgId, index, all) => all.indexOf(orgId) === index)
+    .flatMap((orgId) => {
+      const found = organizationsById.get(orgId);
+      return found ? [{ id: found.id, name: found.name }] : [];
+    });
 
   return (
     <>
@@ -224,8 +234,9 @@ export default function EventDetailPage() {
             </p>
             <OutOfStateMark state={event.state} onNavy className="mt-2" />
 
-            {isOnline(event) || event.tags.length ? (
+            {isOnline(event) || event.tags.length || privacyLabel(event.audience) ? (
               <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <PrivacyChip audience={event.audience} onNavy />
                 {isOnline(event) ? (
                   <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-gold-hi text-[0.7375rem]">
                     {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
@@ -395,7 +406,9 @@ export default function EventDetailPage() {
           {/* Where the mock puts a group chat, and now what it puts there.
             Members only: the read behind it is the viewer's own conversation
             list, and an event page is the one surface that is public. */}
-          {memberId ? <EventGroupCard eventId={event.id} /> : null}
+          {memberId ? (
+            <EventGroupCard eventId={event.id} closed={isPrivateAudience(event.audience)} />
+          ) : null}
           {memberId ? <ReviewsSection target={{ kind: 'event', id: event.id }} /> : null}
 
           <AttendeeSection
@@ -467,6 +480,9 @@ export default function EventDetailPage() {
             organizationName={organization?.name ?? null}
             canChange={canChange}
             canSeeCheckIns={canSeeCheckIns}
+            canSetVisibility={canSetVisibility}
+            adminOf={adminOf}
+            onChanged={() => reload?.()}
           />
 
           {canChange && !event.handAdded ? (

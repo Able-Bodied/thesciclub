@@ -1,13 +1,21 @@
-import { QrCode, Users } from 'lucide-react';
+import { Lock, QrCode, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
-import { type AudienceHint, fetchAudienceHint, publicEventUrl } from '@/lib/event-audience';
+import {
+  type AudienceHint,
+  type EventVisibility,
+  fetchAudienceHint,
+  fetchEventVisibility,
+  isPrivateAudience,
+  publicEventUrl,
+} from '@/lib/event-audience';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { ShortLinkField, ShortLinkQr } from '@/routes/events/event-short-link';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { VisibilitySheet } from '@/routes/events/visibility-sheet';
 import type { ClubEvent, EventAudience } from '@/types/domain';
 
 /**
@@ -17,7 +25,11 @@ import type { ClubEvent, EventAudience } from '@/types/domain';
  * who the event is for and nothing more.
  */
 
-export function audienceLabel(audience: EventAudience, organizationName: string | null): string {
+export function audienceLabel(
+  audience: EventAudience,
+  organizationName: string | null,
+  visibility: EventVisibility | null = null,
+): string {
   switch (audience) {
     case 'club':
       return 'Everyone in the club';
@@ -25,6 +37,18 @@ export function audienceLabel(audience: EventAudience, organizationName: string 
       return organizationName ? `Members of ${organizationName}` : 'Its members';
     case 'groups':
       return 'Members of chosen groups';
+    case 'organizations': {
+      const names = visibility?.organizations.map((o) => o.name) ?? [];
+      return names.length > 0
+        ? `Members of ${names.join(', ')}`
+        : 'Members of chosen organizations';
+    }
+    case 'people': {
+      const count = visibility?.inviteeCount;
+      return count === undefined
+        ? 'Invite only'
+        : `Invite only · ${count === 1 ? '1 person' : `${count} people`} invited`;
+    }
   }
 }
 
@@ -39,14 +63,37 @@ export function EventAudienceSection({
   organizationName,
   canChange,
   canSeeCheckIns = false,
+  canSetVisibility = false,
+  adminOf = [],
+  onChanged,
 }: {
   event: ClubEvent;
   organizationName: string | null;
   canChange: boolean;
   /** The check-in QR code and who has used it. */
   canSeeCheckIns?: boolean;
+  /** May change who sees it: an imported event's org admins too (20261106030000). */
+  canSetVisibility?: boolean;
+  /** The organizations they are an org admin of, for Members of an organization. */
+  adminOf?: { id: string; name: string }[];
+  onChanged?: () => void;
 }) {
   const announce = useAnnounce();
+  const [visibility, setVisibility] = useState<EventVisibility | null>(null);
+  const [changing, setChanging] = useState(false);
+  const [readAgain, setReadAgain] = useState(0);
+  const hidden = isPrivateAudience(event.audience);
+  // Which organizations, or how many invited; and for the sheet, the lists.
+  useEffect(() => {
+    if (readAgain < 0 || (event.audience === 'club' && !canSetVisibility)) return;
+    let live = true;
+    void fetchEventVisibility(event.id).then((result) => {
+      if (live && result.ok) setVisibility(result.value);
+    });
+    return () => {
+      live = false;
+    };
+  }, [event.id, event.audience, canSetVisibility, readAgain]);
   const [shortLink, setShortLink] = useState(event.shortLink ?? null);
   const link = publicEventUrl(event.id, shortLink);
   // Seen, as well as heard (the owner, 2026-11-01): nothing else on the screen
@@ -80,14 +127,37 @@ export function EventAudienceSection({
       ) : null}
       <h2 className={HEADING}>Who can see it</h2>
       <div className="rounded-[14px] border border-line bg-paper p-3.5">
-        <p className="font-bold text-[0.90625rem] text-ink">
-          {audienceLabel(event.audience, organizationName)}
-        </p>
-        {/* Every event, to invite whoever you like (the owner, 2026-10-29). */}
-        <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-          Share the link to invite anyone: they see the event and can add themselves to the guest
-          list. Who's going stays in the club.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="flex min-w-0 items-center gap-1.5 font-bold text-[0.90625rem] text-ink">
+            {hidden ? (
+              <Lock aria-hidden="true" className="h-[14px] w-[14px] flex-none" strokeWidth={2.4} />
+            ) : null}
+            {audienceLabel(event.audience, organizationName, visibility)}
+          </p>
+          {canSetVisibility && visibility ? (
+            <button
+              type="button"
+              onClick={() => {
+                setChanging(true);
+              }}
+              className="-my-2 min-h-[44px] flex-none rounded-[10px] px-3 font-bold text-[0.8125rem] text-emphasis hover:bg-tint"
+            >
+              Change
+            </button>
+          ) : null}
+        </div>
+        {hidden ? (
+          // The owner, 2026-11-06: a private event is not for whoever gets the link.
+          <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+            Private. Nobody else can see it, in the app or from its link.
+          </p>
+        ) : (
+          // Every event, to invite whoever you like (the owner, 2026-10-29).
+          <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+            Share the link to invite anyone: they see the event and can add themselves to the guest
+            list. Who's going stays in the club.
+          </p>
+        )}
         <div className="mt-2.5 flex items-center justify-between gap-3">
           <span className="min-w-0 break-all text-[0.8125rem] text-ink2">{link}</span>
           <button
@@ -117,6 +187,21 @@ export function EventAudienceSection({
         ) : null}
         {shortLink ? <ShortLinkQr link={link} title={event.title} /> : null}
       </div>
+      {changing && visibility ? (
+        <VisibilitySheet
+          event={event}
+          visibility={visibility}
+          organizations={adminOf}
+          onCancel={() => {
+            setChanging(false);
+          }}
+          onSaved={() => {
+            setChanging(false);
+            setReadAgain((n) => n + 1);
+            onChanged?.();
+          }}
+        />
+      ) : null}
       {canChange ? (
         <Link
           to={`/events/${event.id}/guests`}
@@ -178,7 +263,24 @@ export function OutsideTheAudience({
   const organization = hint.organization;
   return (
     <div className="mx-auto w-full max-w-[420px] px-6 py-10 text-center">
-      {hint.audience === 'followers' && organization ? (
+      {hint.audience === 'people' ? (
+        <>
+          <Lock aria-hidden="true" className="mx-auto h-7 w-7 text-grey" />
+          <h1 className="mt-3 font-extrabold font-head text-[1.25rem] text-ink">Invite only</h1>
+          <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
+            This event is private, for the people its organizer invited. Ask whoever shared it to
+            invite you.
+          </p>
+        </>
+      ) : hint.audience === 'organizations' && !organization ? (
+        <>
+          <Lock aria-hidden="true" className="mx-auto h-7 w-7 text-grey" />
+          <h1 className="mt-3 font-extrabold font-head text-[1.25rem] text-ink">Members only</h1>
+          <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
+            This event is private, for the members of the organizations hosting it.
+          </p>
+        </>
+      ) : (hint.audience === 'followers' || hint.audience === 'organizations') && organization ? (
         <>
           <OrganizationBadge organization={organization} size="lg" className="mx-auto" />
           <h1 className="mt-3 font-extrabold font-head text-[1.25rem] text-ink">
@@ -209,7 +311,7 @@ export function OutsideTheAudience({
           </p>
         </>
       )}
-      <EventGroupCard eventId={eventId} />
+      {isPrivateAudience(hint.audience) ? null : <EventGroupCard eventId={eventId} />}
     </div>
   );
 }

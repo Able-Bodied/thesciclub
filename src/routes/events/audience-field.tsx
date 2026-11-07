@@ -1,7 +1,10 @@
-import { X } from 'lucide-react';
+import { Lock, X } from 'lucide-react';
 import { useId } from 'react';
+import { MemberChipsField } from '@/components/member-chips-field';
 import { useMyThreads } from '@/lib/chat/threads';
+import type { MentionCandidate } from '@/lib/mentions';
 import { cn } from '@/lib/utils';
+import { useConnectableMembers } from '@/routes/peers/connect-fields';
 import type { EventAudience } from '@/types/domain';
 
 /**
@@ -15,37 +18,63 @@ import type { EventAudience } from '@/types/domain';
  * buttons while there are few, and as a list to add from once there are many
  * (the owner: "if there are a lot of groups to choose from, a drop down"),
  * with what is chosen shown above it, each with a way to take it back.
+ *
+ * Members of organizations and Invite only (the owner, 2026-11-06;
+ * 20261106030000) are private: nobody else sees the event, even from its
+ * link. Organizations lists the ones the organizer is an org admin of; an
+ * old event for its host's followers reads as that one organization.
  */
 
 export interface AudienceChoice {
   audience: EventAudience;
   groups: string[];
+  organizations: string[];
+  people: MentionCandidate[];
 }
+
+export const CLUB_AUDIENCE: AudienceChoice = {
+  audience: 'club',
+  groups: [],
+  organizations: [],
+  people: [],
+};
 
 /** Past this many groups, a list to choose from rather than a button each. */
 export const GROUP_BUTTONS_MAX = 6;
 
-const CHOICES: { value: EventAudience; title: string; hint: string }[] = [
+const CHOICES: { value: EventAudience; title: string; hint: string; private?: true }[] = [
   { value: 'club', title: 'Everyone in the club', hint: 'Members only.' },
-  { value: 'followers', title: 'Its members', hint: 'People who have joined the organization.' },
+  {
+    value: 'organizations',
+    title: 'Members of an organization',
+    hint: 'Only people who have joined the ones you choose.',
+    private: true,
+  },
   { value: 'groups', title: 'Chosen groups', hint: 'Members of the group chats you pick.' },
+  {
+    value: 'people',
+    title: 'Invite only',
+    hint: 'Only the people you choose. Each is told they’re invited.',
+    private: true,
+  },
 ];
 
 export function AudienceField({
   value,
   onChange,
-  organizationName,
+  organizations,
   labelClassName,
   hintClassName,
 }: {
   value: AudienceChoice;
   onChange: (next: AudienceChoice) => void;
-  /** Null when no organization hosts it: then there are no followers to choose. */
-  organizationName: string | null;
+  /** The organizations whose members may be chosen: those the organizer is an org admin of. */
+  organizations: { id: string; name: string }[];
   labelClassName: string;
   hintClassName: string;
 }) {
   const id = useId();
+  const members = useConnectableMembers();
   const { threads } = useMyThreads();
   const groups = threads
     .filter((thread) => thread.kind === 'group')
@@ -54,7 +83,33 @@ export function AudienceField({
   const chosen = new Set(value.groups);
   const many = groups.length > GROUP_BUTTONS_MAX;
 
-  const choices = CHOICES.filter((choice) => choice.value !== 'followers' || organizationName);
+  const choices = CHOICES.filter(
+    (choice) => choice.value !== 'organizations' || organizations.length > 0,
+  );
+  const chosenOrganizations = new Set(value.organizations);
+  const isPrivate = value.audience === 'organizations' || value.audience === 'people';
+
+  function choose(audience: EventAudience) {
+    // One organization to choose from: chosen with the option.
+    const only = organizations.length === 1 ? organizations[0]?.id : undefined;
+    onChange({
+      ...value,
+      audience,
+      organizations:
+        audience === 'organizations' && value.organizations.length === 0 && only
+          ? [only]
+          : value.organizations,
+    });
+  }
+
+  function toggleOrganization(organizationId: string) {
+    onChange({
+      ...value,
+      organizations: chosenOrganizations.has(organizationId)
+        ? value.organizations.filter((o) => o !== organizationId)
+        : [...value.organizations, organizationId],
+    });
+  }
 
   function toggle(groupId: string) {
     onChange({
@@ -79,21 +134,76 @@ export function AudienceField({
               name={`${id}-audience`}
               checked={value.audience === choice.value}
               onChange={() => {
-                onChange({ ...value, audience: choice.value });
+                choose(choice.value);
               }}
               className="mt-0.5 h-5 w-5 flex-none accent-[var(--color-action)]"
             />
             <span className="min-w-0">
-              <span className="block font-bold text-[0.9375rem] text-ink">
-                {choice.value === 'followers' && organizationName
-                  ? `Members of ${organizationName}`
+              <span className="flex items-center gap-1.5 font-bold text-[0.9375rem] text-ink">
+                {choice.value === 'organizations' && organizations.length === 1
+                  ? `Members of ${organizations[0]?.name ?? ''}`
                   : choice.title}
+                {choice.private ? (
+                  <Lock
+                    aria-hidden="true"
+                    className="h-[13px] w-[13px] text-grey"
+                    strokeWidth={2.4}
+                  />
+                ) : null}
               </span>
               <span className="block text-[0.8125rem] text-ink2 leading-[1.4]">{choice.hint}</span>
             </span>
           </label>
         ))}
       </div>
+
+      {value.audience === 'organizations' && organizations.length > 1 ? (
+        <fieldset className="mt-3">
+          <legend className="font-bold text-[0.8125rem] text-ink">
+            Which organizations’ members
+          </legend>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {organizations.map((organization) => (
+              <button
+                key={organization.id}
+                type="button"
+                aria-pressed={chosenOrganizations.has(organization.id)}
+                onClick={() => {
+                  toggleOrganization(organization.id);
+                }}
+                className={cn(
+                  'min-h-[40px] rounded-full border-[1.4px] px-3.5 font-bold font-head text-[0.8125rem]',
+                  chosenOrganizations.has(organization.id)
+                    ? 'border-emphasis bg-emphasis text-white'
+                    : 'border-line bg-paper text-ink2',
+                )}
+              >
+                {organization.name}
+              </button>
+            ))}
+          </div>
+          {value.organizations.length === 0 ? (
+            <p className={hintClassName}>Choose at least one organization.</p>
+          ) : null}
+        </fieldset>
+      ) : null}
+
+      {value.audience === 'people' ? (
+        <MemberChipsField
+          className="mt-3"
+          label="Who is invited"
+          hint={
+            value.people.length === 0
+              ? 'Search for each person and tap to add them.'
+              : `${value.people.length} invited. Add as many as you like.`
+          }
+          members={members}
+          chosen={value.people}
+          onChange={(people) => {
+            onChange({ ...value, people });
+          }}
+        />
+      ) : null}
 
       {value.audience === 'groups' ? (
         <div className="mt-3">
@@ -178,15 +288,46 @@ export function AudienceField({
           ) : null}
         </div>
       ) : null}
-      <p className={hintClassName}>
-        Only those who see it can say they're going. Narrowing it later keeps who already said yes.
-        Anyone you send its link to can open it and join the guest list.
-      </p>
+      {isPrivate ? (
+        <p className={hintClassName}>
+          Private: nobody else sees it, in the app or from its link. Narrowing it later keeps who
+          already said yes.
+        </p>
+      ) : (
+        <p className={hintClassName}>
+          Only those who see it can say they're going. Narrowing it later keeps who already said
+          yes. Anyone you send its link to can open it and join the guest list.
+        </p>
+      )}
     </fieldset>
   );
 }
 
-/** Whether the choice can be saved: groups needs at least one. */
+/** Whether the choice can be saved: each list needs at least one. */
 export function audienceReady(choice: AudienceChoice): boolean {
-  return choice.audience !== 'groups' || choice.groups.length > 0;
+  switch (choice.audience) {
+    case 'groups':
+      return choice.groups.length > 0;
+    case 'organizations':
+      return choice.organizations.length > 0;
+    case 'people':
+      return choice.people.length > 0;
+    default:
+      return true;
+  }
+}
+
+/** Whether two choices would save the same thing. */
+export function sameAudience(a: AudienceChoice, b: AudienceChoice): boolean {
+  const key = (c: AudienceChoice) =>
+    [
+      c.audience,
+      c.groups.slice().sort().join(),
+      c.organizations.slice().sort().join(),
+      c.people
+        .map((p) => p.id)
+        .sort()
+        .join(),
+    ].join('|');
+  return key(a) === key(b);
 }

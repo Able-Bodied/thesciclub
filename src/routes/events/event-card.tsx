@@ -7,6 +7,7 @@ import { GoingCount } from '@/routes/events/going-count';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
+import { PrivacyChip } from '@/routes/events/privacy-chip';
 import { safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import type { ClubEvent, Organization, RsvpStatus } from '@/types/domain';
@@ -258,6 +259,7 @@ export function EventCard({
             {/* Format first and in gold, matching the mock: "can I get to this"
                 is the question that decides whether the rest of the card is
                 worth reading. */}
+            <PrivacyChip audience={event.audience} />
             {isOnline(event) ? (
               <span className="rounded-full bg-gold-lt px-2.5 py-[5px] font-semibold text-[0.7375rem] text-gold-dp leading-[1.25]">
                 {event.format === 'hybrid' ? 'Hybrid' : 'Online'}

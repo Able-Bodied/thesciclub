@@ -698,7 +698,12 @@ export interface EventTag {
  * group chats. Every event also has a page anyone with its link can open
  * (20261029110000), so "anyone with the link" is no longer a choice.
  */
-export const EVENT_AUDIENCES = ['club', 'followers', 'groups'] as const;
+/**
+ * `followers` is the hosting organization's members; `organizations` the
+ * members of the ones chosen; `people` invite only (20261106030000). The last
+ * three are private: hidden from everyone else, even from the link.
+ */
+export const EVENT_AUDIENCES = ['club', 'followers', 'groups', 'organizations', 'people'] as const;
 export type EventAudience = (typeof EVENT_AUDIENCES)[number];
 
 export interface ClubEvent {

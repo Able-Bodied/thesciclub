@@ -47,6 +47,103 @@ export function setEventAudience(
   );
 }
 
+/** Members of chosen organizations, or invite only: nobody else sees it, even from the link. */
+export function isPrivateAudience(audience: EventAudience): boolean {
+  return audience === 'followers' || audience === 'organizations' || audience === 'people';
+}
+
+export interface VisibilityOrganization {
+  id: string;
+  name: string;
+  shortCode: string;
+  logoPath: string | null;
+}
+
+export interface Invitee {
+  id: string;
+  displayName: string;
+  username: string;
+  photoPath: string | null;
+}
+
+/** Who an event is for (20261106030000). Groups and invitees only for whoever may change it. */
+export interface EventVisibility {
+  audience: EventAudience;
+  mayChange: boolean;
+  organizations: VisibilityOrganization[];
+  groups: string[] | null;
+  invitees: Invitee[] | null;
+  inviteeCount: number;
+}
+
+interface VisibilityRow {
+  audience: EventAudience;
+  may_change: boolean;
+  organizations: { id: string; name: string; short_code: string; logo_path: string | null }[];
+  groups: string[] | null;
+  invitees:
+    | { id: string; name: string; username: string | null; photo_path: string | null }[]
+    | null;
+  invitee_count: number;
+}
+
+export async function fetchEventVisibility(
+  eventId: string,
+): Promise<Result<EventVisibility | null>> {
+  const result = await call<VisibilityRow | null>(
+    'event_visibility',
+    { p_event: eventId },
+    'Could not read who can see the event.',
+  );
+  if (!result.ok) return result;
+  const row = result.value;
+  if (!row) return { ok: true, value: null };
+  return {
+    ok: true,
+    value: {
+      audience: row.audience,
+      mayChange: row.may_change,
+      organizations: row.organizations.map((o) => ({
+        id: o.id,
+        name: o.name,
+        shortCode: o.short_code,
+        logoPath: o.logo_path,
+      })),
+      groups: row.groups,
+      invitees:
+        row.invitees?.map((m) => ({
+          id: m.id,
+          displayName: m.name,
+          username: m.username ?? '',
+          photoPath: m.photo_path,
+        })) ?? null,
+      inviteeCount: row.invitee_count,
+    },
+  };
+}
+
+/**
+ * Who sees the event: this date and, in a series, every later one. An org
+ * admin may do it on an imported event too. Resolves to how many were newly
+ * invited, each of whom is told.
+ */
+export function setEventVisibility(
+  eventId: string,
+  choice: { audience: EventAudience; groups: string[]; organizations: string[]; people: string[] },
+): Promise<Result<number>> {
+  return call<number>(
+    'set_event_visibility',
+    {
+      p_event: eventId,
+      p_audience: choice.audience,
+      p_groups: choice.audience === 'groups' ? choice.groups : [],
+      p_organizations: choice.audience === 'organizations' ? choice.organizations : [],
+      p_people: choice.audience === 'people' ? choice.people : [],
+    },
+    'Who can see the event was not saved.',
+  );
+}
+
 /** The group chats a groups-only event is for, for the form that changes it. */
 export async function fetchAudienceGroups(eventId: string): Promise<string[]> {
   const result = await call<string[] | null>(

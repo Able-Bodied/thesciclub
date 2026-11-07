@@ -61,13 +61,25 @@ vi.mock('@/lib/events', async (importOriginal) => ({
 // Who an event is for, for a member outside its audience (20261022180000).
 const audience = vi.hoisted(() => ({
   hint: null as null | {
-    audience: 'followers' | 'groups';
+    audience: 'followers' | 'groups' | 'people' | 'organizations';
     organization: { id: string; name: string; shortCode: string; logoPath: null } | null;
   },
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
   fetchAudienceHint: () => Promise.resolve(audience.hint),
+  fetchEventVisibility: () =>
+    Promise.resolve({
+      ok: true,
+      value: {
+        audience: 'people',
+        mayChange: false,
+        organizations: [],
+        groups: null,
+        invitees: null,
+        inviteeCount: 3,
+      },
+    }),
 }));
 vi.mock('@/routes/reviews/reviews-section', () => ({ ReviewsSection: () => null }));
 vi.mock('@/lib/organization-follows', () => ({
@@ -225,6 +237,29 @@ describe('EventDetailPage', () => {
     audience.hint = { audience: 'groups', organization: null };
     renderDetail('for-a-group');
     expect(await screen.findByText("For a group you're not in")).toBeInTheDocument();
+    audience.hint = null;
+  });
+
+  // The owner, 2026-11-06: private events say so, and are not for the link.
+  it('marks an invite-only event and says nobody else can see it', async () => {
+    state.events = [makeEvent({ id: 'dinner', audience: 'people' })];
+    renderDetail('dinner');
+    // The chip at the top, and who it is for below.
+    expect(await screen.findByText('Invite only · 3 people invited')).toBeInTheDocument();
+    expect(screen.getByText('Invite only')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nobody else can see it, in the app or from its link/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Share the link to invite anyone/)).toBeNull();
+  });
+
+  it('tells a member outside an invite-only event only that it is invite only', async () => {
+    audience.hint = { audience: 'people', organization: null };
+    renderDetail('private-dinner');
+    expect(await screen.findByRole('heading', { name: 'Invite only' })).toBeInTheDocument();
+    expect(screen.getByText(/Ask whoever shared it to invite you/)).toBeInTheDocument();
+    // No way into its chat either.
+    expect(screen.queryByRole('button', { name: /group chat/i })).toBeNull();
     audience.hint = null;
   });
 

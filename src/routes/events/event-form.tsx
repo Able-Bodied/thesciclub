@@ -9,7 +9,7 @@ import { useAnnounce } from '@/lib/announce';
 import { EVENTS_ADDRESS } from '@/lib/calendar-invites';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
-import { fetchAudienceGroups, setEventAudience } from '@/lib/event-audience';
+import { fetchEventVisibility, setEventVisibility } from '@/lib/event-audience';
 import {
   adminChangeImportedEvent,
   type CoverChange,
@@ -26,7 +26,12 @@ import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { OrganizationEditor } from '@/routes/admin/organization-editor';
-import { type AudienceChoice, AudienceField, audienceReady } from '@/routes/events/audience-field';
+import {
+  type AudienceChoice,
+  AudienceField,
+  audienceReady,
+  sameAudience,
+} from '@/routes/events/audience-field';
 import { CoverField } from '@/routes/events/cover-field';
 import { DescriptionEditor } from '@/routes/events/description-editor';
 import {
@@ -175,6 +180,7 @@ export default function EventFormPage() {
         isAdmin={account.isAdmin}
         options={options}
         yours={new Set([...mine.ids, ...memberOf])}
+        adminOf={mine.ids}
       />
     );
   return (
@@ -240,6 +246,7 @@ function EventForm({
   isAdmin,
   options,
   yours,
+  adminOf,
   hidden,
   top,
 }: {
@@ -266,6 +273,8 @@ function EventForm({
   options: Organization[];
   /** The organizations they run or belong to, listed first. */
   yours: Set<string>;
+  /** The organizations they are an org admin of: whose members an event can be for. */
+  adminOf: Set<string>;
 }) {
   const navigate = useNavigate();
   const announce = useAnnounce();
@@ -274,24 +283,38 @@ function EventForm({
   const [more, setMore] = useState<MorePhotoChange[]>(
     initialMore.map((photo) => ({ kind: 'keep', ...photo })),
   );
-  const [audience, setAudience] = useState<AudienceChoice>({
-    audience: initialAudience,
+  // An old event for its host's followers reads as that one organization.
+  const startingAudience: AudienceChoice = {
+    audience: initialAudience === 'followers' ? 'organizations' : initialAudience,
     groups: [],
-  });
-  const [initialGroups, setInitialGroups] = useState<string[]>([]);
-  // The groups a groups-only event is for, read for the organizer who changes it.
+    organizations: initialAudience === 'followers' && initial.host ? [initial.host] : [],
+    people: [],
+  };
+  const [audience, setAudience] = useState<AudienceChoice>(startingAudience);
+  const [initialChoice, setInitialChoice] = useState<AudienceChoice>(startingAudience);
+  // Which groups, organizations or people it is for, read for the organizer who changes it.
   useEffect(() => {
-    if (!eventId || initialAudience !== 'groups') return;
+    if (!eventId || initialAudience === 'club') return;
     let cancelled = false;
-    void fetchAudienceGroups(eventId).then((groups) => {
-      if (cancelled) return;
-      setInitialGroups(groups);
-      setAudience((current) => ({ ...current, groups }));
+    void fetchEventVisibility(eventId).then((result) => {
+      if (cancelled || !result.ok || !result.value) return;
+      const read = result.value;
+      const loaded: AudienceChoice = {
+        audience: read.audience === 'followers' ? 'organizations' : read.audience,
+        groups: read.groups ?? [],
+        organizations:
+          read.audience === 'followers' && initial.host
+            ? [initial.host]
+            : read.organizations.map((o) => o.id),
+        people: (read.invitees ?? []).map((m) => ({ ...m, photoAlt: null })),
+      };
+      setInitialChoice(loaded);
+      setAudience(loaded);
     });
     return () => {
       cancelled = true;
     };
-  }, [eventId, initialAudience]);
+  }, [eventId, initialAudience, initial.host]);
   // A picture pasted into the description becomes the cover (lib/paste-photos.ts).
   const coverTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
@@ -330,15 +353,13 @@ function EventForm({
       return item.kind === 'new' || item.path !== was?.path || item.alt !== was.alt;
     });
 
-  // Followers are an organization's: with no organization hosting, there are
-  // none to choose, and the event is for the club instead.
-  const hostName = options.find((option) => option.id === draft.host)?.name ?? null;
-  const chosenAudience: AudienceChoice =
-    audience.audience === 'followers' && !hostName ? { ...audience, audience: 'club' } : audience;
-  const audienceChanged =
-    isNew ||
-    chosenAudience.audience !== initialAudience ||
-    chosenAudience.groups.slice().sort().join() !== initialGroups.slice().sort().join();
+  // Whose members it can be for: the organizations they are an org admin of,
+  // and for a club administrator the host too.
+  const audienceOrganizations = options
+    .filter((o) => adminOf.has(o.id) || (isAdmin && o.id === draft.host))
+    .map((o) => ({ id: o.id, name: o.name }));
+  const chosenAudience = audience;
+  const audienceChanged = isNew || !sameAudience(chosenAudience, initialChoice);
 
   function submit() {
     if (!reading.ok || saving || !audienceReady(chosenAudience)) return;
@@ -380,11 +401,12 @@ function EventForm({
         }
       }
       if (audienceChanged) {
-        const saved = await setEventAudience(
-          result.id,
-          chosenAudience.audience,
-          chosenAudience.groups,
-        );
+        const saved = await setEventVisibility(result.id, {
+          audience: chosenAudience.audience,
+          groups: chosenAudience.groups,
+          organizations: chosenAudience.organizations,
+          people: chosenAudience.people.map((p) => p.id),
+        });
         if (!saved.ok) {
           void navigate(`/events/${result.id}/edit`, {
             replace: true,
@@ -687,7 +709,7 @@ function EventForm({
             setAudience(next);
             setFailure(null);
           }}
-          organizationName={hostName}
+          organizations={audienceOrganizations}
           labelClassName={LABEL}
           hintClassName={HINT}
         />

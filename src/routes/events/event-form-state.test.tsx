@@ -31,7 +31,7 @@ vi.mock('@/lib/events', async (importOriginal) => ({
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  fetchAudienceGroups: () => Promise.resolve({ ok: true, groups: [] }),
+  fetchEventVisibility: () => Promise.resolve({ ok: true, value: null }),
 }));
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
 

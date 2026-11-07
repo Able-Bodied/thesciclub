@@ -32,7 +32,14 @@ import { describeThrown } from '@/lib/describe-error';
  * Everyone going or interested is in it too, from the first thing said in it
  * (the owner, 2026-11-01; 20261101090000).
  */
-export function EventGroupCard({ eventId }: { eventId: string }) {
+export function EventGroupCard({
+  eventId,
+  closed = false,
+}: {
+  eventId: string;
+  /** A private event's chat is for whoever can see it (20261106030000). */
+  closed?: boolean;
+}) {
   const navigate = useNavigate();
   const { threads, loading } = useMyThreads();
   const [opening, setOpening] = useState(false);
@@ -77,7 +84,9 @@ export function EventGroupCard({ eventId }: { eventId: string }) {
       <p className="mt-1.5 text-[0.7875rem] text-grey leading-[1.45]">
         {existing
           ? 'Everyone going or interested is in this chat. Leave from the group itself.'
-          : 'Everyone going or interested joins once somebody says something. Any member can join, before the event or after.'}
+          : closed
+            ? 'Everyone going or interested joins once somebody says something. Only people who can see this event can join.'
+            : 'Everyone going or interested joins once somebody says something. Any member can join, before the event or after.'}
       </p>
       {failure ? (
         <p className="mt-2 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">

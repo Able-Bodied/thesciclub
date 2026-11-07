@@ -117,7 +117,8 @@ export default function PublicEventPage() {
             This event is not on the calendar
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
-            It may have been removed, or the link is not complete.
+            It may have been removed, the link is not complete, or it is private. If you were
+            invited, sign in to see it.
           </p>
           <Link
             to="/join"
