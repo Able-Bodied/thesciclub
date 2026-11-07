@@ -14,46 +14,17 @@ import { GroupIdentity } from '@/routes/chat/group-identity';
 import { MemberPicker } from '@/routes/chat/member-picker';
 
 /**
- * Who is in a group, how somebody else gets in, and how you get out — and,
- * since 2026-09-30, the group's name and picture and the way to change them.
+ * A group's members, adding and leaving, and its name and picture (`GroupIdentity`). Linked from
+ * the thread header's "N members" line.
  *
- * A screen of its own rather than a panel on the conversation, because all
- * of those are things somebody does once and none of them belongs beside a
- * composer. The header of the thread links here by its "N members" line. The
- * screen is headed by the group's name and picture, since it is about the
- * group; `GroupIdentity` holds the controls and says why they are there.
+ * Nobody removes anybody but themselves: the delete policy is own-row-only. Who may evict whom is a
+ * moderation question this build does not answer.
  *
- * ---------------------------------------------------------------------------
- * There is no removing anybody but yourself
- * ---------------------------------------------------------------------------
- * The delete policy is own-row-only and there is no function that evicts. A
- * group has no owner: anybody in it can bring somebody in, anybody can leave,
- * and nobody can put somebody else out. Deciding who may throw whom out of a
- * conversation is a moderation question this build does not answer, and a
- * control that half-answers it is worse than the absence.
+ * An event's group takes no members by hand (`chat_add_to_group` refuses an `event_id`). Adding to
+ * an organization's group makes a member (20261030020000), so only its org admins and the club's
+ * administrators see the picker.
  *
- * ---------------------------------------------------------------------------
- * An event's group takes no members by hand
- * ---------------------------------------------------------------------------
- * Its roster is the people who said they are going, and each of them joins it
- * from the event. `chat_add_to_group` refuses a thread with an `event_id`, so
- * the picker is not drawn and the reason is printed where it would have been.
- *
- * ---------------------------------------------------------------------------
- * An organization's group is added to by its org admins
- * ---------------------------------------------------------------------------
- * Its roster is the organization's members, so adding somebody makes them a
- * member (20261030020000): that is for its org admins and the club's
- * administrators, and nobody else is shown the picker.
- *
- * ---------------------------------------------------------------------------
- * Leaving asks twice
- * ---------------------------------------------------------------------------
- * Not a browser `confirm()` — a modal that cannot be styled, cannot be read
- * properly by a screen reader in every browser, and appears somewhere nobody
- * was looking. The button turns into its own confirmation in place, and says
- * what leaving actually costs: the conversation stops being readable, including
- * the part of it that happened while they were in it.
+ * Leaving confirms in place, not with `confirm()`, which screen readers do not read reliably.
  */
 export default function GroupMembersPage() {
   const { threadId } = useParams<{ threadId: string }>();
@@ -61,8 +32,7 @@ export default function GroupMembersPage() {
   const account = useAccount();
   const viewerId = account.status === 'member' ? account.userId : null;
 
-  // The list, not the conversation: this screen has no use for the messages,
-  // and chat_my_threads is the one round trip that carries the name and kind.
+  // The thread list, not the conversation: one round trip for the name and kind, no messages.
   const { threads, loading: threadsLoading, reload: reloadThreads } = useMyThreads();
   const thread = threads.find((candidate) => candidate.id === threadId) ?? null;
   const picture = useAttachmentUrls(thread?.photoPath ? [thread.photoPath] : []);
@@ -96,10 +66,7 @@ export default function GroupMembersPage() {
     if (!threadId || picked.length === 0 || adding) return;
     setAdding(true);
     setFailure(null);
-    // One call each, in order, and the first refusal stops the rest. Adding
-    // four people where the second cannot be added should not leave somebody
-    // guessing which two of them arrived — the roster below is refetched and
-    // says.
+    // In order; the first refusal stops the rest, and the refetched roster shows who got in.
     void (async () => {
       for (const memberId of picked) {
         const result = await addToGroup(threadId, memberId);
@@ -125,9 +92,7 @@ export default function GroupMembersPage() {
           setLeaving(false);
           return;
         }
-        // Back to the list, replacing both this screen and the conversation:
-        // the browser's back button must not land on a thread that no longer
-        // loads for them.
+        // Replace, so Back cannot land on a thread that no longer loads for them.
         void navigate('/chat', { replace: true });
       })
       .catch((e: unknown) => {
@@ -208,9 +173,8 @@ export default function GroupMembersPage() {
                 key={memberId}
                 className="flex min-h-[56px] items-center gap-3 border-line border-b py-2.5 last:border-b-0"
               >
-                {/* Decorative: the name is beside it, and the name is the
-                    link. A link whose only content is two initials has no
-                    name — a screen reader reaches it and says "link, N". */}
+                {/* Decorative: the name beside it is the link. An initials-only link
+                    reads as "link, N" to a screen reader. */}
                 <span aria-hidden="true" className="flex-none">
                   {author ? (
                     <MemberAvatar

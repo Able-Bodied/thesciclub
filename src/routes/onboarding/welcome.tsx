@@ -3,46 +3,16 @@ import { ClubMark } from '@/components/club-mark';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
- * The first screen, matching the published demo: the mark, then the promise,
- * then what the club is.
+ * The first screen: the mark, the promise, then what the club is. The logo already says
+ * "MEMBERS ONLY", so the footer line stays short.
  *
- * The logo carries "MEMBERS ONLY" on it, which is why the footer line beneath
- * the button is short — the badge has already said it.
+ * Centred with `my-auto`, not `justify-center`: a flex box centring content taller than itself
+ * puts the overflow above the top, out of scroll's reach (the owner, 2026-10-01).
  *
- * ---------------------------------------------------------------------------
- * Centred by its own margins, not by the box
- * ---------------------------------------------------------------------------
- * The column above the buttons is centred vertically when there is room and
- * scrolls when there is not — a short window, a zoomed browser, the larger
- * text size. It used to be centred with `justify-center` on the scrolling
- * box, and a flex box that centres content taller than itself puts half the
- * overflow above the top, where no scroll can reach it: the owner saw the
- * scrollbar on 2026-10-01, and at one size more the top of the logo would
- * have been cut off. `my-auto` on the column does the same centring with
- * room to spare and, without it, starts the content at the top and lets it
- * scroll, which is what the other onboarding steps already do.
- *
- * ---------------------------------------------------------------------------
- * It fits a short window, and draws no scrollbar when it cannot
- * ---------------------------------------------------------------------------
- * With the Windows taskbar showing, a laptop browser is about 550px tall and
- * the column overflowed by 97px, so the box drew a scrollbar beside the
- * introduction (the owner, 2026-10-01). The badge and the gaps around it now
- * shrink with the window's height — the badge never below the 96px the brand
- * README sets as its minimum, never above its old 196px — so at the normal
- * text size it fits a 550px laptop window and every phone from 360px wide
- * held upright. The text does not shrink: the owner's rule is legibility
- * over looks.
- *
- * On a short phone (740px tall or less: an iPhone SE, a phone with the
- * browser's bars showing) the badge is smaller still, 64 to 120px, and the gaps
- * close up, so the name, the badge and the words fit without scrolling (the owner,
- * 2026-11-03).
- *
- * Below that, or at a larger text size, it still cannot fit, and the box
- * scrolls with its bar hidden (`scrollbar-hidden`). That is safe here and
- * would not be on a list: nothing in the box is a control, and both buttons
- * are in the footer, which never scrolls away.
+ * The badge and gaps shrink with window height (badge 96-196px; 96px is the brand README minimum)
+ * to fit a 550px laptop window; on phones 740px tall or less, 64-120px (the owner, 2026-11-03).
+ * Text never shrinks: legibility over looks. When it still overflows, the scrollbar is hidden,
+ * safe only because the box holds no controls and both buttons sit in the footer.
  */
 export function WelcomeScreen({
   onJoin,
@@ -123,10 +93,8 @@ export function WelcomeScreen({
         <p className="mt-2.5 text-center text-[0.78125rem] text-grey">
           <b className="font-bold">Members only.</b> Nothing inside the club is public.
         </p>
-        {/* For somebody with no invite: the request page (the owner,
-            2026-10-28; it was a call with Wojtek from 2026-10-10). Somebody
-            signed in with an address that is not on the list is offered the
-            same on the blocked screen. */}
+        {/* The request page for somebody with no invite (the owner, 2026-10-28); the blocked
+            screen offers the same. */}
         {joiningOpen ? null : (
           <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
             No invite yet?{' '}

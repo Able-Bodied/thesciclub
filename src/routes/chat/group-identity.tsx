@@ -13,41 +13,16 @@ import { describeThrown } from '@/lib/describe-error';
 /**
  * A group's name and picture, and the controls to change them.
  *
- * ---------------------------------------------------------------------------
- * Anybody in the group, and it says so
- * ---------------------------------------------------------------------------
- * The owner's decisions, 2026-09-30: a group has no owner, so anybody in it
- * can rename it or change its picture, and each change leaves a line in the
- * conversation saying who made it. The sentence under the controls says both,
- * so nobody changes a group thinking it is private to them. An event's group
- * keeps the event's name and takes no picture, and the members screen does
- * not draw this for one.
+ * Anybody in the group can change them, and the conversation says who did (the owner,
+ * 2026-09-30). Not shown for an event's group.
  *
- * ---------------------------------------------------------------------------
- * Not optimistic
- * ---------------------------------------------------------------------------
- * The name and picture are other people's too, and the database writes the
- * line that says who changed them. So the screen waits for it and then
- * re-reads, rather than drawing a change that might be refused. A refusal
- * keeps what was typed, and a picture that was refused is taken back out of
- * storage.
+ * Not optimistic: the database writes the who-changed-it line, so the screen waits then re-reads.
+ * A refusal keeps what was typed, and a refused picture is deleted from storage.
  *
- * ---------------------------------------------------------------------------
- * The picture goes where the group's photographs go
- * ---------------------------------------------------------------------------
- * threads/<id>/ in the private `chat` bucket, through the same upload a
- * photograph in a message takes — shrunk on the phone, refused over 10MB, not
- * a video. So only the group's members can read it, the same as its words.
+ * The picture goes in threads/<id>/ of the private `chat` bucket, so only members can read it.
  *
- * ---------------------------------------------------------------------------
- * Focus is not dropped
- * ---------------------------------------------------------------------------
- * Closing the rename form, and taking the picture away, both remove the
- * control that has focus. Left alone the browser puts focus back at the top
- * of the page, and a keyboard or switch user has to find their place again.
- * So opening the form puts focus in the name, closing it puts focus back on
- * the button that opened it, and taking the picture away puts it on the
- * picture button.
+ * Focus is moved by hand when its control disappears; otherwise the browser drops it to the top
+ * of the page and a keyboard or switch user loses their place.
  */
 export function GroupIdentity({
   thread,
@@ -120,8 +95,7 @@ export function GroupIdentity({
       return;
     }
     run('picture', async () => {
-      // Drawn at most 56px across (GroupAvatar), so 400px is plenty; the
-      // 1,600px kept for a photograph in a message was 200-400KB a group.
+      // Drawn at most 56px (GroupAvatar), so 400px; a message's 1,600px was 200-400KB.
       const up = await uploadAttachments(list, attachmentFolder('thread', thread.id), 400);
       if (!up.ok) return up.error;
       const [path] = up.value;
@@ -232,9 +206,7 @@ export function GroupIdentity({
             Rename the group
           </button>
         )}
-        {/* The platform's own picker, behind a real button: the camera roll
-            and the camera on a phone. Hidden from the accessibility tree, as
-            the photo picker's is, because the button is the control. */}
+        {/* Hidden from the accessibility tree: the button below is the control. */}
         <input
           ref={input}
           type="file"

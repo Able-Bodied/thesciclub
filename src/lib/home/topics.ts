@@ -8,44 +8,17 @@ import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Recent topics across every open room, for Home.
+ * Recent topics across every open room, for Home: one read (two until 2026-10-14), RLS the filter.
+ * The newest forty topics, each embedding `opening` and `replies`; embeds obey the same
+ * `chat_room_is_readable` policies.
  *
- * ---------------------------------------------------------------------------
- * One read, and RLS is the filter
- * ---------------------------------------------------------------------------
- * The newest forty topics by activity, each with the posts its card needs,
- * embedded: `opening`, the topic's earliest post, and `replies`, its two
- * earliest standing top-level posts. Both tables are already granted to
- * `authenticated` and their select policies are `chat_room_is_readable`, and
- * an embedded read is held to the same policies, so what comes back is
- * exactly what this member may read. Nothing here decides visibility except
- * the one thing RLS cannot: see "closed rooms" below.
+ * `opening` is the earliest post, unfiltered: filtering out a removed question would present
+ * its first reply as the question. `replies` are standing top-level posts (`replyTo` null, since
+ * 20260930000000), so a card never quotes a side-conversation; two suffice, as a standing opener
+ * is the first of them.
  *
- * Until 2026-10-14 this was two reads, the topics and then every post in
- * them (up to 1,000 rows, to use two from each): a second round trip before
- * Home could draw, and most of its bytes.
- *
- * The opening post is the earliest row for a topic, standing or not, which
- * is why it is embedded on its own and unfiltered. Filter the removed ones
- * out and a topic whose question was taken down would present its first
- * reply as the question.
- *
- * The first reply on a card is the earliest standing post after the opener
- * that answers the topic and not another post — `replyTo` null. Since
- * 20260930000000 a post can sit under another (a reply to an answer); those
- * belong to the answer they are under, and a card that quoted one would put
- * half a side-conversation under the title. Two such posts are enough: when
- * the opener stands it is the first of them (an opener answers nobody), and
- * the reply is the second.
- *
- * ---------------------------------------------------------------------------
- * Closed rooms
- * ---------------------------------------------------------------------------
- * An administrator can read a closed room, so their read includes topics no
- * member can see. `toHomeTopics` drops them, against the rooms list, exactly as
- * `continue-in-room.tsx` does. Without it an administrator's Home is fuller
- * than any member's, and a screenshot taken as the administrator says the club
- * is busier than it is.
+ * Closed rooms: administrators can read them, so `toHomeTopics` drops them against the rooms list
+ * (as `continue-in-room.tsx` does), or an administrator's Home would look busier than a member's.
  */
 
 export const HOME_TOPIC_LIMIT = 40;
@@ -92,13 +65,8 @@ function byPostTime(a: ChatPost, b: ChatPost): number {
 }
 
 /**
- * The topics a card can be drawn from, newest activity first.
- *
- * Pure, so the rules that matter are tested without a database: a topic in a
- * room that is not open is dropped; the opening post is the earliest row even
- * when it has been removed; the first reply is the earliest standing
- * top-level post after it; and a photo topic is one whose opening post has a
- * photograph.
+ * The topics a card can be drawn from, newest activity first. Pure, so the header's rules are
+ * tested without a database; a photo topic's opening post has a photograph.
  */
 export function toHomeTopics(
   topics: readonly HomeTopicSummary[],

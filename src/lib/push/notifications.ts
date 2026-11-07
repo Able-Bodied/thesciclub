@@ -5,45 +5,21 @@ import { isNative, isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Turning notifications on and off for the device in the member's hand.
+ * Turning notifications on and off for this device (HANDOFF.md, "Next up: notifications on an
+ * iPhone"). Screen tests stub this module: `pushManager` and the rpc are both the network.
  *
- * The third piece of notifications (HANDOFF.md, "Next up: notifications on an
- * iPhone"). The service worker can show one and `push_subscriptions` can hold
- * the address; this is the member saying yes. Screen tests stub this module:
- * `pushManager` and the rpc are both the network.
+ * The website row shows only when `VITE_VAPID_PUBLIC_KEY` is set: no switch for notifications
+ * nobody sends (CONTEXT.md).
  *
- * ---------------------------------------------------------------------------
- * Not drawn until something can send
- * ---------------------------------------------------------------------------
- * A switch that turns on notifications nobody sends is the screen that looks
- * finished and does nothing, which CONTEXT.md rules out. The row appears only
- * when `VITE_VAPID_PUBLIC_KEY` is set, and that key goes into Netlify on the
- * day the sender does — it is the one switch for the whole feature.
+ * Five states. iOS has no `PushManager` in a Safari tab, so "cannot" splits into *install* (a tab)
+ * and *unsupported* (installed, iOS before 16.4). Then *off*, *on*, and *refused* (the system will
+ * not ask again, so the row points to Settings).
  *
- * ---------------------------------------------------------------------------
- * The five states, and why an iPhone needs two of them
- * ---------------------------------------------------------------------------
- * iOS gives a web app push only once it is on the Home Screen: in a Safari tab
- * `PushManager` does not exist. So "cannot" splits in two — *install* (a tab;
- * say how to add it) and *unsupported* (already installed, and still cannot:
- * iOS before 16.4). The other three are the permission: *off* (not asked, or
- * turned off here), *on*, and *refused* (the system will not ask again, so the
- * row says where in Settings it is changed rather than offering a button that
- * does nothing).
+ * iOS ignores a permission request not directly from a tap, and any await first can lose the
+ * gesture: `turnOn` calls `Notification.requestPermission()` before anything else. Do not move it.
  *
- * ---------------------------------------------------------------------------
- * The permission is asked first, inside the tap
- * ---------------------------------------------------------------------------
- * iOS ignores a permission request that is not the direct result of a tap, and
- * awaiting anything first — the service worker, a network read — can be enough
- * to lose the gesture. So `turnOn` calls `Notification.requestPermission()`
- * before it awaits anything else. Do not move it.
- *
- * The store app on an iPhone has no service worker; it asks iOS for a device
- * token instead (app-push.ts), kept by `push_subscribe_app` and sent to
- * through Apple. The same row, the same five states (never "install"), the
- * same asking. Android's app has no sender yet, so it neither asks nor shows
- * the row.
+ * The iPhone store app uses an APNs token instead (app-push.ts, `push_subscribe_app`): same row and
+ * states, never "install". Android's app has no sender yet, so shows no row.
  */
 
 export type NotificationState = 'install' | 'unsupported' | 'off' | 'on' | 'refused';
@@ -101,10 +77,8 @@ export function notificationsOffered(): boolean {
 const loadApp = () => import('@/lib/push/app-push');
 
 /**
- * The number on the app icon, where there is one: the iPhone app's
- * (app-push.ts), or a Home Screen app on iOS 16.4+ or installed Chrome. A push
- * sets it while the app is closed; src/lib/icon-badge.ts keeps it true while
- * open. 0 clears it. Never fails.
+ * The app icon's number (iPhone app, iOS 16.4+ Home Screen, installed Chrome). A push sets it
+ * while closed; src/lib/icon-badge.ts while open. 0 clears it. Never fails.
  */
 export function showOnAppIcon(count: number): Promise<void> {
   if (isAppPush()) {
@@ -125,24 +99,10 @@ function canPush(): boolean {
 }
 
 /**
- * ---------------------------------------------------------------------------
- * Asking again, the first time the club is opened from the Home Screen
- * ---------------------------------------------------------------------------
- * The owner, 2026-10-05. On an iPhone, signing up happens in Safari, where
- * nothing can be asked: NotificationsStep says to add the club to the Home
- * Screen instead. Opened from there, the member signs in once more and used
- * to land on Home with nobody asking, the switch on Me their only way in. An
- * iPhone neither says when a web app is installed nor shows its permission
- * prompt without a tap, so the club asks when it can: the first time it is
- * running as the installed app and this phone has never been asked.
- *
- * "Not asked" is two things. The system's own permission is still
- * `default`: a yes or a no is the system's to remember, and asking after a no
- * does nothing. And this phone has not answered "Not now" in the last five
- * days, which only the club can remember, here, per device: after five days
- * the next opening asks again (the owner, 2026-10-21). When it cannot
- * remember (storage blocked), it does not ask: asking on every launch would
- * be worse than not asking.
+ * Asking on opening from the Home Screen (the owner, 2026-10-05): Safari sign-up cannot ask, and
+ * iOS never says when a web app is installed. Asks while the permission is still `default` and
+ * this phone has not said "Not now" in five days (the owner, 2026-10-21). Storage blocked means
+ * never ask: asking every launch is worse.
  */
 const ASKED_KEY = 'thesciclub.notificationsAsked';
 export const ASK_AGAIN_AFTER_DAYS = 5;
@@ -253,11 +213,7 @@ async function currentSubscription(): Promise<PushSubscription | null> {
   return (await registration?.pushManager.getSubscription()) ?? null;
 }
 
-/**
- * The worker, once it is running. `ready` never settles where none was
- * registered — the dev server, or the first seconds of a first visit — so it
- * is raced against a clock rather than awaited on its own.
- */
+/** Raced against a clock: `ready` never settles with no worker (dev server, a first visit). */
 async function readyWorker(): Promise<ServiceWorkerRegistration | null> {
   return Promise.race([
     navigator.serviceWorker.ready,
@@ -269,11 +225,7 @@ async function readyWorker(): Promise<ServiceWorkerRegistration | null> {
   ]);
 }
 
-/**
- * The device can hold a subscription the club does not have for this member:
- * the sender deleted it after the push service said it was dead, or somebody
- * else signed in on this phone and took it over.
- */
+/** The device's subscription may be gone from the club (dead, or taken by another account). */
 async function heldBy(userId: string, endpoint: string): Promise<boolean> {
   const { data, error } = await getSupabase()
     .from('push_subscriptions')
@@ -571,9 +523,8 @@ export async function forgetThisDevice(): Promise<void> {
     if (!userId) return;
     let endpoint: string | null;
     if (isAppPush()) {
-      // Whatever iOS's permission says now: a member who switched it off in
-      // Settings still has a row, and the next person may switch it back on.
-      // iOS hands out the token either way.
+      // Whatever the permission: switched off in Settings still leaves a row, and iOS gives
+      // the token either way.
       const app = await loadApp();
       endpoint = app.appEndpoint(await app.appToken());
     } else {
@@ -664,13 +615,9 @@ export function useDeviceNotifications(userId: string | null) {
 }
 
 /**
- * The kinds a member can switch off on Me — every kind that is not a
- * conversation, a topic or a room, which have Mute where they are.
- *
- * A row in `push_muted_kinds` is a kind switched off (20260927020000), so
- * off is an insert and on is a delete, never an upsert. `who` hides a switch
- * for a thing that never happens to this member: a peer is never told that
- * somebody they invited joined, because a peer cannot invite.
+ * Kinds a member can switch off on Me (conversations, topics and rooms have their own Mute).
+ * A `push_muted_kinds` row is a kind off (20260927020000): off inserts, on deletes, never upsert.
+ * `who` hides switches for things that never happen to this member (a peer cannot invite).
  */
 export const NOTIFICATION_KINDS = [
   { kind: 'event_reminder', label: 'Events I am going to, the day before', who: 'all' },

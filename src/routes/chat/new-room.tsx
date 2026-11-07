@@ -22,46 +22,17 @@ import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
- * Starting a room: five fields, and the reason the last two are there.
+ * Starting a room. A room cannot be born empty: an empty room reads as abandoned (CONTEXT.md's
+ * objection), so `chat_create_room` writes the room and its first topic in one transaction.
  *
- * ---------------------------------------------------------------------------
- * A room cannot be born empty
- * ---------------------------------------------------------------------------
- * CONTEXT.md's objection to topic rooms is not answered by a rule, because
- * there is no rule that makes people write: a room of two dozen members is
- * empty by construction, and a room with nothing in it reads as abandoned
- * rather than as new. It is answered by this form. The first topic's title and
- * body are asked for here, `chat_create_room` writes the room and the topic in
- * one transaction, and there is no way to make a room and fill it later.
+ * Rooms matching the typed name are listed as links first: a twin is always the one that looks
+ * abandoned.
  *
- * ---------------------------------------------------------------------------
- * "Is it one of these?"
- * ---------------------------------------------------------------------------
- * The most likely outcome of a new-room impulse is a room that already exists,
- * and finding it is a better result than making a twin — the twin is always the
- * one that looks abandoned. So the rooms whose names contain what is being
- * typed are listed under the field as links, before anything is submitted.
+ * A refusal keeps the draft. Its link is worked out from rooms on screen, never parsed from the
+ * database's wording, which breaks silently when reworded. No link to a closed room the member
+ * cannot read.
  *
- * ---------------------------------------------------------------------------
- * A refusal keeps the draft and gets a link where it can
- * ---------------------------------------------------------------------------
- * Nothing is cleared and the screen does not navigate. Two of the refusals name
- * a room — the duplicate and "fill your last room" — and the link under them is
- * worked out from the rooms already on the screen rather than read out of the
- * sentence. A link that depends on the database's prose breaks silently the day
- * somebody rewords the message, and the wording is the part most likely to be
- * reworded.
- *
- * Where the clash is with a room an administrator has closed, there is no link:
- * the member cannot read that room, and a link into nothing is worse than the
- * sentence on its own.
- *
- * ---------------------------------------------------------------------------
- * No category is picked to begin with
- * ---------------------------------------------------------------------------
- * A default would be one of the three quietly chosen for somebody, and nobody
- * edits a room afterwards — not even its starter. So all three pills start
- * unpressed and the submit says what is missing.
+ * No category is preselected: nobody edits a room afterwards, so a default would choose for them.
  */
 export default function NewRoomPage() {
   const navigate = useNavigate();
@@ -80,19 +51,13 @@ export default function NewRoomPage() {
   const photoTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  /**
-   * The room that was started when its photographs then failed. The room is
-   * real and this form must not start a second one, so the form gives way to
-   * a sentence and a link into it.
-   */
+  /** A room started whose photographs then failed: link into it, never start a second. */
   const [startedWithout, setStartedWithout] = useState<{ id: string; why: string } | null>(null);
 
   const problem = roomProblem(name, category, description, title, body);
   const suggestions = roomsMatching(rooms, name);
 
-  // Worked out from what is on the screen, not from the refusal's words. The
-  // duplicate wins where both are true, because that is the order the function
-  // checks them in.
+  // From the screen, not the refusal's words. The duplicate wins: the function checks it first.
   const alreadyCalled = roomNamed(rooms, name);
   const unfilled = roomToFill(rooms, stats, viewerId);
   const goTo: ChatRoom | null = failure ? (alreadyCalled ?? unfilled) : null;
@@ -106,10 +71,8 @@ export default function NewRoomPage() {
     > => {
       const made = await createRoom(name, description, category, title, body);
       if (!made.ok) return made;
-      // The other way round from a new topic: the room's folder is named after
-      // an id the database has only just made, so the files go up second and
-      // chat_add_first_post_photographs names them on the post. If either
-      // step fails the room still exists — say so, rather than start another.
+      // Files go up after the room: its folder is named by the new id. If either step fails
+      // the room still exists, so say so rather than start another.
       if (files.length > 0) {
         const up = await uploadAttachments(files, attachmentFolder('room', made.value));
         if (!up.ok) return { ok: true, value: made.value, without: up.error };
@@ -130,10 +93,7 @@ export default function NewRoomPage() {
           setStartedWithout({ id: result.value, why: result.without });
           return;
         }
-        // Straight into the room, replacing this screen: coming back to a
-        // filled-in form for a room that now exists would invite a second one
-        // under a slightly different name, which is the thing this screen is
-        // most trying to prevent.
+        // Replace this screen: going back to the filled form would invite a near-duplicate room.
         void navigate(`/chat/rooms/${result.value}`, { replace: true });
       })
       .catch((e: unknown) => {
@@ -230,16 +190,11 @@ export default function NewRoomPage() {
           </div>
         ) : null}
 
-        {/* A paragraph and not a label: the control it introduces is six
-            aria-pressed buttons rather than one field, which is the same shape
-            the sort bar on a room page has. */}
+        {/* A paragraph, not a label: it introduces aria-pressed buttons, not one field. */}
         <p className="mt-4 font-bold font-head text-[0.8125rem] text-ink">
           Which part of life is it about?
         </p>
-        {/* Wrapped, not scrolled. The pill row scrolls sideways elsewhere
-            because a segment row is one line by design; here six choices at
-            430px would put two of them off the edge with nothing to say so,
-            and a heading somebody cannot see is one they cannot pick. */}
+        {/* Wrapped, not scrolled: at 430px a scrolling row hides choices off the edge. */}
         <SegmentPills<RoomCategory | ''>
           segments={ROOM_CATEGORIES.map((c) => [c, c] as const)}
           value={category ?? ''}
@@ -335,8 +290,7 @@ export default function NewRoomPage() {
         >
           {saving ? 'Starting…' : 'Start the room'}
         </button>
-        {/* The same value that disabled the button, said out loud. A disabled
-            control with no explanation is a dead end. */}
+        {/* Says why the button is disabled; an unexplained disabled control is a dead end. */}
         {problem ? (
           <p className="mt-1.5 text-center text-[0.71875rem] text-grey">{problem}</p>
         ) : null}

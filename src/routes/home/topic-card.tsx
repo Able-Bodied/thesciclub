@@ -14,43 +14,16 @@ import { ViewCount } from '@/routes/chat/view-count';
 import { AnswerBox } from '@/routes/home/answer-box';
 
 /**
- * A topic on Home, from the mock's `qCard`.
+ * A topic on Home (the mock's `qCard`): room, title, byline and first reply. Opens the topic page.
  *
- * The room, the title, who asked and when, and the first reply, so the card
- * answers "is anybody talking about this" before it is opened. It goes to the
- * topic page, which is the question page: Home draws no second view of a
- * topic's replies.
+ * The title's link is stretched over the card by a pseudo-element, so a tap anywhere opens it but
+ * a screen reader names the link by the title alone.
  *
- * ---------------------------------------------------------------------------
- * The whole card is a target, and only the title is the link's name
- * ---------------------------------------------------------------------------
- * The link is on the title and stretched over the card by a pseudo-element,
- * so a tap anywhere opens the topic. What a screen reader reads as the link is
- * the title alone, not the room, the byline and four lines of somebody's
- * reply run together, which is what a whole-card link would announce every
- * time focus reached it. The rest is read as ordinary text.
+ * Like (HANDOFF.md "What Home is" step 3b) is `relative`, painting it above the stretched link;
+ * the row is not, so its gaps still open the topic. No z-index: it makes a stacking context that
+ * trapped `PostLikes`'s `fixed` sheet under the tab bar (2026-09-30).
  *
- * ---------------------------------------------------------------------------
- * Like sits above the stretched link, and nothing else does
- * ---------------------------------------------------------------------------
- * HANDOFF.md "What Home is" step 3b: Like on every topic card, liking the opening post as
- * the photo card does. The link's pseudo-element covers the card, so a button
- * under it cannot be pressed — the tap lands on the link and opens the topic.
- * The two buttons are `relative`, which paints them after the pseudo-element
- * (positioned boxes paint in document order) and so on top of it. Not the row
- * around them: its gaps and the reply count should still open the topic.
- *
- * Not the plan's `relative z-10` on the row. A z-index makes a stacking
- * context, and the list of who liked it is a `fixed` sheet drawn inside the
- * row, by `PostLikes`: trapped at z-10, it opened under the tab bar and under
- * the next card's buttons, which covered its Close (seen in a browser,
- * 2026-09-30). Plain `relative` makes none.
- *
- * ---------------------------------------------------------------------------
- * No count of zero
- * ---------------------------------------------------------------------------
- * "No replies yet." is information about a question somebody asked. "0
- * replies" reads as a failure.
+ * "No replies yet.", never "0 replies", which reads as a failure.
  */
 export function TopicCard({
   topic,
@@ -85,11 +58,8 @@ export function TopicCard({
       <RoomTag room={topic.room} linkState={linkState} />
 
       {topic.isQuestion ? (
-        /* A question asked as one, drawn the way the owner pointed at
-           (Facebook's coloured posts): large, centred, on the header band's
-           colour, so it reads as something to answer rather than a headline
-           to scroll past. White on the plate in both appearances; the text
-           size is the member's, never shrunk to fit. */
+        /* A question, large on the header band's colour like Facebook's coloured posts (the
+           owner's pick). The text size is the member's, never shrunk to fit. */
         <Link
           to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
           state={linkState}
@@ -239,11 +209,8 @@ export interface CardLikes {
 }
 
 /**
- * A name, "Deleted member", or an ellipsis while the name is on its way.
- *
- * The last is not "Deleted member": an author id that has not been looked up
- * yet is somebody still in the club, and calling them former for half a
- * second says something untrue about a real person.
+ * A name, "Deleted member", or an ellipsis while loading: an id not yet looked up is a current
+ * member, never to be called former.
  */
 export function byline(authorId: string | null, author: ChatAuthor | null): string {
   if (author) return author.displayName;
@@ -274,20 +241,12 @@ function BylineName({
   );
 }
 
-/**
- * The room a topic lives in: its glyph in its heading's colour, and its name.
- *
- * A room a member started has no glyph, and gets the first letter of its name
- * in the same place, as its card in Chat does.
- */
+/** A topic's room: its glyph (or first letter, for a member's room) and its name. */
 export function RoomTag({ room, linkState }: { room: ChatRoom; linkState?: unknown }) {
   return (
     <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-emphasis uppercase tracking-[0.07em]">
-      {/* To the room, and its other topics (the owner, 2026-10-09).
-          The title's link is stretched over the whole card by an ::after
-          that comes later in the page, so it is drawn on top of anything
-          earlier with no z-index: `relative` alone left the name under it,
-          and a press opened the topic. z-[1] puts the name above it. */}
+      {/* To the room (the owner, 2026-10-09). z-[1]: the title's later ::after covers
+          earlier `relative` boxes, so without it a press opened the topic. */}
       <Link
         to={`/chat/rooms/${room.id}`}
         state={linkState}

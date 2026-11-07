@@ -1,43 +1,14 @@
 import { canonicalTopics } from '@/routes/peers/topics';
 
 /**
- * From what a member offered to be asked about, to the room where that
- * conversation already exists.
+ * From what a member offered to be asked about to the room where that conversation exists.
  *
- * A profile says "Happy to talk about: Bowel programme, Back to school". Those
- * are two conversations the club is already having, in two rooms with the whole
- * history in them — and until this existed the only way from one to the other
- * was to remember which room covered what. The mock had it (`ROOM_MAP` and
- * `roomFor`), pointed at a page that no longer exists in this shape.
+ * Built on `src/routes/peers/topics.ts`'s thirteen groups, not a second regex list that could
+ * send a topic to the school filter but not the school room. Patterns only for rooms no group
+ * names; a new group over there shows up as an omission here.
  *
- * ---------------------------------------------------------------------------
- * Built on the groups, not on a second set of regexes
- * ---------------------------------------------------------------------------
- * `src/routes/peers/topics.ts` already solved the hard half: `members.topics`
- * is free text and the same subject arrives under four names, so it has
- * thirteen curated groups and the patterns that earn them. Writing a second
- * pattern list here would mean "Returning to college" reaching the school
- * *filter* and not the school *room*, or the reverse, with nothing to say which
- * was right.
- *
- * So the table below is thirteen lines of group → room, and patterns appear
- * only for the rooms no group names. That is a smaller surface to be wrong on,
- * and when somebody adds a group over there this file is where the omission
- * shows up.
- *
- * ---------------------------------------------------------------------------
- * Silent where it is not sure, which is the same bargain topics.ts makes
- * ---------------------------------------------------------------------------
- * A wrong room is worse than no room. Sending somebody who said "Living
- * independently" into Work & school, which is what the mock did, puts them in a
- * conversation about disclosure and accommodations when they asked about
- * getting through a morning — there is no independent-living room, and the
- * honest answer is to draw nothing. Two of the thirteen groups map to nothing
- * for that reason and are marked.
- *
- * Nothing here decides what a member sees. `chat_rooms`' select policy does:
- * a closed room is not in the list at all, so a caller that only offers rooms
- * it was handed cannot offer one that has not been opened.
+ * Silent where unsure: a wrong room is worse than none (the mock sent "Living independently" to
+ * Work & school). Visibility is `chat_rooms`' select policy, not this file.
  */
 
 /** The twelve room slugs, as `chat_rooms.id` spells them. */
@@ -56,43 +27,25 @@ type RoomId =
   | 'driving';
 
 /**
- * Bladder and bowel are one group on Peers and two rooms in Chat.
- *
- * Deliberately, on both sides. The filter merges them because a member who will
- * talk about one will usually talk about the other and two chips would halve
- * each list; the rooms split them because a bowel programme and a Mitrofanoff
- * are not the same conversation. So this is the one place a group's own words
- * have to be read again, and it is a discriminator rather than a second
- * classifier: bowel if it says so, bladder otherwise.
+ * Bladder and bowel: one group on Peers, two rooms in Chat, both on purpose. A discriminator,
+ * not a second classifier: bowel if it says so, bladder otherwise.
  */
 const BOWEL = /\b(bowel|colostomy|ileostomy|stoma|suppositor\w*|transanal)\b/i;
 
-/**
- * Each of `topics.ts`'s thirteen groups, and the room that covers it.
- *
- * Null is a group with no room, and the two of them are the argument for this
- * being a table rather than a lookup with a fallback: a group that maps to
- * nothing is a decision, and it should look like one.
- */
+/** Each of `topics.ts`'s thirteen groups and its room. Null is a decision: no room for it. */
 const ROOM_FOR_GROUP: Record<string, RoomId | null> = {
-  // Both halves of "Back to school and work" land in the same room, which is
-  // why that topic naming two groups costs nothing here.
   'Back to school': 'work',
   'Back to work': 'work',
   'Adaptive sport': 'sport',
   'Exercise and fitness': 'sport',
   'Adaptive equipment': 'equip',
   'Driving and getting about': 'driving',
-  // The Pain room is "neuropathic pain, shoulders, spasticity — what worked,
-  // what did not". Mental health is not that, and the club has no room for it.
-  // The mock sent it to Pain; this does not, for the reason at the top.
+  // Not Pain (neuropathic pain, shoulders, spasticity), where the mock sent it.
   'Mental health': null,
   'Relationships and intimacy': 'intimacy',
   'Pain management': 'pain',
   'Pressure sores': 'skin',
-  // Paying for an attendant in California is IHSS and Medi-Cal, which is what
-  // the Funding & benefits room is: "the paperwork nobody explains". The mock
-  // made the same call.
+  // Paying for an attendant is IHSS and Medi-Cal paperwork: Funding & benefits.
   Caregivers: 'funding',
   // No independent-living room. See the header.
   'Living independently': null,
@@ -101,35 +54,24 @@ const ROOM_FOR_GROUP: Record<string, RoomId | null> = {
 };
 
 /**
- * Rooms that no group names, and the words that reach them.
- *
- * Short on purpose. Every line here is a pattern that could disagree with
- * `topics.ts`, so it is only worth writing where there is nothing over there to
- * disagree with — Newly injured, Aging with SCI and Funding & benefits have no
- * group of their own, and a member who wrote "SSDI paperwork" would otherwise
- * reach no room at all.
+ * Rooms no group names, and the words that reach them. Short on purpose: each line could
+ * disagree with `topics.ts`.
  */
 const UNGROUPED: [RegExp, RoomId][] = [
   [/\b(newly injured|freshly injured|first year|first weeks|new injury|rehab)\b/i, 'newsci'],
-  // Not "shoulders": a shoulder is as often a pain question as an aging one,
-  // and "Shoulder pain" already reaches the Pain room through its group.
+  // Not "shoulders": as often pain as aging, and "Shoulder pain" reaches Pain via its group.
   [/\b(aging|ageing|getting older|osteoporosis|bone density)\b/i, 'aging'],
   [
     /\b(ssi|ssdi|medi-?cal|medicare|medicaid|benefits?|grants?|funding|department of rehab)\b/i,
     'funding',
   ],
-  // Fertility only. Parenting and pregnancy after injury are real subjects with
-  // no room, and Sex, dating & fertility is not where somebody asking about
-  // raising a child was heading.
+  // Fertility only: parenting and pregnancy have no room, and this one is not it.
   [/\b(fertility|infertility)\b/i, 'intimacy'],
 ];
 
 /**
- * The room that covers one raw topic, or null when none clearly does.
- *
- * Pure, and it knows nothing about which rooms are open — a caller filters
- * against the rooms the database handed it, because that list is already the
- * answer to "what may this member see".
+ * The room that covers one raw topic, or null. Pure: callers filter against the rooms the
+ * database handed them, which already answers what this member may see.
  */
 export function roomForTopic(raw: string): string | null {
   const value = raw.trim();
@@ -139,28 +81,18 @@ export function roomForTopic(raw: string): string | null {
     if (group === 'Bladder and bowel') return BOWEL.test(value) ? 'bowel' : 'bladder';
     const room = ROOM_FOR_GROUP[group];
     if (room) return room;
-    // A group that maps to null is a decision and stops the search: it means
-    // the club has no room for this, not that the next group should be tried.
+    // A null group stops the search: no room for this, not "try the next group".
     if (group in ROOM_FOR_GROUP) return null;
   }
 
-  // Only reached by a topic no group claimed — `canonicalTopics` hands those
-  // back as themselves, so `group in ROOM_FOR_GROUP` was false for every one.
+  // Only reached by a topic no group claimed.
   for (const [pattern, room] of UNGROUPED) {
     if (pattern.test(value)) return room;
   }
   return null;
 }
 
-/**
- * Every room a set of topics points at, once each, in the order they were
- * first pointed at.
- *
- * One card per room, not one per topic: a member with "Bowel programme" and
- * "Travelling with a stoma" has named one conversation twice, and drawing the
- * same room twice under their chips says the app is counting rather than
- * reading.
- */
+/** Every room a set of topics points at, once each, in first-seen order: one card per room. */
 export function roomsForTopics(raws: readonly string[]): string[] {
   const found: string[] = [];
   for (const raw of raws) {

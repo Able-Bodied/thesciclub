@@ -1,42 +1,14 @@
 /**
- * Turning a refusal into a sentence a member can read.
+ * Turning a refusal into a sentence a member can read, never the database's own words.
  *
- * Too many refusals used to reach the screen as the database's own words —
- * `new row for relation "chat_messages" violates check constraint
- * "chat_messages_check"`, `Could not find the function public.chat_my_threads
- * without parameters in the schema cache` — and a member who reads one of
- * those reads the app as broken rather than as having said no.
+ * Helpers call this **before** the error becomes a string: only the `code` (SQLSTATE or
+ * `PGRST…`) tells cases apart honestly (a mentor's invite fails as 42501 or 23505).
  *
- * Every read and write helper calls this **before** the error becomes a
- * string, because this is the last place it still carries its `code` — the
- * SQLSTATE, or PostgREST's own `PGRST…` — and the code is the only honest way
- * to tell the cases apart. The same action fails two different ways: a
- * mentor's invite is refused by the allowance (a policy, 42501) and by the
- * unique index (23505), and a message that guessed would be wrong exactly
- * when the person was already confused.
- *
- * ---------------------------------------------------------------------------
- * Two kinds of message, and only one is translated
- * ---------------------------------------------------------------------------
- * **Ours.** Every `raise exception` in the migrations is already prose —
- * "Only an active member can start a room.", "You cannot report your own
- * message. Remove it instead." They pass through untouched. Most carry no
- * errcode and arrive as `P0001`, plpgsql's default; the rest are `P0002`,
- * `22023`, or `42501` *without* "row-level security" in the message. A
- * translator that flattened those into "Something went wrong" would be a
- * regression.
- *
- * **The database's and PostgREST's.** These are the ones caught, by code, with
- * the real strings recorded in describe-error.test.ts. `42501` is the one that
- * needs the phrase as well as the code: a policy refusing a row, a grant
- * missing on a column, and our own `raise … using errcode = '42501'` all share
- * it.
- *
- * Anything with a code this file does not know gets a generic sentence and a
- * `console.error` of the raw error, so the text is not lost, only not shown.
- * Anything with *no* code and no recognisable phrase is taken to be ours and
- * passed through: PostgREST always sends a code, so a bare message is a
- * sentence somebody wrote.
+ * Our own `raise exception` messages are already prose and pass through untouched (`P0001`,
+ * `P0002`, `22023`, or `42501` without "row-level security"). The database's and PostgREST's are
+ * translated by code, real strings in describe-error.test.ts; `42501` also needs the phrase, as
+ * policies, missing grants and our own raises share it. An unknown code gets a generic sentence
+ * plus `console.error`. No code and no known phrase is taken as ours: PostgREST always sends one.
  */
 
 /** The shape supabase-js hands back, and what a thrown `Error` has in common with it. */
@@ -47,11 +19,7 @@ export interface Failure {
   name?: string | undefined;
 }
 
-/**
- * What was being attempted, so the sentence can say it. Every field is a
- * complete sentence in the screen's own words; the ones that are not given
- * fall back to a general one.
- */
+/** What was being attempted. Each field is a full sentence; missing ones fall back to general. */
 export interface ErrorContext {
   /** Leads the sentence: "Your reply was not posted." */
   attempt?: string;
@@ -85,23 +53,10 @@ const OFFLINE =
 const ABORTED = /^AbortError\b|user aborted a request|signal is aborted/i;
 
 /**
- * Storage's refusals: a sentence about buckets and mime types, and — since
- * storage-js started copying the API's own `code` ("EntityTooLarge",
- * "InvalidMimeType") — a code that is not a SQLSTATE. These are the two a
- * bucket's own limits produce; a policy refusing the object row says
- * "row-level security" like any other.
- *
- * They are sorted by name and wording *before* the code check. Until
- * 2026-09-29 they were sorted after it, so a real refusal — which carries a
- * code — never reached these sentences and every refused photograph read
- * "Something went wrong. Try again in a minute." The tests had fixtures with
- * no code, which is the trap HANDOFF.md names: a fixture without a code gets
- * phrase-sorting and passes while the real thing does not. The bodies here
- * were provoked on the local stack and the hosted project on 2026-09-29.
- *
- * Each stands alone, without the caller's "The photograph was not saved."
- * in front: the owner found the two together too long on 2026-10-01, and
- * "too large" or "can't be used" already says nothing was kept.
+ * A bucket's own limits. Their codes ("EntityTooLarge", "InvalidMimeType") are not SQLSTATEs, so
+ * they are matched by name and wording *before* the code check; after it, every refused photo read
+ * as generic (fixed 2026-09-29). Mind HANDOFF.md's trap: a fixture without a code passes where the
+ * real error does not. No caller lead-in: the owner found it too long (2026-10-01).
  */
 const STORAGE: [RegExp, string][] = [
   [/mime type .* is not supported/i, "That kind of file can't be used. Try a JPEG or PNG."],
@@ -109,21 +64,9 @@ const STORAGE: [RegExp, string][] = [
 ];
 
 /**
- * GoTrue's codes and, for the versions that send only a message, its wording.
- *
- * Email and password only: there is no phone sign-in, so nothing here is about
- * codes sent by text. What Supabase returns for the email flows:
- *
- *   invalid_credentials   "Invalid login credentials"
- *   otp_expired           "Email link is invalid or has expired" (the
- *                         confirmation and reset links), older: "Token has
- *                         expired or is invalid"
- *   over_email_send_rate_limit   "email rate limit exceeded"
- *   over_request_rate_limit      "Request rate limit reached"
- *   (no code, 429)        "For security purposes, you can only request this
- *                         after 59 seconds."
- *   unexpected_failure    "Error sending confirmation email" (and the same
- *                         for recovery, email change and reauthentication)
+ * GoTrue's codes, or its wording for versions that send only a message. Email flows only (no
+ * phone sign-in). The 429 with no code says "you can only request this after 59 seconds";
+ * `unexpected_failure` says "Error sending … email".
  */
 const AUTH: [RegExp, string][] = [
   [/^invalid_credentials$|Invalid login credentials/i, 'That email or password is not right.'],
@@ -143,20 +86,15 @@ function lead(attempt: string | undefined, rest: string): string {
 }
 
 /**
- * The sentence for a failure, given what was being attempted.
- *
- * Takes the error object itself — a `PostgrestError`, an `AuthError`, a
- * `StorageError` or a thrown `Error` — never `error.message`, because once it
- * is a string the code is gone and the only thing left to key on is wording.
+ * The sentence for a failure. Takes the error object itself, never `error.message`: as a string
+ * the code is gone.
  */
 export function describeError(error: Failure, context?: string | ErrorContext): string {
   const ctx: ErrorContext = typeof context === 'string' ? { attempt: context } : (context ?? {});
   const message = error.message;
   const code = typeof error.code === 'string' ? error.code : '';
 
-  // supabase-js reports a fetch that never got through as an error whose
-  // message is `TypeError: Failed to fetch` and whose code is ''. A thrown
-  // TypeError from fetch itself says the same without the prefix.
+  // A fetch that never got through: "Failed to fetch" with code '', or thrown by fetch itself.
   if (OFFLINE.test(message)) return OFFLINE_FAILURE;
   // A hook that aborted its own request has already checked for that and
   // returned, so this is the tab leaving mid-write.
@@ -223,9 +161,8 @@ export function describeError(error: Failure, context?: string | ErrorContext): 
 }
 
 /**
- * The same, for whatever a `catch` caught. supabase-js returns its failures
- * rather than throwing, so what lands here is a `TypeError` from fetch, an
- * `AbortError`, or something that is not an `Error` at all.
+ * The same, for whatever a `catch` caught: usually a fetch `TypeError`, an `AbortError`, or a
+ * non-`Error` (supabase-js returns its failures rather than throwing).
  */
 export function describeThrown(thrown: unknown, context?: string | ErrorContext): string {
   if (thrown instanceof Error) return describeError(thrown, context);

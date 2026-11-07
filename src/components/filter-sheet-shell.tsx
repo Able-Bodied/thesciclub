@@ -4,45 +4,15 @@ import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
 /**
- * The frame both filter sheets sit in.
+ * The frame both filter sheets (Peers, Events) sit in.
  *
- * Extracted because Peers and Events had drifted into two copies of the same
- * dialog, and the fix below needed applying to both.
+ * On a wide screen a centred panel, not full width: full width put "Show 52" about 1000px from
+ * the chip just tapped, the whole interaction for a trackball, head pointer or mouth stick. A
+ * bottom sheet on a phone.
  *
- * ---------------------------------------------------------------------------
- * Why it stops being full width
- * ---------------------------------------------------------------------------
- * It used to span the shell — 1280px on a desktop — with the chips packed into
- * the left third and an empty right two-thirds. That is expensive in the one
- * way this app cannot afford: "Show 52" sat about a thousand pixels from the
- * chip somebody had just tapped, so applying a filter meant dragging the
- * pointer the full width of the screen and back. For a member driving a
- * trackball, a head pointer or a mouth stick, that is the whole interaction.
- *
- * So on a wide screen it is a centred panel rather than a full-bleed sheet, and
- * the footer buttons are sized to their text instead of stretching. On a phone
- * it stays a bottom sheet, because that is the right shape for a thumb and the
- * width problem does not exist there.
- *
- * ---------------------------------------------------------------------------
- * Three ways out
- * ---------------------------------------------------------------------------
- * The close button, the backdrop and Escape. A sheet dismissable only by a tap
- * on one specific region is a trap for anybody navigating by keyboard or
- * switch.
- *
- * ---------------------------------------------------------------------------
- * Focus goes in, stays in, and comes back
- * ---------------------------------------------------------------------------
- * `useDialogFocus` (`src/lib/dialog-focus.ts`), shared with the report sheet.
- * On open, focus moves to the title, so a screen reader says which sheet this
- * is and the next Tab is its first chip. Tab and Shift+Tab go round the
- * sheet's own buttons. On close, focus goes back to whatever had it before,
- * which is the Filters button.
- *
- * Until 2026-09-30 it did none of this: `aria-modal` said the page behind was
- * out of reach, focus stayed on the Filters button behind the backdrop, and
- * the first chip on Home was 85 presses of Tab away, through the whole feed.
+ * Three ways out (close button, backdrop, Escape), so keyboard and switch users are never trapped.
+ * `useDialogFocus` (`src/lib/dialog-focus.ts`) moves focus to the title, keeps Tab inside, and
+ * returns it on close; without it the first chip on Home was 85 Tabs away (fixed 2026-09-30).
  */
 
 export interface FilterSheetShellProps {
@@ -112,15 +82,9 @@ export function FilterSheetShell({
             </h2>
             <p className="mt-0.5 text-[0.78125rem] text-grey">{summary}</p>
           </div>
-          {/* A second way out, at the top where a panel's close button belongs.
-              At every width: hidden below `lg`, a desktop window narrower than
-              that had no way out in sight (the owner, 2026-11-01).
-
-              Named "Close" rather than "Close filters", which is the backdrop's
-              name: two controls with the same accessible name read as one
-              repeated control to a screen reader, and these are in different
-              places. Filters apply as they are tapped, so nothing is lost or
-              confirmed by either — both just dismiss. */}
+          {/* At every width: hidden below `lg`, a narrow desktop window had no way out in
+              sight (the owner, 2026-11-01). "Close", not the backdrop's "Close filters": a
+              repeated accessible name reads as one control to a screen reader. */}
           <button
             type="button"
             onClick={onClose}
@@ -138,8 +102,7 @@ export function FilterSheetShell({
             type="button"
             onClick={onClear}
             disabled={clearCount === 0}
-            // Sized to its text rather than to half the sheet: Clear is the
-            // rarer action and should not be half the target area.
+            // Sized to its text: Clear is the rarer action.
             className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line disabled:opacity-40 disabled:hover:bg-tint"
           >
             Clear{clearCount ? ` (${clearCount})` : ''}
