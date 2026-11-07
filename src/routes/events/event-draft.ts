@@ -32,6 +32,8 @@ export interface EventDraft {
   state: string;
   url: string;
   registrationUrl: string;
+  /** The video call to join, for an online or hybrid event (20261106070000). */
+  meetingUrl: string;
   /** Only offered when adding an event; a date already made is changed alone. */
   repeat: RepeatChoice;
   /** Custom only, as typed. */
@@ -108,6 +110,7 @@ export function emptyDraft(onlyHost: string | null, hostState = ''): EventDraft 
     state: hostState,
     url: '',
     registrationUrl: '',
+    meetingUrl: '',
     ...NO_REPEAT,
   };
 }
@@ -143,6 +146,7 @@ export function draftFromEvent(event: ClubEvent): EventDraft {
     state: event.state ?? '',
     url: event.url ?? '',
     registrationUrl: event.registrationUrl ?? '',
+    meetingUrl: event.meetingUrl ?? '',
     ...NO_REPEAT,
   };
 }
@@ -399,7 +403,13 @@ export function readLink(text: string): { ok: true; url: string } | { ok: false 
 /* ---------------------------------------------------------------- reading */
 
 export type DraftReading =
-  | { ok: true; payload: Omit<EventDraftPayload, 'id'>; repeat: RepeatRule | null }
+  | {
+      ok: true;
+      payload: Omit<EventDraftPayload, 'id'>;
+      repeat: RepeatRule | null;
+      /** Saved on its own after the event (set_event_meeting_link); '' for none. */
+      meetingUrl: string;
+    }
   | { ok: false; problem: string };
 
 /**
@@ -477,6 +487,14 @@ export function readDraft(
   if (!url.ok || !registration.ok) {
     return { ok: false, problem: 'A link has to be a web address, like https://norcalsci.org.' };
   }
+  // Only an event held online has a call to join; in person keeps none.
+  const meeting = draft.format === 'in_person' ? { ok: true, url: '' } : readLink(draft.meetingUrl);
+  if (!meeting.ok || (meeting.url !== '' && !/^https:\/\//i.test(meeting.url))) {
+    return {
+      ok: false,
+      problem: 'The video call link has to be a web address starting with https://.',
+    };
+  }
 
   return {
     ok: true,
@@ -496,5 +514,6 @@ export function readDraft(
       registrationUrl: registration.url,
     },
     repeat: repeat.rule,
+    meetingUrl: meeting.url,
   };
 }

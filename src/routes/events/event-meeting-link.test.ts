@@ -4,11 +4,35 @@ import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 const NORCAL = 'https://norcalsci.org/events/friday-happy-hour';
 const ZOOM = 'https://us02web.zoom.us/j/86004299187';
 
-function event(over: { url?: string | null; description?: string; descriptionHtml?: string }) {
+function event(over: {
+  url?: string | null;
+  meetingUrl?: string | null;
+  description?: string;
+  descriptionHtml?: string;
+}) {
   return { url: NORCAL, description: '', descriptionHtml: '', ...over };
 }
 
 describe('eventMeetingLink', () => {
+  // The owner, 2026-11-06: the link its organizer gave comes first, any service.
+  it('uses the video call link its organizer gave, before any other', () => {
+    expect(
+      eventMeetingLink(
+        event({ meetingUrl: 'https://calls.example.org/room/7', url: ZOOM, description: ZOOM }),
+      ),
+    ).toEqual({
+      href: 'https://calls.example.org/room/7',
+      service: 'the video call',
+      inUrl: false,
+    });
+    expect(eventMeetingLink(event({ meetingUrl: ZOOM }))).toEqual({
+      href: ZOOM,
+      service: 'Zoom',
+      inUrl: false,
+    });
+    expect(eventMeetingLink(event({ meetingUrl: 'javascript:alert(1)' }))).toBeNull();
+  });
+
   it('finds the Zoom link in an anchor of the description, beside an ordinary url', () => {
     expect(
       eventMeetingLink(

@@ -70,4 +70,17 @@ describe("an event's state on its form", () => {
     expect(host).toHaveValue('far');
     expect(screen.getByLabelText('State')).toHaveValue('OR');
   });
+
+  // The owner, 2026-11-06: a video call link, only where there is a call.
+  it('asks for a video call link only for an online or hybrid event', async () => {
+    renderForm();
+    await screen.findByLabelText('Who is hosting it?');
+    expect(screen.queryByLabelText('Video call link (optional)')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Online' }));
+    expect(screen.getByLabelText('Video call link (optional)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Hybrid' }));
+    expect(screen.getByLabelText('Video call link (optional)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'In person' }));
+    expect(screen.queryByLabelText('Video call link (optional)')).toBeNull();
+  });
 });

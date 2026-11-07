@@ -740,6 +740,8 @@ export interface ClubEvent {
   city: string | null;
   url: string | null;
   registrationUrl: string | null;
+  /** The video call its organizer gave (20261106070000); read only for one event's own page. */
+  meetingUrl?: string | null;
   /** The address after thesciclub.com/e/; read only for one event's own page. */
   shortLink?: string | null;
   /**

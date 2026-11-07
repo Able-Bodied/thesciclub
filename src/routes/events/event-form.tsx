@@ -19,6 +19,7 @@ import {
   saveEventCover,
   saveEventSeries,
   saveMorePhotos,
+  setEventMeetingLink,
   useEvents,
 } from '@/lib/events';
 import { useMemberOrganizations } from '@/lib/organization-members';
@@ -360,6 +361,7 @@ function EventForm({
     .map((o) => ({ id: o.id, name: o.name, open: o.joinsNeedApproval !== true }));
   const chosenAudience = audience;
   const audienceChanged = isNew || !sameAudience(chosenAudience, initialChoice);
+  const meetingChanged = reading.ok && reading.meetingUrl !== initial.meetingUrl.trim();
 
   function submit() {
     if (!reading.ok || saving || !audienceReady(chosenAudience)) return;
@@ -392,6 +394,16 @@ function EventForm({
       }
       if (moreChanged) {
         const saved = await saveMorePhotos(result.id, more);
+        if (!saved.ok) {
+          void navigate(`/events/${result.id}/edit`, {
+            replace: true,
+            state: { coverFailure: `The event is saved. ${saved.error}` },
+          });
+          return;
+        }
+      }
+      if (meetingChanged) {
+        const saved = await setEventMeetingLink(result.id, reading.meetingUrl);
         if (!saved.ok) {
           void navigate(`/events/${result.id}/edit`, {
             replace: true,
@@ -617,6 +629,31 @@ function EventForm({
           placeholder={draft.format === 'online' ? 'On Zoom' : 'Lakeside Park, 666 Bellevue Ave'}
           className={FIELD}
         />
+
+        {/* The owner, 2026-11-06: the call's own link, and a Join button for it. */}
+        {draft.format === 'online' || draft.format === 'hybrid' ? (
+          <>
+            <label htmlFor="event-meeting" className={LABEL}>
+              Video call link (optional)
+            </label>
+            <input
+              id="event-meeting"
+              type="url"
+              inputMode="url"
+              value={draft.meetingUrl}
+              onChange={(e) => {
+                set('meetingUrl', e.target.value);
+              }}
+              placeholder="https://zoom.us/j/…"
+              aria-describedby="event-meeting-hint"
+              className={FIELD}
+            />
+            <p id="event-meeting-hint" className={HINT}>
+              Zoom, Google Meet, Teams or any other call. The event shows a Join online button for
+              it.
+            </p>
+          </>
+        ) : null}
 
         <label htmlFor="event-city" className={LABEL}>
           City (optional)

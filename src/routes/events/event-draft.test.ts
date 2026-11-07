@@ -165,7 +165,34 @@ describe('readDraft', () => {
         registrationUrl: '',
       },
       repeat: null,
+      meetingUrl: '',
     });
+  });
+
+  // The owner, 2026-11-06: a video call link of its own.
+  it('reads a video call link for an online or hybrid event, https only', () => {
+    const online = (meetingUrl: string) =>
+      readDraft(draft({ format: 'online', location: '', meetingUrl }), { isNew: true, now: NOW });
+    expect(online('zoom.us/j/123')).toMatchObject({
+      ok: true,
+      meetingUrl: 'https://zoom.us/j/123',
+    });
+    expect(online('  ')).toMatchObject({ ok: true, meetingUrl: '' });
+    expect(online('http://zoom.us/j/123')).toEqual({
+      ok: false,
+      problem: 'The video call link has to be a web address starting with https://.',
+    });
+    expect(online('not a link')).toMatchObject({ ok: false });
+    // In person keeps none, whatever was typed while it was online.
+    expect(
+      readDraft(draft({ format: 'in_person', meetingUrl: 'https://zoom.us/j/1' }), {
+        isNew: true,
+        now: NOW,
+      }),
+    ).toMatchObject({ ok: true, meetingUrl: '' });
+    expect(draftFromEvent(makeEvent({ meetingUrl: 'https://meet.google.com/x' })).meetingUrl).toBe(
+      'https://meet.google.com/x',
+    );
   });
 
   it("sends the event's own state, so an address away from its host's can be found", () => {
