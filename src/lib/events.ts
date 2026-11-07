@@ -774,6 +774,36 @@ export async function saveEventSeries(
 }
 
 /**
+ * Makes an event already on the calendar repeat (`make_event_repeat`,
+ * 20261106090000): this date is the first, and the dates up to three months
+ * ahead are made from it. Resolves to how many were made.
+ */
+export async function makeEventRepeat(
+  eventId: string,
+  repeat: RepeatRule,
+): Promise<{ ok: true; made: number } | { ok: false; error: string }> {
+  const refusal = {
+    attempt: 'The event was not made to repeat.',
+    refused: 'You cannot change this event.',
+    missing: 'That event is not on the calendar any more.',
+  };
+  try {
+    const { data, error } = (await getSupabase().rpc('make_event_repeat', {
+      event: eventId,
+      repeat_unit: repeat.unit,
+      repeat_every: repeat.every,
+      ends_on: repeat.endsOn,
+      ends_after: repeat.endsAfter,
+    })) as { data: number | null; error: Failure | null };
+    if (error) return { ok: false, error: describeError(error, refusal) };
+    calendarChanged();
+    return { ok: true, made: data ?? 0 };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
+}
+
+/**
  * Deletes this date of a repeating event and every later one, and the series
  * makes no more (`delete_event_and_later`).
  */

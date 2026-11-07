@@ -419,7 +419,16 @@ export type DraftReading =
  */
 export function readDraft(
   draft: EventDraft,
-  { isNew, now = new Date() }: { isNew: boolean; now?: Date },
+  {
+    isNew,
+    mayRepeat = false,
+    now = new Date(),
+  }: {
+    isNew: boolean;
+    /** A one-off not started yet, being changed, may be made to repeat (2026-11-06). */
+    mayRepeat?: boolean;
+    now?: Date;
+  },
 ): DraftReading {
   if (!draft.host) return { ok: false, problem: 'Choose who is hosting it.' };
   const organizationId = draft.host === NO_ORGANIZATION ? null : draft.host;
@@ -473,7 +482,8 @@ export function readDraft(
     return { ok: false, problem: 'That time has already passed.' };
   }
   // Repeats are asked only when adding; a date already made is changed alone.
-  const repeat = isNew ? readRepeat(draft, date.iso) : ({ ok: true, rule: null } as const);
+  const repeat =
+    isNew || mayRepeat ? readRepeat(draft, date.iso) : ({ ok: true, rule: null } as const);
   if (!repeat.ok) return { ok: false, problem: repeat.problem };
 
   if (!draft.format)

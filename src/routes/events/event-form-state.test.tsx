@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { makeOrganization } from '@/test/factory';
+import { makeEvent, makeOrganization } from '@/test/factory';
+import type { ClubEvent } from '@/types/domain';
 
 const organizations = [
   makeOrganization({ id: 'borp', name: 'BORP', city: 'Berkeley', state: 'CA' }),
@@ -25,9 +26,10 @@ vi.mock('@/lib/organizations', () => ({
     error: null,
   }),
 }));
+const shown = vi.hoisted(() => ({ events: [] as ClubEvent[] }));
 vi.mock('@/lib/events', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  useEvents: () => ({ events: [], loading: false, error: null }),
+  useEvents: () => ({ events: shown.events, loading: false, error: null }),
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -37,11 +39,12 @@ vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
 
 const { default: EventFormPage } = await import('@/routes/events/event-form');
 
-function renderForm() {
+function renderForm(path = '/events/new') {
   render(
-    <MemoryRouter initialEntries={['/events/new']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/events/new" element={<EventFormPage />} />
+        <Route path="/events/:id/edit" element={<EventFormPage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -82,5 +85,34 @@ describe("an event's state on its form", () => {
     expect(screen.getByLabelText('Video call link (optional)')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'In person' }));
     expect(screen.queryByLabelText('Video call link (optional)')).toBeNull();
+  });
+
+  // The owner, 2026-11-06: changing a one-off, it can be made to repeat.
+  it('offers Repeats when changing a one-off that has not started, and not a date of a series', async () => {
+    const soon = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    shown.events = [
+      makeEvent({ id: 'once', startTime: soon, seriesId: null, handAdded: true }),
+      makeEvent({ id: 'dated', startTime: soon, seriesId: 's1', handAdded: true }),
+      makeEvent({
+        id: 'gone',
+        startTime: '2026-01-05T17:00:00.000Z',
+        seriesId: null,
+        handAdded: true,
+      }),
+    ];
+    renderForm('/events/once/edit');
+    expect(await screen.findByLabelText('Repeats')).toBeInTheDocument();
+  });
+
+  it('offers no Repeats for a date of a series', async () => {
+    renderForm('/events/dated/edit');
+    await screen.findByLabelText('Who is hosting it?');
+    expect(screen.queryByLabelText('Repeats')).toBeNull();
+  });
+
+  it('offers no Repeats for an event that has started', async () => {
+    renderForm('/events/gone/edit');
+    await screen.findByLabelText('Who is hosting it?');
+    expect(screen.queryByLabelText('Repeats')).toBeNull();
   });
 });

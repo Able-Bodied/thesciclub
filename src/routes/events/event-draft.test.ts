@@ -169,6 +169,16 @@ describe('readDraft', () => {
     });
   });
 
+  // The owner, 2026-11-06: a one-off being changed can be made to repeat.
+  it('reads Repeats when changing only where it may repeat', () => {
+    const weekly = draft({ repeat: 'weekly' });
+    expect(readDraft(weekly, { isNew: false, now: NOW })).toMatchObject({ ok: true, repeat: null });
+    expect(readDraft(weekly, { isNew: false, mayRepeat: true, now: NOW })).toMatchObject({
+      ok: true,
+      repeat: { unit: 'week', every: 1 },
+    });
+  });
+
   // The owner, 2026-11-06: a video call link of its own.
   it('reads a video call link for an online or hybrid event, https only', () => {
     const online = (meetingUrl: string) =>

@@ -15,6 +15,7 @@ import {
   type CoverChange,
   type EventPhoto,
   type MorePhotoChange,
+  makeEventRepeat,
   saveEvent,
   saveEventCover,
   saveEventSeries,
@@ -179,6 +180,14 @@ export default function EventFormPage() {
             : null
         }
         isAdmin={account.isAdmin}
+        // A one-off added by hand, not started yet, can be made to repeat
+        // (the owner, 2026-11-06).
+        mayRepeat={
+          !!existing &&
+          existing.handAdded &&
+          existing.seriesId === null &&
+          Date.parse(existing.startTime) > Date.now()
+        }
         options={options}
         yours={new Set([...mine.ids, ...memberOf])}
         adminOf={mine.ids}
@@ -245,6 +254,7 @@ function EventForm({
   initialFailure,
   imported,
   isAdmin,
+  mayRepeat,
   options,
   yours,
   adminOf,
@@ -271,6 +281,8 @@ function EventForm({
   /** A picture that did not go up when the event was saved, said on arrival. */
   initialFailure: string | null;
   isAdmin: boolean;
+  /** Changing a one-off that may be made to repeat. */
+  mayRepeat: boolean;
   options: Organization[];
   /** The organizations they run or belong to, listed first. */
   yours: Set<string>;
@@ -324,7 +336,7 @@ function EventForm({
 
   // Read once per keystroke; cheap, and the button and the line under it
   // cannot disagree about what is missing.
-  const reading = useMemo(() => readDraft(draft, { isNew }), [draft, isNew]);
+  const reading = useMemo(() => readDraft(draft, { isNew, mayRepeat }), [draft, isNew, mayRepeat]);
   const dateReading = readDate(draft.date, { needs: 'day', future: true });
   const dateIso = dateReading.kind === 'date' ? dateReading.iso : null;
   const startReading = readTime(draft.startTime);
@@ -369,11 +381,12 @@ function EventForm({
     const repeat = reading.repeat;
     const payload = reading.payload;
     void (async () => {
-      const result = repeat
-        ? await saveEventSeries(payload, repeat)
-        : imported && eventId
-          ? await adminChangeImportedEvent(eventId, payload)
-          : await saveEvent({ id: eventId, ...payload });
+      const result =
+        repeat && isNew
+          ? await saveEventSeries(payload, repeat)
+          : imported && eventId
+            ? await adminChangeImportedEvent(eventId, payload)
+            : await saveEvent({ id: eventId, ...payload });
       if (!result.ok) {
         setFailure(result.error);
         return;
@@ -427,12 +440,25 @@ function EventForm({
           return;
         }
       }
+      // Last, so the dates it makes take this one's picture, link and audience.
+      if (repeat && !isNew) {
+        const made = await makeEventRepeat(result.id, repeat);
+        if (!made.ok) {
+          void navigate(`/events/${result.id}/edit`, {
+            replace: true,
+            state: { coverFailure: `The changes are saved. ${made.error}` },
+          });
+          return;
+        }
+      }
       announce(
-        !isNew
-          ? 'Changes saved.'
-          : repeat
-            ? 'The event and its dates are on the calendar.'
-            : 'The event is on the calendar.',
+        repeat && !isNew
+          ? 'Changes saved, and its dates are on the calendar.'
+          : !isNew
+            ? 'Changes saved.'
+            : repeat
+              ? 'The event and its dates are on the calendar.'
+              : 'The event is on the calendar.',
       );
       // Replacing this screen: Back from the event should not land on a
       // filled-in form that would add it a second time.
@@ -598,7 +624,7 @@ function EventForm({
         </p>
 
         {/* --------------------------------------------------- repeats */}
-        {isNew ? <RepeatFields draft={draft} dateIso={dateIso} set={set} /> : null}
+        {isNew || mayRepeat ? <RepeatFields draft={draft} dateIso={dateIso} set={set} /> : null}
 
         {/* ----------------------------------------------------- where */}
         {/* A paragraph and not a label: three aria-pressed buttons rather than
