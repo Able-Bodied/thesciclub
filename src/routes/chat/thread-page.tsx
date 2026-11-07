@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -19,6 +27,7 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
 import { useSharedPosts } from '@/lib/chat/shared-posts';
 import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
+import { chatDayHeading, messageDateTime, sameChatDay } from '@/lib/chat/time';
 import type { ChatMessage } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { useHoldScroll } from '@/lib/hold-scroll';
@@ -29,6 +38,7 @@ import { MuteButton } from '@/routes/chat/mute-button';
 import { NoticeLine } from '@/routes/chat/notice-line';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
+import { SWIPE_MAX, useSwipeDates } from '@/routes/chat/swipe-dates';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 
 /**
@@ -123,6 +133,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   const [blocking, setBlocking] = useState<{ id: string; name: string } | null>(null);
   const [blockedCount, setBlockedCount] = useState(0);
   const heading = useRef<HTMLHeadingElement | null>(null);
+  const swipe = useSwipeDates();
   const shown = useMemo(
     () =>
       messages.filter(
@@ -463,15 +474,21 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="relative flex-1 overflow-y-auto px-4 pt-3 pb-2 md:px-6"
+        className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 pt-3 pb-2 md:px-6"
       >
         <div
           ref={log}
+          {...swipe.handlers}
+          // Sideways drags are the date swipe's (swipe-dates.ts); scrolling stays the browser's.
+          style={{
+            touchAction: 'pan-y',
+            transform: swipe.offset ? `translateX(-${swipe.offset}px)` : undefined,
+          }}
           // Pushed to the bottom rather than stacked from the top: a
           // conversation with three messages in it belongs above the composer
           // where the next one will appear, not floating under the header with
           // a screen of nothing below it.
-          className="mx-auto flex min-h-full w-full max-w-[720px] flex-col justify-end"
+          className={`mx-auto flex min-h-full w-full max-w-[720px] flex-col justify-end ${swipe.offset ? '' : 'transition-transform duration-200'}`}
           // The list of what has been said, announced as it grows. Polite, not
           // assertive: a message is not an alert and must not cut across
           // whatever the reader is in the middle of.
@@ -513,86 +530,110 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
               Whatever you write here is between the two of you.
             </p>
           ) : (
-            shown.map((message) =>
-              message.notice ? (
-                <NoticeLine
-                  key={message.id}
-                  message={message}
-                  notice={message.notice}
-                  who={
-                    message.authorId === account.userId
-                      ? 'You'
-                      : ((message.authorId ? authors.get(message.authorId)?.displayName : null) ??
-                        'A deleted member')
-                  }
-                  addedYou={message.subjectId === account.userId}
-                  // As on a bubble: somebody else's, and not a former member's.
-                  canReport={message.authorId !== null && message.authorId !== account.userId}
-                  reported={reports.messageIds.has(message.id)}
-                  onReport={() => {
-                    setReportingId(message.id);
-                  }}
-                />
-              ) : (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  reactions={
-                    <ReactionBar
-                      target={message.id}
-                      what={
-                        message.body ||
-                        (message.sharedPostId ? 'this shared post' : 'this photograph')
+            shown.map((message, index) => (
+              <Fragment key={message.id}>
+                {index === 0 ||
+                !sameChatDay(shown[index - 1]?.createdAt ?? '', message.createdAt) ? (
+                  <p className="mt-1 mb-3 text-center font-semibold text-[0.6875rem] text-grey">
+                    {chatDayHeading(message.createdAt)}
+                  </p>
+                ) : null}
+                <div className="relative">
+                  {message.notice ? (
+                    <NoticeLine
+                      key={message.id}
+                      message={message}
+                      notice={message.notice}
+                      who={
+                        message.authorId === account.userId
+                          ? 'You'
+                          : ((message.authorId
+                              ? authors.get(message.authorId)?.displayName
+                              : null) ?? 'A deleted member')
                       }
-                      quoted={Boolean(message.body)}
-                      state={reactions}
-                      readerId={account.userId}
+                      addedYou={message.subjectId === account.userId}
+                      // As on a bubble: somebody else's, and not a former member's.
+                      canReport={message.authorId !== null && message.authorId !== account.userId}
+                      reported={reports.messageIds.has(message.id)}
+                      onReport={() => {
+                        setReportingId(message.id);
+                      }}
                     />
-                  }
-                  author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
-                  mine={message.authorId === account.userId}
-                  sharedPost={
-                    shared.cards.get(message.id) ??
-                    (shared.answered.has(message.id) ? null : undefined)
-                  }
-                  receipt={readReceipt(message, thread.kind, reads)}
-                  quote={quoteOf(message)}
-                  onQuoteTap={showQuoted}
-                  flash={flashId === message.id}
-                  // The author's own, standing, while there is a conversation
-                  // to edit in. chat_edit_message decides; this only asks.
-                  canEdit={!gone && message.authorId === account.userId && !message.pending}
-                  editing={edited?.id === message.id}
-                  onEdit={() => {
-                    setEditingId(message.id);
-                  }}
-                  canReply={!gone && !message.pending}
-                  onReply={() => {
-                    setEditingId(null);
-                    setReplyingTo(message);
-                  }}
-                  // Own messages only, even for an administrator: a thread they could reach as
-                  // one would not be private. See 20260918100000.
-                  canRemove={message.authorId === account.userId}
-                  onRemove={() => {
-                    removeMessage(message.id);
-                  }}
-                  removing={removingId === message.id}
-                  // Somebody else's, and not a former member's: a report names
-                  // who wrote it, and they have already left the club.
-                  canReport={
-                    message.authorId !== null &&
-                    message.authorId !== account.userId &&
-                    !message.pending
-                  }
-                  reported={reports.messageIds.has(message.id)}
-                  onReport={() => {
-                    setReportingId(message.id);
-                  }}
-                  onBlock={blockOffer(message)}
-                />
-              ),
-            )
+                  ) : (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      reactions={
+                        <ReactionBar
+                          target={message.id}
+                          what={
+                            message.body ||
+                            (message.sharedPostId ? 'this shared post' : 'this photograph')
+                          }
+                          quoted={Boolean(message.body)}
+                          state={reactions}
+                          readerId={account.userId}
+                        />
+                      }
+                      author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
+                      mine={message.authorId === account.userId}
+                      sharedPost={
+                        shared.cards.get(message.id) ??
+                        (shared.answered.has(message.id) ? null : undefined)
+                      }
+                      receipt={readReceipt(message, thread.kind, reads)}
+                      quote={quoteOf(message)}
+                      onQuoteTap={showQuoted}
+                      flash={flashId === message.id}
+                      // The author's own, standing, while there is a conversation
+                      // to edit in. chat_edit_message decides; this only asks.
+                      canEdit={!gone && message.authorId === account.userId && !message.pending}
+                      editing={edited?.id === message.id}
+                      onEdit={() => {
+                        setEditingId(message.id);
+                      }}
+                      canReply={!gone && !message.pending}
+                      onReply={() => {
+                        setEditingId(null);
+                        setReplyingTo(message);
+                      }}
+                      // Own messages only, even for an administrator: a thread they could reach as
+                      // one would not be private. See 20260918100000.
+                      canRemove={message.authorId === account.userId}
+                      onRemove={() => {
+                        removeMessage(message.id);
+                      }}
+                      removing={removingId === message.id}
+                      // Somebody else's, and not a former member's: a report names
+                      // who wrote it, and they have already left the club.
+                      canReport={
+                        message.authorId !== null &&
+                        message.authorId !== account.userId &&
+                        !message.pending
+                      }
+                      reported={reports.messageIds.has(message.id)}
+                      onReport={() => {
+                        setReportingId(message.id);
+                      }}
+                      onBlock={blockOffer(message)}
+                    />
+                  )}
+                  {swipe.offset && !message.pending ? (
+                    // Slides in at the right as the list slides left. The same
+                    // as the time's tooltip and the day heading, so hidden from
+                    // screen readers.
+                    <SwipedDate
+                      iso={message.createdAt}
+                      opacity={swipe.offset / SWIPE_MAX}
+                      // Level with the bubble: under the name on somebody else's.
+                      below={
+                        !message.notice && message.authorId !== account.userId ? 'name' : 'top'
+                      }
+                    />
+                  ) : null}
+                </div>
+              </Fragment>
+            ))
           )}
         </div>
       </div>
@@ -715,5 +756,29 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
         />
       ) : null}
     </div>
+  );
+}
+
+/** A message's date and time, at the right edge while the list is swiped left. */
+function SwipedDate({
+  iso,
+  opacity,
+  below,
+}: {
+  iso: string;
+  opacity: number;
+  below: 'name' | 'top';
+}) {
+  const { date, time } = messageDateTime(iso);
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="swiped-date"
+      style={{ opacity, width: SWIPE_MAX - 8 }}
+      className={`absolute left-full ml-2 text-right text-[0.625rem] text-grey leading-tight ${below === 'name' ? 'top-6' : 'top-2'}`}
+    >
+      <span className="block whitespace-nowrap">{date}</span>
+      <span className="block whitespace-nowrap">{time}</span>
+    </span>
   );
 }

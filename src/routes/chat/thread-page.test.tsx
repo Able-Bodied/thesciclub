@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnnounceProvider } from '@/lib/announce';
 import type * as Blocks from '@/lib/blocks';
 import type * as Attachments from '@/lib/chat/attachments';
@@ -453,6 +453,93 @@ describe('a conversation', () => {
     expect(screen.getByLabelText('Message Jan')).toBe(box);
     expect(box).toHaveValue('Half a sent');
     expect(screen.getByText('Which frame?')).toBeInTheDocument();
+  });
+});
+
+// Like iMessage: a heading for each day, and a sideways drag shows the dates.
+describe('dates in a conversation', () => {
+  // Noon in the US zones on Friday 18 September, so the days do not move.
+  const friday = new Date('2026-09-18T19:00:00Z');
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(friday);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('heads each day once, in the reader’s words', () => {
+    db.messages = [
+      message({ id: 'm1', body: 'Old.', createdAt: '2026-09-01T19:00:00Z' }),
+      message({ id: 'm2', body: 'Earlier.', createdAt: '2026-09-16T19:00:00Z' }),
+      message({ id: 'm3', body: 'Later.', createdAt: '2026-09-16T20:00:00Z' }),
+      message({ id: 'm4', body: 'Last night.', createdAt: '2026-09-17T19:00:00Z' }),
+      message({ id: 'm5', body: 'Now.', createdAt: '2026-09-18T18:00:00Z' }),
+    ];
+    renderThread();
+    const log = screen.getByRole('log');
+    const headings = ['Tue 1 Sep', 'Wednesday', 'Yesterday', 'Today'];
+    for (const day of headings) expect(within(log).getAllByText(day)).toHaveLength(1);
+    // In order, each above its day's first message.
+    const text = log.textContent;
+    const at = (words: string) => text.indexOf(words);
+    expect(at('Tue 1 Sep')).toBeLessThan(at('Old.'));
+    expect(at('Wednesday')).toBeLessThan(at('Earlier.'));
+    expect(at('Later.')).toBeLessThan(at('Yesterday'));
+    expect(at('Yesterday')).toBeLessThan(at('Last night.'));
+    expect(at('Today')).toBeLessThan(at('Now.'));
+  });
+
+  it('shows each message’s date while swiped left with a finger, and hides it on release', () => {
+    db.messages = [message({ id: 'm1', body: 'Hi.', createdAt: '2026-09-16T19:00:00Z' })];
+    renderThread();
+    const log = screen.getByRole('log');
+    expect(log.style.touchAction).toBe('pan-y');
+    const touch = { pointerId: 1, pointerType: 'touch' };
+    fireEvent.pointerDown(log, { ...touch, clientX: 300, clientY: 200 });
+    fireEvent.pointerMove(log, { ...touch, clientX: 280, clientY: 202 });
+    fireEvent.pointerMove(log, { ...touch, clientX: 200, clientY: 204 });
+    expect(log.style.transform).toBe('translateX(-64px)');
+    const date = screen.getByTestId('swiped-date');
+    expect(date).toHaveTextContent(/Wed 16 Sep/);
+    expect(date).toHaveAttribute('aria-hidden', 'true');
+    fireEvent.pointerUp(log, { ...touch, clientX: 200, clientY: 204 });
+    expect(log.style.transform).toBe('');
+    expect(screen.queryByTestId('swiped-date')).toBeNull();
+  });
+
+  it('leaves an up-and-down drag, a mouse, a rightward drag and the screen’s edge alone', () => {
+    db.messages = [message({ id: 'm1', body: 'Hi.' })];
+    renderThread();
+    const log = screen.getByRole('log');
+    const drag = (pointerType: string, from: [number, number], to: [number, number]) => {
+      fireEvent.pointerDown(log, { pointerId: 2, pointerType, clientX: from[0], clientY: from[1] });
+      fireEvent.pointerMove(log, { pointerId: 2, pointerType, clientX: to[0], clientY: to[1] });
+      const moved = log.style.transform;
+      fireEvent.pointerUp(log, { pointerId: 2, pointerType, clientX: to[0], clientY: to[1] });
+      return moved;
+    };
+    expect(drag('touch', [300, 200], [290, 120])).toBe('');
+    expect(drag('mouse', [300, 200], [200, 200])).toBe('');
+    expect(drag('touch', [200, 200], [300, 200])).toBe('');
+    expect(drag('touch', [10, 200], [-90, 200])).toBe('');
+  });
+
+  it('does not press what a swipe ends on', async () => {
+    db.messages = [message({ id: 'm1', body: 'Hi.' })];
+    renderThread();
+    const log = screen.getByRole('log');
+    const reply = screen.getByRole('button', { name: /Reply to Jan/ });
+    const touch = { pointerId: 3, pointerType: 'touch' };
+    fireEvent.pointerDown(log, { ...touch, clientX: 300, clientY: 200 });
+    fireEvent.pointerMove(log, { ...touch, clientX: 240, clientY: 200 });
+    fireEvent.pointerUp(log, { ...touch, clientX: 240, clientY: 200 });
+    fireEvent.click(reply);
+    expect(screen.queryByText(/Replying to/)).toBeNull();
+    // The next press is a press.
+    fireEvent.pointerDown(reply, { ...touch, clientX: 240, clientY: 200 });
+    fireEvent.click(reply);
+    expect(await screen.findByText(/Replying to/)).toBeInTheDocument();
   });
 });
 

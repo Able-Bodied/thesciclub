@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { chatTime, chatTimeLong, messageTime } from '@/lib/chat/time';
+import {
+  chatDayHeading,
+  chatTime,
+  chatTimeLong,
+  messageDateTime,
+  messageTime,
+  sameChatDay,
+} from '@/lib/chat/time';
 
 /**
  * Every case is pinned to a fixed `now` and an explicit zone. A test that reads
@@ -88,5 +95,43 @@ describe('messageTime', () => {
     expect(messageTime('2020-01-18T12:00:00Z', 'UTC')).toBe('12:00 PM');
     expect(messageTime('2020-01-18T00:05:00Z', 'UTC')).toBe('12:05 AM');
     expect(messageTime('invalid')).toBe('');
+  });
+});
+
+describe('chatDayHeading', () => {
+  it('says Today and Yesterday', () => {
+    expect(chatDayHeading('2026-09-18T00:10:00Z', now, UTC)).toBe('Today');
+    expect(chatDayHeading('2026-09-17T23:50:00Z', now, UTC)).toBe('Yesterday');
+  });
+
+  it('names the weekday in full within the last six days', () => {
+    expect(chatDayHeading('2026-09-16T08:00:00Z', now, UTC)).toBe('Wednesday');
+    expect(chatDayHeading('2026-09-12T08:00:00Z', now, UTC)).toBe('Saturday');
+  });
+
+  it('gives the date once a week old, with the year only when different', () => {
+    expect(chatDayHeading('2026-09-11T08:00:00Z', now, UTC)).toBe('Fri 11 Sep');
+    expect(chatDayHeading('2025-12-31T08:00:00Z', now, UTC)).toBe('31 Dec 2025');
+  });
+
+  it('uses the reader’s zone for the day', () => {
+    // 02:00 UTC on the 18th is still the 17th in Los Angeles.
+    const la = 'America/Los_Angeles';
+    expect(chatDayHeading('2026-09-18T02:00:00Z', now, la)).toBe('Yesterday');
+    expect(sameChatDay('2026-09-18T02:00:00Z', '2026-09-17T20:00:00Z', la)).toBe(true);
+    expect(sameChatDay('2026-09-18T02:00:00Z', '2026-09-17T20:00:00Z', UTC)).toBe(false);
+  });
+});
+
+describe('messageDateTime', () => {
+  it('gives the date and the clock, the year only when different', () => {
+    expect(messageDateTime('2026-09-18T09:30:00Z', now, UTC)).toEqual({
+      date: 'Fri 18 Sep',
+      time: '9:30 AM',
+    });
+    expect(messageDateTime('2025-11-06T21:05:00Z', now, UTC)).toEqual({
+      date: '6 Nov 2025',
+      time: '9:05 PM',
+    });
   });
 });

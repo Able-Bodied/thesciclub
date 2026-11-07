@@ -106,3 +106,58 @@ export function messageTime(iso: string, timeZone?: string): string {
   const parts = partsIn(at, timeZone, { hour: 'numeric', minute: '2-digit', hour12: true });
   return `${parts.hour}:${parts.minute} ${parts.dayPeriod ?? ''}`;
 }
+
+/** Whether two moments fall on the same calendar day in the zone. */
+export function sameChatDay(a: string, b: string, timeZone?: string): boolean {
+  return dayIn(new Date(a), timeZone) === dayIn(new Date(b), timeZone);
+}
+
+/**
+ * The heading over a day's messages, as iMessage has: "Today", "Yesterday",
+ * "Thursday", "Mon 3 Nov", "3 Nov 2025".
+ */
+export function chatDayHeading(iso: string, now: Date = new Date(), timeZone?: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const elapsed = Math.round(
+    (Date.parse(dayIn(now, timeZone)) - Date.parse(dayIn(at, timeZone))) / 86_400_000,
+  );
+  if (elapsed === 0) return 'Today';
+  if (elapsed === 1) return 'Yesterday';
+  if (elapsed >= 2 && elapsed <= 6) {
+    return partsIn(at, timeZone, { weekday: 'long' }).weekday ?? '';
+  }
+  const parts = partsIn(at, timeZone, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const sameYear = parts.year === partsIn(now, timeZone, { year: 'numeric' }).year;
+  return sameYear
+    ? `${parts.weekday} ${parts.day} ${parts.month}`
+    : `${parts.day} ${parts.month} ${parts.year}`;
+}
+
+/** A message's date and time, shown by a swipe: "Thu 6 Nov", "9:30 AM". */
+export function messageDateTime(
+  iso: string,
+  now: Date = new Date(),
+  timeZone?: string,
+): { date: string; time: string } {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return { date: '', time: '' };
+  const parts = partsIn(at, timeZone, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const sameYear = parts.year === partsIn(now, timeZone, { year: 'numeric' }).year;
+  return {
+    date: sameYear
+      ? `${parts.weekday} ${parts.day} ${parts.month}`
+      : `${parts.day} ${parts.month} ${parts.year}`,
+    time: messageTime(iso, timeZone),
+  };
+}
