@@ -13,7 +13,7 @@ import { sessionStorageKey } from '@/lib/url-session';
  */
 
 /** From Cloudflare's dashboard. Public: it is in the page. Empty: nothing loads. */
-export const CF_ANALYTICS_TOKEN = '';
+export const CF_ANALYTICS_TOKEN = 'ea21a9f0317846938ebd0abe64ea5aa6';
 
 export const CF_BEACON_SRC = 'https://static.cloudflareinsights.com/beacon.min.js';
 

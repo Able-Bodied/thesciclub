@@ -56,6 +56,7 @@ describe('the Privacy Policy', () => {
       /Changed: an org admin or a verified professional can connect two or more/,
     );
     expect(notes[0]).toMatch(/Added: an event can be private/);
+    expect(notes[0]).toMatch(/Added: Cloudflare counts visits to the website’s public pages/);
     expect(notes[1]).toMatch(/Changed: a notification of a group message now names the group/);
     expect(notes[1]).toMatch(/Changed: a busy conversation notifies you at most once every two/);
     expect(notes[2]).toMatch(/Added: the app measures how long it takes to load/);

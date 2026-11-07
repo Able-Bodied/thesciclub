@@ -34,6 +34,10 @@ export default function PrivacyPage() {
             people its organizer invites. Nobody else can see it, in the app or from its link, and
             each person invited is told (see Event hosts).
           </li>
+          <li>
+            <b>Added:</b> Cloudflare counts visits to the website’s public pages by people who are
+            not signed in, with no cookies (see Service providers).
+          </li>
         </List>
       </Note>
       <Note title="What changed on November 5, 2026">
@@ -705,6 +709,14 @@ export default function PrivacyPage() {
             map pictures (Cloudflare, which stores and serves the club’s own copy of OpenStreetMap’s
             map; like any web host, it sees your device’s internet address and which parts of the
             map it loads);
+          </li>
+          <li>
+            visit counts on the website (Cloudflare Web Analytics): when you are not signed in and
+            open a public page, such as an event page from a shared link, the welcome page or these
+            policies, Cloudflare counts the visit: the page, the site that sent you, your country,
+            the kind of device and browser, and how fast the page loaded. It uses no cookies, does
+            not recognize you from one visit to the next, and is never loaded while you are signed
+            in or in the iPhone app;
           </li>
           <li>device notifications (Apple, Google, or your browser’s maker);</li>
           <li>Google or Apple, if you sign in with them.</li>
