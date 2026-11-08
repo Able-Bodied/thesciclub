@@ -1,9 +1,11 @@
-import { type RefObject, useEffect, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /** Less than this is a finger settling, not a direction. */
 const SLOP = 8;
 /** Near the top of a page the bar always shows. */
 const NEAR_TOP = 40;
+/** Within this of a page's end, it is at the end (the rubber band aside). */
+const AT_END = 4;
 /** Room a page must keep with the bar gone, or it only jumps as the bar goes. */
 const LEAST_ROOM = 120;
 /**
@@ -40,10 +42,28 @@ export function useHideOnScroll(
   bar: RefObject<HTMLElement | null>,
 ) {
   const [hidden, setHidden] = useState(false);
+  // The page whose end brought the bar back, to keep that end in view.
+  const endOf = useRef<HTMLElement | null>(null);
+
+  // The bar coming back takes its room from the bottom of the page, which
+  // pushed what the reader had scrolled down to (a Delete button, the owner,
+  // 2026-11-08) back out of sight. Held at its end, the page keeps it.
+  useLayoutEffect(() => {
+    const box = endOf.current;
+    endOf.current = null;
+    if (hidden || !box?.isConnected || typeof box.scrollTo !== 'function') return;
+    box.scrollTo({ top: box.scrollHeight });
+  }, [hidden]);
+
+  // Pages read to their end on this screen: the bar stays for them, however
+  // long they grow after (a Show more, a button opening), until a new screen
+  // (the owner, 2026-11-08).
+  const ended = useRef(new WeakSet<HTMLElement>());
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `place` is why it runs again.
   useEffect(() => {
     setHidden(false);
+    ended.current = new WeakSet();
   }, [place, enabled]);
 
   useEffect(() => {
@@ -128,11 +148,24 @@ export function useHideOnScroll(
       // the finger lifted (the owner, 2026-11-06).
       if (theirs()) intent();
       const before = seen.get(box) ?? 0;
-      if (Math.abs(top - before) < SLOP && top > NEAR_TOP) return;
+      // At the end of a page the bar comes back and stays: nothing below is
+      // left to make room for, and what is there (a button that just opened)
+      // must not slide away (the owner, 2026-11-08).
+      const atEnd = room - top <= AT_END && top > before;
+      if (Math.abs(top - before) < SLOP && top > NEAR_TOP && !atEnd) return;
       seen.set(box, top);
-      if (top <= NEAR_TOP || before - top >= BACK_UP) setHidden(false);
+      // Only the scroll that reaches the end, so a later show elsewhere (a
+      // tap) never throws the reader to the bottom.
+      endOf.current = atEnd ? box : null;
+      if (atEnd) ended.current.add(box);
+      if (atEnd) setHidden(false);
+      else if (ended.current.has(box)) return;
+      else if (top <= NEAR_TOP || before - top >= BACK_UP) setHidden(false);
       else if (roomHidden(box) < LEAST_ROOM) recheck();
       else if (theirs()) {
+        // Not going for the last of a page: it would only come back at the
+        // end, a flicker over whatever is down there.
+        if (top > before && room - top <= (bar.current?.offsetHeight ?? 0) + AT_END) return;
         owner = box;
         setHidden(top > before);
       }

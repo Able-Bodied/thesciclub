@@ -43,6 +43,11 @@ function phone(box: HTMLElement, room: number, shown = 600) {
     get: () => Math.min(top, end()),
     configurable: true,
   });
+  // As a browser's: the page held at its end as the bar comes back.
+  box.scrollTo = ((to: ScrollToOptions) => {
+    top = Math.max(0, Math.min(to.top ?? top, end()));
+    fireEvent.scroll(box);
+  }) as typeof box.scrollTo;
   const settle = () => {
     for (let i = 0; i < 10 && box.scrollTop !== told; i++) {
       told = box.scrollTop;
@@ -103,9 +108,9 @@ describe('the tab bar on a scroll', () => {
   it('is not brought back by the page moving as the bar goes', () => {
     render(<Page />);
     const box = screen.getByTestId('box');
-    scrollTo(box, 1400);
+    scrollTo(box, 1300);
     expect(screen.getByText('Hidden')).toBeInTheDocument();
-    // At the bottom, the box growing into the bar's room pulls the page up.
+    // Near the bottom, the box growing into the bar's room pulls the page up.
     scrollTo(box, 1340, 2000, 660);
     expect(screen.getByText('Hidden')).toBeInTheDocument();
     // The reader turning back still brings it.
@@ -138,10 +143,48 @@ describe('the tab bar on a scroll', () => {
     expect(readDown(205).flips).toBe(0);
   });
 
-  it('goes once, and stays gone, for a page with just the room', () => {
+  it('goes once, and comes back once at the end, for a page with just the room', () => {
     const { states, flips } = readDown(215);
-    expect(flips).toBe(1);
-    expect(states.at(-1)).toBe(true);
+    expect(flips).toBe(2);
+    expect(states.at(-1)).toBe(false);
+  });
+
+  // The owner, 2026-11-08: deleting an event opened a button at the bottom,
+  // and scrolling down to it sent the bar away and the button out of sight.
+  it('comes back at the end of a page, and keeps that end in view', () => {
+    const { rerender } = render(<Page />);
+    const box = screen.getByTestId('box');
+    const pin = vi.fn();
+    box.scrollTo = pin;
+    // A show anywhere else does not throw the page to its end.
+    scrollTo(box, 900);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    fireEvent.touchStart(box);
+    fireEvent.touchEnd(box);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    expect(pin).not.toHaveBeenCalled();
+    scrollTo(box, 1100);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    scrollTo(box, 1400);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    expect(pin).toHaveBeenCalledWith({ top: 2000 });
+    // The owner, 2026-11-08: once at the end it stays, though a Show more
+    // makes the page longer and the reader goes on down it.
+    scrollTo(box, 1200, 3000);
+    scrollTo(box, 1600, 3000);
+    scrollTo(box, 2000, 3000);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    // Until another screen.
+    rerender(<Page place="/peers" />);
+    scrollTo(box, 2100, 3000);
+    scrollTo(box, 2300, 3000);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+  });
+
+  it('goes once, and comes back once, on a page read past its end', () => {
+    const { states, flips } = readDown(500);
+    expect(flips).toBe(2);
+    expect(states.at(-1)).toBe(false);
   });
 
   it('goes once, and stays gone, on a long page', () => {
