@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:related": "vitest related --run",
     "check": "biome ci . && eslint . --max-warnings 0 && tsc -b --noEmit",
     "fix": "eslint . --fix && biome check --write .",
     "shoot": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/shoot.mjs",

@@ -106,8 +106,9 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 4,052 tests in 298 files on 2026-10-28; `pnpm check` (alone),
-  `pnpm test` and `pnpm build` gate every push.
+- **Checks**: 4,891 tests in 378 files on 2026-11-08; `pnpm check` (alone),
+  `pnpm test` and `pnpm build` gate every push. While working,
+  `pnpm test:related <files>`; which tests to add: `CLAUDE.md`.
 
 ## Open
 
