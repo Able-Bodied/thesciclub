@@ -75,11 +75,12 @@ export function chatTime(iso: string, now: Date = new Date(), timeZone?: string)
     partsIn(at, timeZone, { year: 'numeric' }).year ===
     partsIn(now, timeZone, { year: 'numeric' }).year;
   const parts = partsIn(at, timeZone, { day: 'numeric', month: 'short', year: 'numeric' });
-  return sameYear ? `${parts.day} ${parts.month}` : `${parts.day} ${parts.month} ${parts.year}`;
+  // Month first, as in the US (the owner, 2026-11-07).
+  return sameYear ? `${parts.month} ${parts.day}` : `${parts.month} ${parts.day}, ${parts.year}`;
 }
 
 /**
- * The same moment written out: "18 September 2026 at 9:30am".
+ * The same moment written out: "September 18, 2026 at 9:30am".
  *
  * For the one place a topic says when it started, where the short form would be
  * a bare weekday under a heading and answer nothing.
@@ -96,7 +97,7 @@ export function chatTimeLong(iso: string, timeZone?: string): string {
     hour12: true,
   });
   const clock = `${parts.hour}:${parts.minute}${(parts.dayPeriod ?? '').toLowerCase()}`;
-  return `${parts.day} ${parts.month} ${parts.year} at ${clock}`;
+  return `${parts.month} ${parts.day}, ${parts.year} at ${clock}`;
 }
 
 /** The clock inside a message bubble, including on older messages. */
@@ -105,4 +106,59 @@ export function messageTime(iso: string, timeZone?: string): string {
   if (Number.isNaN(at.getTime())) return '';
   const parts = partsIn(at, timeZone, { hour: 'numeric', minute: '2-digit', hour12: true });
   return `${parts.hour}:${parts.minute} ${parts.dayPeriod ?? ''}`;
+}
+
+/** Whether two moments fall on the same calendar day in the zone. */
+export function sameChatDay(a: string, b: string, timeZone?: string): boolean {
+  return dayIn(new Date(a), timeZone) === dayIn(new Date(b), timeZone);
+}
+
+/**
+ * The heading over a day's messages, as iMessage has: "Today", "Yesterday",
+ * "Thursday", "Mon, Nov 3", "Nov 3, 2025".
+ */
+export function chatDayHeading(iso: string, now: Date = new Date(), timeZone?: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const elapsed = Math.round(
+    (Date.parse(dayIn(now, timeZone)) - Date.parse(dayIn(at, timeZone))) / 86_400_000,
+  );
+  if (elapsed === 0) return 'Today';
+  if (elapsed === 1) return 'Yesterday';
+  if (elapsed >= 2 && elapsed <= 6) {
+    return partsIn(at, timeZone, { weekday: 'long' }).weekday ?? '';
+  }
+  const parts = partsIn(at, timeZone, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const sameYear = parts.year === partsIn(now, timeZone, { year: 'numeric' }).year;
+  return sameYear
+    ? `${parts.weekday}, ${parts.month} ${parts.day}`
+    : `${parts.month} ${parts.day}, ${parts.year}`;
+}
+
+/** A message's date and time, shown by a swipe: "Thu, Nov 6", "9:30 AM". */
+export function messageDateTime(
+  iso: string,
+  now: Date = new Date(),
+  timeZone?: string,
+): { date: string; time: string } {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return { date: '', time: '' };
+  const parts = partsIn(at, timeZone, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const sameYear = parts.year === partsIn(now, timeZone, { year: 'numeric' }).year;
+  return {
+    date: sameYear
+      ? `${parts.weekday}, ${parts.month} ${parts.day}`
+      : `${parts.month} ${parts.day}, ${parts.year}`,
+    time: messageTime(iso, timeZone),
+  };
 }

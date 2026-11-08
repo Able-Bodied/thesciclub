@@ -23,6 +23,26 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 7, 2026">
+        <List>
+          <li>
+            <b>Added:</b> a member who joined as a relative or spouse and another member can link
+            each other as family, such as a spouse, parent or child. It shows on both of your
+            profiles only once the other says yes (see Who can see what).
+          </li>
+          <li>
+            <b>Changed:</b> Cloudflare now counts visits to every page of the website, signed in or
+            not, but only the kind of page, such as an event page, never which one, and never who
+            you are. It runs apart from the club’s pages, where it cannot see your account (see
+            Service providers).
+          </li>
+          <li>
+            <b>Added:</b> everyone invited to an invite-only event sees who else is invited and who
+            organized it: who added it, and anyone who changed it or invited people. A co-host’s org
+            admins see a private event as its host’s do (see Event hosts).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 6, 2026">
         <List>
           <li>
@@ -560,6 +580,15 @@ export default function PrivacyPage() {
             notification.
           </li>
           <li>
+            <b>Family.</b> A member who joined as a relative or spouse can ask any member to link as
+            family, and any other member, except a professional, can ask a relative or spouse. They
+            say how: spouse or partner, parent, child, brother or sister, or other family. You are
+            told who asked and as what. Until you say yes, only the two of you see the request, and
+            if you say no they are not told. Once you say yes, members who can see both of your
+            profiles see the link on each, with how you are related. Either of you can remove it at
+            any time, and a block between you removes it.
+          </li>
+          <li>
             <b>Being connected.</b> An org admin or a verified professional can connect two or more
             members. You are not asked first: you are added to a group conversation, a new one or
             one that already exists, with a line saying who connected you and their note, and you
@@ -640,7 +669,11 @@ export default function PrivacyPage() {
         <P>
           Every event has a page that anyone with its link can open, unless it is private: an event
           for the members of chosen organizations, or for people its organizer invited, opens only
-          for them. It shows the event's details only, never who is going or how many. Adding
+          for them and its organizers: whoever added or changed it, the org admins of its host and
+          of any co-host, and the club’s administrators. Everyone invited to an invite-only event
+          sees who else is invited, by name and photograph, and who organized it: who added it, and
+          anyone who changed it or invited people, except members hidden from Peers or blocked
+          either way. It shows the event's details only, never who is going or how many. Adding
           yourself to the club’s list there shares your name, email address and phone number, if you
           give it, with the club’s administrators and anybody in the club who manages that event,
           for that event only. It does not register you with the host. The guest list also says
@@ -711,12 +744,14 @@ export default function PrivacyPage() {
             map it loads);
           </li>
           <li>
-            visit counts on the website (Cloudflare Web Analytics): when you are not signed in and
-            open a public page, such as an event page from a shared link, the welcome page or these
-            policies, Cloudflare counts the visit: the page, the site that sent you, your country,
-            the kind of device and browser, and how fast the page loaded. It uses no cookies, does
-            not recognize you from one visit to the next, and is never loaded while you are signed
-            in or in the iPhone app;
+            visit counts on the website (Cloudflare Web Analytics): when you open a page of the
+            website, signed in or not, Cloudflare counts the visit: the kind of page (such as an
+            event page, never which event or anything else in its address), your country, the kind
+            of device and browser, and how fast the page loaded. Like any web host, it sees your
+            device’s internet address. It runs in a hidden page of its own, apart from the club’s,
+            so it cannot see your account or anything on your screen, and it is told nothing about
+            who you are. It uses no cookies, does not recognize you from one visit to the next, and
+            is never loaded in the iPhone app;
           </li>
           <li>device notifications (Apple, Google, or your browser’s maker);</li>
           <li>Google or Apple, if you sign in with them.</li>

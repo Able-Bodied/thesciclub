@@ -1,5 +1,6 @@
 import { ImagePlus, X } from 'lucide-react';
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { attachmentProblem, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import type { PhotoTarget } from '@/lib/paste-photos';
 
@@ -133,7 +134,7 @@ function keyFor(file: File): number {
   return key;
 }
 
-/** What has been chosen, each with a way to take it back. */
+/** What has been chosen, each opening full size, with a way to take it back (2026-11-07). */
 export function PhotoStrip({
   files,
   onRemove,
@@ -144,6 +145,9 @@ export function PhotoStrip({
   disabled?: boolean;
 }) {
   const [urls, setUrls] = useState<string[]>([]);
+  const [open, setOpen] = useState<number | null>(null);
+  // Focus goes back to the thumbnail that opened it.
+  const opener = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const made = files.map((file) => URL.createObjectURL(file));
@@ -156,28 +160,54 @@ export function PhotoStrip({
   if (files.length === 0) return null;
 
   return (
-    <ul className="mb-2 flex flex-wrap gap-2" aria-label="Photographs to send">
-      {files.map((file, index) => (
-        <li key={keyFor(file)} className="relative">
-          <img
-            src={urls[index]}
-            alt={file.name}
-            className="block h-[4.5rem] w-[4.5rem] rounded-[10px] bg-tint object-cover"
-          />
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => {
-              onRemove(index);
-            }}
-            aria-label={`Take back ${file.name}`}
-            data-target="small"
-            className="-top-1.5 -right-1.5 absolute grid h-6 w-6 place-items-center rounded-full bg-action text-white shadow-[0_2px_6px_rgba(10,20,35,.3)]"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="mb-2 flex flex-wrap gap-2" aria-label="Photographs to send">
+        {files.map((file, index) => (
+          <li key={keyFor(file)} className="relative">
+            <button
+              type="button"
+              onClick={(event) => {
+                opener.current = event.currentTarget;
+                setOpen(index);
+              }}
+              aria-label={`Open ${file.name}`}
+              className="block cursor-zoom-in rounded-[10px]"
+            >
+              <img
+                src={urls[index]}
+                alt=""
+                className="block h-[4.5rem] w-[4.5rem] rounded-[10px] bg-tint object-cover"
+              />
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                onRemove(index);
+              }}
+              aria-label={`Take back ${file.name}`}
+              data-target="small"
+              className="-top-1.5 -right-1.5 absolute grid h-6 w-6 place-items-center rounded-full bg-action text-white shadow-[0_2px_6px_rgba(10,20,35,.3)]"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {open !== null && urls[open] ? (
+        <PhotoViewer
+          url={urls[open]}
+          label={files[open]?.name ?? 'Photograph'}
+          title="Photographs to send"
+          index={open}
+          count={files.length}
+          onStep={setOpen}
+          onClose={() => {
+            setOpen(null);
+            opener.current?.focus();
+          }}
+        />
+      ) : null}
+    </>
   );
 }

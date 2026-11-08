@@ -5,10 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
 import type * as Reports from '@/lib/chat/reports';
 import type * as ClubPartners from '@/lib/club-partners';
+import type * as Family from '@/lib/family';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
 
-const state = vi.hoisted(() => ({ current: null as MemberState | null, partner: false }));
+const state = vi.hoisted(() => ({
+  current: null as MemberState | null,
+  partner: false,
+  // The viewer's own answer to "Which describes you best?".
+  myType: null as string | null,
+}));
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<typeof ClubPartners>()),
   useICanConnect: () => state.partner,
@@ -16,6 +22,12 @@ vi.mock('@/lib/club-partners', async (importOriginal) => ({
 }));
 vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
+  useOwnMember: () => ({
+    member: { type: 'peer', injuryType: state.myType },
+    invitedBy: null,
+    loading: false,
+    error: null,
+  }),
 }));
 
 // Somebody is always signed in here. The Message button is not drawn without a
@@ -81,6 +93,22 @@ vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () => new Map([['abc', { id: 'abc', displayName: 'Nicole' }]]),
 }));
 
+// Family links: what member_family returns, and the three writes.
+const family = vi.hoisted(() => ({
+  links: [] as Family.FamilyLink[],
+  reload: vi.fn(),
+  ask: vi.fn(),
+  answer: vi.fn(),
+  remove: vi.fn(),
+}));
+vi.mock('@/lib/family', async (importOriginal) => ({
+  ...(await importOriginal<typeof Family>()),
+  useMemberFamily: () => ({ family: family.links, reload: family.reload }),
+  askFamilyLink: family.ask,
+  answerFamilyLink: family.answer,
+  removeFamilyLink: family.remove,
+}));
+
 // A signed URL for any stored photograph: signing is a storage call.
 vi.mock('@/lib/photos', () => ({
   usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed/${path}` : null),
@@ -125,6 +153,7 @@ function renderDetail() {
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
   state.partner = false;
+  state.myType = 'family';
   chatRooms.rooms = [];
   blocks.ids = new Set();
   blocks.reload.mockReset();
@@ -134,6 +163,11 @@ beforeEach(() => {
   reports.reload.mockReset();
   reports.send.mockReset().mockResolvedValue({ ok: true, value: null });
   reports.announce.mockReset();
+  family.links = [];
+  family.reload.mockReset();
+  family.ask.mockReset().mockResolvedValue({ ok: true });
+  family.answer.mockReset().mockResolvedValue({ ok: true });
+  family.remove.mockReset().mockResolvedValue({ ok: true });
 });
 
 describe('reporting from a profile', () => {
@@ -241,6 +275,158 @@ describe('introducing from a profile', () => {
     await openMenu(user);
     await user.click(screen.getByRole('button', { name: 'Introduce Nicole…' }));
     expect(screen.getByRole('dialog', { name: 'Introduce Nicole' })).toBeInTheDocument();
+  });
+});
+
+describe('family links', () => {
+  const link = (over: Partial<Family.FamilyLink>): Family.FamilyLink => ({
+    linkId: 'f1',
+    memberId: 'me',
+    displayName: 'Alex',
+    photoPath: null,
+    relation: 'spouse',
+    state: 'linked',
+    ...over,
+  });
+
+  it('asks as what, from the •••, and says it waits for a yes', async () => {
+    const user = userEvent.setup();
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Link Nicole as family…' }));
+    const sheet = screen.getByRole('dialog', { name: 'Link Nicole as family' });
+    expect(sheet).toHaveTextContent('Nicole is asked first.');
+    const ask = within(sheet).getByRole('button', { name: 'Ask Nicole' });
+    expect(ask).toBeDisabled();
+    await user.click(within(sheet).getByRole('radio', { name: 'Parent' }));
+    await user.click(ask);
+    expect(family.ask).toHaveBeenCalledWith('abc', 'parent');
+    expect(reports.announce).toHaveBeenCalledWith(
+      'Asked Nicole. You are linked once they say yes.',
+    );
+    expect(family.reload).toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Link Nicole as family' })).not.toBeInTheDocument();
+  });
+
+  // The owner, 2026-11-07: only a relative or spouse asks, on anyone's profile.
+  it('offers linking only to a member who said they are a relative or spouse', async () => {
+    const user = userEvent.setup();
+    state.myType = 'quad';
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.queryByRole('button', { name: 'Link Nicole as family…' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Block Nicole' })).toBeInTheDocument();
+  });
+
+  it('offers any other member linking only on a relative’s or spouse’s profile', async () => {
+    const user = userEvent.setup();
+    state.myType = 'quad';
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole', injuryType: 'family' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.getByRole('button', { name: 'Link Nicole as family…' })).toBeInTheDocument();
+  });
+
+  it('never offers it to a professional', async () => {
+    const user = userEvent.setup();
+    state.myType = 'professional';
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole', injuryType: 'family' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.queryByRole('button', { name: 'Link Nicole as family…' })).toBeNull();
+  });
+
+  it('still lets anyone answer, and remove a link they are in', async () => {
+    const user = userEvent.setup();
+    state.myType = null;
+    family.links = [link({})];
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Remove family link' }));
+    expect(family.remove).toHaveBeenCalledWith('f1');
+  });
+
+  it('keeps the sheet open with the reason when the ask fails', async () => {
+    const user = userEvent.setup();
+    family.ask.mockResolvedValue({ ok: false, error: 'You have asked 10 people today.' });
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Link Nicole as family…' }));
+    await user.click(screen.getByRole('radio', { name: 'Spouse or partner' }));
+    await user.click(screen.getByRole('button', { name: 'Ask Nicole' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('You have asked 10 people today.');
+  });
+
+  it('shows linked family to everyone, and offers the reader to remove their own link', async () => {
+    const user = userEvent.setup();
+    family.links = [
+      link({}),
+      link({ linkId: 'f2', memberId: 'kid', displayName: 'Robin', relation: 'child' }),
+    ];
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    expect(screen.getByRole('heading', { name: 'Family' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Alex \(you\).*Spouse or partner/ })).toHaveAttribute(
+      'href',
+      '/peers/me',
+    );
+    expect(screen.getByRole('link', { name: /Robin.*Child/ })).toHaveAttribute(
+      'href',
+      '/peers/kid',
+    );
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(
+      screen.queryByRole('button', { name: 'Link Nicole as family…' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove family link' }));
+    expect(family.remove).toHaveBeenCalledWith('f1');
+  });
+
+  it('lets the member who was asked say yes on the asker’s profile', async () => {
+    const user = userEvent.setup();
+    // Nicole asked: the reader is her parent, so she would be the reader's child.
+    family.links = [link({ relation: 'parent', state: 'asked_of_me' })];
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    expect(
+      screen.getByText(/asked to be linked to you as family, as your child\./),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Yes, link us' }));
+    expect(family.answer).toHaveBeenCalledWith('f1', true);
+    expect(reports.announce).toHaveBeenCalledWith('You and Nicole are linked as family.');
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.queryByRole('button', { name: /family/ })).not.toBeInTheDocument();
+  });
+
+  it('tells the asker it is waiting, with a way to cancel', async () => {
+    const user = userEvent.setup();
+    family.links = [link({ state: 'asked_by_me' })];
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    expect(screen.getByText(/You asked to link Nicole as family\. Waiting/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Family' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel request' }));
+    expect(family.remove).toHaveBeenCalledWith('f1');
+  });
+
+  it('lets a member remove family from their own profile', async () => {
+    const user = userEvent.setup();
+    family.links = [link({ memberId: 'abc2', displayName: 'Sam', relation: 'sibling' })];
+    state.current = ok(makeMember({ id: 'me', displayName: 'Alex' }));
+    render(
+      <MemoryRouter initialEntries={['/peers/me']}>
+        <Routes>
+          <Route path="/peers/:id" element={<MemberDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: /Sam.*Brother or sister/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove Sam from your family' }));
+    expect(family.remove).toHaveBeenCalledWith('f1');
   });
 });
 

@@ -1,6 +1,7 @@
 import { Lock, QrCode, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import {
   type AudienceHint,
@@ -15,6 +16,7 @@ import type { AudienceOrganization } from '@/routes/events/audience-field';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { ShortLinkField, ShortLinkQr } from '@/routes/events/event-short-link';
 import { FollowButton } from '@/routes/events/follow-button';
+import { InviteesSheet } from '@/routes/events/invitees-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { VisibilitySheet } from '@/routes/events/visibility-sheet';
 import type { ClubEvent, EventAudience } from '@/types/domain';
@@ -82,7 +84,11 @@ export function EventAudienceSection({
   const announce = useAnnounce();
   const [visibility, setVisibility] = useState<EventVisibility | null>(null);
   const [changing, setChanging] = useState(false);
+  const [listing, setListing] = useState(false);
   const [readAgain, setReadAgain] = useState(0);
+  const readerId = useAccount().userId;
+  // Invite only, with the list this reader may see: the count opens it.
+  const listed = event.audience === 'people' && visibility?.invitees ? visibility : null;
   const hidden = isPrivateAudience(event.audience);
   // Which organizations, or how many invited; and for the sheet, the lists.
   useEffect(() => {
@@ -133,7 +139,22 @@ export function EventAudienceSection({
             {hidden ? (
               <Lock aria-hidden="true" className="h-[14px] w-[14px] flex-none" strokeWidth={2.4} />
             ) : null}
-            {audienceLabel(event.audience, organizationName, visibility)}
+            {listed ? (
+              <span>
+                Invite only ·{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListing(true);
+                  }}
+                  className="font-bold underline underline-offset-2 hover:text-emphasis"
+                >
+                  {listed.inviteeCount === 1 ? '1 person' : `${listed.inviteeCount} people`} invited
+                </button>
+              </span>
+            ) : (
+              audienceLabel(event.audience, organizationName, visibility)
+            )}
           </p>
           {canSetVisibility && visibility ? (
             <button
@@ -188,6 +209,17 @@ export function EventAudienceSection({
         ) : null}
         {shortLink ? <ShortLinkQr link={link} title={event.title} /> : null}
       </div>
+      {listing && listed ? (
+        <InviteesSheet
+          visibility={listed}
+          organizationName={organizationName}
+          hasCohosts={event.cohostIds.length > 0}
+          readerId={readerId}
+          onClose={() => {
+            setListing(false);
+          }}
+        />
+      ) : null}
       {changing && visibility ? (
         <VisibilitySheet
           event={event}

@@ -20,7 +20,7 @@ const THU = [FIRST, '2026-11-13T02:00:00Z', '2026-11-20T02:00:00Z', LAST];
 
 describe("a repeating event's page says so (the owner, 2026-11-06)", () => {
   it('says how often, and its next two dates', () => {
-    expect(whatRepeats(THU, FIRST, LA)).toBe('Repeats weekly · next Thu 12 Nov, Thu 19 Nov');
+    expect(whatRepeats(THU, FIRST, LA)).toBe('Repeats weekly · next Thu, Nov 12 and Thu, Nov 19');
   });
 
   it('says when it is the last date', () => {
@@ -28,7 +28,7 @@ describe("a repeating event's page says so (the owner, 2026-11-06)", () => {
   });
 
   it('names no rhythm from two dates', () => {
-    expect(whatRepeats(THU.slice(0, 2), FIRST, LA)).toBe('Repeats · next Thu 12 Nov');
+    expect(whatRepeats(THU.slice(0, 2), FIRST, LA)).toBe('Repeats · next Thu, Nov 12');
   });
 
   it('reads the dates only for a repeating event', async () => {
@@ -39,7 +39,7 @@ describe("a repeating event's page says so (the owner, 2026-11-06)", () => {
     expect(screen.queryByText(/Repeats/)).toBeNull();
     rerender(<RepeatsLine seriesId="s1" startTime={FIRST} timezone={LA} />);
     expect(
-      await screen.findByText('Repeats weekly · next Thu 12 Nov, Thu 19 Nov'),
+      await screen.findByText('Repeats weekly · next Thu, Nov 12 and Thu, Nov 19'),
     ).toBeInTheDocument();
     expect(series.asked).toEqual(['s1']);
   });

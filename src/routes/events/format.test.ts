@@ -73,7 +73,7 @@ describe('timeRange', () => {
     // An overnight trip. Without the date this reads as "10:00am – 9:00am",
     // which is wrong by a day and looks right.
     expect(timeRange('2026-09-05T17:00:00Z', '2026-09-06T16:00:00Z', PACIFIC)).toBe(
-      '10:00am – 6 Sep, 9:00am',
+      '10:00am – Sep 6, 9:00am',
     );
   });
 
@@ -87,11 +87,11 @@ describe('timeRange', () => {
 
 describe('longWhen', () => {
   it('matches the mock’s shape', () => {
-    expect(longWhen('2026-09-05T17:00:00Z', PACIFIC)).toBe('Sat 5 Sep · 10:00am');
+    expect(longWhen('2026-09-05T17:00:00Z', PACIFIC)).toBe('Sat, Sep 5 · 10:00am');
   });
 
   it('gives only the day for an all-day event', () => {
-    expect(longWhen('2026-11-07T05:00:00Z', 'America/New_York', true)).toBe('Sat 7 Nov');
+    expect(longWhen('2026-11-07T05:00:00Z', 'America/New_York', true)).toBe('Sat, Nov 7');
   });
 });
 
@@ -106,7 +106,7 @@ describe('an all-day event', () => {
 
   it('names the last day when it runs over several', () => {
     expect(timeRange('2026-11-07T05:00:00Z', '2026-11-09T04:59:00Z', NY, true)).toBe(
-      'All day, to 8 Nov',
+      'All day, to Nov 8',
     );
   });
 });

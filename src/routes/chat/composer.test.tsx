@@ -73,6 +73,23 @@ describe('the composer', () => {
     });
   });
 
+  // The owner, 2026-11-07: a chosen photograph opens full size before it goes.
+  it('opens a chosen photograph full size, steps to the next, and closes back to it', async () => {
+    renderComposer();
+    const user = userEvent.setup();
+    await user.upload(fileInput(), [photo('a.jpg'), photo('b.jpg')]);
+    const opener = screen.getByRole('button', { name: 'Open a.jpg' });
+    await user.click(opener);
+    const viewer = screen.getByRole('dialog', { name: /Photographs to send/ });
+    expect(viewer).toBeInTheDocument();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('img', { name: 'b.jpg' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: /Photographs to send/ })).toBeNull();
+    expect(opener).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Take back a.jpg' })).toBeInTheDocument();
+  });
+
   it('takes a chosen photograph back before it is sent', async () => {
     const onSend = renderComposer();
     const user = userEvent.setup();

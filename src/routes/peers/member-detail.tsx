@@ -12,8 +12,9 @@ import { reportMember, useMyReports } from '@/lib/chat/reports';
 import { openDirect } from '@/lib/chat/threads';
 import { useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
+import { mayLinkFamily, removeFamilyLink, useMemberFamily } from '@/lib/family';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
-import { useBrowseMember } from '@/lib/members';
+import { useBrowseMember, useOwnMember } from '@/lib/members';
 import { useMemberOrganizations } from '@/lib/organization-members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhoto } from '@/lib/use-photo';
@@ -22,6 +23,8 @@ import { ItemActions } from '@/routes/chat/item-actions';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
+import { FamilySection } from '@/routes/peers/family-section';
+import { FamilySheet } from '@/routes/peers/family-sheet';
 import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { MentorSheet, mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
@@ -494,6 +497,9 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [reporting, setReporting] = useState(false);
   const [introducing, setIntroducing] = useState(false);
   const [choosingMentor, setChoosingMentor] = useState(false);
+  const [linkingFamily, setLinkingFamily] = useState(false);
+  const { family, reload: reloadFamily } = useMemberFamily(member?.id);
+  const me = useOwnMember(account.userId).member;
   const canConnect = useICanConnect(account.userId);
   const reports = useMyReports();
   const announce = useAnnounce();
@@ -520,6 +526,11 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
     if (wasChoosingMentor.current && !choosingMentor) menuButton.current?.focus();
     wasChoosingMentor.current = choosingMentor;
   }, [choosingMentor]);
+  const wasLinkingFamily = useRef(false);
+  useEffect(() => {
+    if (wasLinkingFamily.current && !linkingFamily) menuButton.current?.focus();
+    wasLinkingFamily.current = linkingFamily;
+  }, [linkingFamily]);
   const wasIntroducing = useRef(false);
   useEffect(() => {
     if (wasIntroducing.current && !introducing) menuButton.current?.focus();
@@ -542,6 +553,9 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [from, to] = gradientFor(member.id);
   const injury = injuryLine(member);
   const canMessage = account.userId !== null && account.userId !== member.id;
+  // The reader's own link with this member, if any (src/lib/family.ts).
+  const ours = family.find((link) => link.memberId === account.userId);
+  const mayLink = me !== null && mayLinkFamily(me, member);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -643,6 +657,35 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     Introduce {member.displayName}…
                   </button>
                 ) : null}
+                {/* Asked of the reader: answered on the page, not here. */}
+                {!ours && mayLink ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkingFamily(true);
+                    }}
+                  >
+                    Link {member.displayName} as family…
+                  </button>
+                ) : ours && ours.state !== 'asked_of_me' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void removeFamilyLink(ours.linkId).then((result) => {
+                        announce(
+                          result.ok
+                            ? ours.state === 'linked'
+                              ? `${member.displayName} is no longer linked as family.`
+                              : 'Request cancelled.'
+                            : result.error,
+                        );
+                        reloadFamily();
+                      });
+                    }}
+                  >
+                    {ours.state === 'linked' ? 'Remove family link' : 'Cancel family request'}
+                  </button>
+                ) : null}
                 {reports.memberIds.has(member.id) ? (
                   <p className="flex min-h-11 items-center px-3 text-grey text-sm">
                     You reported {member.displayName}
@@ -684,6 +727,20 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               announce(`You reported ${member.displayName}. They have not been told.`);
               setReporting(false);
               return null;
+            }}
+          />
+        ) : null}
+        {linkingFamily ? (
+          <FamilySheet
+            memberId={member.id}
+            name={member.displayName}
+            onCancel={() => {
+              setLinkingFamily(false);
+            }}
+            onSent={() => {
+              setLinkingFamily(false);
+              announce(`Asked ${member.displayName}. You are linked once they say yes.`);
+              reloadFamily();
             }}
           />
         ) : null}
@@ -891,6 +948,13 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 </p>
               </Section>
             ) : null}
+
+            <FamilySection
+              member={member}
+              readerId={account.userId}
+              family={family}
+              onChanged={reloadFamily}
+            />
 
             {member.howInjured ? (
               <Section title="How it happened">
