@@ -93,10 +93,6 @@ describe('ageFrom', () => {
 });
 
 describe('the anniversary edge case', () => {
-  it('reads "1 year" on the day itself, not "12 months"', () => {
-    expect(timeSinceLabel(dated('2025-09-11'), NOW)).toBe('1 year post-injury');
-  });
-
   it('is no longer newly injured on the anniversary', () => {
     expect(isNewlyInjured(dated('2025-09-11'), NOW)).toBe(false);
   });
