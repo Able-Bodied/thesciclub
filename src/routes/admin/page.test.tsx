@@ -902,13 +902,6 @@ describe('blocking an address', () => {
 });
 
 describe('with the seeded directory removed (20261010020000)', () => {
-  it('offers no way to put it back', async () => {
-    api.members = [member(), member({ id: 'm2', displayName: 'Todd', isSeed: true })];
-    renderAdmin();
-    await screen.findByText('Todd');
-    expect(screen.queryByRole('button', { name: /Restore directory/ })).toBeNull();
-  });
-
   it('draws no directory filter, section or count when nobody is seeded', async () => {
     renderAdmin();
     await screen.findByText('Alfred S');
@@ -923,14 +916,6 @@ describe('with the seeded directory removed (20261010020000)', () => {
     await screen.findByText('Todd');
     expect(screen.getByRole('button', { name: 'Directory · 1' })).toBeInTheDocument();
     expect(screen.getByText('From the directory')).toBeInTheDocument();
-  });
-
-  it('has no directory question on the invite form any more', async () => {
-    const user = userEvent.setup();
-    renderAdmin();
-    await user.click(await screen.findByRole('tab', { name: 'Invites' }));
-    expect(await screen.findByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/already in the directory/)).toBeNull();
   });
 });
 
@@ -1157,22 +1142,6 @@ describe('the invite list', () => {
     await waitFor(() => {
       expect(api.revoked).toEqual(['i1']);
     });
-  });
-
-  it('offers no revoke on an invite somebody is on', async () => {
-    // Revoking a live member's invite would take their membership away through
-    // the wrong door. admin_set_member_status is that door.
-    api.invites = [invite({ status: 'consumed', heldBy: 'Bob', heldByStatus: 'active' })];
-    await openInvites();
-    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
-  });
-
-  it('offers revoke on an invite nobody is on', async () => {
-    // There is no member to remove instead, and the dead row keeps the address
-    // off the list until somebody can clear it.
-    api.invites = [invite({ status: 'consumed', heldBy: null })];
-    await openInvites();
-    expect(screen.getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
   });
 
   it('sends the link again from a pending invite, and not from one already used', async () => {

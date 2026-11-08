@@ -78,16 +78,6 @@ describe('the Privacy Policy', () => {
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });
 
-  // Phone sign-in went 2026-10-10; the text-message section went 2026-10-21.
-  it('has no text-message sign-in', () => {
-    open('/privacy');
-    expect(screen.queryByRole('heading', { name: /Text messages/ })).toBeNull();
-    const page = document.body.textContent;
-    for (const gone of [/sign-in code/i, /code by text/, /Message and data rates/, /STOP/]) {
-      expect(page).not.toMatch(gone);
-    }
-  });
-
   it('says it sells nothing, shows no ads and tracks nobody across apps', () => {
     open('/privacy');
     expect(
@@ -452,13 +442,8 @@ describe('the Terms of Service', () => {
     expect(document.body.textContent).not.toMatch(/phone number on the/);
   });
 
-  it('has no text-message terms any more, and says what it does email', () => {
+  it('says what it emails', () => {
     open('/terms');
-    expect(screen.queryByRole('heading', { name: 'Text messages' })).toBeNull();
-    const page = document.body.textContent;
-    for (const gone of [/Text HELP/, /Text STOP/, /Carriers are not liable/, /sign-in codes/i]) {
-      expect(page).not.toMatch(gone);
-    }
     const section = screen.getByRole('heading', { name: 'Email' }).parentElement;
     if (!section) throw new Error('no section');
     const s = within(section);

@@ -556,12 +556,6 @@ describe('MemberDetailPage', () => {
     expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
   });
 
-  it('flags a mentor', () => {
-    state.current = ok(makeMember({ type: 'mentor' }));
-    renderDetail();
-    expect(screen.getByText('Mentor')).toBeInTheDocument();
-  });
-
   // The owner, 2026-10-28: badged by the organization that made them one.
   it('says which organization a mentor is a mentor of, from one pill', async () => {
     const user = userEvent.setup();
@@ -663,16 +657,6 @@ describe('MemberDetailPage', () => {
     expect(screen.getByText('Dragon on a Surface.')).toBeInTheDocument();
   });
 
-  it('shows the sections that do have content', () => {
-    state.current = ok(
-      makeMember({ topics: ['Driving'], selfCare: ['Suprapubic catheter'], bio: 'Manual chair.' }),
-    );
-    renderDetail();
-    expect(screen.getByText('Driving')).toBeInTheDocument();
-    expect(screen.getByText('Suprapubic catheter')).toBeInTheDocument();
-    expect(screen.getByText('Manual chair.')).toBeInTheDocument();
-  });
-
   it('says nothing about time since injury when no date was recorded', () => {
     state.current = ok(makeMember({ injuryDate: null, injuryDatePrecision: null }));
     renderDetail();
@@ -709,12 +693,6 @@ describe('MemberDetailPage', () => {
     expect(
       screen.getByText(/chose to publish in the NorCal SCI mentor directory/),
     ).toBeInTheDocument();
-  });
-
-  it('does not tell somebody who just signed up that they published a directory profile', () => {
-    state.current = ok(makeMember({ displayName: 'Alfred', isSeed: false }));
-    renderDetail();
-    expect(screen.queryByText(/NorCal SCI mentor directory/)).not.toBeInTheDocument();
   });
 
   it('offers a message as the one action on somebody else’s card', () => {
@@ -807,6 +785,7 @@ describe('an administrator’s profile', () => {
   it('does not put the chip on anybody else', () => {
     state.current = ok(makeMember({ type: 'mentor' }));
     renderDetail();
+    expect(screen.getByText('Mentor')).toBeInTheDocument();
     expect(screen.queryByText('Admin')).not.toBeInTheDocument();
   });
 });

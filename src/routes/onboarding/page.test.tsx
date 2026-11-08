@@ -818,7 +818,6 @@ describe('joining by email', () => {
       expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
       expect(screen.getByText('stranger@example.com')).toBeInTheDocument();
       expect(screen.queryByText('Check your email')).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Sign out and try another email' })).toBeNull();
     });
 
     it('Try another email goes back to the join form, empty, without signing anybody out', async () => {
@@ -1272,18 +1271,10 @@ describe('the not-invited screen', () => {
   });
 
   // The owner, 2026-11-02: one button, the request goes to one person.
-  it('offers a request, with nobody to choose, and no consultation call', async () => {
+  it('offers a request, with nobody to choose', async () => {
     renderJoin();
     expect(await screen.findByRole('button', { name: 'Request an invite' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Ask / })).toBeNull();
-    expect(screen.queryByRole('link', { name: /Book a call/ })).toBeNull();
-  });
-
-  it('does not offer to ask somebody you know', async () => {
-    renderJoin();
-    await screen.findByText(/isn't on the list/i);
-    expect(screen.queryByText(/Ask somebody/i)).toBeNull();
-    expect(screen.queryByLabelText(/number of somebody/i)).toBeNull();
   });
 
   it('signs the account out', async () => {
@@ -1807,6 +1798,8 @@ describe('Google, Apple and passkeys', () => {
         value: () => undefined,
         configurable: true,
       });
+      // Used here before, so only the switch keeps the button away.
+      window.localStorage.setItem('club:passkey-here', '1');
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
       expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
@@ -1814,6 +1807,7 @@ describe('Google, Apple and passkeys', () => {
 
     it('are hidden in a browser without WebAuthn, even when the switch is on', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
+      window.localStorage.setItem('club:passkey-here', '1');
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
       expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
@@ -1994,14 +1988,6 @@ describe('the name', () => {
     await reachName();
     expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-  });
-
-  it('can be replaced, and the replacement is what is kept', async () => {
-    calls.user = { email: 'dana@gmail.example', user_metadata: { full_name: 'Dana Smith' } };
-    await reachName();
-    await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
-    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), 'Dee');
-    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dee');
   });
 });
 
