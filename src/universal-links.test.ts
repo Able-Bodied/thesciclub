@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { qrJoinUrl } from '@/lib/qr-codes';
 import ENTITLEMENTS from '../ios/App/App/App.entitlements?raw';
 import NETLIFY from '../netlify.toml?raw';
 import FILE from '../public/.well-known/apple-app-site-association?raw';
@@ -57,7 +58,8 @@ describe('the links that open the store app', () => {
 
   it('include invites, QR codes and every emailed link', () => {
     expect(opensTheApp('https://thesciclub.com/join?invite=tok-1')).toBe(true);
-    expect(opensTheApp('https://thesciclub.com/join?qr=abc')).toBe(true);
+    // QR_PARAM: it read ?qr= here while the codes said ?from=, so none opened it.
+    expect(opensTheApp(qrJoinUrl('abc', 'https://thesciclub.com'))).toBe(true);
     expect(
       opensTheApp('https://thesciclub.com/auth/confirm.html?type=recovery&token_hash=h&next=x'),
     ).toBe(true);
@@ -66,14 +68,20 @@ describe('the links that open the store app', () => {
     }
   });
 
-  it('include the pages members pass on', () => {
+  it('include every other page, shared posts and events included', () => {
     for (const page of [
       '/home',
       '/events',
       '/events/7',
+      '/e/abc',
+      '/peers',
       '/peers/a1',
+      '/chat',
       '/chat/t/x',
+      '/chat/rooms/r/topics/t?post=p',
+      '/introductions/1',
       '/notifications',
+      '/me',
     ])
       expect(opensTheApp(`https://thesciclub.com${page}`)).toBe(true);
   });
@@ -86,6 +94,10 @@ describe('the links that open the store app', () => {
       'https://thesciclub.com/join?confirmed=1',
       'https://thesciclub.com/me?google=linked',
       'https://thesciclub.com/me?apple=linked',
+      'https://thesciclub.com/me?email=changed',
+      'https://thesciclub.com/embed/youtube.html?v=x',
+      'https://thesciclub.com/share',
+      'https://thesciclub.com/apple-touch-icon.png',
       'https://thesciclub.com/app-sign-in?pairing=p',
       'https://thesciclub.com/reset-password',
       'https://thesciclub.com/auth/confirm.html',

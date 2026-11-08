@@ -4,19 +4,32 @@
       {
         "appIDs": ["3RZ3A2CJ9N.com.thesciclub.app"],
         "components": [
+          { "/": "/", "exclude": true, "comment": "Supabase's Site URL returns here" },
+          { "/": "/join", "?": { "google": "?*" }, "exclude": true, "comment": "Browser sign-ins" },
+          { "/": "/join", "?": { "apple": "?*" }, "exclude": true },
+          { "/": "/join", "?": { "confirmed": "?*" }, "exclude": true },
           { "/": "/join", "?": { "invite": "?*" }, "comment": "An emailed invite" },
-          { "/": "/join", "?": { "qr": "?*" }, "comment": "An administrator's QR code" },
+          { "/": "/join", "?": { "from": "?*" }, "comment": "A QR code (qr-codes.ts)" },
+          { "/": "/join", "exclude": true },
+          { "/": "/me", "?": { "google": "?*" }, "exclude": true },
+          { "/": "/me", "?": { "apple": "?*" }, "exclude": true },
+          { "/": "/me", "?": { "email": "?*" }, "exclude": true },
           {
             "/": "/auth/confirm.html",
             "?": { "token_hash": "?*" },
             "comment": "Every emailed link; its token_hash signs in wherever it opens"
           },
-          { "/": "/home", "comment": "Links members pass on" },
-          { "/": "/events" },
-          { "/": "/events/*" },
-          { "/": "/peers/*" },
-          { "/": "/chat/*" },
-          { "/": "/notifications" }
+          { "/": "/auth/*", "exclude": true },
+          { "/": "/app-sign-in", "exclude": true },
+          { "/": "/app-sign-in/*", "exclude": true },
+          { "/": "/reset-password", "exclude": true },
+          { "/": "/dev-login", "exclude": true },
+          { "/": "/share", "exclude": true, "comment": "Android's share target" },
+          { "/": "/share/*", "exclude": true },
+          { "/": "/embed/*", "exclude": true, "comment": "The app frames the YouTube page" },
+          { "/": "/.well-known/*", "exclude": true },
+          { "/": "/*.*", "exclude": true, "comment": "Files: images, tiles, fonts, video" },
+          { "/": "/*", "comment": "Every other page opens in the app" }
         ]
       }
     ]
