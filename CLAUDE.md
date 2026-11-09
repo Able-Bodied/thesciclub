@@ -18,8 +18,9 @@ test files. Add tests only where they earn their upkeep.
 - what TypeScript already guarantees
 - a second case of something an existing test already covers
 
-**At most one new test per change**, unless the owner asks for more. Prefer
-extending an existing test over adding a new one.
+**Usually one new test per change**, but one for each separate security or
+privacy rule the change adds, or more when the owner asks. Prefer extending
+an existing test over adding a new one.
 
 **While working**, run only the tests the change touches:
 `pnpm test:related <changed files>`. Run the full `pnpm test` once, before a
