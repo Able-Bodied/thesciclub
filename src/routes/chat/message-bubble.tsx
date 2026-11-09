@@ -2,10 +2,12 @@ import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { firstClubLink } from '@/lib/chat/club-links';
 import type { SharedPost } from '@/lib/chat/shared-posts';
 import { chatTimeLong, messageTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
+import { ClubLinkCard } from '@/routes/chat/club-link-card';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import type { ReactionBarProps } from '@/routes/chat/reaction-bar';
 import { ReportControl } from '@/routes/chat/report-control';
@@ -105,6 +107,8 @@ export function MessageBubble({
   // together would hide a moderation decision behind second thoughts.
   const gone = message.removedByAdmin ? 'Removed by an administrator.' : 'Removed by its author.';
   const name = author ? author.displayName : 'a deleted member';
+  // The club's own event or topic draws its own card (club-link-card.tsx).
+  const clubLink = removed ? null : firstClubLink(message.body);
   const whose = mine ? 'your' : `${name}'s`;
   const timestamp = (
     <p
@@ -158,7 +162,11 @@ export function MessageBubble({
       {message.attachments.length > 0 ? (
         <AttachmentGrid paths={message.attachments} from={mine ? 'you' : name} />
       ) : null}
-      {message.linkPreview ? <LinkPreviewCard preview={message.linkPreview} /> : null}
+      {clubLink ? (
+        <ClubLinkCard link={clubLink} />
+      ) : message.linkPreview ? (
+        <LinkPreviewCard preview={message.linkPreview} />
+      ) : null}
     </>
   );
 

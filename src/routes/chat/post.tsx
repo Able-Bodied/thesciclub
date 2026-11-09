@@ -2,10 +2,12 @@ import { cloneElement, type ReactElement, type ReactNode, useState } from 'react
 import { Link } from 'react-router-dom';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { PartnerLabel } from '@/components/partner-label';
+import { firstClubLink } from '@/lib/chat/club-links';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
+import { ClubLinkCard } from '@/routes/chat/club-link-card';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
@@ -149,6 +151,8 @@ export function Post({
   const hidden = replies > 0 && hiddenAt === replies;
   const repliesId = `replies-${post.id}`;
   const name = author ? author.displayName : 'a deleted member';
+  // The club's own event or topic draws its own card (club-link-card.tsx).
+  const clubLink = post.removedAt ? null : firstClubLink(post.body);
   const whose = canEdit ? 'your' : `${name}'s`;
   const control =
     'font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2';
@@ -307,7 +311,11 @@ export function Post({
       {post.attachments.length > 0 ? (
         <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a deleted member'} />
       ) : null}
-      {post.linkPreview ? <LinkPreviewCard preview={post.linkPreview} /> : null}
+      {clubLink ? (
+        <ClubLinkCard link={clubLink} />
+      ) : post.linkPreview ? (
+        <LinkPreviewCard preview={post.linkPreview} />
+      ) : null}
       {post.editedAt ? (
         <p className="mt-1 text-[0.78125rem] text-grey">Edited · {chatTime(post.editedAt)}</p>
       ) : null}

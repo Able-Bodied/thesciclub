@@ -205,6 +205,7 @@ export default function EventDetailPage() {
                   eventId={event.id}
                   shortLink={event.shortLink ?? null}
                   title={event.title}
+                  when={longWhen(event.startTime, event.timezone, event.allDay)}
                 />
               ) : null}
             </div>

@@ -33,14 +33,25 @@ beforeEach(() => {
 
 describe('sharing an event or an organization', () => {
   it('opens the share sheet with the event’s public link, and sends it into a chat', async () => {
-    render(<ShareEventButton eventId="e1" shortLink="happy-hour" title="Friday Happy Hour" />);
+    render(
+      <ShareEventButton
+        eventId="e1"
+        shortLink="happy-hour"
+        title="Friday Happy Hour"
+        when="Fri, Nov 13 · 5:00pm"
+      />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Share this event' }));
     expect(screen.getByText('Share event')).toBeInTheDocument();
     expect(sheet.props?.link).toBe('https://thesciclub.com/e/happy-hour');
     await sheet.props?.send({ threadId: 'g1' }, 'me', 'Coming?');
     expect(sheet.sent).toEqual([
       [
-        { title: 'Friday Happy Hour', url: 'https://thesciclub.com/e/happy-hour' },
+        // When it is, in the message itself (the owner, 2026-11-08).
+        {
+          title: 'Friday Happy Hour\nFri, Nov 13 · 5:00pm',
+          url: 'https://thesciclub.com/e/happy-hour',
+        },
         { threadId: 'g1' },
         'me',
         'Coming?',

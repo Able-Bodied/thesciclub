@@ -18,12 +18,15 @@ function ShareButton({
   title,
   url,
   linkNote,
+  when,
 }: {
   label: string;
   heading: string;
   title: string;
   url: string;
   linkNote: string;
+  /** When an event is, on its own line under its name in the message. */
+  when?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -48,7 +51,14 @@ function ShareButton({
               link={url}
               linkNote={linkNote}
               sendNote="It arrives as a message with its link."
-              send={(to, authorId, line) => shareLinkInChat({ title, url }, to, authorId, line)}
+              send={(to, authorId, line) =>
+                shareLinkInChat(
+                  { title: when ? `${title}\n${when}` : title, url },
+                  to,
+                  authorId,
+                  line,
+                )
+              }
               onClose={() => {
                 setOpen(false);
               }}
@@ -68,10 +78,17 @@ export function ShareEventButton({
   eventId,
   shortLink,
   title,
+  when,
 }: {
   eventId: string;
   shortLink: string | null;
   title: string;
+  /**
+   * "Sat, Nov 14 · 10:00am", said in the message itself (the owner,
+   * 2026-11-08: "make it clear when it is"), so a store app without the
+   * event's card, and a notification, say it too.
+   */
+  when?: string | undefined;
 }) {
   return (
     <ShareButton
@@ -80,6 +97,7 @@ export function ShareEventButton({
       title={title}
       url={publicEventUrl(eventId, shortLink)}
       linkNote="Anyone can open it and see the event. Members see it in the club."
+      when={when}
     />
   );
 }
