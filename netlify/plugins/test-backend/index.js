@@ -2,19 +2,7 @@
 // Content-Security-Policy names the live one, so on a site with
 // TEST_SUPABASE_REF set, the live ref in every header becomes that one.
 // Without the variable (the live site) nothing changes.
-const LIVE_REF = 'erijdvqnxavwezsbbojv';
-
-/** Swaps the live ref for `ref` in place; an error message if `ref` is wrong. */
-export function applyTestRef(headers, ref) {
-  if (!ref) return null;
-  if (!/^[a-z]{20}$/.test(ref) || ref === LIVE_REF) return `not a test project ref: ${ref}`;
-  for (const rule of headers) {
-    for (const [name, value] of Object.entries(rule.values ?? {})) {
-      if (typeof value === 'string') rule.values[name] = value.replaceAll(LIVE_REF, ref);
-    }
-  }
-  return null;
-}
+import { applyTestRef } from './apply.js';
 
 export const onPreBuild = ({ netlifyConfig, utils }) => {
   const ref = process.env.TEST_SUPABASE_REF;

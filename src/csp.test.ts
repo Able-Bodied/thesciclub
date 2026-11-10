@@ -5,7 +5,7 @@ import { TILES_ORIGIN } from '@/lib/map/tiles';
 import { COUNT_HOME } from '@/lib/web-analytics';
 import SHELL from '../index.html?raw';
 import { APP_FRAMES, nativeCsp, webCsp } from '../native-csp';
-import { applyTestRef } from '../netlify/plugins/test-backend/index.js';
+import { applyTestRef } from '../netlify/plugins/test-backend/apply.js';
 import NETLIFY from '../netlify.toml?raw';
 
 /**
