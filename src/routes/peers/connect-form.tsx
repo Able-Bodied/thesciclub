@@ -4,8 +4,6 @@ import { describeThrown } from '@/lib/describe-error';
 import {
   type ConnectionGroup,
   connectMembers,
-  copyGroupName,
-  defaultGroupName,
   fetchConnectionGroups,
   INTRODUCTION_NOTE_MAX,
   INTRODUCTION_NOTE_WARN,
@@ -21,6 +19,8 @@ import { useConnectableMembers } from '@/routes/peers/connect-fields';
  * same form on a profile's Introduce sheet and on Stats & controls.
  * From an existing group, a new group with its members is the default
  * (the owner, 2026-11-09); adding into the group itself is the other choice.
+ * A new group's name is required, never made up from its members (the
+ * owner, 2026-11-10); connect_members still names one for older app builds.
  */
 
 const GROUP_NAME_MAX = 60;
@@ -88,13 +88,6 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
   const everyone = lockedPerson ? [lockedPerson, ...people] : people;
   const group = groups?.find((g) => g.id === groupId) ?? null;
   const copying = where === 'existing' && copy;
-  const fallbackName =
-    copying && group
-      ? copyGroupName(
-          group.name,
-          everyone.map((p) => p.displayName),
-        )
-      : defaultGroupName(everyone.map((p) => p.displayName));
   const alreadyIn = where === 'existing' && !copy && group?.mine === true;
 
   const missing =
@@ -106,11 +99,13 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
         ? 'Choose who to add.'
         : where === 'existing' && !group
           ? 'Choose a group.'
-          : note.trim() === ''
-            ? 'Write a note to them.'
-            : note.length > INTRODUCTION_NOTE_MAX
-              ? 'Shorten the note.'
-              : null;
+          : (where === 'new' || copying) && name.trim() === ''
+            ? 'Name the group.'
+            : note.trim() === ''
+              ? 'Write a note to them.'
+              : note.length > INTRODUCTION_NOTE_MAX
+                ? 'Shorten the note.'
+                : null;
 
   async function submit(): Promise<Connected | null> {
     if (busy || missing) return null;
@@ -131,7 +126,7 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
       }
       const names = listNames(everyone.map((p) => p.displayName));
       const adding = where === 'existing' && !copy;
-      const groupName = adding ? (group?.name ?? '') : name.trim() || fallbackName;
+      const groupName = adding ? (group?.name ?? '') : name.trim();
       const done: Connected = {
         summary: adding
           ? `${names} ${everyone.length === 1 ? 'was' : 'were'} added to “${groupName}”.`
@@ -167,7 +162,6 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
     setWhere,
     name,
     setName,
-    fallbackName,
     groups,
     groupsError,
     groupId,
@@ -446,7 +440,7 @@ function GroupNameField({ form }: { form: ConnectForm }) {
   return (
     <div className="mt-3">
       <label htmlFor={nameId} className="block font-semibold text-[0.875rem] text-ink">
-        Group name <span className="font-normal text-grey">(optional)</span>
+        Group name
       </label>
       <input
         id={nameId}
@@ -456,12 +450,13 @@ function GroupNameField({ form }: { form: ConnectForm }) {
         onChange={(e) => {
           form.setName(e.target.value);
         }}
-        placeholder={form.fallbackName || 'Saturday riders'}
+        required
+        aria-required="true"
+        placeholder="Saturday riders"
         className="mt-1.5 min-h-[48px] w-full rounded-[11px] border border-line bg-paper px-3 text-[1rem] text-ink"
       />
       <p id={nameHintId} className="mt-1 text-[0.8125rem] text-grey leading-[1.45]">
-        {form.fallbackName ? `Leave it blank to call it “${form.fallbackName}”. ` : null}
-        It is kept, so you can add people to it next time.
+        Everyone in it sees this name. It is kept, so you can add people to it next time.
       </p>
     </div>
   );

@@ -469,6 +469,8 @@ describe('connecting members', () => {
       within(section).getByLabelText('A note to both of them'),
       'You both race.',
     );
+    expect(within(section).getByText('Name the group.')).toBeInTheDocument();
+    await userEvent.type(within(section).getByLabelText('Group name'), 'Racers');
     return section;
   }
 
@@ -486,13 +488,13 @@ describe('connecting members', () => {
           note: 'You both race.',
           join: false,
           groupId: null,
-          name: '',
+          name: 'Racers',
           copy: false,
         },
       ],
     ]);
     expect(
-      await within(section).findByText('Ana Ruiz and Bo Chan are connected in “Ana & Bo”.'),
+      await within(section).findByText('Ana Ruiz and Bo Chan are connected in “Racers”.'),
     ).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Connect them' })).toBeDisabled();
   });
@@ -502,10 +504,6 @@ describe('connecting members', () => {
     const section = await fill();
     await add(section, 'cy', /Cy Park/);
     expect(within(section).getByLabelText('A note to everyone')).toHaveValue('You both race.');
-    expect(
-      within(section).getByText(/Leave it blank to call it “Ana, Bo & Cy”/),
-    ).toBeInTheDocument();
-    await userEvent.type(within(section).getByLabelText(/Group name/), 'Racers');
     await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
     expect(state.connected[0]?.[0]).toMatchObject({ people: ['ana', 'bo', 'cy'], name: 'Racers' });
     expect(

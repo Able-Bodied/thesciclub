@@ -172,32 +172,6 @@ export async function fetchConnectionGroups(): Promise<Result<ConnectionGroup[]>
   }
 }
 
-/**
- * What a new group is called when not named, as connect_members names it:
- * "Ada & Bo", "Ada, Bo & Cass", "Ada, Bo, Cass & 2 more".
- */
-export function defaultGroupName(names: string[]): string {
-  const firsts = names.map((name) => name.trim().split(' ')[0] ?? name);
-  const [a, b, c] = firsts;
-  const name =
-    firsts.length <= 1
-      ? (a ?? '')
-      : firsts.length === 2
-        ? `${a} & ${b}`
-        : firsts.length === 3
-          ? `${a}, ${b} & ${c}`
-          : `${a}, ${b}, ${c} & ${firsts.length - 3} more`;
-  return name.slice(0, 60);
-}
-
-/** A new group from an existing one, as connect_members names it: "Mentors & Bo", "Mentors & Bo & 2 more". */
-export function copyGroupName(group: string, names: string[]): string {
-  const firsts = names.map((name) => name.trim().split(' ')[0] ?? name);
-  if (firsts.length === 0) return group.slice(0, 60);
-  const who = firsts.length === 1 ? firsts[0] : `${firsts[0]} & ${firsts.length - 1} more`;
-  return `${group.trim() || 'Group'} & ${who}`.slice(0, 60);
-}
-
 /** Resolves to the group's id once both said yes, or null while it waits. */
 export async function answerIntroduction(id: string, yes: boolean): Promise<Result<string | null>> {
   try {
