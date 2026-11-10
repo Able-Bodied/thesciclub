@@ -74,7 +74,8 @@ export function LinkedText({ text }: { text: string }) {
             key={index}
             href={piece.href}
             title={piece.href}
-            target="_blank"
+            // An email or a call opens the phone's own app, not a tab.
+            target={/^https?:/.test(piece.href) ? '_blank' : undefined}
             rel="noopener noreferrer nofollow ugc"
             className="font-semibold underline decoration-1 underline-offset-2 [overflow-wrap:anywhere]"
           >

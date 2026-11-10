@@ -8,11 +8,15 @@
  * ---------------------------------------------------------------------------
  * What counts as a link
  * ---------------------------------------------------------------------------
- * Anything starting `http://`, `https://` or `www.`. Not a bare `amazon.com`:
- * guessing that "e.g." or "T6.Complete" is not a domain is a game this file
- * would lose, and a link that goes somewhere wrong is worse than one that is
- * not a link. The address is rebuilt with `new URL` and must come out http or
- * https with a dotted host, so nothing typed can become `javascript:`.
+ * Anything starting `http://`, `https://` or `www.`. A bare `amazon.com` too
+ * (the owner, 2026-11-10), but only when it ends in a web ending on the list
+ * below: "e.g." and "T6.Complete" do not, so they stay words. The address is
+ * rebuilt with `new URL` and must come out http or https with a dotted host,
+ * so nothing typed can become `javascript:`.
+ *
+ * An email address opens a new email, and a US phone number written in
+ * groups (408-555-1234, (408) 555-1234, +1 408 555 1234) starts a call
+ * (the owner, 2026-11-10). A run of digits alone is not a phone number.
  *
  * Punctuation that ends a sentence is not part of the address: "see
  * https://example.com/x." links to /x. A closing bracket is kept only when the
@@ -33,6 +37,17 @@ export const LABEL_LENGTH = 48;
 export type Piece = { kind: 'text'; text: string } | { kind: 'link'; href: string; label: string };
 
 const CANDIDATE = /\b(?:https?:\/\/|www\.)[^\s<>"]+/gi;
+
+/** Web endings a bare address must end in. Not `it`, `me` or `in`: "got.it". */
+const ENDINGS =
+  'com|org|net|edu|gov|mil|io|co|us|info|biz|app|dev|tv|ly|ai|ca|uk|au|nz|de|fr|es|nl|mx|health|news|shop|store|online|site|tech|club|link|page|fit|gg';
+const EMAIL = '[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}';
+const PHONE = '(?:\\+?1[\\s.-]?)?(?:\\(\\d{3}\\)\\s?|\\d{3}[\\s.-])\\d{3}[\\s.-]\\d{4}';
+const BARE = `(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.)+(?:${ENDINGS})(?:\\/[^\\s<>"]*)?`;
+const OTHER = new RegExp(
+  `(?<![\\w.+@/-])(?:(?<email>${EMAIL})|(?<phone>${PHONE})|(?<bare>${BARE}))(?![\\w@-])`,
+  'gi',
+);
 const TRAILING = /[.,;:!?'"’”)\]}>]$/;
 
 /** Strip sentence punctuation off the end, and a bracket the address did not open. */
@@ -129,6 +144,36 @@ function withAddresses(text: string, pieces: Piece[]) {
   if (at < text.length) pieces.push({ kind: 'text', text: text.slice(at) });
 }
 
+/** A phone number as a tel: address, +1 and its ten digits. */
+function telHref(written: string): string | null {
+  const digits = written.replace(/\D/g, '');
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  return ten.length === 10 ? `tel:+1${ten}` : null;
+}
+
+/** Emails, phone numbers and bare addresses split out; the rest goes on to addresses. */
+function withOthers(text: string, pieces: Piece[]) {
+  let at = 0;
+  for (const match of text.matchAll(OTHER)) {
+    const { email, phone, bare } = match.groups ?? {};
+    let written = match[0];
+    let href: string | null = null;
+    let label = written;
+    if (email) href = `mailto:${email}`;
+    else if (phone) href = telHref(phone);
+    else if (bare) {
+      written = trimEnd(bare);
+      href = hrefFor(`https://${written}`);
+      if (href) label = labelFor(href);
+    }
+    if (!href) continue;
+    if (match.index > at) withAddresses(text.slice(at, match.index), pieces);
+    pieces.push({ kind: 'link', href, label });
+    at = match.index + written.length;
+  }
+  if (at < text.length) withAddresses(text.slice(at), pieces);
+}
+
 /** The text in order, with every link (and street address) found in it split out. */
 export function findLinks(text: string): Piece[] {
   const pieces: Piece[] = [];
@@ -138,10 +183,10 @@ export function findLinks(text: string): Piece[] {
     const candidate = trimEnd(match[0]);
     const href = hrefFor(candidate);
     if (!href) continue;
-    if (start > at) withAddresses(text.slice(at, start), pieces);
+    if (start > at) withOthers(text.slice(at, start), pieces);
     pieces.push({ kind: 'link', href, label: labelFor(href) });
     at = start + candidate.length;
   }
-  if (at < text.length) withAddresses(text.slice(at), pieces);
+  if (at < text.length) withOthers(text.slice(at), pieces);
   return pieces;
 }

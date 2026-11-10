@@ -40,8 +40,22 @@ describe('findLinks', () => {
   // The whole point of the scheme check.
   it('never makes a link of anything that is not a web address', () => {
     expect(links('javascript:alert(1)')).toEqual([]);
-    expect(links('mail me at bo@example.com')).toEqual([]);
-    expect(links('e.g. T6.Complete amazon.com')).toEqual([]);
+    expect(links('e.g. T6.Complete, U.S. and v1.2 on 2026-11-10 at 3.30')).toEqual([]);
+  });
+
+  // The owner, 2026-11-10: as a member types them, in a chat or a post.
+  it('links a bare address, an email and a phone number, and not a bare run of digits', () => {
+    expect(links('see test.thesciclub.com and reeve.org/grants.')).toEqual([
+      'https://test.thesciclub.com/',
+      'https://reeve.org/grants',
+    ]);
+    expect(links('mail bo@example.com, or @bo.com')).toEqual(['mailto:bo@example.com']);
+    expect(links('call 408-555-1234, (408) 555 1234 or +1 408.555.1234')).toEqual([
+      'tel:+14085551234',
+      'tel:+14085551234',
+      'tel:+14085551234',
+    ]);
+    expect(links('member 4085551234 got 12 of 15')).toEqual([]);
   });
 });
 
