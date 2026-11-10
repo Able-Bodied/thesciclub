@@ -633,6 +633,9 @@ export default function TopicPage() {
 
       {canPost ? (
         <Composer
+          // A new topic is a new box, with that topic's draft.
+          key={topicId}
+          draftKey={topicId ? `topic:${topicId}` : undefined}
           placeholder="Reply to this topic"
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.

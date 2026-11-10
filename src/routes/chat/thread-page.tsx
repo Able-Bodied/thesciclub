@@ -662,6 +662,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
         </div>
       ) : (
         <Composer
+          draftKey={threadId ? `thread:${threadId}` : undefined}
           placeholder={title ? `Message ${title}` : 'Message'}
           sendLabel="Send this message"
           // Enter sends here — see the header.
