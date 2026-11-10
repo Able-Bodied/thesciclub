@@ -39,7 +39,13 @@ export interface Env {
  * builds before it, served until they leave the bucket.
  */
 const KEY = /^\/((?:usa|us|ca)-\d{8}\.pmtiles)$/;
-const ORIGINS = new Set(['https://thesciclub.com', 'capacitor://localhost', 'https://localhost']);
+// tests.thesciclub.com: the test site (2026-11-10).
+const ORIGINS = new Set([
+  'https://thesciclub.com',
+  'https://tests.thesciclub.com',
+  'capacitor://localhost',
+  'https://localhost',
+]);
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 /**
  * The most one request may read. pmtiles reads exact pieces: 16 KiB for the

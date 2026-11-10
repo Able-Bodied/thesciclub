@@ -157,7 +157,12 @@ describe('the tiles Worker', () => {
   });
 
   it("names the club's origins, and only them, for CORS", async () => {
-    for (const origin of ['https://thesciclub.com', 'capacitor://localhost', 'https://localhost']) {
+    for (const origin of [
+      'https://thesciclub.com',
+      'https://tests.thesciclub.com',
+      'capacitor://localhost',
+      'https://localhost',
+    ]) {
       const { response } = await ask('/ca-20261025.pmtiles', {
         headers: { Origin: origin, Range: 'bytes=0-1' },
       });
