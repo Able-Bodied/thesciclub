@@ -59,6 +59,19 @@ describe('AppNav', () => {
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Chat' })).not.toHaveAttribute('aria-current');
   });
+
+  // The owner, 2026-11-10: a tab is where it was left; the lit tab is its first screen.
+  it('takes a tab back to where it was left', () => {
+    render(
+      <MemoryRouter initialEntries={['/chat/t/abc']}>
+        <AppNav />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('href', '/chat');
+    fireEvent.click(screen.getByRole('link', { name: 'Peers' }));
+    expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('href', '/chat/t/abc');
+    expect(screen.getByRole('link', { name: 'Peers' })).toHaveAttribute('href', '/peers');
+  });
 });
 
 describe('the bar’s realtime', () => {
