@@ -91,7 +91,7 @@ function renderDetails() {
     <MemoryRouter initialEntries={['/profile/details']}>
       <Routes>
         <Route path="/profile/details" element={<ProfileDetailsPage />} />
-        <Route path="/me" element={<p>The Me tab</p>} />
+        <Route path="/profile/answers" element={<p>Your profile page</p>} />
         <Route path="/join" element={<p>Welcome screen</p>} />
       </Routes>
     </MemoryRouter>,
@@ -282,29 +282,29 @@ describe('Your details', () => {
   // Leaving the page is silent to somebody who cannot see it change, and the
   // page that said it is gone by the time it is read, so the region is above
   // the routes (src/lib/announce.tsx).
-  it('says the details are saved, and is still saying it on Me', async () => {
+  it('says the details are saved, and is still saying it on Your profile', async () => {
     render(
       <AnnounceProvider>
         <MemoryRouter initialEntries={['/profile/details']}>
           <Routes>
             <Route path="/profile/details" element={<ProfileDetailsPage />} />
-            <Route path="/me" element={<p>The Me tab</p>} />
+            <Route path="/profile/answers" element={<p>Your profile page</p>} />
           </Routes>
         </MemoryRouter>
       </AnnounceProvider>,
     );
     await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('The Me tab')).toBeInTheDocument();
+    expect(await screen.findByText('Your profile page')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent('Your details are saved.');
     });
   });
 
-  it('returns to Me once it has saved', async () => {
+  it('returns to Your profile once it has saved', async () => {
     renderDetails();
     await screen.findByLabelText('Name');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('The Me tab')).toBeInTheDocument();
+    expect(await screen.findByText('Your profile page')).toBeInTheDocument();
   });
 
   it('says why a photograph was refused', async () => {
@@ -392,7 +392,7 @@ describe('Your details', () => {
     await screen.findByLabelText('Name');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByText('permission denied');
-    expect(screen.queryByText('The Me tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your profile page')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
   });
 });

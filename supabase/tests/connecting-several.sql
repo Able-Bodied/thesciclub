@@ -160,4 +160,37 @@ select public.connect_members(array['dddddddd-c5c5-0000-0000-000000000004', 'eee
   repeat('a', 4001));
 rollback to savepoint s15;
 
+\echo ''
+\echo '== 16. a new group from the crew, with Gus (expect crew 4 | new 5 | Probe crew & Gus | f | introduced) =='
+select public.connect_members(array['99999999-c5c5-0000-0000-000000000007']::uuid[],
+  'Gus rides too.', false, :'crew', null, true) as copy \gset
+reset role;
+select (select count(*) from public.chat_thread_members m where m.thread_id = :'crew') as crew,
+       (select count(*) from public.chat_thread_members m where m.thread_id = :'copy') as new,
+       t.name,
+       exists (select 1 from public.chat_thread_members m
+                where m.thread_id = t.id and m.member_id = 'aaaaaaaa-c5c5-0000-0000-000000000001') as admin_in,
+       (select string_agg(notice, ',') from public.chat_messages where thread_id = t.id) as lines
+  from public.chat_threads t where t.id = :'copy';
+
+\echo ''
+\echo '== 17. Dee hidden from the directory is not carried over (expect 4: Bo, Cass, Eli and Gus) =='
+update public.members set show_in_browse = false where id = 'dddddddd-c5c5-0000-0000-000000000004';
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-c5c5-0000-0000-000000000001","role":"authenticated"}';
+select public.connect_members(array['99999999-c5c5-0000-0000-000000000007']::uuid[],
+  'Again, Gus.', false, :'crew', 'Without Dee', true) as copy2 \gset
+reset role;
+select count(*) from public.chat_thread_members m where m.thread_id = :'copy2';
+
+\echo ''
+\echo '== 18. Bo blocks Eli, both in the crew (expect ERROR cannot be connected) =='
+insert into public.member_blocks (blocker_id, blocked_id)
+values ('bbbbbbbb-c5c5-0000-0000-000000000002', 'eeeeeeee-c5c5-0000-0000-000000000005');
+set local role authenticated;
+savepoint s18;
+select public.connect_members(array['99999999-c5c5-0000-0000-000000000007']::uuid[],
+  'Gus once more.', false, :'crew', null, true);
+rollback to savepoint s18;
+
 rollback;

@@ -100,6 +100,8 @@ export async function connectMembers(input: {
   groupId: string | null;
   /** A new group's name; blank gives the default. */
   name: string;
+  /** A new group with groupId's members, leaving that group as it is. */
+  copy?: boolean;
 }): Promise<Result<string>> {
   try {
     const { data, error } = (await getSupabase().rpc('connect_members', {
@@ -107,7 +109,9 @@ export async function connectMembers(input: {
       p_note: input.note.trim(),
       p_join: input.join,
       p_group: input.groupId,
-      p_name: input.groupId ? null : input.name.trim() || null,
+      p_name: input.groupId && !input.copy ? null : input.name.trim() || null,
+      // Only when used, so the other two work on a database without it.
+      ...(input.copy ? { p_copy: true } : {}),
     })) as { data: string | null; error: Failure | null };
     if (error) {
       if (error.code === '54000') return { ok: false, error: error.message };
@@ -184,6 +188,14 @@ export function defaultGroupName(names: string[]): string {
           ? `${a}, ${b} & ${c}`
           : `${a}, ${b}, ${c} & ${firsts.length - 3} more`;
   return name.slice(0, 60);
+}
+
+/** A new group from an existing one, as connect_members names it: "Mentors & Bo", "Mentors & Bo & 2 more". */
+export function copyGroupName(group: string, names: string[]): string {
+  const firsts = names.map((name) => name.trim().split(' ')[0] ?? name);
+  if (firsts.length === 0) return group.slice(0, 60);
+  const who = firsts.length === 1 ? firsts[0] : `${firsts[0]} & ${firsts.length - 1} more`;
+  return `${group.trim() || 'Group'} & ${who}`.slice(0, 60);
 }
 
 /** Resolves to the group's id once both said yes, or null while it waits. */

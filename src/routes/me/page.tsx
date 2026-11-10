@@ -241,6 +241,10 @@ export default function MePage() {
     });
   }, [userId, strikesKept]);
 
+  // One card for the details and the survey: their average, once both load.
+  const profileDone =
+    percent === null || detailsDone === null ? null : Math.round((percent + detailsDone) / 2);
+
   const feedbackRoom = appFeedbackRoom(useChatRooms().rooms);
   // An org admin makes QR codes for their organization (20261028960000).
   const orgAdmin = useMyOrganizations(userId).ids.size > 0;
@@ -307,20 +311,14 @@ export default function MePage() {
                 <SectionHeading id="me-profile-heading">Your profile</SectionHeading>
                 <div className="space-y-2.5">
                   <ProfileLink
-                    to={percent ? '/profile/answers' : '/profile'}
-                    title={percent === 100 ? 'Profile complete' : 'Complete your profile'}
-                    description="Your interests, experience and what you want to share."
-                    percent={percent}
-                  />
-                  <ProfileLink
-                    to="/profile/details"
-                    title="Your details"
+                    to="/profile/answers"
+                    title={profileDone === 100 ? 'Profile complete' : 'Complete your profile'}
                     description={
                       missing.length > 0
-                        ? `Still to add: ${listInWords(missing)}.`
-                        : 'Your name, photo, injury and location.'
+                        ? `Your details and answers. Still to add: ${listInWords(missing)}.`
+                        : 'Your name, photo, injury, location, interests and experience.'
                     }
-                    percent={detailsDone}
+                    percent={profileDone}
                   />
                   <ProfileLink
                     to="/me/saved"

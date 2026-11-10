@@ -440,39 +440,32 @@ describe('MePage', () => {
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
-  // Once anything is answered, to the overview, where one answer can be
-  // changed without walking the survey to it.
-  it('links to Your answers and says how much of the survey is done', async () => {
-    survey.answers = { gender: 'Female' };
+  // One card for the details and the survey (the owner, 2026-11-09): their
+  // average, and what is still missing named.
+  it('combines the details and the survey in one card, at their average', async () => {
+    survey.answers = { gender: 'Female' }; // 6%
+    details.current = { ...completeDetails, photoPath: null, city: null, state: '' }; // 40%
     renderMe();
-    await waitFor(() => {
-      // One of seventeen applicable questions answered.
-      expect(screen.getByText('6%')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('23%')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Your details and answers. Still to add: a photo, your city and your state.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Complete your profile/ })).toHaveAttribute(
       'href',
       '/profile/answers',
     );
-  });
-
-  it('links straight into the survey when nothing is answered yet', async () => {
-    survey.answers = {};
-    renderMe();
-    await waitFor(() => {
-      expect(screen.getByText('0%')).toBeInTheDocument();
-    });
-    expect(screen.getByRole('link', { name: /Complete your profile/ })).toHaveAttribute(
-      'href',
-      '/profile',
-    );
+    expect(screen.queryByRole('link', { name: 'Your details' })).toBeNull();
   });
 });
 
-describe('the survey card', () => {
+describe('the profile card', () => {
   // The owner asked for this: at 100 the ring and the number go, and the card
-  // is a statement. Nothing replaces the ring — not a tick, not a full circle.
+  // is a statement. A declined answer or detail counts as done.
   it('drops the ring once the profile is complete', async () => {
     survey.declined = new Set(applicableQuestions({}).map((q) => q.key));
+    details.current = { ...completeDetails, photoPath: null, declined: ['photo'] };
     render(
       <MemoryRouter>
         <MePage />
@@ -480,88 +473,7 @@ describe('the survey card', () => {
     );
     expect(await screen.findByText('Profile complete')).toBeInTheDocument();
     expect(screen.queryByText('100%')).not.toBeInTheDocument();
-  });
-
-  it('shows the ring while there is progress left to make', async () => {
-    survey.answers = {};
-    render(
-      <MemoryRouter>
-        <MePage />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText('0%')).toBeInTheDocument();
-    expect(screen.getByText('Complete your profile')).toBeInTheDocument();
-  });
-});
-
-describe('what is still to fill in', () => {
-  // Onboarding can be finished after the birthday now, so an empty photo or
-  // city is the ordinary state for a while rather than an oversight. The
-  // percentage is how somebody knows how far along they are.
-  it('reports how far along the details are', async () => {
-    details.current = {
-      ...completeDetails,
-      photoPath: null,
-      city: null,
-      state: '',
-    };
-    render(
-      <MemoryRouter>
-        <MePage />
-      </MemoryRouter>,
-    );
-    // Two of the five given, three blank.
-    expect(await screen.findByText('40%')).toBeInTheDocument();
-  });
-
-  // The ring is progress, so it goes once there is no progress left to make.
-  // "100%" is never printed on either card — a progress indicator for a
-  // finished thing is just a shape, and the sentence beside it already says so.
-  it('drops the ring and the percentage once the details are done', async () => {
-    details.current = { ...completeDetails };
-    render(
-      <MemoryRouter>
-        <MePage />
-      </MemoryRouter>,
-    );
-    // Nothing under the card at all once it is done: no ring, no percentage,
-    // no sentence. A name and a chevron, like the two beside it.
-    await screen.findByText('Your details');
     expect(screen.queryByText(/Still to add/)).not.toBeInTheDocument();
-    expect(screen.queryByText('100%')).not.toBeInTheDocument();
-  });
-
-  it('counts a declined detail as done, so declining finishes the card', async () => {
-    details.current = { ...completeDetails, photoPath: null, declined: ['photo'] };
-    render(
-      <MemoryRouter>
-        <MePage />
-      </MemoryRouter>,
-    );
-    await screen.findByText('Your details');
-    expect(screen.queryByText(/Still to add/)).not.toBeInTheDocument();
-    expect(screen.queryByText('80%')).not.toBeInTheDocument();
-  });
-
-  // A badge saying 3 with nothing to act on is a nag, so it names them.
-  it('says which ones, in a sentence', async () => {
-    details.current = { ...completeDetails, photoPath: null, city: null };
-    render(
-      <MemoryRouter>
-        <MePage />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText('Still to add: a photo and your city.')).toBeInTheDocument();
-  });
-
-  it('shows no count at all when there is nothing left', async () => {
-    render(
-      <MemoryRouter>
-        <MePage />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText('Your details')).toBeInTheDocument();
-    expect(screen.queryByText(/Still to add/)).toBeNull();
   });
 });
 
