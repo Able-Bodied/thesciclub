@@ -5,6 +5,7 @@ import { TILES_ORIGIN } from '@/lib/map/tiles';
 import { COUNT_HOME } from '@/lib/web-analytics';
 import SHELL from '../index.html?raw';
 import { APP_FRAMES, nativeCsp, webCsp } from '../native-csp';
+import { applyTestRef } from '../netlify/plugins/test-backend/index.js';
 import NETLIFY from '../netlify.toml?raw';
 
 /**
@@ -202,5 +203,23 @@ describe("the store app's Content-Security-Policy", () => {
     expect(appDirective('frame-ancestors')).toEqual([]);
     expect(appDirective('worker-src')).toEqual([]);
     expect(appDirective('manifest-src')).toEqual([]);
+  });
+});
+
+describe('the test site (netlify/plugins/test-backend)', () => {
+  const run = (ref: string | undefined) => {
+    const headers = [{ values: { 'Content-Security-Policy': policy } as Record<string, unknown> }];
+    return {
+      error: applyTestRef(headers, ref),
+      csp: headers[0]?.values['Content-Security-Policy'],
+    };
+  };
+
+  it('leaves the live site alone and names only the test project on the test site', () => {
+    expect(run(undefined)).toEqual({ error: null, csp: policy });
+    const swapped = String(run('scwgwzyuzlrsvwzcavqb').csp);
+    expect(swapped).not.toContain('erijdvqnxavwezsbbojv');
+    expect(swapped).toContain('wss://scwgwzyuzlrsvwzcavqb.supabase.co');
+    expect(run('erijdvqnxavwezsbbojv').error).toMatch(/not a test project/);
   });
 });

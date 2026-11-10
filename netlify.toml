@@ -12,6 +12,11 @@
   # Corepack so the pinned pnpm in package.json is the one that runs.
   NPM_FLAGS = "--version"
 
+# On tests.thesciclub.com only (TEST_SUPABASE_REF set), the headers below name
+# its own Supabase project instead of the live one. Does nothing here.
+[[plugins]]
+  package = "/netlify/plugins/test-backend"
+
 # A single-page app: every path is served by index.html and routed in the
 # browser. Without this, /peers and /join 404 on a refresh or a shared link —
 # they work when you navigate to them and break when you reload, which is the
