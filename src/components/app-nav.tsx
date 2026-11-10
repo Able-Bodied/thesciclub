@@ -1,5 +1,5 @@
 import { Bell } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { touchScreen, useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
@@ -9,6 +9,7 @@ import { useUnreadThreads } from '@/lib/chat/unread';
 import { useUnprovenEmail } from '@/lib/email-proof';
 import { useIconBadge } from '@/lib/icon-badge';
 import { useUnseenNotifications } from '@/lib/notifications';
+import { rememberTabPlace, tabPlace } from '@/lib/tab-places';
 import { cn } from '@/lib/utils';
 import { backToHome } from '@/routes/home/back';
 
@@ -74,6 +75,9 @@ export function AppNav() {
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
+  useEffect(() => {
+    if (lit) rememberTabPlace(lit, `${location.pathname}${location.search}`, location.state);
+  }, [lit, location.pathname, location.search, location.state]);
   // On a phone only: a desktop's bar is at the top, out of the way already, and
   // a narrow desktop window keeps its bottom bar still. And on Home's feed only:
   // elsewhere it gained little and going in odd places confused (the owner,
@@ -126,7 +130,10 @@ export function AppNav() {
           return (
             <Link
               key={to}
-              to={to}
+              // Another tab: back where it was left. The lit one: its first
+              // screen, the way out of a conversation or a profile.
+              to={isActive ? to : (tabPlace(to)?.path ?? to)}
+              state={isActive ? undefined : tabPlace(to)?.state}
               aria-current={isActive ? 'page' : undefined}
               // The dot is decorative, so without this the tab is called "Chat"
               // and what it is telling somebody is told only in navy. The label

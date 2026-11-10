@@ -3,6 +3,7 @@ import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { resetPageReturnForTest } from '@/lib/page-return';
 import { forgetSharedReads } from '@/lib/shared-reads';
+import { forgetTabPlaces } from '@/lib/tab-places';
 
 /**
  * Unmount between tests.
@@ -65,6 +66,7 @@ globalThis.WebSocket = function BlockedWebSocket(url: string | URL) {
 // Unsent words kept for a box (lib/chat/drafts.ts) must not carry into the
 // next test of the same conversation.
 afterEach(() => {
+  forgetTabPlaces();
   // Node-only tests (scripts/, jobs/) have no sessionStorage.
   if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
 });
