@@ -20,7 +20,7 @@ import {
   filterMembers,
   hasConditions,
   memberPlaces,
-  membersWithin,
+  membersBeyond,
   milesForEnough,
   organizationsIn,
   othersOnly,
@@ -95,9 +95,9 @@ export default function PeersPage() {
   }, [milesAtStart]);
   // From a place the member chose instead of home (filter-place.ts).
   const place = useFilterPlace();
-  const near = useMemo(
+  const far = useMemo(
     () =>
-      membersWithin(
+      membersBeyond(
         place ? { ...mapData.contents, home: place } : mapData.contents,
         filters.withinMiles,
       ),
@@ -115,8 +115,8 @@ export default function PeersPage() {
             : 'unplaced';
 
   const visible = useMemo(
-    () => rankMembers(filterMembers(others, filters, segment, near), viewer),
-    [others, filters, segment, near],
+    () => rankMembers(filterMembers(others, filters, segment, far), viewer),
+    [others, filters, segment, far],
   );
   // Distance is the list's (the owner, 2026-11-03): the map shows everybody.
   const onMap = useMemo(
@@ -125,8 +125,8 @@ export default function PeersPage() {
   );
   // Those in the list as it stands without this choice, so it never offers nobody.
   const organizations = useMemo(
-    () => organizationsIn(filterMembers(others, { ...filters, organization: null }, segment, near)),
-    [others, filters, segment, near],
+    () => organizationsIn(filterMembers(others, { ...filters, organization: null }, segment, far)),
+    [others, filters, segment, far],
   );
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
