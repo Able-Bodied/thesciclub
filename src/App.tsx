@@ -67,6 +67,7 @@ const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
 const StatsPage = lazy(() => import('@/routes/stats/page'));
 const SavedPage = lazy(() => import('@/routes/me/saved-page'));
+const MyPostsPage = lazy(() => import('@/routes/me/my-posts-page'));
 const NotificationsPage = lazy(() => import('@/routes/notifications/page'));
 const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
 const ProfileAnswersPage = lazy(() => import('@/routes/profile/answers'));
@@ -300,6 +301,7 @@ function ShellContent() {
             anybody else to Me. */}
             <Route path="/me/qr" element={<QrCodePage />} />
             <Route path="/me/saved" element={<SavedPage />} />
+            <Route path="/me/posts" element={<MyPostsPage />} />
             {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
             of the top bar (desktop) lead here. */}
             <Route path="/notifications" element={<NotificationsPage />} />
