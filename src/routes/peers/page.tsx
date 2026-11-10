@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CardsShown } from '@/components/cards-shown';
 import { FilterButton } from '@/components/filter-button';
@@ -78,21 +78,15 @@ export default function PeersPage() {
   // cannot disagree about who is in it.
   const others = useMemo(() => othersOnly(members, memberId), [members, memberId]);
 
-  // The map's own data, on the list too: distances and where the deck starts.
+  // The map's own data: distances, and where the map first zooms to. The
+  // list starts at any distance (the owner, 2026-11-10: a friend 30 minutes
+  // away was left out of a small club).
   const home = useHome();
   const mapData = useMapData();
-  const milesAtStart = useMemo(
+  const mapZoomMiles = useMemo(
     () => milesForEnough(mapData.contents.home, memberPlaces(mapData.contents, memberId)),
     [mapData.contents, memberId],
   );
-  // Until the member chooses for themselves.
-  const chosenMiles = useRef(false);
-  useEffect(() => {
-    if (chosenMiles.current) return;
-    setFilters((now) =>
-      now.withinMiles === milesAtStart ? now : { ...now, withinMiles: milesAtStart },
-    );
-  }, [milesAtStart]);
   // From a place the member chose instead of home (filter-place.ts).
   const place = useFilterPlace();
   const far = useMemo(
@@ -151,10 +145,7 @@ export default function PeersPage() {
     setSegment((current) => nextSegment(current, direction));
   }, []);
 
-  const filterCount = activeFilterCount(
-    showingMap ? { ...filters, withinMiles: milesAtStart } : filters,
-    milesAtStart,
-  );
+  const filterCount = activeFilterCount(showingMap ? { ...filters, withinMiles: null } : filters);
   const totalInSegment = filterMembers(others, EMPTY_MEMBER_FILTERS, segment).length;
 
   return (
@@ -194,7 +185,7 @@ export default function PeersPage() {
           onProblem={setMapProblem}
           focus="peers"
           members={onMap}
-          zoomToMiles={milesAtStart}
+          zoomToMiles={mapZoomMiles}
           backState={{ from: 'peers-map' }}
         />
       ) : null}
@@ -291,13 +282,9 @@ export default function PeersPage() {
           filters={filters}
           matchCount={showingMap ? onMap.length : visible.length}
           activeCount={filterCount}
-          onChange={(next) => {
-            chosenMiles.current = next.withinMiles !== milesAtStart;
-            setFilters(next);
-          }}
+          onChange={setFilters}
           onClear={() => {
-            chosenMiles.current = false;
-            setFilters({ ...EMPTY_MEMBER_FILTERS, withinMiles: milesAtStart });
+            setFilters(EMPTY_MEMBER_FILTERS);
           }}
           onClose={() => {
             setSheetOpen(false);
