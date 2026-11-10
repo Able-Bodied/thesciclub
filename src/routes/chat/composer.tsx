@@ -1,6 +1,7 @@
 import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
+import { readDraft, writeDraft } from '@/lib/chat/drafts';
 import type { MentionScope } from '@/lib/mentions';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
@@ -104,6 +105,7 @@ export function Composer({
   editing = null,
   mentions = false,
   mentionScope = {},
+  draftKey,
 }: {
   placeholder: string;
   /** What the send button says to a screen reader. */
@@ -119,9 +121,11 @@ export function Composer({
   /** Suggest members after an "@": see the header. */
   mentions?: boolean;
   mentionScope?: MentionScope;
+  /** Keeps the unsent words on this device under this name (lib/chat/drafts.ts). */
+  draftKey?: string | undefined;
 }) {
   const announce = useAnnounce();
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [files, setFiles] = useState<File[]>([]);
   // Added to the post being edited: apart from the draft's, which wait for it.
   const [editFiles, setEditFiles] = useState<File[]>([]);
@@ -145,6 +149,10 @@ export function Composer({
   }, []);
 
   const editingId = editing?.id ?? null;
+  // The member's own words only: while editing, the box holds the edited item's.
+  useEffect(() => {
+    if (draftKey && editingId === null) writeDraft(draftKey, draft);
+  }, [draftKey, draft, editingId]);
   const editingWords = editing?.initial ?? '';
   const editingNoun = editing?.noun ?? 'message';
   useLayoutEffect(() => {

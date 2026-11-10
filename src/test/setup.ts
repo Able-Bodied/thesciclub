@@ -61,3 +61,10 @@ globalThis.WebSocket = function BlockedWebSocket(url: string | URL) {
       'Stub the hook or module that opened this socket.',
   );
 } as unknown as typeof WebSocket;
+
+// Unsent words kept for a box (lib/chat/drafts.ts) must not carry into the
+// next test of the same conversation.
+afterEach(() => {
+  // Node-only tests (scripts/, jobs/) have no sessionStorage.
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+});
