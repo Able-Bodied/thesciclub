@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nearbyOrganizations, OrganizationsPicker } from '@/routes/profile/organizations-picker';
@@ -88,15 +88,25 @@ describe('the organizations picker', () => {
     expect(state.toggle).toHaveBeenCalledWith('near');
   });
 
-  it('lists the others, and joins from the list', async () => {
+  // The owner, 2026-11-10: searched for, ticked as many as they belong to.
+  it('finds the others by name or city, and ticks as many as they like', async () => {
+    state.following = new Set(['near']);
     render(<OrganizationsPicker />);
     await screen.findByRole('button', { name: 'NorCal SCI' });
-    const list = screen.getByRole('combobox', { name: 'All organizations' });
-    await waitFor(() => {
-      expect(screen.queryByRole('option', { name: 'NorCal SCI' })).toBeNull();
-    });
-    await userEvent.selectOptions(list, 'Peak Adaptive');
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    const search = screen.getByRole('searchbox', { name: 'Find others' });
+    await userEvent.type(search, 'denver');
+    await userEvent.click(screen.getByRole('checkbox', { name: /Peak Adaptive/ }));
     expect(state.toggle).toHaveBeenCalledWith('far');
+    await userEvent.clear(search);
+    await userEvent.type(search, 'ca');
+    expect(screen.getAllByRole('checkbox').map((box) => box.closest('label')?.textContent)).toEqual(
+      ['NorCal SCISan Jose, CA', 'Ride OnFresno, CA'],
+    );
+    // One they are in is ticked here too.
+    expect(screen.getByRole('checkbox', { name: /NorCal SCI/ })).toBeChecked();
+    await userEvent.type(search, 'zzz');
+    expect(screen.getByText('No organization matches that.')).toBeInTheDocument();
   });
 
   it('shows one the member is in as chosen, wherever it is', async () => {
@@ -106,7 +116,6 @@ describe('the organizations picker', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.queryByRole('option', { name: 'Peak Adaptive' })).toBeNull();
   });
 
   it('says when it has only been asked', async () => {
