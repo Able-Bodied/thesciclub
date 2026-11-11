@@ -25,3 +25,30 @@ an existing test over adding a new one.
 **While working**, run only the tests the change touches:
 `pnpm test:related <changed files>`. Run the full `pnpm test` once, before a
 push. The Check workflow runs it on every push to `main` and every PR.
+
+## Commits (owner, 2026-11-09)
+
+No `Co-Authored-By: Claude` line (or any Claude trailer) in commit
+messages, for everyone working here.
+
+## Test site (owner, 2026-11-10)
+
+After every change or addition, put it on https://tests.thesciclub.com
+(the `tests` branch, its own Supabase project) and give the link to the
+person you are working for. Never push `main` without their word.
+
+`tests` carries other people's unreleased work, so keep it out of yours:
+
+- Your work branch stays based on `origin/main`. **Never merge or rebase
+  `tests` into it**: that pulls in everybody's unreleased commits, and
+  pushing to `main` then means untangling them.
+- To put a commit on `tests`: `git fetch origin`, make a scratch checkout
+  with `git worktree add --detach <dir> origin/tests`, copy `.env.local`
+  into it, `git cherry-pick <your commit>`, run `pnpm test:related` on the
+  files it touches, then `git push origin HEAD:tests` and remove the
+  worktree. Never force-push `tests`.
+- To release: `git fetch origin`, rebase your branch onto `origin/main` if
+  it moved, run `pnpm check`, then `git push origin HEAD:main`.
+- Run `pnpm check` alone before any push, and stop if it fails.
+- Database changes go to the test project first, the live one only at the
+  word of the person you are working for.
