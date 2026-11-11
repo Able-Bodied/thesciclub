@@ -106,7 +106,7 @@ describe('the organizations picker', () => {
     // One they are in is ticked here too.
     expect(screen.getByRole('checkbox', { name: /NorCal SCI/ })).toBeChecked();
     await userEvent.type(search, 'zzz');
-    expect(screen.getByText('No organization matches that.')).toBeInTheDocument();
+    expect(screen.getByText(/No organization matches that/)).toBeInTheDocument();
   });
 
   it('shows one the member is in as chosen, wherever it is', async () => {
