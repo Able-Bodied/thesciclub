@@ -708,13 +708,33 @@ describe('joining by email', () => {
   });
 
   // The owner, 2026-10-28: Supabase answered as though it signed up, sent
-  // nothing, and the page waited for an email that never came.
-  it('says the address already has an account instead of waiting for an email', async () => {
+  // nothing, and the page waited for an email that never came. 2026-11-10:
+  // somebody who stopped partway came back to join and was turned away.
+  it('signs an existing account in with its password instead of turning them away', async () => {
     calls.signUpExisting = true;
     await openJoin();
     await fillDoor('dana@example.com', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
-    expect(await screen.findByText(/This email already has an account/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(calls.order.slice(0, 2)).toEqual([
+        'signUp:dana@example.com',
+        'signInWithPassword:dana@example.com',
+      ]);
+    });
+    expect(screen.queryByText('Check your email')).toBeNull();
+    calls.signUpExisting = false;
+  });
+
+  it('turns to Sign in, saying why, when the password is not theirs', async () => {
+    calls.signUpExisting = true;
+    calls.passwordError = { message: 'Invalid login credentials', status: 400 };
+    await openJoin();
+    await fillDoor('dana@example.com', 'not their password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(
+      await screen.findByText(/You already have an account with this email/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
     expect(screen.queryByText('Check your email')).toBeNull();
     calls.signUpExisting = false;
   });

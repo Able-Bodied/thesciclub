@@ -636,6 +636,20 @@ export default function OnboardingPage() {
       setPhase('blocked');
       return;
     }
+    // Their email is kept; Sign in says why it is here.
+    if (!result.ok && result.alreadyJoined) {
+      set({ password: '', passwordAgain: '' });
+      setStep('signin');
+      setNotice(result.error);
+      return;
+    }
+    if (!result.ok && result.unconfirmed) {
+      setAwaiting({ email: data.email, password: data.password });
+      rememberAwaiting(data.email);
+      setStep('check-email');
+      setNotice(result.error);
+      return;
+    }
     if (!result.ok) {
       setError(result.error);
       return;
