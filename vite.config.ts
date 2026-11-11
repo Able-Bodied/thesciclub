@@ -249,6 +249,8 @@ export default defineConfig(({ mode }) => ({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // 80% of the cores (the owner, 2026-11-10), up from Vitest's default.
+    maxWorkers: '80%',
     exclude: [...configDefaults.exclude, '.claude/**', 'dist-native/**', 'ios/**', 'android/**'],
   },
 }));
