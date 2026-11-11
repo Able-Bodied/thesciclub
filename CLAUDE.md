@@ -30,3 +30,15 @@ push. The Check workflow runs it on every push to `main` and every PR.
 
 No `Co-Authored-By: Claude` line (or any Claude trailer) in commit
 messages, for everyone working here.
+
+## Test site (owner, 2026-11-10)
+
+After every change or addition, put it on https://tests.thesciclub.com
+(the `tests` branch, its own Supabase project) and give the owner the link.
+Never push `main` without the owner's word.
+
+- Run `pnpm check` first, alone, and stop if it fails.
+- Merge, don't overwrite: other sessions push here too. Fetch, merge
+  `origin/tests` into your work, then `git push origin HEAD:tests`.
+  Never force-push `tests`.
+- Database changes go to the test project too, never the live one.
