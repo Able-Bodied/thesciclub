@@ -23,6 +23,9 @@ const NOT_IN_THE_APP = ['accounts.google.com', 'cloudflareinsights.com'];
  */
 export const APP_FRAMES = 'https://thesciclub.com/embed/';
 
+/** The oldest app that still works, on the website (src/lib/app-update.ts). */
+export const APP_UPDATE = 'https://thesciclub.com/app-update.json';
+
 export function nativeCsp(webPolicy: string): string {
   return webPolicy
     .split(';')
@@ -30,6 +33,7 @@ export function nativeCsp(webPolicy: string): string {
     .filter(([name]) => name !== undefined && name !== '' && !DROPPED.has(name))
     .map(([name, ...sources]) => {
       if (name === 'frame-src') return `${name} ${APP_FRAMES}`;
+      if (name === 'connect-src') sources.push(APP_UPDATE);
       const kept = sources.filter(
         (source) => !NOT_IN_THE_APP.some((host) => source.includes(host)),
       );
