@@ -1,5 +1,5 @@
-import { Check } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Check, Search } from 'lucide-react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,8 @@ import { loadOwnPlace, type OwnPlace } from '@/routes/profile/profile-api';
 import type { Organization } from '@/types/domain';
 
 const NEARBY = 6;
+/** Matches shown at once; past this, more letters narrow it. */
+const SHOWN = 8;
 
 function placesOf(organization: Organization): { city: string; state: string | null }[] {
   return [
@@ -38,16 +40,45 @@ export function nearbyOrganizations(
 }
 
 /**
+ * Organizations whose name, or a city or state of theirs, has every word typed,
+ * by name. Nothing for nothing typed: the list is what was searched for.
+ */
+export function searchOrganizations(
+  organizations: readonly Organization[],
+  query: string,
+): Organization[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  return organizations
+    .filter((organization) => {
+      const text = [
+        organization.name,
+        ...placesOf(organization).flatMap(({ city, state }) => [city, state ?? '']),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return words.every((word) => text.includes(word));
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * The survey's organizations screen (the owner, 2026-10-31): a few near the
  * member as buttons, and every other in a list. Choosing one is pressing Join
  * on its page, so it takes effect at once and not with the screen's Continue,
  * and one that approves first is asked.
  * One the member is in stays on the screen, to take back.
+ *
+ * The others are searched for, not scrolled through (the owner, 2026-11-10:
+ * the list had grown very long): a box, and what matches as boxes to tick,
+ * as many as they belong to. A ticked one joins the buttons above.
  */
 export function OrganizationsPicker() {
   const { organizations, loading } = useOrganizations();
   const { following, requested, error, toggle } = useOrganizationFollows();
   const [place, setPlace] = useState<OwnPlace | null>(null);
+  const [query, setQuery] = useState('');
+  const searchId = useId();
 
   useEffect(() => {
     let live = true;
@@ -67,7 +98,7 @@ export function OrganizationsPicker() {
     ...organizations.filter((o) => following.has(o.id) || requested.has(o.id)),
     ...nearby.filter((o) => !following.has(o.id) && !requested.has(o.id)),
   ];
-  const others = organizations.filter((o) => !buttons.includes(o));
+  const matches = useMemo(() => searchOrganizations(organizations, query), [organizations, query]);
 
   if (loading) {
     return (
@@ -105,23 +136,75 @@ export function OrganizationsPicker() {
         </div>
       ) : null}
 
-      <label className="mt-4 block font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-        All organizations
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) toggle(e.target.value);
-          }}
-          className="mt-2.5 min-h-[44px] w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3 font-normal font-sans text-[1rem] text-ink normal-case tracking-normal outline-none focus:border-emphasis"
-        >
-          <option value="">Choose an organization</option>
-          {others.map((organization) => (
-            <option key={organization.id} value={organization.id}>
-              {organization.name}
-            </option>
-          ))}
-        </select>
+      <label
+        htmlFor={searchId}
+        className="mt-4 block font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+      >
+        {buttons.length > 0 ? 'Find others' : 'Find your organizations'}
       </label>
+      <div className="relative mt-2.5">
+        <Search
+          aria-hidden="true"
+          className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-grey"
+        />
+        <input
+          id={searchId}
+          type="search"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+          }}
+          placeholder="Search by name or city"
+          autoComplete="off"
+          enterKeyHint="search"
+          className="min-h-[44px] w-full rounded-[13px] border-[1.6px] border-line bg-paper py-2 pr-3 pl-9 text-[1rem] text-ink outline-none focus:border-emphasis"
+        />
+      </div>
+
+      {query.trim() ? (
+        matches.length > 0 ? (
+          <ul
+            aria-label="Matching organizations"
+            className="mt-2 divide-y divide-line rounded-[13px] border-[1.6px] border-line bg-paper"
+          >
+            {matches.slice(0, SHOWN).map((organization) => {
+              const asked = requested.has(organization.id);
+              const on = asked || following.has(organization.id);
+              const where = [organization.city, organization.state].filter(Boolean).join(', ');
+              return (
+                <li key={organization.id}>
+                  <label className="flex min-h-[48px] cursor-pointer items-center gap-3 px-3.5 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => {
+                        toggle(organization.id);
+                      }}
+                      className="h-5 w-5 flex-none accent-[var(--action)]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-[0.9375rem] text-ink">
+                        {organization.name}
+                        {asked ? <span className="font-normal text-grey"> · Requested</span> : null}
+                      </span>
+                      {where ? (
+                        <span className="block text-[0.8125rem] text-grey">{where}</span>
+                      ) : null}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-2 text-[0.875rem] text-grey">No organization matches that.</p>
+        )
+      ) : null}
+      {matches.length > SHOWN ? (
+        <p className="mt-1.5 text-[0.8125rem] text-grey">
+          {matches.length - SHOWN} more match. Type more to narrow it down.
+        </p>
+      ) : null}
 
       {error ? (
         <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
