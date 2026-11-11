@@ -35,10 +35,12 @@ export type Result =
       unconfirmed?: boolean;
       /** Sign-up refused because the address is not invited: the page shows the closed door. */
       notInvited?: boolean;
+      /** Joining with an address that has an account: the page turns to Sign in. */
+      alreadyJoined?: boolean;
     };
 
 export const ALREADY_JOINED_MESSAGE =
-  'This email already has an account. Sign in instead, with Google or Apple if you used one before. No password yet? Use Forgot password to set one.';
+  'You already have an account with this email. Sign in with its password, or with Google or Apple if you used one before. No password yet? Use Forgot password to set one.';
 
 /** What signup_needs_an_invite answers, word for word (20261012040000). */
 export const NOT_INVITED_MESSAGE = 'This email is not on the invite list.';
@@ -101,9 +103,14 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   // An address with an account already, made with Google or Apple or a
   // password: Supabase answers as though it signed up, with no identities,
   // and sends nothing (the owner waited for an email that never came,
-  // 2026-10-28). Said here instead.
+  // 2026-10-28). Said here instead. Somebody who stopped partway and came
+  // back to join again is signed straight in when the password is theirs,
+  // and onboarding picks up where they left (the owner, 2026-11-10).
   if (!error && data.user?.identities?.length === 0) {
-    return { ok: false, error: ALREADY_JOINED_MESSAGE };
+    const signedIn = await signInWithEmail(email, password);
+    if (signedIn.ok) return { ok: true, signedIn: true };
+    if (signedIn.unconfirmed) return signedIn;
+    return { ok: false, error: ALREADY_JOINED_MESSAGE, alreadyJoined: true };
   }
   if (!error) return { ok: true };
   if (error.status === 403 && error.message === NOT_INVITED_MESSAGE) {
