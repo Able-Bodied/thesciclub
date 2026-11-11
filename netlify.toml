@@ -132,6 +132,14 @@
     Content-Type = "application/json"
     Cache-Control = "public, max-age=3600"
 
+# The oldest iPhone app that still works (src/lib/app-update.ts). The app reads
+# it from capacitor://localhost, so it needs CORS, and fresh on every look.
+[[headers]]
+  for = "/app-update.json"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "no-cache"
+
 # Built scripts and styles carry a hash of their contents in the name, so a
 # copy never goes stale: a new build is a new name. Kept a year rather than
 # Netlify's default of asking again on every load (max-age=0), which cost a

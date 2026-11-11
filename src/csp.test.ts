@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PHOTON_ORIGIN } from '@/lib/address-suggestions';
+import { APP_UPDATE_URL } from '@/lib/app-update';
 import { appYoutubeEmbedUrl } from '@/lib/chat/link-preview';
 import { TILES_ORIGIN } from '@/lib/map/tiles';
 import { COUNT_HOME } from '@/lib/web-analytics';
@@ -175,7 +176,7 @@ describe("the store app's Content-Security-Policy", () => {
     }
   });
 
-  it('reaches Supabase, the geocoder, address suggestions, Google photos and the map tiles, nothing else of Google', () => {
+  it('reaches Supabase, the geocoder, address suggestions, Google photos, the map tiles and the update file, nothing else of Google', () => {
     expect(appDirective('connect-src')).toEqual([
       "'self'",
       'capacitor://localhost',
@@ -185,6 +186,7 @@ describe("the store app's Content-Security-Policy", () => {
       'https://photon.komoot.io',
       'https://lh3.googleusercontent.com',
       `${TILES_ORIGIN}/`,
+      APP_UPDATE_URL,
     ]);
     expect(app).not.toContain('google.com');
     expect(app).not.toContain('cloudflareinsights');

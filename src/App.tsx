@@ -7,8 +7,10 @@ import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
 import { NativeShell } from '@/components/native-shell';
 import { RequireMember } from '@/components/require-member';
+import { UpdateRequired } from '@/components/update-required';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
+import { useUpdateRequired } from '@/lib/app-update';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { keptReadsStale } from '@/lib/kept-reads';
 import { prefetchMap } from '@/lib/map';
@@ -330,6 +332,15 @@ function ShellContent() {
 }
 
 export default function App() {
+  // An iPhone app too old to use shows only how to update (src/lib/app-update.ts).
+  if (useUpdateRequired()) {
+    return (
+      <AccessibilityProvider>
+        <NativeShell />
+        <UpdateRequired />
+      </AccessibilityProvider>
+    );
+  }
   return (
     <AccessibilityProvider>
       {/* Above the routes, so a confirmation outlives the screen that sent
