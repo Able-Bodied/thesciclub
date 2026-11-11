@@ -197,7 +197,9 @@ export function OrganizationsPicker() {
             })}
           </ul>
         ) : (
-          <p className="mt-2 text-[0.875rem] text-grey">No organization matches that.</p>
+          <p className="mt-2 text-[0.875rem] text-grey">
+            No organization matches that. Not in our list? Tell us about it in the box below.
+          </p>
         )
       ) : null}
       {matches.length > SHOWN ? (
