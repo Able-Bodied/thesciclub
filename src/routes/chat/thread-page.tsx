@@ -762,8 +762,8 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
 }
 
 /**
- * A message's date and time at the right edge: while the list is swiped left,
- * and always on a wide screen, where the margin has room.
+ * A message's date at the right edge: with its time while the list is swiped
+ * left, and alone, always, on a wide screen, where the margin has room.
  */
 function SwipedDate({
   iso,
@@ -784,7 +784,8 @@ function SwipedDate({
       className={`absolute left-full ml-2 text-right text-[0.625rem] text-grey leading-tight ${swiped ? '' : 'hidden lg:block'} ${below === 'name' ? 'top-6' : 'top-2'}`}
     >
       <span className="block whitespace-nowrap">{date}</span>
-      <span className="block whitespace-nowrap">{time}</span>
+      {/* The bubble already has the time; the swipe moves it out of sight. */}
+      {swiped ? <span className="block whitespace-nowrap">{time}</span> : null}
     </span>
   );
 }
