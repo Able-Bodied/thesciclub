@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils';
 
 /**
- * One of two things, side by side at the top of a screen: Events or
- * Organizations, an event or an organization to add. `aria-pressed` buttons,
+ * One of a few things, side by side at the top of a screen: Events or
+ * Organizations, an event or an organization to add, Peers, Mentors or
+ * Professionals. `aria-pressed` buttons,
  * as SegmentPills, and the shape of ViewSwitch beside it.
  */
 export function TwoWayToggle<T extends string>({
@@ -13,7 +14,7 @@ export function TwoWayToggle<T extends string>({
 }: {
   /** What the choice is, for a screen reader. */
   label: string;
-  options: readonly [readonly [T, string], readonly [T, string]];
+  options: readonly (readonly [T, string])[];
   value: T;
   onChange: (next: T) => void;
 }) {
