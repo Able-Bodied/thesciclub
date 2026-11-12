@@ -6,6 +6,7 @@
     { "path": "./tsconfig.sw.json" },
     { "path": "./tsconfig.functions.json" },
     { "path": "./tiles-worker/tsconfig.json" },
-    { "path": "./count-worker/tsconfig.json" }
+    { "path": "./count-worker/tsconfig.json" },
+    { "path": "./link-fetch-worker/tsconfig.json" }
   ]
 }
