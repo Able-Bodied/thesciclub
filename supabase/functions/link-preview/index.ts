@@ -25,6 +25,7 @@
  * link, without a card.
  */
 
+import { sniffImageType } from '../_shared/image-type.ts';
 import {
   firstLink,
   hostLabel,
@@ -188,14 +189,16 @@ async function keepPicture(imageUrl: string): Promise<string | null> {
     'image/webp,image/jpeg,image/png,image/gif',
   );
   if (!picture) return null;
-  const extension = IMAGE_TYPES[picture.type];
-  // SVG is refused here by being absent from IMAGE_TYPES: it can carry script.
-  if (!extension) return null;
+  // Typed by its bytes, not the server's word: SVG (which can carry script)
+  // and anything else that is not a kept image are refused.
+  const type = sniffImageType(picture.bytes);
+  const extension = type ? IMAGE_TYPES[type] : undefined;
+  if (!type || !extension) return null;
   // Named after the picture's address, so a page linked twice is one file.
   const path = `${await sha256Hex(imageUrl)}.${extension}`;
   const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
     method: 'POST',
-    headers: serviceHeaders({ 'Content-Type': picture.type, 'x-upsert': 'true' }),
+    headers: serviceHeaders({ 'Content-Type': type, 'x-upsert': 'true' }),
     body: picture.bytes,
   });
   if (!upload.ok) {

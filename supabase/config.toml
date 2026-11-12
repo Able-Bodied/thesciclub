@@ -444,6 +444,12 @@ verify_jwt = false
 [functions.link-preview]
 verify_jwt = false
 
+# The upload checker. Called by the database (pg_net, from the
+# storage_objects_upload_guard triggers) with the vault's upload_guard_secret,
+# which upload_guard_object checks; no member calls it.
+[functions.upload-guard]
+verify_jwt = false
+
 # The renewal reminder (Apple's secret and every dated renewal). Called by the
 # database (pg_net, from sign_in_secret_remind) with the vault's
 # sign_in_reminder_secret, which renewals_due checks; no member calls it.
