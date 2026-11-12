@@ -1,0 +1,9 @@
+# Link previews' fetches (src/index.ts). Deployed by the owner, never by CI:
+#   pnpm link-fetch-worker:deploy
+# Secrets (wrangler secret put): FETCH_SECRET for production's link-preview,
+# FETCH_SECRET_TEST for the test projects'. Either may be unset.
+name = "sciclub-link-fetch"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
