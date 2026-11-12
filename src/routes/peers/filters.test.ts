@@ -63,6 +63,20 @@ describe('segments', () => {
   it('mentors shows only mentors', () => {
     expect(filterMembers(deck, none, 'mentors').map((m) => m.displayName)).toEqual(['Mentor']);
   });
+
+  // The owner, 2026-11-11: professionals have their own button, and only that.
+  it('shows professionals only under Professionals, even when searched for by name', () => {
+    const withPro = [
+      ...deck,
+      makeMember({ displayName: 'Pat Pro', type: 'mentor', injuryType: 'professional' }),
+    ];
+    const names = (segment: 'everyone' | 'mentors' | 'professionals', search = '') =>
+      filterMembers(withPro, { ...none, search }, segment).map((m) => m.displayName);
+    expect(names('professionals')).toEqual(['Pat Pro']);
+    expect(names('everyone')).not.toContain('Pat Pro');
+    expect(names('mentors')).toEqual(['Mentor']);
+    expect(names('everyone', 'Pat')).toEqual([]);
+  });
 });
 
 describe('filters', () => {

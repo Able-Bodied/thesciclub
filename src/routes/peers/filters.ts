@@ -98,7 +98,14 @@ function matchesMemberSearch(member: BrowseMember, search: string): boolean {
   return matchesSearch(member.displayName, search);
 }
 
+/**
+ * Professionals, who joined as working with people with SCI/D, have a button
+ * of their own and are in no other list (the owner, 2026-11-11).
+ */
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
+  const professional = member.injuryType === 'professional';
+  if (segment === 'professionals') return professional;
+  if (professional) return false;
   if (segment === 'mentors') return member.type === 'mentor';
   return true;
 }

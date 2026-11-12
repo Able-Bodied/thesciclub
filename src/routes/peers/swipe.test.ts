@@ -28,14 +28,15 @@ describe('swipeDirection', () => {
 });
 
 describe('nextSegment', () => {
-  it('moves between the two segments', () => {
+  it('moves between the segments', () => {
     expect(nextSegment('everyone', 'left')).toBe('mentors');
+    expect(nextSegment('mentors', 'left')).toBe('professionals');
     expect(nextSegment('mentors', 'right')).toBe('everyone');
   });
 
   it('stops at each end rather than wrapping', () => {
-    // With two items a wrap reads as a glitch (PRD §7.2).
-    expect(nextSegment('mentors', 'left')).toBe('mentors');
+    // A wrap reads as a glitch (PRD §7.2).
+    expect(nextSegment('professionals', 'left')).toBe('professionals');
     expect(nextSegment('everyone', 'right')).toBe('everyone');
   });
 
