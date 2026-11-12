@@ -730,7 +730,7 @@ export default function OnboardingPage() {
     // that is one tap already, and a passkey saves them nothing. Me → Sign-in
     // still has it.
     const way = lastWayIn();
-    if (passkeysAvailable() && way !== 'google' && way !== 'apple') {
+    if (passkeysAvailable() && !passkeyOfferSnoozed() && way !== 'google' && way !== 'apple') {
       setPhase('passkey');
       return;
     }
@@ -785,8 +785,11 @@ export default function OnboardingPage() {
     // After a sign-in the account may not have finished joining, so the
     // usual checks below decide where to go; after joining, home.
     const leave = () => {
-      if (offerAfterSignIn) setPhase('wizard');
-      else void navigate(destination, { replace: true });
+      if (offerAfterSignIn) {
+        // Once: finishing the wizard afterwards goes home, not back here.
+        setOfferAfterSignIn(false);
+        setPhase('wizard');
+      } else void navigate(destination, { replace: true });
     };
     return (
       <PasskeyOffer

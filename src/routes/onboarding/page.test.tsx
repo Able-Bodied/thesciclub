@@ -1356,6 +1356,23 @@ describe('signing in with email', () => {
       expect(Number(window.localStorage.getItem('club:passkey-offer-snoozed'))).toBeGreaterThan(0);
     });
 
+    // Nov 12: Not now, then finishing joining, offered it again and the second
+    // Not now went back to the photo step ("You are already a member").
+    it('asks once when someone part way through joining signs in, then lets them in', async () => {
+      calls.afterPassword = 'signed-up';
+      await signIn();
+      expect(await screen.findByRole('heading', { name: offer })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
+      await userEvent.type(await screen.findByPlaceholderText('ex. Ajay Shenoy'), 'Dana');
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await userEvent.click(await screen.findByRole('button', { name: '@dana' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await enterBirthday('1990-04-02');
+      await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: offer })).toBeNull();
+    });
+
     it('lets an account that has one straight in', async () => {
       calls.passkeys = [{ id: 'p1', created_at: '2026-10-27T00:00:00Z' }];
       await signIn();
