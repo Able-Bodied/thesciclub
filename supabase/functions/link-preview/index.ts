@@ -20,7 +20,9 @@
  *
  * What it will fetch is decided by `mayFetch` (extract.ts), on the first
  * address and on every redirect, because the address is whatever a member
- * typed; and by `resolvesPublicly`, on where the name actually resolves. Pages are read to 512 KB, pictures to 2 MB, each request to six
+ * typed; and by `resolvesPublicly`, on where the name actually resolves.
+ * With LINK_FETCH_URL set, the fetch itself is made by the link-fetch Worker
+ * on Cloudflare, so a name that changes its answer cannot reach Supabase. Pages are read to 512 KB, pictures to 2 MB, each request to six
  * seconds. Nothing it fails at is an error a member sees: the link stays a
  * link, without a card.
  */
@@ -52,6 +54,9 @@ const IMAGE_LIMIT = 2 * 1024 * 1024;
 const TIMEOUT_MS = 6000;
 const MAX_REDIRECTS = 4;
 const TABLES = new Set(['chat_messages', 'chat_posts']);
+/** The link-fetch Worker; unset, link-preview fetches for itself as before. */
+const FETCH_URL = Deno.env.get('LINK_FETCH_URL') ?? '';
+const FETCH_SECRET = Deno.env.get('LINK_FETCH_SECRET') ?? '';
 
 function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -72,6 +77,38 @@ function rpc(name: string, args: Record<string, unknown>): Promise<Response> {
     headers: serviceHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(args),
   });
+}
+
+/**
+ * The same GET, made by the link-fetch Worker on Cloudflare (link-fetch-worker/),
+ * where no address inside Supabase can be reached. Closes the DNS rebinding gap
+ * that `resolvesPublicly` leaves (extract.ts). Its answer is rebuilt as the
+ * site's own: status, type, Location and the bytes.
+ */
+async function fetchThroughWorker(href: string, accept: string): Promise<Response> {
+  const relayed = await fetch(FETCH_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-fetch-secret': FETCH_SECRET },
+    body: JSON.stringify({ url: href, accept }),
+    signal: AbortSignal.timeout(TIMEOUT_MS + 2000),
+  });
+  if (!relayed.ok) {
+    await relayed.body?.cancel();
+    throw new Error(`link-fetch: HTTP ${relayed.status}`);
+  }
+  const status = Number(relayed.headers.get('x-upstream-status') ?? '0');
+  const headers = new Headers();
+  for (const [from, to] of [
+    ['x-upstream-type', 'content-type'],
+    ['x-upstream-location', 'location'],
+    ['x-upstream-length', 'content-length'],
+  ] as const) {
+    const value = relayed.headers.get(from);
+    if (value) headers.set(to, value);
+  }
+  const empty = status === 204 || status === 304 || (status >= 300 && status < 400);
+  if (empty) await relayed.body?.cancel();
+  return new Response(empty ? null : relayed.body, { status: status || 502, headers });
 }
 
 interface Fetched {
@@ -95,11 +132,17 @@ async function fetchLimited(start: string, limit: number, accept: string): Promi
     }
     let response: Response;
     try {
-      response = await fetch(href, {
-        redirect: 'manual',
-        headers: { 'User-Agent': USER_AGENT, Accept: accept, 'Accept-Language': 'en-US,en;q=0.8' },
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+      response = FETCH_URL
+        ? await fetchThroughWorker(href, accept)
+        : await fetch(href, {
+            redirect: 'manual',
+            headers: {
+              'User-Agent': USER_AGENT,
+              Accept: accept,
+              'Accept-Language': 'en-US,en;q=0.8',
+            },
+            signal: AbortSignal.timeout(TIMEOUT_MS),
+          });
     } catch {
       return null;
     }
