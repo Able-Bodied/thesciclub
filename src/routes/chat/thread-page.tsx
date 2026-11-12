@@ -618,10 +618,11 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                       onBlock={blockOffer(message)}
                     />
                   )}
-                  {swipe.offset && !message.pending ? (
-                    // Slides in at the right as the list slides left. The same
-                    // as the time's tooltip and the day heading, so hidden from
-                    // screen readers.
+                  {message.pending ? null : (
+                    // Slides in at the right as the list slides left; on a wide
+                    // screen it is always there, in the margin (the owner,
+                    // 2026-11-11). The same as the time's tooltip and the day
+                    // heading, so hidden from screen readers.
                     <SwipedDate
                       iso={message.createdAt}
                       opacity={swipe.offset / SWIPE_MAX}
@@ -630,7 +631,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                         !message.notice && message.authorId !== account.userId ? 'name' : 'top'
                       }
                     />
-                  ) : null}
+                  )}
                 </div>
               </Fragment>
             ))
@@ -760,7 +761,10 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   );
 }
 
-/** A message's date and time, at the right edge while the list is swiped left. */
+/**
+ * A message's date and time at the right edge: while the list is swiped left,
+ * and always on a wide screen, where the margin has room.
+ */
 function SwipedDate({
   iso,
   opacity,
@@ -771,12 +775,13 @@ function SwipedDate({
   below: 'name' | 'top';
 }) {
   const { date, time } = messageDateTime(iso);
+  const swiped = opacity > 0;
   return (
     <span
       aria-hidden="true"
-      data-testid="swiped-date"
-      style={{ opacity, width: SWIPE_MAX - 8 }}
-      className={`absolute left-full ml-2 text-right text-[0.625rem] text-grey leading-tight ${below === 'name' ? 'top-6' : 'top-2'}`}
+      data-testid={swiped ? 'swiped-date' : 'side-date'}
+      style={{ opacity: swiped ? opacity : undefined, width: SWIPE_MAX - 8 }}
+      className={`absolute left-full ml-2 text-right text-[0.625rem] text-grey leading-tight ${swiped ? '' : 'hidden lg:block'} ${below === 'name' ? 'top-6' : 'top-2'}`}
     >
       <span className="block whitespace-nowrap">{date}</span>
       <span className="block whitespace-nowrap">{time}</span>

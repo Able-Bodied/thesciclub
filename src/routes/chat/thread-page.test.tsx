@@ -479,7 +479,12 @@ describe('dates in a conversation', () => {
     renderThread();
     const log = screen.getByRole('log');
     const headings = ['Tue, Sep 1', 'Wednesday', 'Yesterday', 'Today'];
-    for (const day of headings) expect(within(log).getAllByText(day)).toHaveLength(1);
+    // Not counting the dates in a wide screen's margin, which are each message's.
+    const heading = (day: string) =>
+      within(log)
+        .getAllByText(day)
+        .filter((found) => !found.closest('[data-testid="side-date"]'));
+    for (const day of headings) expect(heading(day)).toHaveLength(1);
     // In order, each above its day's first message.
     const text = log.textContent;
     const at = (words: string) => text.indexOf(words);
