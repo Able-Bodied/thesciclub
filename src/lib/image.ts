@@ -14,6 +14,12 @@
  * Every step is best-effort and falls back to the original file: a slow profile beats none.
  */
 
+import {
+  IMAGE_EXTENSIONS,
+  SNIFF_BYTES,
+  sniffImageType,
+} from '../../supabase/functions/_shared/image-type';
+
 /** The long edge, in CSS pixels, that a stored photograph is fitted to. */
 export const MAX_PHOTO_EDGE = 800;
 
@@ -47,19 +53,8 @@ export function fittedSize(
 /** What `preparePhoto` hands back: the bytes to store, and the extension to store them under. */
 export interface PreparedPhoto {
   blob: Blob;
-  /** 'webp', 'jpg' where webp can't be written (Safari), or the original's extension. */
+  /** 'webp', 'jpg' where webp can't be written (Safari), or the original's true type's. */
   ext: string;
-}
-
-/**
- * The extension to store an unprocessed file under. Look for the dot: a naive split('.').pop()
- * turns "screenshot" into `profile.screenshot`, served with a type nothing can display.
- */
-function originalExtension(file: File): string {
-  const dot = file.name.lastIndexOf('.');
-  if (dot <= 0) return 'jpg';
-  const ext = file.name.slice(dot + 1).toLowerCase();
-  return /^[a-z0-9]{1,5}$/.test(ext) ? ext : 'jpg';
 }
 
 /**
@@ -88,9 +83,33 @@ async function encode(canvas: HTMLCanvasElement, type: string): Promise<Blob | n
 
 /**
  * Fit a photograph to `MAX_PHOTO_EDGE` and re-encode it as webp, or JPEG where webp can't be
- * written. Returns the original untouched if anything goes wrong; `ext` says which happened.
+ * written. Returns the original if anything goes wrong; `ext` says which happened.
  */
 export async function preparePhoto(
+  file: File,
+  max: number = MAX_PHOTO_EDGE,
+  background?: string,
+): Promise<PreparedPhoto> {
+  const prepared = await fitPhoto(file, max, background);
+  return prepared.blob === file ? labelByContent(file) : prepared;
+}
+
+/**
+ * The original, labelled by its first bytes rather than its name. Anything
+ * else goes as application/octet-stream, which every bucket refuses, so the
+ * member reads "That kind of file can't be used" and nothing is stored.
+ */
+async function labelByContent(file: File): Promise<PreparedPhoto> {
+  const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer());
+  const type = sniffImageType(head);
+  if (type === null) {
+    return { blob: new Blob([file], { type: 'application/octet-stream' }), ext: 'bin' };
+  }
+  if (type === file.type) return { blob: file, ext: IMAGE_EXTENSIONS[type] ?? 'jpg' };
+  return { blob: new Blob([file], { type }), ext: IMAGE_EXTENSIONS[type] ?? 'jpg' };
+}
+
+async function fitPhoto(
   file: File,
   /** The long edge to fit to. Profiles use the default; chat photographs ask for more. */
   max: number = MAX_PHOTO_EDGE,
@@ -101,7 +120,8 @@ export async function preparePhoto(
    */
   background?: string,
 ): Promise<PreparedPhoto> {
-  const fallback: PreparedPhoto = { blob: file, ext: originalExtension(file) };
+  // Its `ext` is decided by labelByContent.
+  const fallback: PreparedPhoto = { blob: file, ext: '' };
   if (typeof createImageBitmap !== 'function') return fallback;
 
   let bitmap: ImageBitmap | null = null;
