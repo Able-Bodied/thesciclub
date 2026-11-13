@@ -29,7 +29,7 @@ import {
   type PeersSegment,
 } from '@/types/domain';
 
-/** The "Leave out" chips, in order (the owner, 2026-11-12). */
+/** The "Include" chips, in order; unticked is left out (the owner, 2026-11-12). */
 export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
   { id: 'professionals', label: 'Professionals' },
   { id: 'family', label: 'Family members' },

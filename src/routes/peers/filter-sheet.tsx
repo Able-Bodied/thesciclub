@@ -35,7 +35,7 @@ export const TOPICS_SHOWN = 24;
 const ROLES: [MemberFilters['role'], string][] = [
   ['any', 'Everyone'],
   ['mentors', 'Mentors'],
-  ['peers', 'Not mentors'],
+  ['peers', 'Non-mentors'],
 ];
 
 export interface FilterSheetProps {
@@ -128,12 +128,14 @@ export function FilterSheet({
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Leave out">
+      {/* Ticked is shown (the owner, 2026-11-12): professionals and family
+          start unticked, so the deck is members with SCI/D. */}
+      <FilterGroup title="Include">
         {LEAVE_OUT.map(({ id, label }) => (
           <FilterChip
             key={id}
             label={label}
-            on={filters.leaveOut.includes(id)}
+            on={!filters.leaveOut.includes(id)}
             onClick={() => {
               onChange(toggleFilter(filters, 'leaveOut', id));
             }}
