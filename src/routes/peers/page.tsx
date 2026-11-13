@@ -35,7 +35,12 @@ import {
   startsInHorizontalScroller,
   swipeDirection,
 } from '@/routes/peers/swipe';
-import { EMPTY_MEMBER_FILTERS, type MemberFilters, type PeersSegment } from '@/types/domain';
+import {
+  DEFAULT_MEMBER_FILTERS,
+  EMPTY_MEMBER_FILTERS,
+  type MemberFilters,
+  type PeersSegment,
+} from '@/types/domain';
 
 /**
  * Peers — the deck of members, and the first thing somebody sees after joining.
@@ -59,7 +64,7 @@ export default function PeersPage() {
   const session = useSession();
   const memberId = session.status === 'signed-in' ? session.userId : null;
   const [segment, setSegment] = useState<PeersSegment>('everyone');
-  const [filters, setFilters] = useState<MemberFilters>(EMPTY_MEMBER_FILTERS);
+  const [filters, setFilters] = useState<MemberFilters>(DEFAULT_MEMBER_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   // The map, once opened, stays mounted and is hidden for the list.
   const [view, setView] = useListOrMap('/peers');
@@ -285,7 +290,7 @@ export default function PeersPage() {
           activeCount={filterCount}
           onChange={setFilters}
           onClear={() => {
-            setFilters(EMPTY_MEMBER_FILTERS);
+            setFilters(DEFAULT_MEMBER_FILTERS);
           }}
           onClose={() => {
             setSheetOpen(false);
