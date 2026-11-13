@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
+import { PRICED_ROOM, parsePrice, setListingPrice } from '@/lib/chat/listing-prices';
 import { roomPrompt } from '@/lib/chat/room-prompts';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
@@ -52,6 +53,8 @@ export default function NewTopicPage() {
   const photoTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // For sale's asking price, as typed (listing-prices.ts).
+  const [priceText, setPriceText] = useState('');
 
   const room = rooms.find((r) => r.id === roomId) ?? null;
   // The App Feedback room's form reads as feedback (the owner, 2026-10-28);
@@ -59,7 +62,13 @@ export default function NewTopicPage() {
   const feedback = room !== null && appFeedbackRoom([room]) !== null;
   // Examples in the room's own terms (room-prompts.ts).
   const prompt = roomPrompt(room);
-  const problem = topicProblem(title, body, files.length, sharing);
+  // Classifieds (the owner, 2026-11-12): photographs first, and a price in For sale.
+  const listing = room?.category === 'Classifieds';
+  const priced = room?.id === PRICED_ROOM;
+  const price = priced ? parsePrice(priceText) : null;
+  const problem =
+    topicProblem(title, body, files.length, sharing) ??
+    (price === undefined ? 'Write the price as a number, like 250 or 12.50.' : null);
   const ready = problem === null;
 
   if (loading) {
@@ -106,6 +115,9 @@ export default function NewTopicPage() {
         !sharing && !feedback && isQuestion,
       );
       if (!result.ok) void deleteAttachments(paths);
+      // The listing stands even if its price does not save; the seller can
+      // add it from the listing.
+      else if (typeof price === 'number') await setListingPrice(result.value, price);
       return result;
     })()
       .then((result) => {
@@ -221,7 +233,14 @@ export default function NewTopicPage() {
           </p>
         ) : null}
 
-        {sharing ? photos : null}
+        {sharing || listing ? photos : null}
+        {listing && !sharing ? (
+          <p className="mt-1 text-[0.71875rem] text-grey">
+            {files.length === 0
+              ? 'Listings with a photograph get more replies. The first one is the picture in the room.'
+              : 'The first photograph is the picture in the room.'}
+          </p>
+        ) : null}
 
         <label
           htmlFor="topic-title"
@@ -246,6 +265,39 @@ export default function NewTopicPage() {
         <p className="mt-1 text-[0.71875rem] text-grey">
           {140 - title.length} characters left. This is the line people see in the list.
         </p>
+
+        {priced ? (
+          <>
+            <label
+              htmlFor="topic-price"
+              className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
+            >
+              Price <span className="font-normal text-grey">(optional)</span>
+            </label>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span aria-hidden="true" className="font-bold text-[1rem] text-ink2">
+                $
+              </span>
+              <input
+                id="topic-price"
+                inputMode="decimal"
+                value={priceText}
+                maxLength={12}
+                onChange={(event) => {
+                  setPriceText(event.target.value);
+                }}
+                placeholder="250"
+                aria-describedby="topic-price-hint"
+                className="min-h-[44px] w-[10rem] rounded-[12px] border-[1.6px] border-line bg-paper px-3 py-2 text-[1rem] text-ink outline-none focus:border-emphasis"
+              />
+            </div>
+            <p id="topic-price-hint" className="mt-1 text-[0.71875rem] text-grey">
+              {price === undefined
+                ? 'Write the price as a number, like 250 or 12.50.'
+                : 'Leave it blank for offers.'}
+            </p>
+          </>
+        ) : null}
 
         <label
           htmlFor="topic-body"
@@ -280,7 +332,7 @@ export default function NewTopicPage() {
           <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />
         )}
 
-        {sharing ? null : photos}
+        {sharing || listing ? null : photos}
 
         {room.category === 'Classifieds' ? <PlaceAsk /> : null}
 

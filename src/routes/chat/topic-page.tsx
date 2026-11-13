@@ -16,6 +16,7 @@ import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
 import { usePostLikes } from '@/lib/chat/likes';
+import { PRICED_ROOM } from '@/lib/chat/listing-prices';
 import { useReactions } from '@/lib/chat/reactions';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
@@ -42,6 +43,7 @@ import { useHoldScroll } from '@/lib/hold-scroll';
 import { backFromTopic } from '@/routes/chat/back';
 import { ChatBreadcrumb } from '@/routes/chat/breadcrumb';
 import { Composer } from '@/routes/chat/composer';
+import { ListingPrice } from '@/routes/chat/listing-price';
 import { MoveTopic } from '@/routes/chat/move-topic';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
@@ -505,6 +507,12 @@ export default function TopicPage() {
           >
             {topic.title}
           </h1>
+          {room?.id === PRICED_ROOM ? (
+            <ListingPrice
+              topicId={topic.id}
+              isSeller={topic.authorId !== null && topic.authorId === account.userId}
+            />
+          ) : null}
           {/* Who started it, with their picture and a link to their profile
               (owner, 2026-10-10). A question hides its opening post — the
               title is the question — and with it the post's own picture and

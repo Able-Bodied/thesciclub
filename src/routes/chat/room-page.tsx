@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
@@ -7,6 +7,7 @@ import { useAccount } from '@/lib/account';
 import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
+import { PRICED_ROOM, useListingPrices } from '@/lib/chat/listing-prices';
 import { useTopicOpeningPosts } from '@/lib/chat/opening-posts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomStats } from '@/lib/chat/rooms';
@@ -14,6 +15,7 @@ import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
 import { useCoalesced } from '@/lib/use-coalesced';
 import { ChatBreadcrumb } from '@/routes/chat/breadcrumb';
+import { ListingGrid } from '@/routes/chat/listing-grid';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { roomInitial } from '@/routes/chat/room-card';
@@ -118,9 +120,14 @@ export default function RoomPage() {
   ]);
   const starter = room?.createdBy ? (authors.get(room.createdBy) ?? null) : null;
   // In Classifieds, each listing says where its seller is (the owner, 2026-11-12).
+  const classifieds = room?.category === 'Classifieds';
   const places = useAuthorPlaces(
     topics.map((topic) => topic.authorId),
-    room?.category === 'Classifieds',
+    classifieds,
+  );
+  const prices = useListingPrices(
+    topics.map((topic) => topic.id),
+    room?.id === PRICED_ROOM,
   );
 
   if (roomsLoading) {
@@ -233,7 +240,20 @@ export default function RoomPage() {
           {/* At the top, where it is seen first, rather than after every
               topic (the owner, 2026-10-09): typed into and posted from here,
               with "Add details or a photo" for the full form. */}
-          {canPost ? <QuickAsk rooms={rooms} fixedRoom={room} className="mb-2.5" /> : null}
+          {canPost ? (
+            classifieds ? (
+              // Straight to the full form, where photographs come first: a
+              // listing is mostly its picture (the owner, 2026-11-12).
+              <Link
+                to={`/chat/rooms/${room.id}/new`}
+                className="mb-2.5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi"
+              >
+                {room.id === 'looking-for' ? 'Ask for something' : 'List something'}
+              </Link>
+            ) : (
+              <QuickAsk rooms={rooms} fixedRoom={room} className="mb-2.5" />
+            )
+          ) : null}
           {topicsLoading ? (
             <LoadingCards label="Loading the topics…" count={4} height={96} />
           ) : error ? (
@@ -246,12 +266,22 @@ export default function RoomPage() {
           ) : sorted.length === 0 ? (
             // Invites the first one; does not pretend there is activity.
             <p className="py-10 text-center text-[0.875rem] text-grey leading-relaxed">
-              Nothing has been asked here yet.
+              {classifieds ? 'Nothing listed here yet.' : 'Nothing has been asked here yet.'}
               <br />
               {canPost
-                ? 'Start the first topic.'
+                ? classifieds
+                  ? 'Be the first.'
+                  : 'Start the first topic.'
                 : 'An administrator can start one before the room opens.'}
             </p>
+          ) : classifieds ? (
+            <ListingGrid
+              topics={sorted}
+              openingPosts={openingPosts}
+              places={places}
+              prices={prices}
+              free={room.id === 'giving-away'}
+            />
           ) : (
             sorted.map((topic) => {
               const postId = openingPosts.get(topic.id);
