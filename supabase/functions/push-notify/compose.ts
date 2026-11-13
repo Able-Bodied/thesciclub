@@ -457,20 +457,15 @@ export function compose(owed: Owed): PushMessage | null {
         ...where,
       };
     }
-    // A reminder to finish a step of the profile (20261022040000); detail is
-    // the step. The app's list words it the same (src/lib/notifications.ts).
+    // A reminder to finish the profile (20261022040000): one series since
+    // 2026-11-12 (the owner), details and answers alike; the app opens where
+    // it was left. The app's list words it the same (src/lib/notifications.ts).
     case 'profile_reminder':
-      return owed.detail === 'details'
-        ? {
-            title: 'Finish Your details',
-            body: 'A few details are still missing. Adding them helps other members find you.',
-            ...where,
-          }
-        : {
-            title: 'Finish your profile',
-            body: 'A few more answers help members find what you have in common.',
-            ...where,
-          };
+      return {
+        title: 'Finish your profile',
+        body: 'Pick up where you left off. A few more details help members find you.',
+        ...where,
+      };
     // Administrators' weekly count (20261022090000); detail is the count.
     // Nobody is named: who blocked whom is on Admin, behind sign-in.
     case 'blocks_weekly': {
