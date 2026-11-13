@@ -112,7 +112,7 @@ export default function NewTopicPage() {
         // the topic page draws once.
         body.trim() || (paths.length > 0 ? '' : title.trim()),
         paths,
-        !sharing && !feedback && isQuestion,
+        !sharing && !feedback && !listing && isQuestion,
       );
       if (!result.ok) void deleteAttachments(paths);
       // The listing stands even if its price does not save; the seller can
@@ -177,7 +177,13 @@ export default function NewTopicPage() {
         )}
 
         <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
-          {sharing ? 'Share a photograph' : feedback ? 'New app feedback' : 'New topic'}
+          {sharing
+            ? 'Share a photograph'
+            : feedback
+              ? 'New app feedback'
+              : listing
+                ? 'New listing'
+                : 'New topic'}
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
           {feedback
@@ -328,7 +334,8 @@ export default function NewTopicPage() {
         />
 
         {/* Feedback is not asked as a question of the club. */}
-        {sharing || feedback ? null : (
+        {/* Nor is a listing. */}
+        {sharing || feedback || listing ? null : (
           <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />
         )}
 
