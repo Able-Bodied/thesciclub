@@ -122,13 +122,16 @@ describe('the spinal cord question', () => {
     render(<Harness seen={seen} />);
     await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Transverse myelitis');
-    const levels = optionsOf('Level, if it has one');
+    const levels = optionsOf('Spinal cord level, if you have one');
     expect(levels[0]).toBe('Not applicable');
     expect(levels).toContain('C4');
     expect(levels).toContain('T6');
     expect(levels).not.toContain('Do not know');
-    expect(screen.getByLabelText('Level, if it has one')).toHaveValue('');
-    await userEvent.selectOptions(screen.getByLabelText('Level, if it has one'), 'T6');
+    expect(screen.getByLabelText('Spinal cord level, if you have one')).toHaveValue('');
+    await userEvent.selectOptions(
+      screen.getByLabelText('Spinal cord level, if you have one'),
+      'T6',
+    );
     expect(seen.at(-1)).toMatchObject({ conditionName: 'Transverse myelitis', exactLevel: 'T6' });
   });
 
@@ -137,7 +140,7 @@ describe('the spinal cord question', () => {
     render(<Harness seen={seen} />);
     await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Central cord syndrome');
-    const levels = optionsOf('Level, if it has one');
+    const levels = optionsOf('Spinal cord level, if you have one');
     expect(levels[0]).toBe('Not applicable');
     expect(levels.slice(1).every((l) => l.startsWith('C'))).toBe(true);
     expect(seen.at(-1)?.completeness).toBe('Incomplete');
@@ -169,7 +172,7 @@ describe('the spinal cord question', () => {
       <Harness seen={seen} start={{ ...EMPTY, injuryType: 'quad', exactLevel: 'Do not know' }} />,
     );
     await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
-    expect(screen.getByLabelText('Level, if it has one')).toHaveValue('');
+    expect(screen.getByLabelText('Spinal cord level, if you have one')).toHaveValue('');
     expect(seen.at(-1)?.exactLevel).toBeNull();
   });
 

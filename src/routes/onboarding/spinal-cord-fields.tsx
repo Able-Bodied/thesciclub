@@ -155,7 +155,7 @@ export function SpinalCordFields({
       {asksLevel(type) ? (
         <div className="mt-5">
           <label htmlFor={`${id}-level`} className={HEADING}>
-            {condition ? 'Level, if it has one' : 'Level of injury'}
+            {condition ? 'Spinal cord level, if you have one' : 'Level of injury'}
           </label>
           <select
             id={`${id}-level`}
