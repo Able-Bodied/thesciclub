@@ -1,6 +1,6 @@
 import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, type Location, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { PartnerLabel } from '@/components/partner-label';
 import { PhotoViewer } from '@/components/photo-viewer';
@@ -21,7 +21,9 @@ import { usePhoto } from '@/lib/use-photo';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { ItemActions } from '@/routes/chat/item-actions';
 import { ReportSheet } from '@/routes/chat/report-sheet';
+import { backToEvents } from '@/routes/events/back';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { backToHome } from '@/routes/home/back';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { FamilySection } from '@/routes/peers/family-section';
 import { FamilySheet } from '@/routes/peers/family-sheet';
@@ -75,13 +77,17 @@ export function childrenLabel(
 }
 
 /**
- * What the back button calls the place it returns to.
- *
- * It goes to `navigate(-1)` either way — browser history is the honest answer
- * to "back" and it always was. The label is the part that can be wrong: Me now
- * links here so a member can see their own card, and a button reading "Peers"
- * that lands you on Me is a small lie told on every visit.
+ * Return to the named screen, even when a tab restored this profile after
+ * Chat. Browser history then points at Chat rather than the Peers directory.
  */
+export function backToMembers(location: Location): string {
+  const state = location.state as { from?: unknown; view?: unknown } | null;
+  if (state?.from === 'me') return '/me';
+  if (state?.from === 'peers-map') return '/peers?view=map';
+  if (state?.view === 'map') return backToEvents(location);
+  return backToHome(state) ?? '/peers';
+}
+
 export function backFrom(state: unknown): string {
   const from = (state as { from?: unknown } | null)?.from;
   if (from === 'me') return 'Me';
@@ -410,7 +416,7 @@ function BlockedProfile({
           <button
             type="button"
             onClick={() => {
-              void navigate(-1);
+              void navigate(backToMembers(location), { replace: true });
             }}
             className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-emphasis"
           >
@@ -573,7 +579,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
           <button
             type="button"
             onClick={() => {
-              void navigate(-1);
+              void navigate(backToMembers(location), { replace: true });
             }}
             className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] lg:text-emphasis lg:drop-shadow-none"
             data-target="small"
