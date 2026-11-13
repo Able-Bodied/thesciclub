@@ -15,9 +15,11 @@ import {
   topicsIn,
 } from '@/routes/peers/filters';
 import { makeMember } from '@/test/factory';
-import { EMPTY_MEMBER_FILTERS } from '@/types/domain';
+import { DEFAULT_MEMBER_FILTERS, EMPTY_MEMBER_FILTERS } from '@/types/domain';
 
 const none = EMPTY_MEMBER_FILTERS;
+/** Where Peers starts: counted against, so it is no filter at all. */
+const start = DEFAULT_MEMBER_FILTERS;
 
 describe('othersOnly', () => {
   const deck = [
@@ -64,18 +66,37 @@ describe('segments', () => {
     expect(filterMembers(deck, none, 'mentors').map((m) => m.displayName)).toEqual(['Mentor']);
   });
 
-  // The owner, 2026-11-11: professionals have their own button, and only that.
-  it('shows professionals only under Professionals, even when searched for by name', () => {
-    const withPro = [
+  // The owner, 2026-11-11: professionals have their own button; 2026-11-12:
+  // elsewhere Leave out decides, and Peers starts with professionals and
+  // family left out, so the deck is members with SCI/D.
+  it('starts without professionals or family, and Leave out decides', () => {
+    const wider = [
       ...deck,
       makeMember({ displayName: 'Pat Pro', type: 'mentor', injuryType: 'professional' }),
+      makeMember({ displayName: 'Fay Family', injuryType: 'family' }),
+      makeMember({
+        displayName: 'Ada Admin',
+        representedOrganizations: [{ id: 'o1', name: 'Club', shortCode: 'CLUB', logoPath: null }],
+      }),
     ];
-    const names = (segment: 'everyone' | 'mentors' | 'professionals', search = '') =>
-      filterMembers(withPro, { ...none, search }, segment).map((m) => m.displayName);
-    expect(names('professionals')).toEqual(['Pat Pro']);
-    expect(names('everyone')).not.toContain('Pat Pro');
-    expect(names('mentors')).toEqual(['Mentor']);
-    expect(names('everyone', 'Pat')).toEqual([]);
+    const names = (
+      filters: typeof none,
+      segment: 'everyone' | 'mentors' | 'professionals' = 'everyone',
+    ) => filterMembers(wider, filters, segment).map((m) => m.displayName);
+    expect(names(start)).not.toContain('Pat Pro');
+    expect(names(start)).not.toContain('Fay Family');
+    expect(names(start)).toContain('Ada Admin');
+    expect(names(start, 'professionals')).toEqual(['Pat Pro']);
+    expect(names(start, 'mentors')).toEqual(['Mentor']);
+    expect(names({ ...start, leaveOut: ['orgAdmins'] })).toEqual(
+      expect.arrayContaining(['Pat Pro', 'Fay Family']),
+    );
+    expect(names({ ...start, leaveOut: ['orgAdmins'] })).not.toContain('Ada Admin');
+    // A search finds anybody by name, left out or not.
+    expect(names({ ...start, search: 'Pat' })).toEqual(['Pat Pro']);
+    // Where Peers starts is no filter; a change from it is one each.
+    expect(activeFilterCount(start)).toBe(0);
+    expect(activeFilterCount({ ...start, leaveOut: ['professionals', 'orgAdmins'] })).toBe(2);
   });
 });
 
@@ -229,13 +250,21 @@ describe('option lists', () => {
 
   it('deduplicates and drops null cities', () => {
     expect(regionsIn(deck)).toEqual(['Cervical']);
+    expect(
+      regionsIn([
+        makeMember({ region: 'Unknown' }),
+        makeMember({ region: 'Lumbar & sacral' }),
+        makeMember({ region: 'Thoracic' }),
+        makeMember({ region: 'Cervical' }),
+      ]),
+    ).toEqual(['Cervical', 'Thoracic', 'Lumbar & sacral', 'Unknown']);
     // Grouped: "Driving" is one of the wordings under the driving group, and
     // "Travel" is claimed by nothing, so it keeps the member's own word.
     expect(topicsIn(deck)).toEqual(['Driving and getting about', 'Travel']);
   });
 
   it('counts active filters but not the search box', () => {
-    expect(activeFilterCount({ ...none, regions: ['Cervical'], search: 'x' })).toBe(1);
+    expect(activeFilterCount({ ...start, regions: ['Cervical'], search: 'x' })).toBe(1);
   });
 });
 
@@ -272,7 +301,7 @@ describe('the spinal cord condition filter', () => {
   });
 
   it('counts as one active filter, and is offered only when somebody has a condition', () => {
-    expect(activeFilterCount({ ...none, condition: true })).toBe(1);
+    expect(activeFilterCount({ ...start, condition: true })).toBe(1);
     expect(hasConditions(deck)).toBe(true);
     expect(hasConditions(deck.slice(0, 2))).toBe(false);
   });
@@ -291,21 +320,21 @@ describe('the age filter', () => {
 
   it('keeps the members in any ticked group, edges included', () => {
     expect(ids(['30s'])).toEqual(['thirty']);
-    expect(ids(['under-30', '40s'])).toEqual(['young', 'forties']);
+    expect(ids(['18-24', '40s'])).toEqual(['young', 'forties']);
     expect(ids(['70-plus'])).toEqual(['older']);
   });
 
   it('leaves out a member who gave no age only once a group is ticked', () => {
     expect(ids([])).toContain('unsaid');
-    expect(ids(['under-30', '30s', '40s', '50s', '60s', '70-plus'])).not.toContain('unsaid');
+    expect(ids(['18-24', '25-29', '30s', '40s', '50s', '60s', '70-plus'])).not.toContain('unsaid');
   });
 
   it('offers only the groups somebody is in, youngest first', () => {
-    expect(ageBandsIn(deck)).toEqual(['under-30', '30s', '40s', '70-plus']);
+    expect(ageBandsIn(deck)).toEqual(['18-24', '30s', '40s', '70-plus']);
   });
 
   it('counts towards the filter dot', () => {
-    expect(activeFilterCount({ ...none, ages: ['30s', '40s'] })).toBe(2);
+    expect(activeFilterCount({ ...start, ages: ['30s', '40s'] })).toBe(2);
     expect(toggleFilter({ ...none, ages: ['30s'] }, 'ages', '30s').ages).toEqual([]);
   });
 });

@@ -646,8 +646,14 @@ export interface MemberFilters {
   topics: string[];
   /** Age groups (AGE_BANDS in peers/filters.ts); any one matches. */
   ages: string[];
+  /** Who is left out of the deck (LEAVE_OUT in peers/filters.ts). */
+  leaveOut: PeersLeftOut[];
   search: string;
 }
+
+/** Members who can be left out of Peers: not members with SCI/D themselves, or org admins. */
+export const PEERS_LEFT_OUT = ['professionals', 'family', 'orgAdmins'] as const;
+export type PeersLeftOut = (typeof PEERS_LEFT_OUT)[number];
 
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   regions: [],
@@ -657,7 +663,17 @@ export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   withinMiles: null,
   topics: [],
   ages: [],
+  leaveOut: [],
   search: '',
+};
+
+/**
+ * Where Peers starts, and what Clear goes back to (the owner, 2026-11-12):
+ * professionals and family left out, so the deck is members with SCI/D.
+ */
+export const DEFAULT_MEMBER_FILTERS: MemberFilters = {
+  ...EMPTY_MEMBER_FILTERS,
+  leaveOut: ['professionals', 'family'],
 };
 
 /* ------------------------------------------------------------------ events */

@@ -20,11 +20,37 @@ import { matchesSearch } from '@/lib/search';
 import { canonicalTopicsOf } from '@/routes/peers/topics';
 import {
   type BrowseMember,
+  DEFAULT_MEMBER_FILTERS,
   EMPTY_MEMBER_FILTERS,
+  INJURY_REGIONS,
   type InjuryRegion,
   type MemberFilters,
+  type PeersLeftOut,
   type PeersSegment,
 } from '@/types/domain';
+
+/** The "Leave out" chips, in order (the owner, 2026-11-12). */
+export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
+  { id: 'professionals', label: 'Professionals' },
+  { id: 'family', label: 'Family members' },
+  { id: 'orgAdmins', label: 'Org admins' },
+];
+
+/** Changes from where Peers starts, each counted once. */
+function leaveOutChanges(filters: MemberFilters): number {
+  const start = DEFAULT_MEMBER_FILTERS.leaveOut;
+  return LEAVE_OUT.filter(({ id }) => filters.leaveOut.includes(id) !== start.includes(id)).length;
+}
+
+/** Whether a member is one of those left out. On Professionals, professionals stay. */
+function leftOut(member: BrowseMember, filters: MemberFilters, segment: PeersSegment): boolean {
+  const out = new Set(filters.leaveOut);
+  if (out.has('professionals') && segment !== 'professionals') {
+    if (member.injuryType === 'professional') return true;
+  }
+  if (out.has('family') && member.injuryType === 'family') return true;
+  return out.has('orgAdmins') && member.representedOrganizations.length > 0;
+}
 
 export function activeFilterCount(
   filters: MemberFilters,
@@ -37,13 +63,18 @@ export function activeFilterCount(
     (filters.organization ? 1 : 0) +
     (filters.withinMiles === startingMiles ? 0 : 1) +
     filters.topics.length +
-    filters.ages.length
+    filters.ages.length +
+    leaveOutChanges(filters)
   );
 }
 
-/** The age groups, by decade (the owner, 2026-10-25). In words, as a screen reader says them. */
+/**
+ * The age groups, by decade (the owner, 2026-10-25), and the twenties split, as
+ * members are 18 and over (2026-11-12). In words, as a screen reader says them.
+ */
 export const AGE_BANDS: readonly { id: string; label: string; from: number; to: number }[] = [
-  { id: 'under-30', label: 'Under 30', from: 0, to: 29 },
+  { id: '18-24', label: '18 to 24', from: 0, to: 24 },
+  { id: '25-29', label: '25 to 29', from: 25, to: 29 },
   { id: '30s', label: '30 to 39', from: 30, to: 39 },
   { id: '40s', label: '40 to 49', from: 40, to: 49 },
   { id: '50s', label: '50 to 59', from: 50, to: 59 },
@@ -83,7 +114,7 @@ function matchesLevel(member: BrowseMember, filters: MemberFilters): boolean {
 }
 
 /** Toggle a value in one of the list-shaped filters. */
-export function toggleFilter<K extends 'regions' | 'topics' | 'ages'>(
+export function toggleFilter<K extends 'regions' | 'topics' | 'ages' | 'leaveOut'>(
   filters: MemberFilters,
   key: K,
   value: MemberFilters[K][number],
@@ -100,12 +131,11 @@ function matchesMemberSearch(member: BrowseMember, search: string): boolean {
 
 /**
  * Professionals, who joined as working with people with SCI/D, have a button
- * of their own and are in no other list (the owner, 2026-11-11).
+ * of their own (the owner, 2026-11-11). Elsewhere the Leave out filter decides
+ * whether they show, as it does for family and org admins (2026-11-12).
  */
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
-  const professional = member.injuryType === 'professional';
-  if (segment === 'professionals') return professional;
-  if (professional) return false;
+  if (segment === 'professionals') return member.injuryType === 'professional';
   if (segment === 'mentors') return member.type === 'mentor';
   return true;
 }
@@ -237,6 +267,7 @@ export function filterMembers(
   const far = searching ? null : chosenFar;
   const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
+    if (leftOut(member, filters, segment)) return false;
     if (!matchesLevel(member, filters)) return false;
     if (!matchesAge(member, filters)) return false;
     if (filters.role === 'mentors' && member.type !== 'mentor') return false;
@@ -286,7 +317,9 @@ export function othersOnly(members: BrowseMember[], viewerId: string | null): Br
 
 /** The distinct values present in a deck, for building the filter sheet's options. */
 export function regionsIn(members: BrowseMember[]): InjuryRegion[] {
-  return [...new Set(members.map((m) => m.region))].sort();
+  // Head to tail, Unknown last: not alphabetical, which put Thoracic after Lumbar.
+  const present = new Set(members.map((m) => m.region));
+  return INJURY_REGIONS.filter((region) => present.has(region));
 }
 
 /** Whether anybody in the deck has a condition: the chip is drawn only then. */

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
 import type { NearHomeStatus } from '@/lib/near-home';
 import { DistanceFilter } from '@/routes/events/distance-filter';
-import { AGE_BANDS, toggleFilter } from '@/routes/peers/filters';
+import { AGE_BANDS, LEAVE_OUT, toggleFilter } from '@/routes/peers/filters';
 import type { InjuryRegion, MemberFilters } from '@/types/domain';
 
 /**
@@ -128,24 +128,49 @@ export function FilterSheet({
         ))}
       </FilterGroup>
 
+      <FilterGroup title="Leave out">
+        {LEAVE_OUT.map(({ id, label }) => (
+          <FilterChip
+            key={id}
+            label={label}
+            on={filters.leaveOut.includes(id)}
+            onClick={() => {
+              onChange(toggleFilter(filters, 'leaveOut', id));
+            }}
+          />
+        ))}
+      </FilterGroup>
+
       {regions.length > 0 || conditions ? (
         <FilterGroup title="Level or condition">
-          {regions.map((region) => (
-            <FilterChip
-              key={region}
-              label={region}
-              on={filters.regions.includes(region)}
-              onClick={() => {
-                onChange(toggleFilter(filters, 'regions', region));
-              }}
-            />
-          ))}
+          {regions
+            .filter((region) => region !== 'Unknown')
+            .map((region) => (
+              <FilterChip
+                key={region}
+                label={region}
+                on={filters.regions.includes(region)}
+                onClick={() => {
+                  onChange(toggleFilter(filters, 'regions', region));
+                }}
+              />
+            ))}
           {conditions ? (
             <FilterChip
-              label="Other disability"
+              label="Spinal cord or nerve disorder"
               on={filters.condition}
               onClick={() => {
                 onChange({ ...filters, condition: !filters.condition });
+              }}
+            />
+          ) : null}
+          {/* Last, after the disorders (the owner, 2026-11-12). */}
+          {regions.includes('Unknown') ? (
+            <FilterChip
+              label="Unknown"
+              on={filters.regions.includes('Unknown')}
+              onClick={() => {
+                onChange(toggleFilter(filters, 'regions', 'Unknown'));
               }}
             />
           ) : null}
@@ -225,10 +250,6 @@ export function FilterSheet({
           ) : null}
         </div>
       ) : null}
-
-      <p className="mb-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
-        Step-free access is assumed everywhere in the club, so it is not a filter.
-      </p>
     </FilterSheetShell>
   );
 }
