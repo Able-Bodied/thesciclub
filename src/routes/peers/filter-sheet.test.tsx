@@ -32,7 +32,7 @@ describe('who to look for', () => {
   it('narrows to mentors, or to those who are not', async () => {
     const onChange = vi.fn();
     renderSheet({ onChange });
-    await userEvent.click(screen.getByRole('button', { name: 'Not mentors' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Non-mentors' }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ role: 'peers' }));
   });
 
