@@ -66,9 +66,8 @@ describe('segments', () => {
     expect(filterMembers(deck, none, 'mentors').map((m) => m.displayName)).toEqual(['Mentor']);
   });
 
-  // The owner, 2026-11-11: professionals have their own button; 2026-11-12:
-  // elsewhere Leave out decides, and Peers starts with professionals and
-  // family left out, so the deck is members with SCI/D.
+  // The owner, 2026-11-12: Include decides, and Peers starts with
+  // professionals and family left out, so the deck is members with SCI/D.
   it('starts without professionals or family, and Leave out decides', () => {
     const wider = [
       ...deck,
@@ -79,14 +78,11 @@ describe('segments', () => {
         representedOrganizations: [{ id: 'o1', name: 'Club', shortCode: 'CLUB', logoPath: null }],
       }),
     ];
-    const names = (
-      filters: typeof none,
-      segment: 'everyone' | 'mentors' | 'professionals' = 'everyone',
-    ) => filterMembers(wider, filters, segment).map((m) => m.displayName);
+    const names = (filters: typeof none, segment: 'everyone' | 'mentors' = 'everyone') =>
+      filterMembers(wider, filters, segment).map((m) => m.displayName);
     expect(names(start)).not.toContain('Pat Pro');
     expect(names(start)).not.toContain('Fay Family');
     expect(names(start)).toContain('Ada Admin');
-    expect(names(start, 'professionals')).toEqual(['Pat Pro']);
     expect(names(start, 'mentors')).toEqual(['Mentor']);
     expect(names({ ...start, leaveOut: ['orgAdmins'] })).toEqual(
       expect.arrayContaining(['Pat Pro', 'Fay Family']),

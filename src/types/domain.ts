@@ -626,7 +626,7 @@ export interface OrganizationPlace {
 
 /* ------------------------------------------------------------------ browse */
 
-export const PEERS_SEGMENTS = ['everyone', 'mentors', 'professionals'] as const;
+export const PEERS_SEGMENTS = ['everyone', 'mentors'] as const;
 export type PeersSegment = (typeof PEERS_SEGMENTS)[number];
 
 export interface MemberFilters {
