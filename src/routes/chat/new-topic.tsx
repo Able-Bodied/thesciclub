@@ -8,6 +8,7 @@ import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
+import { PlaceAsk } from '@/routes/chat/place-ask';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { DescriptionEditor } from '@/routes/events/description-editor';
 import { backToHome } from '@/routes/home/back';
@@ -280,6 +281,8 @@ export default function NewTopicPage() {
         )}
 
         {sharing ? null : photos}
+
+        {room.category === 'Classifieds' ? <PlaceAsk /> : null}
 
         <button
           type="button"

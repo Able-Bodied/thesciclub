@@ -131,19 +131,19 @@ const PROMPTS: Entry[] = [
     ids: ['for-sale'],
     name: /^for sale/i,
     title: 'Quickie Nitro, 16" seat, barely used — $900',
-    body: 'What it is, its condition, the price, and roughly where you are. Photos help. Meet somewhere public, and settle payment between yourselves: nothing is paid through the club.',
+    body: 'What it is, its condition and the price. Photos help. Meet somewhere public, and settle payment between yourselves: nothing is paid through the club.',
   },
   {
     ids: ['giving-away'],
     name: /giving away|give away|surplus|donation/i,
     title: 'Free: three boxes of 14Fr catheters, unopened',
-    body: 'What it is, how much, and roughly where you are. Supplies should be sealed and in date. No medicines, please.',
+    body: 'What it is and how much. Supplies should be sealed and in date. No medicines, please.',
   },
   {
     ids: ['looking-for'],
     name: /^looking for/i,
-    title: 'Looking for a used shower chair near San Jose',
-    body: 'What you need, whether you hope to buy, borrow or be given it, and roughly where you are.',
+    title: 'Looking for a used shower chair',
+    body: 'What you need, and whether you hope to buy, borrow or be given it.',
   },
   {
     ids: ['events-15df'],

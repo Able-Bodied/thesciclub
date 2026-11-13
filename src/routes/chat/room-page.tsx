@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
+import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
 import { useTopicOpeningPosts } from '@/lib/chat/opening-posts';
@@ -116,6 +117,11 @@ export default function RoomPage() {
     room?.createdBy ?? null,
   ]);
   const starter = room?.createdBy ? (authors.get(room.createdBy) ?? null) : null;
+  // In Classifieds, each listing says where its seller is (the owner, 2026-11-12).
+  const places = useAuthorPlaces(
+    topics.map((topic) => topic.authorId),
+    room?.category === 'Classifieds',
+  );
 
   if (roomsLoading) {
     return (
@@ -254,6 +260,7 @@ export default function RoomPage() {
                   key={topic.id}
                   topic={topic}
                   authors={authors}
+                  place={topic.authorId ? places.get(topic.authorId) : undefined}
                   likes={
                     postId
                       ? {
