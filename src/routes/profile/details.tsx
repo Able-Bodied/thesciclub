@@ -45,8 +45,9 @@ export default function ProfileDetailsPage() {
   const account = useAccount();
   const location = useLocation();
   const navigate = useNavigate();
-  // From Home's card, back there; otherwise Me, where this page is opened from.
-  const leaveTo = (location.state as { oneScreen?: boolean } | null)?.oneScreen ? '/home' : '/me';
+  // From Home's card, back there; otherwise Your profile, where Me opens it.
+  const fromHome = Boolean((location.state as { oneScreen?: boolean } | null)?.oneScreen);
+  const leaveTo = fromHome ? '/home' : '/profile/answers';
   const [details, setDetails] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -247,7 +248,7 @@ export default function ProfileDetailsPage() {
             className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
           >
             <ChevronLeft className="h-4 w-4" />
-            Me
+            {fromHome ? 'Home' : 'Your profile'}
           </button>
           <h1 className="mt-1 font-extrabold font-display text-[1.4375rem] text-ink tracking-[-0.01em]">
             Your details

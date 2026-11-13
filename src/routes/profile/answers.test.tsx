@@ -17,6 +17,25 @@ vi.mock('@/routes/profile/profile-api', () => ({
     Promise.resolve({ ok: true as const, answers: api.answers, declined: api.declined }),
 }));
 
+vi.mock('@/routes/profile/details-api', () => ({
+  loadDetails: () =>
+    Promise.resolve({
+      ok: true as const,
+      details: {
+        displayName: 'Nicole Ray',
+        injuryType: 'quad',
+        exactLevel: 'C6',
+        conditionName: '',
+        injuryDate: '2015-01-01',
+        injuryDatePrecision: 'year',
+        city: null,
+        state: 'CA',
+        photoPath: null,
+        declined: ['photo'],
+      },
+    }),
+}));
+
 const { default: ProfileAnswersPage } = await import('@/routes/profile/answers');
 
 function renderAnswers() {
@@ -49,7 +68,16 @@ describe('Your answers', () => {
     api.answers = { gender: 'Woman', languages: ['English', 'Spanish'], bio: 'Rugby on Tuesdays.' };
     api.declined = new Set(['howInjured']);
     renderAnswers();
-    await screen.findByRole('heading', { name: 'Your answers' });
+    await screen.findByRole('heading', { name: 'Your profile' });
+    // Onboarding's details first, changed on their own page.
+    const details = await screen.findByRole('region', { name: 'Your details' });
+    expect(within(details).getByText('C6')).toBeInTheDocument();
+    expect(within(details).getByText('Rather not say')).toBeInTheDocument();
+    expect(within(details).getByText('CA')).toBeInTheDocument();
+    expect(within(details).getByRole('link', { name: 'Change Your details' })).toHaveAttribute(
+      'href',
+      '/profile/details',
+    );
     const about = await screen.findByRole('region', { name: 'About you' });
     expect(within(about).getByText('English, Spanish')).toBeInTheDocument();
     expect(within(section('Brief bio')).getByText('Rugby on Tuesdays.')).toBeInTheDocument();
@@ -58,6 +86,7 @@ describe('Your answers', () => {
   });
 
   it('opens the survey on the screen a Change is for', async () => {
+    api.answers = { gender: 'Woman' };
     renderAnswers();
     const family = await screen.findByRole('region', { name: 'Family' });
     expect(within(family).getByRole('link', { name: 'Change Family' })).toHaveAttribute(
