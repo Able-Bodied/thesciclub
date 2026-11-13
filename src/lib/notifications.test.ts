@@ -236,12 +236,12 @@ describe('what a notification says', () => {
     );
   });
 
-  it('reminds of the step that is left', () => {
-    expect(notificationSentence(n({ kind: 'profile_reminder', detail: 'details' }))).toBe(
-      'Finish Your details, so other members can find you',
-    );
-    expect(notificationSentence(n({ kind: 'profile_reminder', detail: 'profile' }))).toBe(
-      'Finish your profile, so members can find what you have in common',
-    );
+  // One series since 2026-11-12: an older 'details' reminder reads the same.
+  it('reminds to finish the profile, whichever step was left', () => {
+    for (const detail of ['details', 'profile']) {
+      expect(notificationSentence(n({ kind: 'profile_reminder', detail }))).toBe(
+        'Finish your profile: pick up where you left off, so members can find you',
+      );
+    }
   });
 });

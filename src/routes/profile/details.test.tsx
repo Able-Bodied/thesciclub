@@ -86,9 +86,10 @@ function choosePhoto(container: HTMLElement): HTMLInputElement {
   return input;
 }
 
-function renderDetails() {
+/** One part of the details, as Your profile opens it (the owner, 2026-11-12). */
+function renderDetails(part = 'name') {
   return render(
-    <MemoryRouter initialEntries={['/profile/details']}>
+    <MemoryRouter initialEntries={[`/profile/details?part=${part}`]}>
       <Routes>
         <Route path="/profile/details" element={<ProfileDetailsPage />} />
         <Route path="/profile/answers" element={<p>Your profile page</p>} />
@@ -112,41 +113,65 @@ beforeEach(() => {
 describe('Your details', () => {
   it('sends a non-member away', async () => {
     account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
-    renderDetails();
+    renderDetails('name');
     expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
   });
 
   it('loads what onboarding recorded, so a mistake can be seen', async () => {
-    renderDetails();
+    const one = renderDetails('name');
     expect(await screen.findByLabelText('Name')).toHaveValue('Nicole');
-    const birthday = within(screen.getByRole('group', { name: 'Birthday' }));
+    one.unmount();
+    const two = renderDetails('birthday');
+    const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
     expect(birthday.getByLabelText('Month')).toHaveValue('4');
     expect(birthday.getByLabelText('Day')).toHaveValue('2');
     expect(birthday.getByLabelText('Year')).toHaveValue('1998');
-    expect(screen.getByLabelText('City or town')).toHaveValue('Santa Clara');
-    expect(screen.getByLabelText('Level of injury')).toHaveValue('C6');
+    two.unmount();
+    const three = renderDetails('place');
+    expect(await screen.findByLabelText('City or town')).toHaveValue('Santa Clara');
+    three.unmount();
+    renderDetails('injury');
+    expect(await screen.findByLabelText('Level of injury')).toHaveValue('C6');
+  });
+
+  // The owner, 2026-11-12: one part at a time, as Your profile lists them.
+  it('opens only the part asked for, and goes where the profile was left without one', async () => {
+    const one = renderDetails('place');
+    await screen.findByLabelText('City or town');
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Choose a photo')).not.toBeInTheDocument();
+    one.unmount();
+    render(
+      <MemoryRouter initialEntries={['/profile/details']}>
+        <Routes>
+          <Route path="/profile/details" element={<ProfileDetailsPage />} />
+          <Route path="/profile/next" element={<p>Next step</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Next step')).toBeInTheDocument();
   });
 
   it('saves a corrected name', async () => {
-    renderDetails();
+    renderDetails('name');
     const name = await screen.findByLabelText('Name');
     await userEvent.clear(name);
     await userEvent.type(name, 'Nikki');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.displayName).toBe('Nikki');
     });
   });
 
   it('re-derives the browse range from a changed level, so the two cannot come apart', async () => {
-    renderDetails();
+    renderDetails('injury');
     await screen.findByLabelText('Level of injury');
     // A quad's list has no T levels: changing to low para offers them, and
     // clears the C6 that no longer fits.
     await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
     expect(screen.getByLabelText('Level of injury')).toHaveValue('');
     await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'T10');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(api.saves[0]?.levelRange).toBe('T7–T12');
     });
@@ -154,18 +179,18 @@ describe('Your details', () => {
   });
 
   it('says that members see an age and not the date', async () => {
-    renderDetails();
+    renderDetails('birthday');
     expect(await screen.findByText(/never the date itself/)).toBeInTheDocument();
   });
 
   // Somebody who said "2016" is shown 2016, and saving something else on the
   // page does not turn it into a January 1st they never gave.
   it('keeps a year-only injury date to the year', async () => {
-    renderDetails();
+    renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     expect(injury.getByLabelText('Year')).toHaveValue('2016');
     expect(injury.getByLabelText('Month')).toHaveValue('');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.injuryDatePrecision).toBe('year');
     });
@@ -173,11 +198,11 @@ describe('Your details', () => {
   });
 
   it('records a month added to the injury date as exactly that much', async () => {
-    renderDetails();
+    renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.type(injury.getByLabelText('Month'), 'March');
     expect(screen.getByText('March 2016')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.injuryDate).toBe('2016-03-01');
     });
@@ -185,10 +210,10 @@ describe('Your details', () => {
   });
 
   it('records no injury date once the boxes are cleared', async () => {
-    renderDetails();
+    renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.clear(injury.getByLabelText('Year'));
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.injuryDate).toBeNull();
     });
@@ -198,29 +223,29 @@ describe('Your details', () => {
   // Saving half a year would either keep the old date under a new one on
   // screen or wipe it; neither was asked for.
   it('holds Save while the injury year is half typed, and says what is missing', async () => {
-    renderDetails();
+    renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.clear(injury.getByLabelText('Year'));
     await userEvent.type(injury.getByLabelText('Year'), '20');
     expect(screen.getByText('Add the year, in four digits.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   // Mid-typing is not a mistake, so it is said quietly, not as an alert about
   // the club being 18+.
   it('holds Save while the birthday is half typed, without calling it under-age', async () => {
-    renderDetails();
+    renderDetails('birthday');
     const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
     await userEvent.clear(birthday.getByLabelText('Year'));
     await userEvent.type(birthday.getByLabelText('Year'), '19');
     expect(screen.getByText(/Add the month, day and year/)).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   // Month, day, year, as the birthday and onboarding ask it.
   it('runs the injury date month, day, year', async () => {
-    renderDetails();
+    renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.clear(injury.getByLabelText('Year'));
     await userEvent.type(injury.getByLabelText('Month'), '06');
@@ -232,19 +257,19 @@ describe('Your details', () => {
   });
 
   it('moves a year typed into the injury Month across to Year', async () => {
-    renderDetails();
+    renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.clear(injury.getByLabelText('Year'));
     await userEvent.type(injury.getByLabelText('Month'), '2013');
     expect(injury.getByLabelText('Month')).toHaveValue('');
     expect(injury.getByLabelText('Year')).toHaveValue('2013');
     expect(injury.getByLabelText('Year')).toHaveFocus();
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
   // Somebody correcting the start of a box is not done with it.
   it('stays put while a box is edited in the middle', async () => {
-    renderDetails();
+    renderDetails('birthday');
     const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
     const day = birthday.getByLabelText('Day');
     await userEvent.type(day, '1', { initialSelectionStart: 0, initialSelectionEnd: 0 });
@@ -253,28 +278,28 @@ describe('Your details', () => {
   });
 
   it('still refuses a corrected birthday under 18', async () => {
-    renderDetails();
+    renderDetails('birthday');
     const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
     await userEvent.clear(birthday.getByLabelText('Year'));
     await userEvent.type(birthday.getByLabelText('Year'), String(new Date().getFullYear() - 10));
     expect(await screen.findByRole('alert')).toHaveTextContent(/The club is 18\+/);
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   it('does not carry the deck switch, which lives on Me', async () => {
     // It was here first, four fields down and behind a Save — which is where
     // it was mistaken for part of onboarding. Being findable is a switch, not
     // a form field, so it moved to Me and this page does not offer it twice.
-    renderDetails();
+    renderDetails('name');
     await screen.findByLabelText('Name');
     expect(screen.queryByText(/visible to other members/i)).not.toBeInTheDocument();
   });
 
   it('surfaces a save failure rather than claiming it saved', async () => {
     api.failWith = 'permission denied';
-    renderDetails();
+    renderDetails('name');
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('permission denied')).toBeInTheDocument();
     expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
   });
@@ -285,7 +310,7 @@ describe('Your details', () => {
   it('says the details are saved, and is still saying it on Your profile', async () => {
     render(
       <AnnounceProvider>
-        <MemoryRouter initialEntries={['/profile/details']}>
+        <MemoryRouter initialEntries={['/profile/details?part=name']}>
           <Routes>
             <Route path="/profile/details" element={<ProfileDetailsPage />} />
             <Route path="/profile/answers" element={<p>Your profile page</p>} />
@@ -293,24 +318,24 @@ describe('Your details', () => {
         </MemoryRouter>
       </AnnounceProvider>,
     );
-    await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Your profile page')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent('Your details are saved.');
+      expect(screen.getByRole('status')).toHaveTextContent('Saved.');
     });
   });
 
   it('returns to Your profile once it has saved', async () => {
-    renderDetails();
+    renderDetails('name');
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Your profile page')).toBeInTheDocument();
   });
 
   it('says why a photograph was refused', async () => {
     api.photoResults = [{ ok: false, error: 'The photograph was not saved. Too large.' }];
-    const { container } = renderDetails();
-    await screen.findByLabelText('Name');
+    const { container } = renderDetails('photo');
+    await screen.findByLabelText(/Choose a photo|Change your photo/);
     await userEvent.upload(choosePhoto(container), photoFile());
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The photograph was not saved. Too large.',
@@ -322,8 +347,8 @@ describe('Your details', () => {
   // replaced it, saying "not saved" about a photograph that was.
   it('takes a refusal away once a photograph saves', async () => {
     api.photoResults = [{ ok: false, error: 'The photograph was not saved. Too large.' }];
-    const { container } = renderDetails();
-    await screen.findByLabelText('Name');
+    const { container } = renderDetails('photo');
+    await screen.findByLabelText(/Choose a photo|Change your photo/);
     await userEvent.upload(choosePhoto(container), photoFile());
     await screen.findByRole('alert');
     await userEvent.upload(choosePhoto(container), photoFile());
@@ -333,13 +358,13 @@ describe('Your details', () => {
   });
 
   it('names the photo control for what it does', async () => {
-    renderDetails();
+    renderDetails('photo');
     expect(await screen.findByLabelText('Choose a photo')).toHaveAttribute('type', 'file');
   });
 
   it('removes the photo', async () => {
     api.details = details({ photoPath: 'u1/profile.jpg' });
-    renderDetails();
+    renderDetails('photo');
     await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
@@ -349,7 +374,7 @@ describe('Your details', () => {
   it('keeps the photo, and says so, when removing it fails', async () => {
     api.details = details({ photoPath: 'u1/profile.jpg' });
     api.removeFails = 'The photograph was not removed.';
-    renderDetails();
+    renderDetails('photo');
     await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
     expect(await screen.findByText('The photograph was not removed.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
@@ -357,18 +382,18 @@ describe('Your details', () => {
 
   describe('describing the photo', () => {
     it('is not asked without a photo to describe', async () => {
-      renderDetails();
-      await screen.findByLabelText('Name');
+      renderDetails('photo');
+      await screen.findByLabelText(/Choose a photo|Change your photo/);
       expect(screen.queryByLabelText('Describe your photo')).not.toBeInTheDocument();
     });
 
     it('saves what the member wrote, with a hint that says who it is for', async () => {
       api.details = details({ photoPath: 'u1/profile.jpg' });
-      renderDetails();
+      renderDetails('photo');
       const field = await screen.findByLabelText('Describe your photo');
       expect(field).toHaveAccessibleDescription(/members who use a screen reader/);
       await userEvent.type(field, 'Me at Ocean Beach');
-      await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
       await waitFor(() => {
         expect(api.saves[0]?.details.photoAlt).toBe('Me at Ocean Beach');
       });
@@ -377,7 +402,7 @@ describe('Your details', () => {
     // A description belongs to one picture.
     it('empties when a new photo replaces the one it described', async () => {
       api.details = details({ photoPath: 'u1/profile.jpg', photoAlt: 'Me at Ocean Beach' });
-      const { container } = renderDetails();
+      const { container } = renderDetails('photo');
       expect(await screen.findByLabelText('Describe your photo')).toHaveValue('Me at Ocean Beach');
       await userEvent.upload(choosePhoto(container), photoFile());
       await waitFor(() => {
@@ -388,9 +413,9 @@ describe('Your details', () => {
 
   it('stays on the page when saving fails, so the field is still there', async () => {
     api.failWith = 'permission denied';
-    renderDetails();
+    renderDetails('name');
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByText('permission denied');
     expect(screen.queryByText('Your profile page')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
@@ -399,23 +424,28 @@ describe('Your details', () => {
 
 describe('declining a detail', () => {
   it('offers Rather not say on the five the ring counts, and on nothing else', async () => {
-    render(
-      <MemoryRouter initialEntries={['/profile/details']}>
-        <Routes>
-          <Route path="/profile/details" element={<ProfileDetailsPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-    await screen.findByLabelText('Name');
     // Five: photo, level, when injured, state, city. Not the name, not the
     // birthday — the database refuses a decline for either, so offering one
     // would be offering a button it would answer with a constraint violation.
-    expect(screen.getAllByRole('button', { name: /Rather not say/ })).toHaveLength(5);
+    const counts: Record<string, number> = {};
+    for (const [part, field] of [
+      ['photo', 'Choose a photo'],
+      ['name', 'Name'],
+      ['birthday', 'Month'],
+      ['injury', 'Level of injury'],
+      ['place', 'City or town'],
+    ] as const) {
+      const view = renderDetails(part);
+      await screen.findAllByLabelText(field);
+      counts[part] = screen.queryAllByRole('button', { name: /Rather not say/ }).length;
+      view.unmount();
+    }
+    expect(counts).toEqual({ photo: 1, name: 0, birthday: 0, injury: 2, place: 2 });
   });
 
   it('records the decline on the tap, not on Save', async () => {
     render(
-      <MemoryRouter initialEntries={['/profile/details']}>
+      <MemoryRouter initialEntries={['/profile/details?part=place']}>
         <Routes>
           <Route path="/profile/details" element={<ProfileDetailsPage />} />
         </Routes>
@@ -439,7 +469,7 @@ describe('declining a detail', () => {
   it('lifts the decline when the field is filled in', async () => {
     api.details = details({ city: null, declined: ['city'] });
     render(
-      <MemoryRouter initialEntries={['/profile/details']}>
+      <MemoryRouter initialEntries={['/profile/details?part=place']}>
         <Routes>
           <Route path="/profile/details" element={<ProfileDetailsPage />} />
         </Routes>
@@ -492,7 +522,7 @@ describe("Your details: the member's Google photo", () => {
 
   it('saves it through the same path as an upload, then asks for a description', async () => {
     sessionWith('google');
-    renderDetails();
+    renderDetails('photo');
     await userEvent.click(await screen.findByRole('button', { name: 'Use my Google photo' }));
     await waitFor(() => {
       expect(api.photosSaved.map((file) => file.name)).toEqual(['google-photo.png']);
@@ -506,15 +536,15 @@ describe("Your details: the member's Google photo", () => {
 
   it('saves nothing until it is chosen', async () => {
     sessionWith('google');
-    renderDetails();
+    renderDetails('photo');
     await screen.findByRole('button', { name: 'Use my Google photo' });
     expect(api.photosSaved).toEqual([]);
   });
 
   it('offers nothing to an Apple account', async () => {
     sessionWith('apple');
-    renderDetails();
-    await screen.findByLabelText('Name');
+    renderDetails('photo');
+    await screen.findByLabelText(/Choose a photo|Change your photo/);
     await act(async () => {
       await Promise.resolve();
     });

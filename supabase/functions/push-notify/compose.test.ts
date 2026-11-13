@@ -414,7 +414,7 @@ describe('compose', () => {
           tag: 'profile:details',
         }),
       ),
-    ).toMatchObject({ title: 'Finish Your details', url: '/profile/details?n=profile%3Adetails' });
+    ).toMatchObject({ title: 'Finish your profile', url: '/profile/details?n=profile%3Adetails' });
     expect(
       compose(
         owed({
