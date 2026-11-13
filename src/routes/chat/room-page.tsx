@@ -281,6 +281,7 @@ export default function RoomPage() {
               places={places}
               prices={prices}
               free={room.id === 'giving-away'}
+              priced={room.id === PRICED_ROOM}
             />
           ) : (
             sorted.map((topic) => {

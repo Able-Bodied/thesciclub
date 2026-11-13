@@ -95,11 +95,11 @@ export function PlaceAsk() {
   return (
     <div className="mt-4 rounded-[13px] border border-line bg-tint px-3.5 py-3">
       <label htmlFor={id} className="block font-bold font-head text-[0.8125rem] text-ink">
-        Where are you?
+        Where are you? <span className="font-normal text-grey">(optional)</span>
       </label>
       <p className="mt-0.5 text-[0.75rem] text-grey leading-[1.45]">
         Listings here show the city on your profile, and yours has none yet. Add your ZIP code and
-        we will fill it in. You can change it on your profile any time.
+        we will fill it in. You can post without it, and change it on your profile any time.
       </p>
       <div className="mt-2 flex gap-2">
         <input
@@ -111,7 +111,7 @@ export function PlaceAsk() {
           onChange={(event) => {
             setZip(event.target.value);
           }}
-          placeholder="95112"
+          placeholder="ZIP code"
           className="min-h-[44px] w-[8rem] rounded-[12px] border-[1.6px] border-line bg-paper px-3 py-2 text-[1rem] text-ink outline-none focus:border-emphasis"
         />
         <button

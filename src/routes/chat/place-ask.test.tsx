@@ -53,14 +53,14 @@ describe('asking for a city in Classifieds', () => {
       const { unmount } = render(<PlaceAsk />);
       // The read lands in one turn, as the asked case below shows.
       await act(() => Promise.resolve());
-      expect(screen.queryByLabelText('Where are you?')).toBeNull();
+      expect(screen.queryByLabelText(/Where are you/)).toBeNull();
       unmount();
     }
 
     db.row = member();
     render(<PlaceAsk />);
     await act(() => Promise.resolve());
-    await userEvent.type(screen.getByLabelText('Where are you?'), '95112');
+    await userEvent.type(screen.getByLabelText(/Where are you/), '95112');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
     expect(await screen.findByRole('status')).toHaveTextContent('San Jose, CA');
     expect(db.updates).toEqual([{ zip: '95112', city: 'San Jose', state: 'CA' }]);
