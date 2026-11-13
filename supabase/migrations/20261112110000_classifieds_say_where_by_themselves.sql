@@ -10,7 +10,7 @@
 -- ============================================================================
 
 update public.chat_rooms
-   set description = 'Equipment and other things members are selling. Say what it is, its condition and the price.'
+   set description = 'Equipment and other things members are selling. Say what it is and what condition it is in.'
  where id = 'for-sale'
    and description = 'Equipment and other things members are selling. Say what it is, its condition, the price and roughly where you are.';
 

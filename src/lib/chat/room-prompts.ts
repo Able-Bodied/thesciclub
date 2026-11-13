@@ -131,7 +131,7 @@ const PROMPTS: Entry[] = [
     ids: ['for-sale'],
     name: /^for sale/i,
     title: 'Quickie Nitro, 16" seat, barely used — $900',
-    body: 'What it is, its condition and the price. Photos help. Meet somewhere public, and settle payment between yourselves: nothing is paid through the club.',
+    body: 'What it is and what condition it is in. Photos help. Meet somewhere public, and settle payment between yourselves: nothing is paid through the club.',
   },
   {
     ids: ['giving-away'],
