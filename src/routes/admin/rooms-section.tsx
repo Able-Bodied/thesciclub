@@ -37,6 +37,8 @@ const CATEGORY_DOT: Record<RoomCategory, string> = {
   Life: 'bg-room-life',
   Family: 'bg-room-family',
   Kit: 'bg-room-kit',
+  // Kit's colour: most of what changes hands here is kit.
+  Classifieds: 'bg-room-kit',
   Places: 'bg-room-places',
 };
 

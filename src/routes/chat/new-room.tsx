@@ -16,7 +16,7 @@ import {
   useChatRooms,
   useRoomStats,
 } from '@/lib/chat/rooms';
-import { type ChatRoom, ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
+import { type ChatRoom, MEMBER_ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
@@ -196,7 +196,7 @@ export default function NewRoomPage() {
         </p>
         {/* Wrapped, not scrolled: at 430px a scrolling row hides choices off the edge. */}
         <SegmentPills<RoomCategory | ''>
-          segments={ROOM_CATEGORIES.map((c) => [c, c] as const)}
+          segments={MEMBER_ROOM_CATEGORIES.map((c) => [c, c] as const)}
           value={category ?? ''}
           onChange={(next) => {
             setCategory(next === '' ? null : next);
