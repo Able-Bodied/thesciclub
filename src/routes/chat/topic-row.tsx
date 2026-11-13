@@ -21,10 +21,13 @@ export function TopicRow({
   topic,
   authors,
   likes,
+  place,
 }: {
   topic: ChatTopic;
   authors: Map<string, ChatAuthor>;
   likes?: CardLikes | undefined;
+  /** Where whoever started it is, in Classifieds (author-places.ts). */
+  place?: string | undefined;
 }) {
   const faces = topic.participantIds.slice(0, 4);
 
@@ -89,6 +92,7 @@ export function TopicRow({
           <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
             {chatTime(topic.lastPostAt)}
           </b>
+          {place ? <i className="ml-[9px] not-italic">{place}</i> : null}
         </span>
       </span>
       {likes ? (

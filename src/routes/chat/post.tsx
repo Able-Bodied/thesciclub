@@ -70,8 +70,11 @@ export function Post({
   flash = false,
   hideBody = false,
   opening = false,
+  place,
   children,
 }: {
+  /** Where the author is, in Classifieds (author-places.ts). */
+  place?: string | undefined;
   post: ChatPost;
   /** Null for a removed member, and also while the name is still loading. */
   author: ChatAuthor | null;
@@ -285,7 +288,10 @@ export function Post({
               ) : null}
             </span>
             <PartnerLabel memberId={author?.id} />
-            <span className="block text-[0.78125rem] text-grey">{chatTime(post.createdAt)}</span>
+            <span className="block text-[0.78125rem] text-grey">
+              {chatTime(post.createdAt)}
+              {place ? ` · ${place}` : null}
+            </span>
           </span>
 
           {/* The mock's `.pnum`, counted among the top-level posts still

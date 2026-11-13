@@ -12,6 +12,7 @@ import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/membe
 import { useAccount } from '@/lib/account';
 import { useMyBlocks } from '@/lib/blocks';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
+import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
 import { usePostLikes } from '@/lib/chat/likes';
@@ -149,6 +150,11 @@ export default function TopicPage() {
     [topic?.authorId, posts],
   );
   const room = rooms.find((r) => r.id === roomId) ?? null;
+  // In Classifieds, each post says where its author is (the owner, 2026-11-12).
+  const places = useAuthorPlaces(
+    posts.map((post) => post.authorId),
+    room?.category === 'Classifieds',
+  );
   // Home, when the topic was opened from a card there; the room otherwise.
   const location = useLocation();
   const back = backFromTopic(location.state, room);
@@ -372,6 +378,7 @@ export default function TopicPage() {
   const postProps = (post: ChatPost) => ({
     post,
     author: post.authorId ? (authors.get(post.authorId) ?? null) : null,
+    place: post.authorId ? places.get(post.authorId) : undefined,
     // The author's own, and nobody else's — not an administrator's either.
     // chat_edit_post decides; this only asks.
     canEdit: canPost && post.authorId === account.userId,
