@@ -31,6 +31,8 @@ import {
 
 /** The "Include" chips, in order; unticked is left out (the owner, 2026-11-12). */
 export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
+  { id: 'mentors', label: 'Mentors' },
+  { id: 'nonMentors', label: 'Non-mentors' },
   { id: 'professionals', label: 'Professionals' },
   { id: 'family', label: 'Family members' },
   { id: 'orgAdmins', label: 'Org admins' },
@@ -48,6 +50,8 @@ function leftOut(member: BrowseMember, filters: MemberFilters, segment: PeersSeg
   if (out.has('professionals') && segment !== 'professionals') {
     if (member.injuryType === 'professional') return true;
   }
+  if (out.has('mentors') && member.type === 'mentor') return true;
+  if (out.has('nonMentors') && member.type !== 'mentor') return true;
   if (out.has('family') && member.injuryType === 'family') return true;
   return out.has('orgAdmins') && member.representedOrganizations.length > 0;
 }

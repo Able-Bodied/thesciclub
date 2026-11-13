@@ -29,11 +29,11 @@ function renderSheet(overrides: Partial<FilterSheetProps> = {}) {
 const topicChips = () => screen.getAllByRole('button', { name: /^Topic \d+$/ });
 
 describe('who to look for', () => {
-  it('narrows to mentors, or to those who are not', async () => {
+  it('leaves out non-mentors when their chip is unticked', async () => {
     const onChange = vi.fn();
     renderSheet({ onChange });
     await userEvent.click(screen.getByRole('button', { name: 'Non-mentors' }));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ role: 'peers' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ leaveOut: ['nonMentors'] }));
   });
 
   it('offers the organizations in the list, as a menu', async () => {

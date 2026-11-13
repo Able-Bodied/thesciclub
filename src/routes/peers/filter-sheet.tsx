@@ -32,12 +32,6 @@ import type { InjuryRegion, MemberFilters } from '@/types/domain';
  */
 export const TOPICS_SHOWN = 24;
 
-const ROLES: [MemberFilters['role'], string][] = [
-  ['any', 'Everyone'],
-  ['mentors', 'Mentors'],
-  ['peers', 'Non-mentors'],
-];
-
 export interface FilterSheetProps {
   regions: InjuryRegion[];
   /** Somebody in the deck has a spinal cord condition: offer its chip. */
@@ -115,21 +109,9 @@ export function FilterSheet({
         />
       ) : null}
 
-      <FilterGroup title="Mentors">
-        {ROLES.map(([role, label]) => (
-          <FilterChip
-            key={role}
-            label={label}
-            on={filters.role === role}
-            onClick={() => {
-              onChange({ ...filters, role });
-            }}
-          />
-        ))}
-      </FilterGroup>
-
-      {/* Ticked is shown (the owner, 2026-11-12): professionals and family
-          start unticked, so the deck is members with SCI/D. */}
+      {/* Mentors and who is included, in one group, ticked is shown (the owner,
+          2026-11-12): professionals and family start unticked, so the deck is
+          members with SCI/D. */}
       <FilterGroup title="Include">
         {LEAVE_OUT.map(({ id, label }) => (
           <FilterChip

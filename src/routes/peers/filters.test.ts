@@ -92,6 +92,8 @@ describe('segments', () => {
       expect.arrayContaining(['Pat Pro', 'Fay Family']),
     );
     expect(names({ ...start, leaveOut: ['orgAdmins'] })).not.toContain('Ada Admin');
+    // Mentors and non-mentors are chips of the same group.
+    expect(names({ ...start, leaveOut: [...start.leaveOut, 'nonMentors'] })).toEqual(['Mentor']);
     // A search finds anybody by name, left out or not.
     expect(names({ ...start, search: 'Pat' })).toEqual(['Pat Pro']);
     // Where Peers starts is no filter; a change from it is one each.

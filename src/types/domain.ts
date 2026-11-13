@@ -651,8 +651,14 @@ export interface MemberFilters {
   search: string;
 }
 
-/** Members who can be left out of Peers: not members with SCI/D themselves, or org admins. */
-export const PEERS_LEFT_OUT = ['professionals', 'family', 'orgAdmins'] as const;
+/** Who can be left out of Peers: mentors or not, those without SCI/D themselves, org admins. */
+export const PEERS_LEFT_OUT = [
+  'mentors',
+  'nonMentors',
+  'professionals',
+  'family',
+  'orgAdmins',
+] as const;
 export type PeersLeftOut = (typeof PEERS_LEFT_OUT)[number];
 
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
