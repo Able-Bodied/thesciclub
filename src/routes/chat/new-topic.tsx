@@ -191,6 +191,18 @@ export default function NewTopicPage() {
             : 'Every member can read this, including members who join later. Nothing here is public.'}
         </p>
 
+        {/* A listing starts with its photographs (the owner, 2026-11-12). */}
+        {listing && !sharing ? (
+          <>
+            {photos}
+            <p className="mt-1 text-[0.71875rem] text-grey">
+              {files.length === 0
+                ? 'Listings with a photograph get more replies. The first one is shown in the room.'
+                : 'The first photograph is the one shown in the room.'}
+            </p>
+          </>
+        ) : null}
+
         {/* The room can be changed here too (the owner, 2026-10-28): it was
             fixed once "Add details" brought the post over. The same screen
             for another room keeps what is typed; App Feedback's stays put. */}
@@ -239,14 +251,7 @@ export default function NewTopicPage() {
           </p>
         ) : null}
 
-        {sharing || listing ? photos : null}
-        {listing && !sharing ? (
-          <p className="mt-1 text-[0.71875rem] text-grey">
-            {files.length === 0
-              ? 'Listings with a photograph get more replies. The first one is the picture in the room.'
-              : 'The first photograph is the picture in the room.'}
-          </p>
-        ) : null}
+        {sharing ? photos : null}
 
         <label
           htmlFor="topic-title"
@@ -256,7 +261,11 @@ export default function NewTopicPage() {
             ? 'Say something about it'
             : feedback
               ? 'In a few words, what is it about?'
-              : 'What is it about?'}
+              : listing
+                ? room.id === 'looking-for'
+                  ? 'What are you looking for?'
+                  : 'What are you listing?'
+                : 'What is it about?'}
         </label>
         <input
           id="topic-title"
@@ -269,7 +278,10 @@ export default function NewTopicPage() {
           className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
-          {140 - title.length} characters left. This is the line people see in the list.
+          {140 - title.length} characters left.{' '}
+          {listing
+            ? 'This is the line under the photograph.'
+            : 'This is the line people see in the list.'}
         </p>
 
         {priced ? (
@@ -305,11 +317,13 @@ export default function NewTopicPage() {
           </>
         ) : null}
 
+        {listing ? <PlaceAsk /> : null}
+
         <label
           htmlFor="topic-body"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          {feedback ? 'Tell us more' : 'The first post'}{' '}
+          {feedback ? 'Tell us more' : listing ? 'Description' : 'The first post'}{' '}
           {sharing ? null : <span className="font-normal text-grey">(optional)</span>}
         </label>
         {sharing ? (
@@ -341,7 +355,13 @@ export default function NewTopicPage() {
 
         {sharing || listing ? null : photos}
 
-        {room.category === 'Classifieds' ? <PlaceAsk /> : null}
+        {/* Said where it stays, not only as the example that typing hides. */}
+        {listing && room.id !== 'looking-for' ? (
+          <p className="mt-4 text-[0.78125rem] text-ink2 leading-[1.45]">
+            Meet somewhere public, and settle payment between yourselves. Nothing is paid through
+            the club.
+          </p>
+        ) : null}
 
         <button
           type="button"

@@ -108,7 +108,7 @@ export function ListingPrice({ topicId, isSeller }: { topicId: string; isSeller:
             setText(cents !== undefined ? String(cents / 100) : '');
             setEditing(true);
           }}
-          className="min-h-[44px] text-[0.8125rem] text-emphasis underline-offset-2 hover:underline"
+          className="min-h-[44px] px-1 text-[0.8125rem] text-emphasis underline underline-offset-2"
         >
           {cents !== undefined ? 'Change price' : 'Add a price'}
         </button>

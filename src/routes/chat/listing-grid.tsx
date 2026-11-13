@@ -52,6 +52,7 @@ export function ListingGrid({
   places,
   prices,
   free = false,
+  priced = false,
 }: {
   topics: readonly ChatTopic[];
   /** Each topic's opening post id, from useTopicOpeningPosts. */
@@ -62,6 +63,8 @@ export function ListingGrid({
   prices: Map<string, number>;
   /** Giving away: every tile says Free where a price would be. */
   free?: boolean;
+  /** For sale: a listing with no price says so, rather than nothing. */
+  priced?: boolean;
 }) {
   const postIds = topics
     .map((topic) => openingPosts.get(topic.id))
@@ -78,10 +81,10 @@ export function ListingGrid({
         const price = free ? 0 : prices.get(topic.id);
         const place = topic.authorId ? places.get(topic.authorId) : undefined;
         return (
-          <li key={topic.id}>
+          <li key={topic.id} className="flex">
             <Link
               to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
-              className="group block overflow-hidden rounded-[15px] border border-line bg-paper"
+              className="group flex w-full flex-col overflow-hidden rounded-[15px] border border-line bg-paper"
             >
               <span className="relative block aspect-square bg-tint">
                 {src ? (
@@ -104,6 +107,10 @@ export function ListingGrid({
                 {price !== undefined ? (
                   <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
                     {formatPrice(price)}
+                  </span>
+                ) : priced ? (
+                  <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
+                    Make an offer
                   </span>
                 ) : null}
                 <span className="line-clamp-2 font-bold font-head text-[0.84375rem] text-ink leading-[1.3] group-hover:underline">
