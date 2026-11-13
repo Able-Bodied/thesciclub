@@ -195,6 +195,15 @@ select public.chat_create_room('Somewhere else', 'A room outside the six.', 'Adm
 rollback to savepoint bad_category;
 
 \echo ''
+\echo '== 9b. nobody starts a room in Classifieds (20261112100000) =='
+\echo '   expect: ERROR. The column accepts it for the club''s own rooms; the'
+\echo '   function does not, so the section stays the club''s five rooms.'
+savepoint classifieds;
+select public.chat_create_room('Bikes for sale', 'Handcycles and the like, for sale.', 'Classifieds',
+                               'Hello', 'Hello.');
+rollback to savepoint classifieds;
+
+\echo ''
 \echo '== 9a. the three categories added on 2026-09-21 are accepted =='
 \echo '   expect: no error and three rows — Mind, Family, Places. Mental health'
 \echo '   and living independently were the two profile topics with no room to'

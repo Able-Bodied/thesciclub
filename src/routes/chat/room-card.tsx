@@ -26,6 +26,8 @@ const CATEGORY_STYLE: Record<RoomCategory, { border: string; icon: string; label
   Life: { border: 'border-l-room-life', icon: 'text-room-life', label: 'bg-room-life' },
   Family: { border: 'border-l-room-family', icon: 'text-room-family', label: 'bg-room-family' },
   Kit: { border: 'border-l-room-kit', icon: 'text-room-kit', label: 'bg-room-kit' },
+  // Kit's colour: most of what changes hands here is kit.
+  Classifieds: { border: 'border-l-room-kit', icon: 'text-room-kit', label: 'bg-room-kit' },
   Places: { border: 'border-l-room-places', icon: 'text-room-places', label: 'bg-room-places' },
 };
 

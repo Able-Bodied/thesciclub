@@ -24,6 +24,8 @@ export const ROOM_ICON_COLOUR: Record<RoomCategory, string> = {
   Life: 'text-room-life',
   Family: 'text-room-family',
   Kit: 'text-room-kit',
+  // Kit's colour: most of what changes hands here is kit.
+  Classifieds: 'text-room-kit',
   Places: 'text-room-places',
 };
 

@@ -19,7 +19,12 @@
  * 20260918180000's header. General (2026-10-09, 20261010010000) is first: a
  * room about nothing in particular, and where a question asked from Home
  * with no room chosen goes. Other (20261010030000) is last: a heading of its
- * own for what fits no room at all.
+ * own for what fits no room at all. Classifieds (the owner, 2026-11-12,
+ * 20261112100000) holds three rooms the club made: For sale, Giving away and
+ * Looking for. Members cannot start rooms in it.
+ *
+ * A copy of the app from before a category was added draws that category's
+ * rooms under Body (toRoom in rooms.ts), so adding one is safe for it.
  */
 export const ROOM_CATEGORIES = [
   'General',
@@ -29,9 +34,15 @@ export const ROOM_CATEGORIES = [
   'Family',
   'Kit',
   'Places',
+  'Classifieds',
   'Other',
 ] as const;
 export type RoomCategory = (typeof ROOM_CATEGORIES)[number];
+
+/** The categories a member may start a room in: all but Classifieds. */
+export const MEMBER_ROOM_CATEGORIES = ROOM_CATEGORIES.filter(
+  (category): category is Exclude<RoomCategory, 'Classifieds'> => category !== 'Classifieds',
+);
 
 export interface ChatRoom {
   /** A slug — `bowel`, `bladder` — and what is in the URL. */
