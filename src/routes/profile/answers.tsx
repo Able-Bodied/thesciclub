@@ -108,7 +108,9 @@ export default function ProfileAnswersPage() {
           </p>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-[18px] py-4">
+        {/* Keep the absolutely positioned screen-reader labels inside this
+            scroller, so they cannot create a second scrollbar on the page. */}
+        <div className="relative flex-1 overflow-y-auto px-[18px] py-4">
           {loading ? (
             <p role="status" className="py-10 text-center text-[0.875rem] text-grey">
               Loading…
