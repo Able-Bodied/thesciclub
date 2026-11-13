@@ -85,6 +85,7 @@ describe('introducing two members', () => {
       join: false,
       groupId: null,
       name: '',
+      copy: false,
     });
     await waitFor(() => {
       expect(onSent).toHaveBeenCalled();
@@ -105,7 +106,7 @@ describe('introducing two members', () => {
     expect(state.make).toHaveBeenCalledWith(expect.objectContaining({ join: true }));
   });
 
-  it('introduces the member to a group the partner started', async () => {
+  it('starts a new group from one the partner started, leaving it as it is', async () => {
     state.make.mockResolvedValue({ ok: true, value: 'g1' });
     state.groups.mockResolvedValue({
       ok: true,
@@ -116,12 +117,14 @@ describe('introducing two members', () => {
     await userEvent.click(await screen.findByRole('radio', { name: /Saturday riders/ }));
     expect(screen.getByText(/3 members · You started it/)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('A note to everyone'), 'Sam rides too.');
-    await userEvent.click(screen.getByRole('button', { name: 'Add to the group' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Start the new group' }));
     expect(state.make).toHaveBeenCalledWith(
-      expect.objectContaining({ people: ['sam'], groupId: 'g1', join: false }),
+      expect.objectContaining({ people: ['sam'], groupId: 'g1', copy: true, name: '' }),
     );
     await waitFor(() => {
-      expect(state.announce).toHaveBeenCalledWith('Sam Lee was added to “Saturday riders”.');
+      expect(state.announce).toHaveBeenCalledWith(
+        'Sam Lee is connected with “Saturday riders” in a new group, “Saturday riders & Sam”.',
+      );
     });
   });
 

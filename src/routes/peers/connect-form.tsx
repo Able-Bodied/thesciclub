@@ -4,6 +4,7 @@ import { describeThrown } from '@/lib/describe-error';
 import {
   type ConnectionGroup,
   connectMembers,
+  copyGroupName,
   defaultGroupName,
   fetchConnectionGroups,
   INTRODUCTION_NOTE_MAX,
@@ -18,6 +19,8 @@ import { useConnectableMembers } from '@/routes/peers/connect-fields';
  * Connecting members (the owner, 2026-11-06): two or more into a new group
  * they can name, or one or more into a group the connector already has. The
  * same form on a profile's Introduce sheet and on Stats & controls.
+ * From an existing group, a new group with its members is the default
+ * (the owner, 2026-11-09); adding into the group itself is the other choice.
  */
 
 const GROUP_NAME_MAX = 60;
@@ -48,6 +51,7 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
   const [groups, setGroups] = useState<ConnectionGroup[] | null>(null);
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [copy, setCopy] = useState(true);
   const [note, setNote] = useState('');
   const [join, setJoin] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,8 +87,15 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
   }, [locked, members]);
   const everyone = lockedPerson ? [lockedPerson, ...people] : people;
   const group = groups?.find((g) => g.id === groupId) ?? null;
-  const fallbackName = defaultGroupName(everyone.map((p) => p.displayName));
-  const alreadyIn = where === 'existing' && group?.mine === true;
+  const copying = where === 'existing' && copy;
+  const fallbackName =
+    copying && group
+      ? copyGroupName(
+          group.name,
+          everyone.map((p) => p.displayName),
+        )
+      : defaultGroupName(everyone.map((p) => p.displayName));
+  const alreadyIn = where === 'existing' && !copy && group?.mine === true;
 
   const missing =
     where === 'new' && everyone.length < 2
@@ -111,18 +122,21 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
         note,
         join: alreadyIn ? false : join,
         groupId: where === 'existing' ? groupId : null,
-        name,
+        name: where === 'existing' && !copy ? '' : name,
+        copy: copying,
       });
       if (!result.ok) {
         setFailure(result.error);
         return null;
       }
       const names = listNames(everyone.map((p) => p.displayName));
-      const groupName = where === 'existing' ? (group?.name ?? '') : name.trim() || fallbackName;
+      const adding = where === 'existing' && !copy;
+      const groupName = adding ? (group?.name ?? '') : name.trim() || fallbackName;
       const done: Connected = {
-        summary:
-          where === 'existing'
-            ? `${names} ${everyone.length === 1 ? 'was' : 'were'} added to “${groupName}”.`
+        summary: adding
+          ? `${names} ${everyone.length === 1 ? 'was' : 'were'} added to “${groupName}”.`
+          : copying
+            ? `${names} ${everyone.length === 1 ? 'is' : 'are'} connected with “${group?.name ?? ''}” in a new group, “${groupName}”.`
             : `${names} are connected in “${groupName}”.`,
         threadId: result.value,
         canOpen: alreadyIn || join,
@@ -132,6 +146,7 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
       setNote('');
       setJoin(false);
       setGroupId(null);
+      setCopy(true);
       setReload((n) => n + 1);
       return done;
     } catch (e) {
@@ -158,6 +173,9 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
     groupId,
     setGroupId,
     group,
+    copy,
+    setCopy,
+    copying,
     alreadyIn,
     note,
     setNote,
@@ -167,7 +185,13 @@ export function useConnectForm(locked?: { id: string; displayName: string }) {
     failure,
     missing,
     submit,
-    actionLabel: busy ? 'Connecting…' : where === 'existing' ? 'Add to the group' : 'Connect them',
+    actionLabel: busy
+      ? 'Connecting…'
+      : where === 'existing' && !copy
+        ? 'Add to the group'
+        : copying
+          ? 'Start the new group'
+          : 'Connect them',
   };
 }
 
@@ -185,7 +209,7 @@ export function ConnectFields({ form }: { form: ConnectForm }) {
         label={twoOnly ? 'A note to both of them' : 'A note to everyone'}
         hint={
           form.where === 'existing'
-            ? 'Why they might like to meet. Everyone in the group will read it, so leave out health details.'
+            ? `Why they might like to meet. Everyone in the ${form.copy ? 'new ' : ''}group will read it, so leave out health details.`
             : twoOnly
               ? 'Why they might like to meet. Both will read it, so leave out health details.'
               : 'Why they might like to meet. They will all read it, so leave out health details.'
@@ -205,13 +229,17 @@ export function ConnectFields({ form }: { form: ConnectForm }) {
             Join the conversation yourself
           </label>
           <p className="text-[0.8125rem] text-grey leading-[1.45]">
-            {form.where === 'existing'
+            {form.copying
               ? form.join
-                ? 'You will be added to the group too.'
-                : 'You stay out of the group, and can still add people to it later.'
-              : form.join
-                ? 'A group opens right away, with a line saying you connected them, and your note. You will be in it too.'
-                : 'A group opens right away, with a line saying you connected them, and your note. Only they will be in it, and you can add people to it later.'}
+                ? 'A new group opens with its members and the people you chose, with a line saying you connected them, and your note. You will be in it too.'
+                : 'A new group opens with its members and the people you chose, with a line saying you connected them, and your note. You stay out of it.'
+              : form.where === 'existing'
+                ? form.join
+                  ? 'You will be added to the group too.'
+                  : 'You stay out of the group, and can still add people to it later.'
+                : form.join
+                  ? 'A group opens right away, with a line saying you connected them, and your note. You will be in it too.'
+                  : 'A group opens right away, with a line saying you connected them, and your note. Only they will be in it, and you can add people to it later.'}
           </p>
         </>
       )}
@@ -259,7 +287,6 @@ function PeoplePicker({ form }: { form: ConnectForm }) {
 
 function WhereChoice({ form }: { form: ConnectForm }) {
   const nameId = useId();
-  const nameHintId = useId();
   const groupSearchId = useId();
   const [typed, setTyped] = useState('');
   const groups = form.groups ?? [];
@@ -302,26 +329,7 @@ function WhereChoice({ form }: { form: ConnectForm }) {
       </div>
 
       {form.where === 'new' ? (
-        <div className="mt-3">
-          <label htmlFor={nameId} className="block font-semibold text-[0.875rem] text-ink">
-            Group name <span className="font-normal text-grey">(optional)</span>
-          </label>
-          <input
-            id={nameId}
-            value={form.name}
-            maxLength={GROUP_NAME_MAX}
-            aria-describedby={nameHintId}
-            onChange={(e) => {
-              form.setName(e.target.value);
-            }}
-            placeholder={form.fallbackName || 'Saturday riders'}
-            className="mt-1.5 min-h-[48px] w-full rounded-[11px] border border-line bg-paper px-3 text-[1rem] text-ink"
-          />
-          <p id={nameHintId} className="mt-1 text-[0.8125rem] text-grey leading-[1.45]">
-            {form.fallbackName ? `Leave it blank to call it “${form.fallbackName}”. ` : null}
-            It is kept, so you can add people to it next time.
-          </p>
-        </div>
+        <GroupNameField form={form} />
       ) : form.groups === null ? (
         <p className="mt-3 text-[0.875rem] text-grey">
           {form.groupsError ?? 'Loading your groups…'}
@@ -381,9 +389,81 @@ function WhereChoice({ form }: { form: ConnectForm }) {
               <li className="px-3 py-3 text-[0.875rem] text-grey">No group matches that.</li>
             ) : null}
           </ul>
+          {form.group ? <CopyChoice form={form} /> : null}
         </div>
       )}
     </fieldset>
+  );
+}
+
+/** From an existing group: a new group with its members, or into the group itself. */
+function CopyChoice({ form }: { form: ConnectForm }) {
+  const id = useId();
+  const choices = [
+    [
+      true,
+      'A new group with its members',
+      `Everyone in “${form.group?.name ?? ''}” and the people you chose. “${form.group?.name ?? ''}” stays as it is.`,
+    ],
+    [false, 'Add them to this group', 'They join the conversation and can read its history.'],
+  ] as const;
+  return (
+    <fieldset className="mt-3">
+      <legend className="font-semibold text-[0.875rem] text-ink">How?</legend>
+      <div className="mt-1.5 space-y-2">
+        {choices.map(([value, title, detail]) => (
+          <label
+            key={title}
+            className={cn(
+              'flex min-h-[52px] cursor-pointer items-start gap-2.5 rounded-[12px] border-2 px-3 py-2',
+              form.copy === value ? 'border-emphasis bg-tint' : 'border-line bg-paper',
+            )}
+          >
+            <input
+              type="radio"
+              name={`${id}-copy`}
+              checked={form.copy === value}
+              onChange={() => {
+                form.setCopy(value);
+              }}
+              className="mt-0.5 h-[18px] w-[18px] flex-none"
+            />
+            <span className="min-w-0">
+              <span className="block font-bold text-[0.9375rem] text-ink">{title}</span>
+              <span className="block text-[0.8125rem] text-grey leading-[1.45]">{detail}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {form.copy ? <GroupNameField form={form} /> : null}
+    </fieldset>
+  );
+}
+
+function GroupNameField({ form }: { form: ConnectForm }) {
+  const nameId = useId();
+  const nameHintId = useId();
+  return (
+    <div className="mt-3">
+      <label htmlFor={nameId} className="block font-semibold text-[0.875rem] text-ink">
+        Group name <span className="font-normal text-grey">(optional)</span>
+      </label>
+      <input
+        id={nameId}
+        value={form.name}
+        maxLength={GROUP_NAME_MAX}
+        aria-describedby={nameHintId}
+        onChange={(e) => {
+          form.setName(e.target.value);
+        }}
+        placeholder={form.fallbackName || 'Saturday riders'}
+        className="mt-1.5 min-h-[48px] w-full rounded-[11px] border border-line bg-paper px-3 text-[1rem] text-ink"
+      />
+      <p id={nameHintId} className="mt-1 text-[0.8125rem] text-grey leading-[1.45]">
+        {form.fallbackName ? `Leave it blank to call it “${form.fallbackName}”. ` : null}
+        It is kept, so you can add people to it next time.
+      </p>
+    </div>
   );
 }
 
