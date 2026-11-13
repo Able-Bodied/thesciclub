@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { type Location, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
 import type * as Reports from '@/lib/chat/reports';
@@ -129,6 +129,7 @@ function room(id: string, name: string, openedAt: string | null) {
 const {
   default: MemberDetailPage,
   backFrom,
+  backToMembers,
   childrenLabel,
 } = await import('@/routes/peers/member-detail');
 
@@ -508,14 +509,43 @@ describe('the @username', () => {
 });
 
 describe('backFrom', () => {
-  // The button goes back through history either way; the label is what can
-  // be wrong.
   it('names the screen the profile was opened from', () => {
     expect(backFrom({ from: 'me' })).toBe('Me');
     expect(backFrom({ from: 'home', segment: 'people' })).toBe('Home');
     expect(backFrom(null)).toBe('Peers');
     expect(backFrom({ segment: 'upcoming', view: 'map' })).toBe('Events');
     expect(backFrom({ from: 'peers-map' })).toBe('Peers');
+  });
+});
+
+describe('returning from a member profile', () => {
+  it.each([false, true])(
+    'returns to Peers after restoring a profile from Chat (blocked: %s)',
+    async (blocked) => {
+      if (blocked) blocks.ids.add('abc');
+      render(
+        <MemoryRouter initialEntries={['/peers', '/peers/abc', '/chat', '/peers/abc']}>
+          <Routes>
+            <Route path="/peers/:id" element={<MemberDetailPage />} />
+            <Route path="/peers" element={<h1>Peers directory</h1>} />
+            <Route path="/chat" element={<h1>Chat conversations</h1>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Peers' }));
+      expect(screen.getByRole('heading', { name: 'Peers directory' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Chat conversations' })).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    [null, '/peers'],
+    [{ from: 'me' }, '/me'],
+    [{ from: 'home', segment: 'people' }, '/home?segment=people'],
+    [{ from: 'peers-map' }, '/peers?view=map'],
+    [{ segment: 'orgs', view: 'map' }, '/events?segment=orgs&view=map'],
+  ])('preserves the originating screen for %j', (state, expected) => {
+    expect(backToMembers({ state } as Location)).toBe(expected);
   });
 });
 
