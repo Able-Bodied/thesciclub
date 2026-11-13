@@ -44,12 +44,10 @@ function leaveOutChanges(filters: MemberFilters): number {
   return LEAVE_OUT.filter(({ id }) => filters.leaveOut.includes(id) !== start.includes(id)).length;
 }
 
-/** Whether a member is one of those left out. On Professionals, professionals stay. */
-function leftOut(member: BrowseMember, filters: MemberFilters, segment: PeersSegment): boolean {
+/** Whether a member is one of those left out. */
+function leftOut(member: BrowseMember, filters: MemberFilters): boolean {
   const out = new Set(filters.leaveOut);
-  if (out.has('professionals') && segment !== 'professionals') {
-    if (member.injuryType === 'professional') return true;
-  }
+  if (out.has('professionals') && member.injuryType === 'professional') return true;
   if (out.has('mentors') && member.type === 'mentor') return true;
   if (out.has('nonMentors') && member.type !== 'mentor') return true;
   if (out.has('family') && member.injuryType === 'family') return true;
@@ -133,15 +131,9 @@ function matchesMemberSearch(member: BrowseMember, search: string): boolean {
   return matchesSearch(member.displayName, search);
 }
 
-/**
- * Professionals, who joined as working with people with SCI/D, have a button
- * of their own (the owner, 2026-11-11). Elsewhere the Leave out filter decides
- * whether they show, as it does for family and org admins (2026-11-12).
- */
+/** Mentors narrows to mentors; who else shows is the Include filter's (the owner, 2026-11-12). */
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
-  if (segment === 'professionals') return member.injuryType === 'professional';
-  if (segment === 'mentors') return member.type === 'mentor';
-  return true;
+  return segment !== 'mentors' || member.type === 'mentor';
 }
 
 /** Every organization a member is part of, by name: their own words and the club's records. */
@@ -271,7 +263,7 @@ export function filterMembers(
   const far = searching ? null : chosenFar;
   const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
-    if (leftOut(member, filters, segment)) return false;
+    if (leftOut(member, filters)) return false;
     if (!matchesLevel(member, filters)) return false;
     if (!matchesAge(member, filters)) return false;
     if (filters.role === 'mentors' && member.type !== 'mentor') return false;
