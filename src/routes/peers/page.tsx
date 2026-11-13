@@ -45,7 +45,7 @@ import {
 /**
  * Peers — the deck of members, and the first thing somebody sees after joining.
  *
- * Everyone / Mentors / Professionals are segment pills rather than separate tabs,
+ * Everyone / Mentors are segment pills rather than separate tabs,
  * because at this card size a segment is a change of content and nothing else.
  * Horizontal swipe does the same thing as the pills; it is an accelerator and
  * never the only way through, because switch control, keyboard and VoiceOver
@@ -55,7 +55,6 @@ import {
 const SEGMENTS = [
   ['everyone', 'Peers'],
   ['mentors', 'Mentors'],
-  ['professionals', 'Professionals'],
 ] as const;
 
 export default function PeersPage() {
