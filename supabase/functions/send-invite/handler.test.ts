@@ -26,7 +26,11 @@ function invite(overrides: Partial<InviteRow> = {}): InviteRow {
 }
 
 function setup(row: InviteRow | null = invite(), admins: string[] = []) {
-  const log = { hashes: [] as string[], sent: [] as { to: string; text: string }[], marked: 0 };
+  const log = {
+    hashes: [] as string[],
+    sent: [] as { to: string; text: string; subject: string; html: string }[],
+    marked: 0,
+  };
   const deps: Deps = {
     callerId: (jwt) => Promise.resolve(jwt === 'maya' ? MAYA : jwt === 'sam' ? SAM : null),
     isAdmin: (id) => Promise.resolve(admins.includes(id)),
@@ -49,7 +53,7 @@ function setup(row: InviteRow | null = invite(), admins: string[] = []) {
       return Promise.resolve();
     },
     sendEmail: (to, email) => {
-      log.sent.push({ to, text: email.text });
+      log.sent.push({ to, text: email.text, subject: email.subject, html: email.html });
       return Promise.resolve(true);
     },
     now: () => NOW,
@@ -203,15 +207,21 @@ describe('the invite email', () => {
     );
   });
 
-  it('sends an event invite to the event page, naming the event and when, in its own time zone', async () => {
+  // 20261114070000: the event as its page shows it, and each answer a link that saves it.
+  it('sends an event invite as the event, with Going, Maybe and Can’t go, in its own time zone', async () => {
     const eventId = '55555555-5555-4555-8555-555555555555';
     const { deps, log } = setup(invite({ event_id: eventId }));
     expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(200);
-    const text = log.sent[0]?.text ?? '';
-    expect(text).toContain(`https://thesciclub.com/e/${eventId}?invite=token-1`);
-    expect(text).toContain(
-      'Maya invited you to Board dinner, Sunday, November 22 at 2:00 PM PST. To come, accept the invite and join The SCI Club.',
-    );
+    const sent = log.sent[0];
+    const page = `https://thesciclub.com/e/${eventId}?invite=token-1`;
+    expect(sent?.subject).toBe('Maya invited you to Board dinner');
+    const text = sent?.text ?? '';
+    expect(text).toContain('Sunday, November 22\n2:00 PM PST');
+    expect(text).toContain(`Going: ${page}&rsvp=going`);
+    expect(text).toContain(`Maybe: ${page}&rsvp=interested`);
+    expect(text).toContain(`Can't go: ${page}&rsvp=no`);
+    expect(text).toContain('Join: https://thesciclub.com/join?invite=token-1');
+    expect(sent?.html).toContain(`href="${page}&amp;rsvp=going"`);
   });
 
   it('copes with a missing name', () => {

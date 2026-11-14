@@ -30,8 +30,7 @@ export function InvitePerson({
   className?: string;
 }) {
   const joined = invite.joinedAt !== null;
-  const going = invite.rsvp === 'going';
-  const viewed = invite.linkOpenedAt !== null || going || joined;
+  const viewed = invite.linkOpenedAt !== null || invite.rsvp !== null || joined;
   const opened = invite.openedAt !== null || viewed;
   return (
     <li className={`${className} text-[0.8125rem] leading-[1.4]`}>
@@ -45,7 +44,9 @@ export function InvitePerson({
         ) : null}
         <Step on={opened}>Opened</Step>
         <Step on={viewed}>{isEvent ? 'Viewed the event' : 'Clicked the link'}</Step>
-        {isEvent ? (
+        {isEvent && invite.rsvp === 'no' ? (
+          <span className="px-1 py-0.5 font-bold text-ink2">Can’t go</span>
+        ) : isEvent ? (
           <Step on={invite.rsvp !== null}>
             {invite.rsvp === 'interested' ? 'Interested' : 'Going'}
           </Step>

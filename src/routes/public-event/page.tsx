@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { fetchEventIdByShortLink, fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
-import { type EventInvite, fetchEventInvite } from '@/lib/event-invite';
+import { type EventInvite, fetchEventInvite, inviteAnswerFrom } from '@/lib/event-invite';
 import { isEventOver } from '@/lib/event-over';
 import { recordRsvpClick, useRecordEventView } from '@/lib/event-views';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
@@ -32,7 +32,9 @@ import { InviteAccept } from '@/routes/public-event/invite-accept';
  * The address holds the event's id or its short link (20261101070000).
  *
  * With ?invite=<token>, from an invite email (20261114020000), it shows the
- * event to that person even when it is private, with their invite at the top.
+ * event to that person even when it is private, with their invite at the top;
+ * with &rsvp=going|interested|no too, the answer pressed in the email is saved
+ * as it opens (20261114070000).
  */
 const EVENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,8 +45,10 @@ export default function PublicEventPage() {
   const [event, setEvent] = useState<PublicEvent | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ link: string; id: string | null } | null>(null);
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const token = params.get('invite')?.trim() ?? '';
+  // Going, Maybe or Can't go pressed in the invite email (20261114070000).
+  const linkAnswer = inviteAnswerFrom(params.get('rsvp'));
   // Undefined while an invite link is read; null when it holds no live invite.
   const [invite, setInvite] = useState<EventInvite | null | undefined>(token ? undefined : null);
   // Undefined while a short link is looked up, null when none has it.
@@ -187,7 +191,23 @@ export default function PublicEventPage() {
             />
           ) : null}
 
-          {invite && !over ? <InviteAccept token={token} invite={invite} /> : null}
+          {invite && !over ? (
+            <InviteAccept
+              token={token}
+              invite={invite}
+              linkAnswer={linkAnswer}
+              onLinkAnswered={() => {
+                setParams(
+                  (current) => {
+                    const next = new URLSearchParams(current);
+                    next.delete('rsvp');
+                    return next;
+                  },
+                  { replace: true },
+                );
+              }}
+            />
+          ) : null}
           {token && invite === null ? (
             <p role="status" className="mt-4 text-[0.875rem] text-ink2 leading-[1.45]">
               This invite link has been used or is no longer good. If it was yours, sign in.

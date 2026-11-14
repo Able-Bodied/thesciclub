@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as EventAudience from '@/lib/event-audience';
 import type { NextStep, PublicEvent, Registration } from '@/lib/event-audience';
+import type * as EventInviteLib from '@/lib/event-invite';
 import type { EventInvite } from '@/lib/event-invite';
 
 /**
@@ -39,10 +40,12 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
   registrationNextStep: () =>
     Promise.resolve(api.next ? { ok: true, value: api.next } : { ok: false, error: 'no' }),
 }));
-vi.mock('@/lib/event-invite', () => ({
+vi.mock('@/lib/event-invite', async (importOriginal) => ({
+  ...(await importOriginal<typeof EventInviteLib>()),
   fetchEventInvite: (token: string) =>
     Promise.resolve({ ok: true, value: token === 'tok' ? api.invite : null }),
-  acceptEventInvite: (...args: unknown[]) => {
+  fetchInviteAnswer: () => Promise.resolve(null),
+  answerEventInvite: (...args: unknown[]) => {
     api.accepted.push(args);
     return Promise.resolve({ ok: true });
   },
@@ -153,8 +156,9 @@ describe('the public event page', () => {
     expect(within(ask).getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
-  // The owner, 2026-11-14: an invite email opens the event, private or not, filled in.
-  it('shows a private event only to a live invite, filled in, and accepting goes to onboarding', async () => {
+  // The owner, 2026-11-14: an invite email opens the event, private or not, and
+  // its Going, Maybe or Can't go is the answer, saved once as the page opens.
+  it('shows a private event only to a live invite, and saves the answer pressed in the email', async () => {
     api.event = null; // Private: public_event shows it to nobody.
     api.invite = {
       event: { ...EVENT, id: 'dinner', title: 'Board dinner' },
@@ -162,19 +166,29 @@ describe('the public event page', () => {
       inviterName: 'Maya',
       accepted: false,
     };
-    renderAt('/e/dinner?invite=tok');
+    const first = renderAt('/e/dinner?invite=tok&rsvp=going');
     expect(await screen.findByRole('heading', { name: 'Board dinner' })).toBeInTheDocument();
     const card = screen.getByRole('region', { name: 'Your invite' });
-    expect(within(card).getByLabelText('Your name')).toHaveValue('Ana Ruiz');
-    expect(card).toHaveTextContent('ana@example.com');
-    expect(screen.queryByRole('button', { name: 'RSVP' })).toBeNull();
-    await userEvent.click(
-      within(card).getByRole('button', { name: 'Accept invite and join the club' }),
+    expect(await within(card).findByText('You’re going. Saved.')).toBeInTheDocument();
+    expect(api.accepted).toEqual([['tok', 'going', undefined]]);
+    expect(within(card).getByRole('button', { name: 'Going' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
     );
-    expect(api.accepted).toEqual([['tok', 'Ana Ruiz', '']]);
-    expect(
-      await screen.findByRole('heading', { name: 'Onboarding ?invite=tok' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'RSVP' })).toBeNull();
+    expect(within(card).getByRole('link', { name: 'Join the club' })).toHaveAttribute(
+      'href',
+      '/join?invite=tok',
+    );
+
+    await userEvent.click(within(card).getByRole('button', { name: 'Can’t go' }));
+    expect(await within(card).findByText('You can’t go. Saved.')).toBeInTheDocument();
+    expect(api.accepted).toEqual([
+      ['tok', 'going', undefined],
+      ['tok', 'no', undefined],
+    ]);
+    expect(within(card).queryByRole('link', { name: 'Join the club' })).toBeNull();
+    first.unmount();
 
     // Any other token shows nothing of it.
     renderAt('/e/dinner?invite=guessed');

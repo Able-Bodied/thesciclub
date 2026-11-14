@@ -50,6 +50,11 @@ export default function PrivacyPage() {
             you accept, say you are going and join. Whoever sent it sees this for each invite (see
             Emails).
           </li>
+          <li>
+            <b>Added:</b> an invite to an event by email shows the event, with Going, Maybe and
+            Can’t go: one tap saves your answer, and its organizers see it. A member invited by name
+            to an invite-only event is now emailed it too, as well as told in the app (see Emails).
+          </li>
         </List>
       </Note>
       <Note title="What changed on November 7, 2026">
@@ -742,11 +747,13 @@ export default function PrivacyPage() {
           invitation email has a tiny picture in it: when your mail app loads it, we note the time,
           as a sign that it was opened. We also note when its link is first used, and whether you
           accept, say you are going and join. Whoever invited you sees this: the event’s organizers
-          for an invite to an event, and the club’s administrators. If you add an event by calendar
-          invitation, we email you what became of it, and when it waits for approval we email
-          whoever may approve it, with your address. We also email you the day before an event you
-          are going to, unless you switch that off (see Notifications). We do not send newsletters
-          or promotions.
+          for an invite to an event, and the club’s administrators. An invite to an event shows the
+          event with Going, Maybe and Can’t go, and its organizers see your answer. If you are a
+          member and somebody invites you by name to an invite-only event, we email you the event
+          the same way, once. If you add an event by calendar invitation, we email you what became
+          of it, and when it waits for approval we email whoever may approve it, with your address.
+          We also email you the day before an event you are going to, unless you switch that off
+          (see Notifications). We do not send newsletters or promotions.
         </P>
         <P>
           <b>

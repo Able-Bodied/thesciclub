@@ -3,13 +3,8 @@
  * can be tested: who may send, what must be true, in what order.
  */
 
-import {
-  eventInviteLink,
-  eventWhen,
-  type InviteEmail,
-  inviteEmail,
-  inviteLink,
-} from './compose.ts';
+import { eventInviteEmail, withRsvp } from '../_shared/event-invite-email.ts';
+import { eventInviteLink, type InviteEmail, inviteEmail, inviteLink } from './compose.ts';
 
 export interface InviteRow {
   id: string;
@@ -34,6 +29,13 @@ export interface EventSummary {
   start: string | null;
   timezone: string | null;
   allDay: boolean;
+  /** For the event's own email (20261114070000). */
+  end?: string | null;
+  place?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  organization?: string | null;
 }
 
 export interface Deps {
@@ -120,25 +122,56 @@ export async function sendInvite(
     invite.for_organization_id && invite.for_organization_id !== invite.invited_by_organization_id
       ? await deps.organizationName(invite.for_organization_id)
       : null;
-  // An invite sent for an event (20261114020000) opens that event's page.
+  // An invite sent for an event (20261114020000) is the event as its page
+  // shows it, with Going, Maybe and Can't go (20261114070000).
   const event = invite.event_id ? await deps.eventFor(invite.event_id) : null;
-  const email = inviteEmail(
-    {
-      inviter: await deps.inviterName(invite),
-      organization: withOrganization,
-      name: invite.invitee_name ?? null,
-      message: invite.message ?? null,
-      event: event
-        ? { title: event.title, when: eventWhen(event.start, event.timezone, event.allDay) }
-        : null,
-    },
-    invite.event_id && event
-      ? eventInviteLink(invite.event_id, token, deps.siteUrl)
-      : inviteLink(token, deps.siteUrl),
+  const pixel =
     invite.open_key && deps.openPixelUrl
       ? `${deps.openPixelUrl}?k=${encodeURIComponent(invite.open_key)}`
-      : null,
-  );
+      : null;
+  const inviter = await deps.inviterName(invite);
+  let email: InviteEmail;
+  if (invite.event_id && event) {
+    const page = eventInviteLink(invite.event_id, token, deps.siteUrl);
+    email = eventInviteEmail({
+      inviter,
+      name: invite.invitee_name ?? null,
+      message: invite.message ?? null,
+      event: {
+        title: event.title,
+        start: event.start,
+        end: event.end ?? null,
+        timezone: event.timezone,
+        allDay: event.allDay,
+        place: event.place ?? null,
+        description: event.description ?? null,
+        imageUrl: event.imageUrl ?? null,
+        imageAlt: event.imageAlt ?? null,
+        organization: event.organization ?? null,
+      },
+      links: {
+        going: withRsvp(page, 'going'),
+        interested: withRsvp(page, 'interested'),
+        no: withRsvp(page, 'no'),
+        page,
+        join: inviteLink(token, deps.siteUrl),
+      },
+      reader: 'guest',
+      joinsWith: withOrganization,
+      pixel,
+    });
+  } else {
+    email = inviteEmail(
+      {
+        inviter,
+        organization: withOrganization,
+        name: invite.invitee_name ?? null,
+        message: invite.message ?? null,
+      },
+      inviteLink(token, deps.siteUrl),
+      pixel,
+    );
+  }
   if (!(await deps.sendEmail(invite.email, email))) {
     return { status: 502, body: { error: 'The email could not be sent. Try again.' } };
   }
