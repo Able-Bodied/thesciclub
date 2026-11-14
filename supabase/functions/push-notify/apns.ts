@@ -130,6 +130,9 @@ export function apnsPayload(message: PushMessage): string | null {
       aps: {
         alert: { title: message.title, body },
         sound: 'default',
+        // Stacked per conversation, topic or event on the lock screen, as
+        // iMessage stacks a chat (the Fable review, 2026-11-13).
+        'thread-id': message.tag,
         ...(counted ? { badge } : {}),
       },
       url: message.url,

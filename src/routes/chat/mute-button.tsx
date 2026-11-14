@@ -1,6 +1,6 @@
 import { Bell, BellOff } from 'lucide-react';
 import { useAccount } from '@/lib/account';
-import { type MuteTarget, useMute } from '@/lib/chat/mutes';
+import { type MuteTarget, type ThreadNotify, useMute, useThreadNotify } from '@/lib/chat/mutes';
 import { cn } from '@/lib/utils';
 
 /**
@@ -56,6 +56,72 @@ export function MuteButton({
         <Icon aria-hidden="true" className="h-[1.1em] w-[1.1em] flex-none" />
         {muted ? 'Muted' : 'Mute'}
       </button>
+      {error ? (
+        <span role="alert" className="mt-1 text-[0.75rem] text-destructive leading-[1.4]">
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+const NOTIFY_LABEL: Record<ThreadNotify, string> = {
+  all: 'All messages',
+  mentions: 'Only mentions',
+  off: 'Off',
+};
+
+/**
+ * A conversation's notifications: All messages, Only mentions (groups), or Off
+ * (20261113150000), in place of Mute. A native select, so every way of
+ * choosing (switch control, voice, a head pointer) works as the system's
+ * own. Draws nothing until it knows, nor while the club cannot notify.
+ */
+export function ThreadNotifyButton({
+  threadId,
+  group,
+  className,
+}: {
+  threadId: string;
+  group: boolean;
+  className?: string;
+}) {
+  const { userId } = useAccount();
+  const { notify, busy, error, choose } = useThreadNotify(threadId, userId);
+  if (notify === null) return null;
+
+  const options: ThreadNotify[] =
+    group || notify === 'mentions' ? ['all', 'mentions', 'off'] : ['all', 'off'];
+  const Icon = notify === 'off' ? BellOff : Bell;
+  return (
+    <span className={cn('inline-flex flex-col items-end', className)}>
+      <span
+        className={cn(
+          'relative inline-flex items-center gap-1 rounded-full px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] leading-[1.3]',
+          notify === 'all' ? 'border border-line text-emphasis' : 'bg-tint text-emphasis',
+          busy ? 'opacity-50' : '',
+        )}
+      >
+        <Icon aria-hidden="true" className="h-[1.1em] w-[1.1em] flex-none" />
+        <span aria-hidden="true">
+          {notify === 'all' ? 'Notify' : notify === 'mentions' ? 'Mentions' : 'Muted'}
+        </span>
+        <select
+          value={notify}
+          disabled={busy}
+          onChange={(e) => {
+            choose(e.target.value as ThreadNotify);
+          }}
+          aria-label="Notifications from this conversation"
+          className="absolute inset-0 cursor-pointer opacity-0"
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {NOTIFY_LABEL[option]}
+            </option>
+          ))}
+        </select>
+      </span>
       {error ? (
         <span role="alert" className="mt-1 text-[0.75rem] text-destructive leading-[1.4]">
           {error}
