@@ -346,6 +346,7 @@ export function JoinStep({
   set,
   ways,
   invited,
+  goingFromInvite = false,
   inviteAddress,
   closeTo = null,
   joiningOpen = false,
@@ -353,6 +354,8 @@ export function JoinStep({
 }: FieldsProps & {
   ways: WaysIn;
   invited: boolean;
+  /** They accepted an event invite on its page, so they are going (20261114020000). */
+  goingFromInvite?: boolean;
   inviteAddress: string | null;
   /** The invited address, when what is typed looks like a slip on the way to it. */
   closeTo?: string | null;
@@ -365,7 +368,9 @@ export function JoinStep({
     <>
       <Question>Join the club</Question>
       <Sub>
-        {invited ? (
+        {invited && goingFromInvite ? (
+          'Invite accepted: you’re going. Join with any email or account to finish. What you entered is saved for the next steps.'
+        ) : invited ? (
           'You have an invitation. Join with any email or account, and it will be waiting.'
         ) : fromCode && (fromCode.joiningOpen || fromCode.admits) ? (
           // An org admin's code lets them in while it is live (20261028960000).
