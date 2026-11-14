@@ -33,6 +33,13 @@ function setup(row: InviteRow | null = invite(), admins: string[] = []) {
     loadInvite: () => Promise.resolve(row),
     inviterName: () => Promise.resolve('Maya'),
     organizationName: () => Promise.resolve('Able Bodied'),
+    eventFor: () =>
+      Promise.resolve({
+        title: 'Board dinner',
+        start: '2026-11-22T22:00:00Z',
+        timezone: 'America/Los_Angeles',
+        allDay: false,
+      }),
     saveTokenHash: (_id, hash) => {
       log.hashes.push(hash);
       return Promise.resolve(true);
@@ -193,6 +200,17 @@ describe('the invite email', () => {
     expect(email.html).toContain('<strong>A&amp;B</strong>');
     expect(fromHeader('The SCI Club <invites@thesciclub.com>', email.senderName)).toBe(
       '"Eve Bcc: x@evil.test via The SCI Club" <invites@thesciclub.com>',
+    );
+  });
+
+  it('sends an event invite to the event page, naming the event and when, in its own time zone', async () => {
+    const eventId = '55555555-5555-4555-8555-555555555555';
+    const { deps, log } = setup(invite({ event_id: eventId }));
+    expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(200);
+    const text = log.sent[0]?.text ?? '';
+    expect(text).toContain(`https://thesciclub.com/e/${eventId}?invite=token-1`);
+    expect(text).toContain(
+      'Maya invited you to Board dinner, Sunday, November 22 at 2:00 PM PST. To come, accept the invite and join The SCI Club.',
     );
   });
 

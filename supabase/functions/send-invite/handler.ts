@@ -3,7 +3,13 @@
  * can be tested: who may send, what must be true, in what order.
  */
 
-import { type InviteEmail, inviteEmail, inviteLink } from './compose.ts';
+import {
+  eventInviteLink,
+  eventWhen,
+  type InviteEmail,
+  inviteEmail,
+  inviteLink,
+} from './compose.ts';
 
 export interface InviteRow {
   id: string;
@@ -17,6 +23,15 @@ export interface InviteRow {
   /** From a spreadsheet (20261114010000). */
   invitee_name?: string | null;
   message?: string | null;
+  /** The event it was sent for (20261114020000). */
+  event_id?: string | null;
+}
+
+export interface EventSummary {
+  title: string;
+  start: string | null;
+  timezone: string | null;
+  allDay: boolean;
 }
 
 export interface Deps {
@@ -27,6 +42,8 @@ export interface Deps {
   /** The organization's name or the member's display name. */
   inviterName(invite: InviteRow): Promise<string>;
   organizationName(id: string): Promise<string>;
+  /** The event an invite was sent for, or null when it is gone. */
+  eventFor(id: string): Promise<EventSummary | null>;
   /** Stores the hash if the invite is still pending; false when it no longer is. */
   saveTokenHash(id: string, hash: string): Promise<boolean>;
   markSent(id: string, at: string): Promise<void>;
@@ -99,14 +116,21 @@ export async function sendInvite(
     invite.for_organization_id && invite.for_organization_id !== invite.invited_by_organization_id
       ? await deps.organizationName(invite.for_organization_id)
       : null;
+  // An invite sent for an event (20261114020000) opens that event's page.
+  const event = invite.event_id ? await deps.eventFor(invite.event_id) : null;
   const email = inviteEmail(
     {
       inviter: await deps.inviterName(invite),
       organization: withOrganization,
       name: invite.invitee_name ?? null,
       message: invite.message ?? null,
+      event: event
+        ? { title: event.title, when: eventWhen(event.start, event.timezone, event.allDay) }
+        : null,
     },
-    inviteLink(token, deps.siteUrl),
+    invite.event_id && event
+      ? eventInviteLink(invite.event_id, token, deps.siteUrl)
+      : inviteLink(token, deps.siteUrl),
   );
   if (!(await deps.sendEmail(invite.email, email))) {
     return { status: 502, body: { error: 'The email could not be sent. Try again.' } };

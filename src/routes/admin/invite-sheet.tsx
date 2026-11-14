@@ -1,44 +1,43 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  EmailPreview,
+  inviteListField,
+  inviteListLabel,
+  linesFor,
+  MessageField,
+  PeopleListField,
+  type SendLine,
+  SendResults,
+  sendEach,
+} from '@/components/invite-list';
 import { useAccount } from '@/lib/account';
 import { describeThrown } from '@/lib/describe-error';
-import { type ReadSheet, readSheet, SHEET_LIMIT, sheetCsvUrl } from '@/lib/invite-sheet';
+import { type ReadSheet, SHEET_LIMIT } from '@/lib/invite-sheet';
 import { useMemberOrganizations } from '@/lib/organization-members';
-import { sendInvite } from '@/lib/send-invite';
 import {
   fetchInvitingOrganizations,
   type InvitingOrganization,
   inviteList,
-  type ListOutcome,
 } from '@/routes/admin/members-admin';
 import { inviteEmail } from '../../../supabase/functions/send-invite/compose';
 
 /**
- * Inviting a list at once, from a Google Sheet or rows pasted out of any
- * spreadsheet (the owner, 2026-11-14). Every email comes from this
- * administrator by name, with the organization they pick and their own words.
+ * Inviting a list at once, from a Google Sheet or addresses pasted from
+ * anywhere (the owner, 2026-11-14). Every email comes from this administrator
+ * by name, with the organization they pick and their own words.
  *
  * The list goes on the club's list in one call; the emails then go one at a
- * time, a little apart, so the email service is not asked for them all in the
- * same second. One that fails stays on the list with Resend, like any invite.
+ * time, a little apart. One that fails stays on the list with Resend, like any
+ * invite.
  */
 
-/** Between two emails: the email service takes about two a second. */
-const GAP_MS = 600;
-
-const SKIPPED: Record<Exclude<ListOutcome, 'added'>, string> = {
-  member: 'already in the club',
-  on_list: 'already invited',
-  blocked: 'blocked from the club',
-  not_an_email: 'not an email address',
-  repeat: 'twice in the list',
+const SAYS = {
+  member: { state: 'skipped' as const, why: 'already in the club' },
+  on_list: { state: 'skipped' as const, why: 'already invited' },
+  blocked: { state: 'skipped' as const, why: 'blocked from the club' },
+  not_an_email: { state: 'skipped' as const, why: 'not an email address' },
+  repeat: { state: 'skipped' as const, why: 'twice in the list' },
 };
-
-interface Line {
-  email: string;
-  name: string | null;
-  state: 'waiting' | 'sent' | 'failed' | 'skipped';
-  why?: string;
-}
 
 /**
  * What the message box starts with (the owner, 2026-11-14: "a default message
@@ -51,11 +50,6 @@ export function suggestedMessage(organization: string | null): string {
     : "I'd love for you to join me in The SCI Club. Signing up only takes a couple of minutes. See you inside!";
 }
 
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
 export function InviteSheet({ onCreated }: { onCreated: () => void }) {
   const account = useAccount();
   const [inviting, setInviting] = useState<InvitingOrganization[]>([]);
@@ -63,16 +57,16 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
     account.status === 'member' ? (account.userId ?? undefined) : undefined,
   );
   const organizations = inviting.filter((o) => memberOf.includes(o.id));
-  const [link, setLink] = useState('');
-  const [pasted, setPasted] = useState('');
-  const [fromLink, setFromLink] = useState<ReadSheet | null>(null);
-  const [reading, setReading] = useState(false);
+  const [read, setRead] = useState<ReadSheet | null>(null);
+  const [round, setRound] = useState(0);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
-  /** Null until they change it: the suggested message, which follows the organization. */
   const [edited, setEdited] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lines, setLines] = useState<Line[] | null>(null);
+  const [lines, setLines] = useState<SendLine[] | null>(null);
   const [sending, setSending] = useState(false);
+  const onRead = useCallback((next: ReadSheet | null) => {
+    setRead(next);
+  }, []);
 
   useEffect(() => {
     void fetchInvitingOrganizations().then(setInviting);
@@ -83,8 +77,6 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
   const organizationName = organizations.find((o) => o.id === chosen)?.name ?? null;
   const suggested = suggestedMessage(organizationName);
   const message = edited ?? suggested;
-
-  const read = useMemo(() => (pasted.trim() ? readSheet(pasted) : fromLink), [pasted, fromLink]);
   const people = read?.people ?? [];
   const tooMany = people.length > SHEET_LIMIT;
 
@@ -101,34 +93,6 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
       ),
     [account.displayName, organizationName, people, message],
   );
-
-  async function readLink() {
-    const url = sheetCsvUrl(link);
-    if (!url) {
-      setError('That is not a Google Sheets link. Copy it from the sheet’s Share button.');
-      return;
-    }
-    setReading(true);
-    setError(null);
-    try {
-      const response = await fetch(url);
-      const text = await response.text();
-      // A sheet that is not shared answers with Google's sign-in page.
-      if (!response.ok || /^\s*<!doctype html|<html/i.test(text)) {
-        setError(
-          'Google did not let the club read that sheet. In the sheet, press Share, set General access to “Anyone with the link”, and try again.',
-        );
-        setFromLink(null);
-        return;
-      }
-      setPasted('');
-      setFromLink(readSheet(text));
-    } catch (e) {
-      setError(describeThrown(e, 'The sheet could not be read. Check the link and try again.'));
-    } finally {
-      setReading(false);
-    }
-  }
 
   async function send() {
     if (people.length === 0 || tooMany) return;
@@ -151,29 +115,10 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
         setError(added.error);
         return;
       }
-      const next: Line[] = added.entries.map((e) => ({
-        email: e.email,
-        name: e.name,
-        state: e.outcome === 'added' ? 'waiting' : 'skipped',
-        ...(e.outcome === 'added' ? {} : { why: SKIPPED[e.outcome] }),
-      }));
-      setLines([...next]);
+      const start = linesFor(added.entries, SAYS);
+      setLines(start);
       onCreated();
-      let first = true;
-      for (const [i, entry] of added.entries.entries()) {
-        if (entry.outcome !== 'added' || !entry.inviteId) continue;
-        if (!first) await wait(GAP_MS);
-        first = false;
-        const sent = await sendInvite(entry.inviteId);
-        next[i] = {
-          ...next[i],
-          email: entry.email,
-          name: entry.name,
-          state: sent.ok ? 'sent' : 'failed',
-          ...(sent.ok ? {} : { why: sent.error }),
-        };
-        setLines([...next]);
-      }
+      await sendEach(added.entries, start, setLines);
       onCreated();
     } catch (e) {
       setError(describeThrown(e, 'The invites did not all go. Check the list below.'));
@@ -182,158 +127,28 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
     }
   }
 
-  function startOver() {
-    setLines(null);
-    setLink('');
-    setPasted('');
-    setFromLink(null);
-    setEdited(null);
-    setError(null);
-  }
-
-  const field =
-    'mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40';
-  const label = 'block font-bold text-[0.75rem] text-ink';
-
   if (lines) {
-    const sent = lines.filter((l) => l.state === 'sent').length;
-    const waiting = lines.filter((l) => l.state === 'waiting').length;
     return (
-      <div className="p-3.5">
-        <p role="status" aria-live="polite" className="font-bold text-[0.875rem] text-ink">
-          {waiting > 0
-            ? `Sending… ${sent} of ${sent + waiting} sent`
-            : `${sent} invite${sent === 1 ? '' : 's'} sent.`}
-        </p>
-        <ul className="mt-2.5 max-h-[22rem] overflow-y-auto rounded-[11px] border border-line">
-          {lines.map((l) => (
-            <li
-              key={l.email}
-              className="border-line border-b px-3 py-2 text-[0.8125rem] leading-[1.4] last:border-b-0"
-            >
-              <span className="block font-bold text-ink [overflow-wrap:anywhere]">
-                {l.name ? `${l.name} · ` : ''}
-                {l.email}
-              </span>
-              <span className={`block ${l.state === 'failed' ? 'text-destructive' : 'text-grey'}`}>
-                {l.state === 'sent'
-                  ? 'Sent'
-                  : l.state === 'waiting'
-                    ? 'Waiting…'
-                    : l.state === 'failed'
-                      ? `On the list, but the email did not go: ${l.why ?? ''} Use Resend.`
-                      : `Skipped: ${l.why ?? ''}`}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {error ? (
-          <p role="alert" className="mt-2.5 text-[0.78125rem] text-destructive leading-[1.45]">
-            {error}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          disabled={sending}
-          onClick={startOver}
-          className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] border border-line font-bold font-head text-[0.875rem] text-emphasis disabled:opacity-40"
-        >
-          Start a new list
-        </button>
-      </div>
+      <SendResults
+        lines={lines}
+        sending={sending}
+        error={error}
+        onStartOver={() => {
+          setLines(null);
+          setRead(null);
+          setRound((r) => r + 1);
+          setEdited(null);
+          setError(null);
+        }}
+      />
     );
   }
 
   return (
     <div className="p-3.5">
-      <label htmlFor="sheet-link" className={label}>
-        Google Sheet link
-      </label>
-      <div className="mt-1.5 flex gap-2">
-        <input
-          id="sheet-link"
-          type="url"
-          inputMode="url"
-          autoComplete="off"
-          autoCapitalize="none"
-          placeholder="https://docs.google.com/spreadsheets/d/…"
-          value={link}
-          onChange={(e) => {
-            setLink(e.target.value);
-          }}
-          className="min-w-0 flex-1 rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
-        />
-        <button
-          type="button"
-          disabled={!link.trim() || reading}
-          onClick={() => {
-            void readLink();
-          }}
-          className="min-h-[42px] flex-none rounded-[11px] bg-tint px-3.5 font-bold font-head text-[0.8125rem] text-emphasis disabled:opacity-40"
-        >
-          {reading ? 'Reading…' : 'Read it'}
-        </button>
-      </div>
-      <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-        In the sheet, press Share and set General access to “Anyone with the link”. It needs a
-        column of email addresses; a First name or Name column is used to greet each person.
-      </p>
+      <PeopleListField key={round} id="sheet" onRead={onRead} />
 
-      <label htmlFor="sheet-paste" className={`${label} mt-3`}>
-        Or paste email addresses
-      </label>
-      <textarea
-        id="sheet-paste"
-        rows={3}
-        autoCapitalize="none"
-        placeholder={'Ana Ruiz <ana@example.com>, bo@example.com, cy@example.com'}
-        value={pasted}
-        onChange={(e) => {
-          setPasted(e.target.value);
-        }}
-        className={field}
-      />
-      <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-        Separated by commas, spaces or new lines, copied from Gmail’s To line with the names, or
-        rows copied out of a spreadsheet.
-      </p>
-
-      {read ? (
-        <div className="mt-3">
-          <p className="font-bold text-[0.8125rem] text-ink">
-            {people.length === 0
-              ? 'No email addresses found.'
-              : `${people.length} ${people.length === 1 ? 'person' : 'people'} to invite`}
-            {read.repeats > 0 ? ` · ${read.repeats} repeated, kept once` : ''}
-          </p>
-          {people.length > 0 ? (
-            <ul className="mt-1.5 max-h-[11rem] overflow-y-auto rounded-[11px] border border-line text-[0.8125rem]">
-              {people.map((p) => (
-                <li
-                  key={p.email}
-                  className="border-line border-b px-3 py-1.5 last:border-b-0 [overflow-wrap:anywhere]"
-                >
-                  {p.name ? <span className="font-bold text-ink">{p.name} · </span> : null}
-                  <span className="text-ink2">{p.email}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {read.skipped.length > 0 ? (
-            <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-              {read.skipped.length} row{read.skipped.length === 1 ? '' : 's'} without an email
-              address left out.
-            </p>
-          ) : null}
-          {tooMany ? (
-            <p role="alert" className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
-              Up to {SHEET_LIMIT} at a time. Split the list and send it in parts.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <label htmlFor="sheet-organization" className={`${label} mt-3`}>
+      <label htmlFor="sheet-organization" className={`${inviteListLabel} mt-3`}>
         They join with
       </label>
       <select
@@ -342,7 +157,7 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
         onChange={(e) => {
           setOrganizationId(e.target.value);
         }}
-        className={field}
+        className={inviteListField}
       >
         <option value="">Just the club</option>
         {organizations.map((o) => (
@@ -352,48 +167,8 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
         ))}
       </select>
 
-      <label htmlFor="sheet-message" className={`${label} mt-3`}>
-        Your message
-      </label>
-      <textarea
-        id="sheet-message"
-        rows={4}
-        maxLength={1000}
-        placeholder="Leave it empty to send the email without a message."
-        value={message}
-        onChange={(e) => {
-          setEdited(e.target.value);
-        }}
-        className={field}
-      />
-      <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-        A suggestion to change as you like. It is quoted in the email, from you. Others can see an
-        inbox, so keep it general.
-      </p>
-      {edited !== null && edited !== suggested ? (
-        <button
-          type="button"
-          onClick={() => {
-            setEdited(null);
-          }}
-          className="mt-1.5 min-h-[36px] rounded-full bg-tint px-3 font-bold font-head text-[0.75rem] text-emphasis"
-        >
-          Use the suggested message
-        </button>
-      ) : null}
-
-      <details className="mt-3 rounded-[11px] border border-line">
-        <summary className="cursor-pointer px-3 py-2 font-bold text-[0.8125rem] text-emphasis">
-          See the email
-        </summary>
-        <div className="border-line border-t px-3 py-2.5 text-[0.8125rem] leading-[1.5]">
-          <p className="text-grey">From: {preview.senderName}</p>
-          <p className="text-grey">Subject: {preview.subject}</p>
-          <p className="mt-2 whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
-            {preview.text}
-          </p>
-        </div>
-      </details>
+      <MessageField id="sheet" suggested={suggested} edited={edited} onEdit={setEdited} />
+      <EmailPreview email={preview} />
 
       {error ? (
         <p role="alert" className="mt-2.5 text-[0.78125rem] text-destructive leading-[1.45]">
