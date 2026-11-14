@@ -113,7 +113,7 @@ export function ListingGrid({
                     Make an offer
                   </span>
                 ) : null}
-                <span className="line-clamp-2 font-bold font-head text-[0.84375rem] text-ink leading-[1.3] group-hover:underline">
+                <span className="line-clamp-2 font-bold font-head text-[0.84375rem] text-ink leading-[1.3] [overflow-wrap:anywhere] group-hover:underline">
                   {topic.unread ? <span className="sr-only">New. </span> : null}
                   {topic.title}
                 </span>

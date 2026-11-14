@@ -98,7 +98,7 @@ export function ThreadRow({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
+        <span className="block font-extrabold font-head text-[0.90625rem] text-ink [overflow-wrap:anywhere]">
           {title}
           {thread.unread ? (
             <>
