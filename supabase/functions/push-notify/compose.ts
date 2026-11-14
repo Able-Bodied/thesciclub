@@ -4,9 +4,10 @@
  * Pure: no Deno, no network, so Vitest runs it (compose.test.ts). The owner's
  * wording, 2026-09-27 — every notification says what kind it is:
  *
- *   Direct message   "Direct message from Bo"   + the words, cut short
- *   Group message    "Group message from Bo in Crew" + the words, cut short
- *   Several unread   "3 new messages from Bo" / "3 new messages in Crew" + "Bo: the words"
+ *   Direct message   "Bo"                       + the words, cut short
+ *   Group message    "Crew" ("Group chat" unnamed) + "Bo: the words"
+ *   Several unread   "Bo · 3 new" / "Crew · 3 new" + the latest words
+ *                    (messages titled as iMessage's are: the owner, 2026-11-13)
  *                    (one push per 2 minutes, 20261105160000)
  *   Topic reply      "Bo replied to your topic" + the words, cut short
  *
@@ -34,7 +35,8 @@
  *
  * And reactions, 2026-10-27 (20261028000000):
  *
- *   Reaction         "Bo reacted 👍 to your message" + the start of it, quoted
+ *   Reaction         "Bo 👍 your message"       + the start of it, quoted
+ *                    ("Bo reacted to your message" with no emoji; 2026-11-13)
  *                    ("your post", or "your topic" for a topic's opening post)
  *
  * And mentions, 2026-10-28 (20261029070000):
@@ -208,31 +210,26 @@ export function compose(owed: Owed): PushMessage | null {
   switch (owed.kind) {
     // A message with neither words nor photographs is a shared post
     // (20261025010000), which is never quoted.
+    // The owner, 2026-11-13: the sender's name alone, as iMessage and
+    // WhatsApp do. "Direct message from Alfred S…" was cut off on every
+    // Home Screen notification, under which iOS adds "from The Sci Club".
     case 'direct':
       return {
-        title: many ? `${many} new messages from ${name}` : `Direct message from ${name}`,
+        title: many ? `${name} · ${many} new` : name,
         body: words(owed) || 'Shared a post.',
         ...where,
       };
-    // subject is the group's name, since 20261105020000. Several unread
-    // name the latest sender in the body.
-    case 'group':
-      if (many) {
-        return {
-          title:
-            subject === '' ? `${many} new group messages` : `${many} new messages in ${subject}`,
-          body: `${name}: ${words(owed) || 'Shared a post.'}`,
-          ...where,
-        };
-      }
+    // subject is the group's name, since 20261105020000. The group first, so
+    // it is never what gets cut; the sender opens the words (the owner,
+    // 2026-11-13). A group with no name is a "Group chat".
+    case 'group': {
+      const group = subject === '' ? 'Group chat' : subject;
       return {
-        title:
-          subject === ''
-            ? `Group message from ${name}`
-            : `Group message from ${name} in ${subject}`,
-        body: words(owed) || 'Shared a post.',
+        title: many ? `${group} · ${many} new` : group,
+        body: `${name}: ${words(owed) || 'Shared a post.'}`,
         ...where,
       };
+    }
     // A reply with neither words nor photographs cannot be posted, but an
     // older `push_owed` sends no body at all: then it says what it used to.
     case 'reply':
@@ -268,9 +265,7 @@ export function compose(owed: Owed): PushMessage | null {
       const what = target === 'message' || target === 'topic' ? target : 'post';
       const emoji = rest.join(':').trim();
       const reacted =
-        emoji === ''
-          ? `${name} reacted to your ${what}`
-          : `${name} reacted ${emoji} to your ${what}`;
+        emoji === '' ? `${name} reacted to your ${what}` : `${name} ${emoji} your ${what}`;
       // A message is not formatted; a post is.
       const own = shorten(
         what === 'message' ? (owed.body ?? '') : plainPost(owed.body ?? ''),
