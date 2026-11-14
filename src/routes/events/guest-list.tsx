@@ -17,6 +17,7 @@ import {
 import { useEvents } from '@/lib/events';
 import { addedButNotSent, sendInvite } from '@/lib/send-invite';
 import { cn } from '@/lib/utils';
+import { EventDeclinesList } from '@/routes/events/event-declines-list';
 import { EventInviteList } from '@/routes/events/event-invite-list';
 import { EventInviteTracking } from '@/routes/events/event-invite-tracking';
 
@@ -289,6 +290,8 @@ export default function GuestListPage() {
                 ))}
               </ul>
             )}
+
+            <EventDeclinesList eventId={id} />
 
             <AddGuest
               eventId={id}
