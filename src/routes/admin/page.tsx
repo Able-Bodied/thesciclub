@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { EventContactsSection } from '@/routes/admin/event-contacts-section';
 import { InviteForm } from '@/routes/admin/invite-form';
+import { InviteSheet } from '@/routes/admin/invite-sheet';
 import { JoinTally } from '@/routes/admin/join-tally';
 import { JoiningSection } from '@/routes/admin/joining-section';
 import {
@@ -667,6 +668,16 @@ export default function AdminPage() {
                         }}
                       />
                     </div>
+                  </Section>
+                  <Section
+                    title="Invite from a spreadsheet"
+                    subtitle="A Google Sheet link or rows pasted from any spreadsheet. Each person gets an email from you, with your message."
+                  >
+                    <InviteSheet
+                      onCreated={() => {
+                        void load();
+                      }}
+                    />
                   </Section>
                 </section>
                 <div className="min-w-0">

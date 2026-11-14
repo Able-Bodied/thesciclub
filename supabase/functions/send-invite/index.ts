@@ -16,7 +16,7 @@
  * by the platform.
  */
 
-import { SITE_URL } from './compose.ts';
+import { fromHeader, SITE_URL } from './compose.ts';
 import { type Deps, type InviteRow, sendInvite } from './handler.ts';
 
 declare const Deno: {
@@ -72,7 +72,7 @@ const deps: Deps = {
   },
   async loadInvite(id) {
     const rows = await rest<InviteRow[]>(
-      `invites?select=id,email,status,sent_at,invited_by_member_id,invited_by_organization_id&id=eq.${id}`,
+      `invites?select=id,email,status,sent_at,invited_by_member_id,invited_by_organization_id,for_organization_id,invitee_name,message&id=eq.${id}`,
     );
     return rows?.[0] ?? null;
   },
@@ -90,6 +90,10 @@ const deps: Deps = {
       return rows?.[0]?.display_name ?? '';
     }
     return '';
+  },
+  async organizationName(id) {
+    const rows = await rest<{ name: string }[]>(`organizations?select=name&id=eq.${id}`);
+    return rows?.[0]?.name ?? '';
   },
   async saveTokenHash(id, hash) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/invites?id=eq.${id}&status=eq.pending`, {
@@ -112,7 +116,7 @@ const deps: Deps = {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: INVITE_FROM,
+        from: fromHeader(INVITE_FROM, email.senderName),
         to: [to],
         subject: email.subject,
         text: email.text,
