@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
-import { useCheckInPhase } from '@/lib/check-ins';
+import { missedCheckInHelpOpen, useCheckInPhase } from '@/lib/check-ins';
 import { fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
-import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
+import { CheckInCard, CheckInClosed, CheckInNotYet } from '@/routes/events/check-in-card';
 import { longWhen } from '@/routes/events/format';
 
 /**
@@ -67,9 +67,12 @@ export default function CheckInPage() {
                 organizationId={event.organization?.id ?? null}
               />
             ) : phase === 'over' ? (
-              <p className="mt-5 rounded-[14px] border border-line bg-paper p-3.5 text-[0.875rem] text-ink2 leading-[1.5]">
-                Check-in for this event has closed.
-              </p>
+              <CheckInClosed
+                eventId={event.id}
+                eventTitle={event.title}
+                memberId={memberId}
+                offerHelp={missedCheckInHelpOpen(event)}
+              />
             ) : (
               <CheckInNotYet />
             )}
