@@ -27,7 +27,7 @@ create or replace function private.check_in_closes(
 )
 returns timestamptz
 language sql
-immutable
+stable
 set search_path = ''
 as $$
   select case

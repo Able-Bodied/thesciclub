@@ -43,7 +43,8 @@ export default function CheckInsPage() {
         <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink">Check-ins</h1>
         <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
           Print this and put it by the door. Members scan it and tap once. It works from an hour
-          before the event to an hour after, and they can check in from the event's page too.
+          before the event to a day after, and they can check in from the event's page too. You can
+          also tick who was there on the guest list, at any time once the event has started.
         </p>
 
         <div className="mx-auto mt-4 w-full max-w-[240px] rounded-[14px] border border-line bg-white p-3">
