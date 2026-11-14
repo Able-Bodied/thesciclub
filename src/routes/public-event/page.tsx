@@ -217,7 +217,7 @@ export default function PublicEventPage() {
             html={event.descriptionHtml}
             text={event.description}
             // Links as on the members' page: underlined, so they read as links.
-            className="mt-5 text-[0.9375rem] text-ink leading-[1.55] [&>*+*]:mt-3 [&_a]:text-emphasis [&_a]:underline [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc"
+            className="mt-5 text-[0.9375rem] text-ink leading-[1.55] [overflow-wrap:anywhere] [&>*+*]:mt-3 [&_a]:text-emphasis [&_a]:underline [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc"
           />
 
           {moreHref || registerHref ? (

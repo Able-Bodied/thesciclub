@@ -53,32 +53,42 @@ interface Row {
   member_name: string | null;
 }
 
-export async function fetchInviteTracking(): Promise<
-  { ok: true; value: TrackedInvite[] } | { ok: false; error: string }
-> {
+type Loaded = { ok: true; value: TrackedInvite[] } | { ok: false; error: string };
+
+/** The club's own emailed invites, for administrators (admin_invite_tracking). */
+export function fetchInviteTracking(): Promise<Loaded> {
+  return load('admin_invite_tracking', {});
+}
+
+/** An event's emailed invites, for its organizers (event_invite_tracking, 20261114040000). */
+export function fetchEventInviteTracking(eventId: string): Promise<Loaded> {
+  return load('event_invite_tracking', { p_event: eventId });
+}
+
+async function load(fn: string, args: Record<string, unknown>): Promise<Loaded> {
   try {
-    const { data, error } = (await getSupabase().rpc('admin_invite_tracking', {})) as {
-      data: Row[] | null;
+    const { data, error } = (await getSupabase().rpc(fn, args)) as {
+      data: Partial<Row>[] | null;
       error: { message: string } | null;
     };
     if (error) return { ok: false, error: describeError(error, 'Could not load the invites.') };
     return {
       ok: true,
       value: (data ?? []).map((r) => ({
-        id: r.id,
-        email: r.email,
-        name: r.name,
-        inviterName: r.inviter_name,
-        eventId: r.event_id,
-        eventTitle: r.event_title,
-        eventStart: r.event_start,
-        createdAt: r.created_at,
-        sentAt: r.sent_at,
-        openedAt: r.opened_at,
-        linkOpenedAt: r.link_opened_at,
+        id: r.id ?? '',
+        email: r.email ?? '',
+        name: r.name ?? null,
+        inviterName: r.inviter_name ?? null,
+        eventId: r.event_id ?? null,
+        eventTitle: r.event_title ?? null,
+        eventStart: r.event_start ?? null,
+        createdAt: r.created_at ?? '',
+        sentAt: r.sent_at ?? null,
+        openedAt: r.opened_at ?? null,
+        linkOpenedAt: r.link_opened_at ?? null,
         rsvp: r.rsvp === 'going' || r.rsvp === 'interested' ? r.rsvp : null,
-        joinedAt: r.joined_at,
-        memberName: r.member_name,
+        joinedAt: r.joined_at ?? null,
+        memberName: r.member_name ?? null,
       })),
     };
   } catch {
@@ -124,14 +134,27 @@ export function groupInvites(invites: TrackedInvite[], timeZone?: string): Invit
       groups.set(key, group);
     }
     group.invites.push(invite);
+  }
+  const all = [...groups.values()];
+  for (const group of all) group.counts = countInvites(group.invites);
+  return all;
+}
+
+/**
+ * How many reached each step. Sent counts emails that went; one that failed
+ * is listed but not counted.
+ */
+export function countInvites(invites: TrackedInvite[]): InviteGroup['counts'] {
+  const counts = { sent: 0, opened: 0, viewed: 0, going: 0, joined: 0 };
+  for (const invite of invites) {
     const joined = invite.joinedAt !== null;
     const going = invite.rsvp === 'going';
     const viewed = invite.linkOpenedAt !== null || going || joined;
-    group.counts.sent += 1;
-    if (invite.openedAt !== null || viewed) group.counts.opened += 1;
-    if (viewed) group.counts.viewed += 1;
-    if (going) group.counts.going += 1;
-    if (joined) group.counts.joined += 1;
+    if (invite.sentAt !== null) counts.sent += 1;
+    if (invite.openedAt !== null || viewed) counts.opened += 1;
+    if (viewed) counts.viewed += 1;
+    if (going) counts.going += 1;
+    if (joined) counts.joined += 1;
   }
-  return [...groups.values()];
+  return counts;
 }
