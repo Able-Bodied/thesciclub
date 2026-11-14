@@ -20,7 +20,8 @@ export interface TrackedInvite {
   sentAt: string | null;
   openedAt: string | null;
   linkOpenedAt: string | null;
-  rsvp: 'going' | 'interested' | null;
+  /** 'no' is Can't go, from the invite email (20261114070000). */
+  rsvp: 'going' | 'interested' | 'no' | null;
   joinedAt: string | null;
   memberName: string | null;
 }
@@ -86,7 +87,7 @@ async function load(fn: string, args: Record<string, unknown>): Promise<Loaded> 
         sentAt: r.sent_at ?? null,
         openedAt: r.opened_at ?? null,
         linkOpenedAt: r.link_opened_at ?? null,
-        rsvp: r.rsvp === 'going' || r.rsvp === 'interested' ? r.rsvp : null,
+        rsvp: r.rsvp === 'going' || r.rsvp === 'interested' || r.rsvp === 'no' ? r.rsvp : null,
         joinedAt: r.joined_at ?? null,
         memberName: r.member_name ?? null,
       })),
@@ -149,7 +150,7 @@ export function countInvites(invites: TrackedInvite[]): InviteGroup['counts'] {
   for (const invite of invites) {
     const joined = invite.joinedAt !== null;
     const going = invite.rsvp === 'going';
-    const viewed = invite.linkOpenedAt !== null || going || joined;
+    const viewed = invite.linkOpenedAt !== null || invite.rsvp !== null || joined;
     if (invite.sentAt !== null) counts.sent += 1;
     if (invite.openedAt !== null || viewed) counts.opened += 1;
     if (viewed) counts.viewed += 1;

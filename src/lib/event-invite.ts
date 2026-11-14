@@ -94,22 +94,44 @@ export async function fetchEventInvite(
   }
 }
 
-/** "Accept invite and join the club": Going, with what they entered, kept for onboarding. */
-export async function acceptEventInvite(
+/**
+ * An answer to an event invite (20261114070000): from the email's Going,
+ * Maybe or Can't go, or the same buttons on the page.
+ */
+export type InviteAnswer = 'going' | 'interested' | 'no';
+
+export function inviteAnswerFrom(value: string | null | undefined): InviteAnswer | null {
+  return value === 'going' || value === 'interested' || value === 'no' ? value : null;
+}
+
+/** Saves their answer; a name only when they typed one. */
+export async function answerEventInvite(
   token: string,
-  name: string,
-  phone: string,
+  answer: InviteAnswer,
+  name?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const { error } = await getSupabase().rpc('accept_event_invite', {
+    const { error } = await getSupabase().rpc('rsvp_event_invite', {
       p_token: token,
-      p_name: name,
-      p_phone: phone,
+      p_status: answer,
+      p_name: name?.trim() ? name.trim() : null,
     });
     return error
-      ? { ok: false, error: describeError(error, 'The invite was not accepted.') }
+      ? { ok: false, error: describeError(error, 'Your answer was not saved.') }
       : { ok: true };
   } catch {
-    return { ok: false, error: 'The invite was not accepted. Check your connection.' };
+    return { ok: false, error: 'Your answer was not saved. Check your connection.' };
+  }
+}
+
+/** Their answer so far; null when none, or when it cannot be read. */
+export async function fetchInviteAnswer(token: string): Promise<InviteAnswer | null> {
+  try {
+    const { data, error } = (await getSupabase().rpc('event_invite_answer', {
+      p_token: token,
+    })) as { data: unknown; error: unknown };
+    return error ? null : inviteAnswerFrom(typeof data === 'string' ? data : null);
+  } catch {
+    return null;
   }
 }
