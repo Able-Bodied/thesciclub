@@ -52,14 +52,3 @@ person you are working for. Never push `main` without their word.
 - Run `pnpm check` alone before any push, and stop if it fails.
 - Database changes go to the test project first, the live one only at the
   word of the person you are working for.
-
-## Screenshot review (owner, 2026-11-12)
-
-Before you show the person you are working for screenshots of a change,
-have a subagent running Fable 5.2 (the Agent tool with `model: "fable"`)
-look at them. Give it the image paths and what the change was meant to do,
-not your own verdict, and ask it for problems: anything cut off,
-overlapping or misaligned, wording that is wrong or does not fit, things
-that look broken or unfinished, and anything that does not match the
-request. Fix what it finds and take the screenshots again, then send them.
-Say in one line what the review caught.
