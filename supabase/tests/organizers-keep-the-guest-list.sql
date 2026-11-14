@@ -93,4 +93,41 @@ select count(*) from public.event_check_ins
 \echo '== 7. an older app asks with the event alone and still gets its list (expect 1 row: Door guest) =='
 select name from public.event_guest_list('14141414-1311-0000-0000-000000000001');
 
+-- 20261113130000, after the Fable review.
+\echo ''
+\echo '== 8. Ana''s email typed in and ticked; once it is hers, she is still ticked (expect t) =='
+select public.event_guest_check_in('14141414-1311-0000-0000-000000000001', true, null,
+  public.event_guest_add('14141414-1311-0000-0000-000000000001', 'Ana', 'ana-1311@example.com'));
+insert into auth.users (id, aud, role, email, email_confirmed_at)
+values ('aaaaaaaa-1311-0000-0000-00000000000a', 'authenticated', 'authenticated',
+        'ana-1311@example.com', now())
+on conflict (id) do update set email = excluded.email, email_confirmed_at = excluded.email_confirmed_at;
+select private.claim_event_registrations_for('aaaaaaaa-1311-0000-0000-00000000000a') is not null as claimed;
+select checked_in from public.event_guest_list('14141414-1311-0000-0000-000000000001', true)
+ where member_id = 'aaaaaaaa-1311-0000-0000-00000000000a';
+
+\echo ''
+\echo '== 9. ticked again after a Going an organizer typed in: told, not joined, pushed once (expect 1, 0, 1) =='
+select public.event_guest_check_in('14141414-1311-0000-0000-000000000001', false, 'aaaaaaaa-1311-0000-0000-00000000000a', null);
+select public.event_guest_check_in('14141414-1311-0000-0000-000000000001', true, 'aaaaaaaa-1311-0000-0000-00000000000a', null);
+select public.event_guest_check_in('14141414-1311-0000-0000-000000000001', false, 'aaaaaaaa-1311-0000-0000-00000000000a', null);
+select public.event_guest_check_in('14141414-1311-0000-0000-000000000001', true, 'aaaaaaaa-1311-0000-0000-00000000000a', null);
+select count(*) from public.notifications
+ where member_id = 'aaaaaaaa-1311-0000-0000-00000000000a' and kind = 'checked_in' and read_at is null;
+select count(*) from public.organization_members where member_id = 'aaaaaaaa-1311-0000-0000-00000000000a';
+select count(*) from private.checked_in_pushed where member_id = 'aaaaaaaa-1311-0000-0000-00000000000a';
+
+\echo ''
+\echo '== 10. a check-in after the 10am follow-up still gets it (expect 1) =='
+insert into public.events (id, title, host_name, start_time, end_time) values
+  ('14141414-1311-0000-0000-000000000003', 'Probe two days ago', 'Probe host',
+   now() - interval '2 days 3 hours', now() - interval '2 days 1 hour');
+insert into public.event_rsvps (event_id, member_id, status) values
+  ('14141414-1311-0000-0000-000000000003', 'aaaaaaaa-1311-0000-0000-00000000000a', 'going');
+select public.event_guest_check_in('14141414-1311-0000-0000-000000000003', true, 'aaaaaaaa-1311-0000-0000-00000000000a', null);
+reset role;
+select public.push_event_reminders();
+select count(*) from public.event_followups_sent
+ where event_id = '14141414-1311-0000-0000-000000000003' and member_id = 'aaaaaaaa-1311-0000-0000-00000000000a';
+
 rollback;
