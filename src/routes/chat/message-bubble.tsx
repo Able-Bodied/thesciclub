@@ -1,3 +1,4 @@
+import { Megaphone } from 'lucide-react';
 import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
@@ -67,6 +68,8 @@ export function MessageBubble({
   reported,
   onReport,
   onBlock,
+  important = null,
+  onToggleImportant,
 }: {
   message: ChatMessage;
   /** Null for a removed member, and also while the name is still loading. */
@@ -100,6 +103,13 @@ export function MessageBubble({
   onReport: () => void;
   /** Somebody else's message, by a member not yet blocked. Absent draws no Block. */
   onBlock?: (() => void) | undefined;
+  /**
+   * Marked Important (20261113140000): drawn in gold, with how many of those
+   * asked have acknowledged it, which opens who.
+   */
+  important?: { acknowledged: number; asked: number; onShowWho: () => void } | null;
+  /** The reader may mark it Important, or take that off. Absent draws nothing. */
+  onToggleImportant?: (() => void) | undefined;
 }) {
   const removed = message.removedAt !== null;
   // Two sentences and not one: somebody thinking better of what they said and
@@ -184,6 +194,31 @@ export function MessageBubble({
   const controls =
     removed || message.pending ? null : (
       <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+        {important ? (
+          <button
+            type="button"
+            onClick={important.onShowWho}
+            data-target="small"
+            className={`${control} text-gold-ink hover:text-emphasis`}
+          >
+            {important.asked === 0
+              ? 'Nobody to acknowledge'
+              : `Acknowledged by ${String(important.acknowledged)} of ${String(important.asked)}`}
+          </button>
+        ) : null}
+        {onToggleImportant ? (
+          <button
+            type="button"
+            onClick={onToggleImportant}
+            aria-label={
+              important ? `Take Important off ${whose} message` : `Mark ${whose} message Important`
+            }
+            data-target="small"
+            className={`${control} hover:text-emphasis`}
+          >
+            {important ? 'Not Important' : 'Mark Important'}
+          </button>
+        ) : null}
         {canEdit && !editing ? (
           <button
             type="button"
@@ -236,12 +271,23 @@ export function MessageBubble({
         'max-w-[17rem] px-3.5 py-2.5 text-[0.875rem] leading-[1.5] ' +
         (mine
           ? 'rounded-[15px_15px_4px_15px] bg-action text-white'
-          : 'rounded-[4px_15px_15px_15px] border border-line bg-paper text-ink') +
+          : important
+            ? 'rounded-[4px_15px_15px_15px] border-2 border-gold bg-gold-lt text-ink'
+            : 'rounded-[4px_15px_15px_15px] border border-line bg-paper text-ink') +
+        (mine && important ? ' outline-3 outline-gold outline-offset-2' : '') +
         (message.pending ? ' opacity-60' : '') +
         (editing ? ' outline-2 outline-emphasis outline-offset-2' : '') +
         (flash ? ' message-flash' : '')
       }
     >
+      {important && !removed ? (
+        <p
+          className={`mb-1 flex items-center gap-1 font-bold text-[0.6875rem] uppercase tracking-[0.06em] ${mine ? 'text-gold-hi' : 'text-gold-ink'}`}
+        >
+          <Megaphone aria-hidden="true" className="h-3.5 w-3.5" />
+          Important
+        </p>
+      ) : null}
       {quoteBlock}
       {words}
       {timestamp}

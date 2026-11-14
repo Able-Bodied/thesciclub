@@ -21,6 +21,7 @@ import {
 } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useThreadRoster } from '@/lib/chat/groups';
+import { acknowledgeImportant, markImportant, useThreadImportant } from '@/lib/chat/important';
 import { useReactions } from '@/lib/chat/reactions';
 import { readReceipt, useThreadReadReceipts } from '@/lib/chat/read-receipts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -31,8 +32,10 @@ import { chatDayHeading, messageDateTime, sameChatDay } from '@/lib/chat/time';
 import type { ChatMessage } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { useHoldScroll } from '@/lib/hold-scroll';
+import { announceNotificationsChanged } from '@/lib/notifications';
 import { Composer } from '@/routes/chat/composer';
 import { DeleteConversation } from '@/routes/chat/delete-conversation';
+import { ImportantBanner, ImportantPeopleSheet } from '@/routes/chat/important';
 import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { NoticeLine } from '@/routes/chat/notice-line';
@@ -97,6 +100,20 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     { within: threadId },
   );
   const reads = useThreadReadReceipts(threadId);
+  // Important messages (20261113140000): the gold ones, the banner, who acknowledged.
+  const important = useThreadImportant(threadId, thread?.kind === 'group');
+  const importantById = new Map(important.items.map((item) => [item.messageId, item]));
+  const waiting = account.userId
+    ? important.items.filter(
+        (item) =>
+          item.asked.includes(account.userId ?? '') &&
+          !item.acknowledged.includes(account.userId ?? ''),
+      )
+    : [];
+  const [acknowledging, setAcknowledging] = useState(false);
+  const [acknowledgeError, setAcknowledgeError] = useState<string | null>(null);
+  /** The Important message whose "who acknowledged" is open, or null. */
+  const [whoFor, setWhoFor] = useState<string | null>(null);
   // Read again with every reload: a block or a removal changes what a card may show.
   const shared = useSharedPosts(
     messages.filter((m) => m.sharedPostId && !m.pending && m.removedAt === null).map((m) => m.id),
@@ -352,6 +369,46 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     });
   }
 
+  function acknowledge(messageId: string) {
+    setAcknowledging(true);
+    setAcknowledgeError(null);
+    void acknowledgeImportant(messageId).then((result) => {
+      setAcknowledging(false);
+      if (!result.ok) {
+        setAcknowledgeError(result.error);
+        return;
+      }
+      important.reload();
+      // Its notification is read now, so the bell and the icon drop by it.
+      announceNotificationsChanged();
+    });
+  }
+
+  /** The banner's "Show in the conversation": loads back to it if need be. */
+  function showImportant(messageId: string) {
+    void reveal(messageId).then((found) => {
+      if (found)
+        requestAnimationFrame(() => {
+          showQuoted(messageId);
+        });
+    });
+  }
+
+  function toggleImportant(messageId: string, mark: boolean) {
+    if (
+      mark &&
+      !window.confirm(
+        'Mark this message Important? Everyone in the group is notified, reminded twice, and asked to acknowledge it.',
+      )
+    )
+      return;
+    setRemovalFailure(null);
+    void markImportant(messageId, mark).then((result) => {
+      if (result.ok) important.reload();
+      else setRemovalFailure(result.error);
+    });
+  }
+
   function removeMessage(messageId: string) {
     setRemovingId(messageId);
     setRemovalFailure(null);
@@ -470,6 +527,14 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
           </button>
         </p>
       ) : null}
+
+      <ImportantBanner
+        waiting={waiting}
+        busy={acknowledging}
+        error={acknowledgeError}
+        onAcknowledge={acknowledge}
+        onShow={showImportant}
+      />
 
       <div
         ref={scroller}
@@ -616,6 +681,27 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                         setReportingId(message.id);
                       }}
                       onBlock={blockOffer(message)}
+                      important={
+                        importantById.has(message.id)
+                          ? {
+                              acknowledged: importantById.get(message.id)?.acknowledged.length ?? 0,
+                              asked: importantById.get(message.id)?.asked.length ?? 0,
+                              onShowWho: () => {
+                                setWhoFor(message.id);
+                              },
+                            }
+                          : null
+                      }
+                      onToggleImportant={
+                        important.canMark &&
+                        thread.kind === 'group' &&
+                        !message.pending &&
+                        message.removedAt === null
+                          ? () => {
+                              toggleImportant(message.id, !importantById.has(message.id));
+                            }
+                          : undefined
+                      }
                     />
                   )}
                   {message.pending ? null : (
@@ -737,6 +823,16 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
             setBlockedCount((n) => n + 1);
             blocks.reload();
             reload();
+          }}
+        />
+      ) : null}
+
+      {whoFor ? (
+        <ImportantPeopleSheet
+          messageId={whoFor}
+          canRemind={important.canMark}
+          onClose={() => {
+            setWhoFor(null);
           }}
         />
       ) : null}
