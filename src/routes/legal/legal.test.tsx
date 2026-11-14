@@ -52,28 +52,32 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(
+    // 2026-11-14: organization events open by link, invite lists, and invite emails tracked.
+    expect(notes[0]).toMatch(/Changed: an event for the members of chosen organizations can again/);
+    expect(notes[0]).toMatch(/Added: administrators and event organizers can invite a list/);
+    expect(notes[0]).toMatch(/Added: an invite email carries a tiny picture/);
+    expect(notes[1]).toMatch(
       /Added: a member who joined as a relative or spouse and another member can link/,
     );
-    expect(notes[0]).toMatch(/Changed: Cloudflare now counts visits to every page of the website/);
-    expect(notes[0]).toMatch(/Added: everyone invited to an invite-only event sees who else/);
-    expect(notes[1]).toMatch(
+    expect(notes[1]).toMatch(/Changed: Cloudflare now counts visits to every page of the website/);
+    expect(notes[1]).toMatch(/Added: everyone invited to an invite-only event sees who else/);
+    expect(notes[2]).toMatch(
       /Changed: an org admin or a verified professional can connect two or more/,
     );
-    expect(notes[1]).toMatch(/Added: an event can be private/);
-    expect(notes[1]).toMatch(/Added: Cloudflare counts visits to the website’s public pages/);
-    expect(notes[2]).toMatch(/Changed: a notification of a group message now names the group/);
-    expect(notes[2]).toMatch(/Changed: a busy conversation notifies you at most once every two/);
-    expect(notes[3]).toMatch(/Added: the app measures how long it takes to load/);
-    expect(notes[3]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
-    expect(notes[3]).toMatch(/Changed: trusted partners are now called verified professionals/);
-    expect(notes[4]).toMatch(/Added: you can measure distances in Filters from another city/);
-    expect(notes[5]).toMatch(/Added: once a day, on each way you use the club/);
-    expect(notes[6]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
-    expect(notes[7]).toMatch(/Changed: Join replaces Follow/);
-    expect(notes[8]).toMatch(/Added: when you agreed/);
-    expect(notes[9]).toMatch(/Added: address suggestions/);
-    expect(notes[10]).toMatch(/Added: the map/);
+    expect(notes[2]).toMatch(/Added: an event can be private/);
+    expect(notes[2]).toMatch(/Added: Cloudflare counts visits to the website’s public pages/);
+    expect(notes[3]).toMatch(/Changed: a notification of a group message now names the group/);
+    expect(notes[3]).toMatch(/Changed: a busy conversation notifies you at most once every two/);
+    expect(notes[4]).toMatch(/Added: the app measures how long it takes to load/);
+    expect(notes[4]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
+    expect(notes[4]).toMatch(/Changed: trusted partners are now called verified professionals/);
+    expect(notes[5]).toMatch(/Added: you can measure distances in Filters from another city/);
+    expect(notes[6]).toMatch(/Added: once a day, on each way you use the club/);
+    expect(notes[7]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
+    expect(notes[8]).toMatch(/Changed: Join replaces Follow/);
+    expect(notes[9]).toMatch(/Added: when you agreed/);
+    expect(notes[10]).toMatch(/Added: address suggestions/);
+    expect(notes[11]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });

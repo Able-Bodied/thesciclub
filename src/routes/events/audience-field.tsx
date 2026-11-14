@@ -20,9 +20,11 @@ import type { EventAudience } from '@/types/domain';
  * with what is chosen shown above it, each with a way to take it back.
  *
  * Members of organizations and Invite only (the owner, 2026-11-06;
- * 20261106030000) are private: nobody else sees the event, even from its
- * link. Organizations lists the ones the organizer is an org admin of; an
- * old event for its host's followers reads as that one organization.
+ * 20261106030000) are private in the club. Invite only has no link at all,
+ * only invites; an organization's event opens from its link, to bring people
+ * in (the owner, 2026-11-14; 20261114050000). Organizations lists the ones
+ * the organizer is an org admin of; an old event for its host's followers
+ * reads as that one organization.
  *
  * An open organization lets anyone join, and so see it: the form says so
  * (the owner, 2026-11-06).
@@ -73,8 +75,7 @@ const CHOICES: { value: EventAudience; title: string; hint: string; private?: tr
   {
     value: 'organizations',
     title: 'Members of an organization',
-    hint: 'Only people who have joined the ones you choose.',
-    private: true,
+    hint: 'Only people who have joined the ones you choose, and anyone you send its link to.',
   },
   { value: 'groups', title: 'Chosen groups', hint: 'Members of the group chats you pick.' },
   {
@@ -113,7 +114,7 @@ export function AudienceField({
     (choice) => choice.value !== 'organizations' || organizations.length > 0,
   );
   const chosenOrganizations = new Set(value.organizations);
-  const isPrivate = value.audience === 'organizations' || value.audience === 'people';
+  const isPrivate = value.audience === 'people';
   const open = openChosen(value, organizations);
 
   function choose(audience: EventAudience) {
@@ -323,8 +324,9 @@ export function AudienceField({
       ) : null}
       {isPrivate ? (
         <p className={hintClassName}>
-          Private: nobody else sees it, in the app or from its link. Narrowing it later keeps who
-          already said yes.
+          Private: nobody else sees it, and there is no link to share. Invite people outside the
+          club from a list or a spreadsheet on the event: each gets their own link. Narrowing it
+          later keeps who already said yes.
         </p>
       ) : (
         <p className={hintClassName}>

@@ -93,15 +93,15 @@ describe('Who in the club sees it', () => {
   });
 
   // The owner, 2026-11-06.
-  it('chooses the one organization with the option, and says it is private', async () => {
+  // The owner, 2026-11-14: an organization's event opens from its link (20261114050000).
+  it('chooses the one organization with the option, and says its link opens for anyone', async () => {
     chats.threads = [];
     const seen: AudienceChoice[] = [];
     render(<Harness start={CLUB_AUDIENCE} seen={seen} />);
     await userEvent.click(screen.getByRole('radio', { name: /Members of NorCal SCI/ }));
     expect(seen.at(-1)).toMatchObject({ audience: 'organizations', organizations: ['ncs'] });
-    expect(
-      screen.getByText(/Private: nobody else sees it, in the app or from its link/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Anyone you send its link to can open it/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Private/)).toBeNull();
   });
 
   it('lets an org admin of several choose whose members', async () => {
