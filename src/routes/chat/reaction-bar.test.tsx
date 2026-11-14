@@ -256,13 +256,16 @@ describe('holding a reaction shows who reacted', () => {
       render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
       hold(screen.getByRole('button', { name: /Love: 1 reaction/ }));
       const sheet = screen.getByRole('dialog', { name: 'Who reacted to “the message”' });
-      const lines = within(sheet)
-        .getAllByText(/\(1\):/)
-        .map((line) => line.textContent);
-      expect(lines).toEqual(['Love (1): ', 'Thumbs up (1): ']);
-      expect(sheet).toHaveTextContent('Sam');
-      expect(sheet).toHaveTextContent('Alex');
+      expect(within(sheet).getByRole('heading')).toHaveTextContent('2 Reactions');
+      // Yours first, then the held emoji's; yours is a tap to take back.
+      const people = within(within(sheet).getByRole('list')).getAllByRole('listitem');
+      expect(people.map((row) => row.textContent)).toEqual([
+        'AYouTap to remove👍',
+        'SSamreacted ❤️❤️',
+      ]);
       expect(data.choose).not.toHaveBeenCalled();
+      fireEvent.click(within(sheet).getByRole('button', { name: /Tap to remove/ }));
+      expect(data.choose).toHaveBeenCalledWith('m1', null);
     } finally {
       vi.useRealTimers();
     }
@@ -316,6 +319,22 @@ describe('holding a reaction shows who reacted', () => {
     expect(data.choose).not.toHaveBeenCalled();
     fireEvent.contextMenu(chip);
     expect(screen.getByRole('dialog', { name: /Who reacted/ })).toHaveTextContent('Sam');
+  });
+
+  // The owner, 2026-11-14: with a mouse, a click shows who reacted, as WhatsApp's does.
+  it('with a mouse, a click on a count shows who reacted and does not react', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('pointer: fine') }));
+    try {
+      const data = state({ rows });
+      render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /Love: 1 reaction.*Show who reacted/ }));
+      expect(screen.getByRole('dialog', { name: /Who reacted/ })).toHaveTextContent('Sam');
+      expect(data.choose).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('closes with its Close button', async () => {
