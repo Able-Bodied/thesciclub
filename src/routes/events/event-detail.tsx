@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { useCheckInPhase } from '@/lib/check-ins';
+import { missedCheckInHelpOpen, useCheckInPhase } from '@/lib/check-ins';
 import { isPrivateAudience } from '@/lib/event-audience';
 import { useRecordEventView } from '@/lib/event-views';
 import {
@@ -22,7 +22,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backToEvents } from '@/routes/events/back';
-import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
+import { CheckInCard, CheckInClosed, CheckInNotYet } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
 import { EventCohosts } from '@/routes/events/event-cohosts';
 import { mayChangeEvent } from '@/routes/events/event-draft';
@@ -308,6 +308,18 @@ export default function EventDetailPage() {
             />
           ) : null}
           {checkInPhase === 'soon' && account.status === 'member' ? <CheckInNotYet /> : null}
+          {/* Here only in the week after it closed, when a message can still be
+            sent; the printed code's page says it has closed for ever after. */}
+          {checkInPhase === 'over' &&
+          account.status === 'member' &&
+          missedCheckInHelpOpen(event) ? (
+            <CheckInClosed
+              eventId={event.id}
+              eventTitle={event.title}
+              memberId={account.userId}
+              offerHelp
+            />
+          ) : null}
           {isPastEvent(event) ? (
             <p className="mt-5 text-[0.8125rem] text-ink2 leading-[1.45]">
               {going

@@ -8,14 +8,17 @@ import { getSupabase } from '@/lib/supabase';
  * In the app, from the event's page, or by a printed QR code, which is only
  * the address of /events/:id/check-in. The database holds the window and says
  * no outside it; this mirrors it, so the button is only lit when it would work
- * (the owner, 2026-10-31: "an hour before and after the event"; 20261031040000).
- * An organization's event makes whoever checks in a member of that
- * organization.
+ * (the owner, 2026-10-31: "an hour before and after the event"; 20261031040000;
+ * then 2026-11-13: open "up to 24 hours after an event closes";
+ * 20261113100000). An organization's event makes whoever checks in a member
+ * of that organization.
  */
 
 const HOUR = 3_600_000;
 /** How long before it opens an event's page shows the button, unlit. */
 const UNLIT_FOR = 24 * HOUR;
+/** How long after it closes somebody who missed it is offered a message (check_in_missed). */
+const HELP_FOR = 7 * 24 * HOUR;
 /** The longest a timer can wait. */
 const LONGEST_WAIT = 2 ** 31 - 1;
 
@@ -25,14 +28,18 @@ interface WhenItIs {
   allDay: boolean;
 }
 
-/** As check_in_to_event: an hour before the start to an hour after the end. */
+/** As private.check_in_closes: an hour before the start to a day after the end. */
 export function checkInWindow(event: WhenItIs): { opens: number; closes: number } {
   const start = Date.parse(event.startTime);
   const end = event.endTime ? Date.parse(event.endTime) : null;
-  return {
-    opens: start - HOUR,
-    closes: event.allDay ? (end ?? start) + 24 * HOUR : (end ?? start + 4 * HOUR) + HOUR,
-  };
+  const ends = event.allDay ? (end ?? start) + 24 * HOUR : (end ?? start + 4 * HOUR);
+  return { opens: start - HOUR, closes: ends + 24 * HOUR };
+}
+
+/** Whether somebody who missed check-in can still message about it: the week after it closed. */
+export function missedCheckInHelpOpen(event: WhenItIs, now: number = Date.now()): boolean {
+  const { closes } = checkInWindow(event);
+  return now > closes && now <= closes + HELP_FOR;
 }
 
 export function checkInOpen(event: WhenItIs, now: number = Date.now()): boolean {
@@ -75,6 +82,27 @@ export function useCheckInPhase(event: WhenItIs | null | undefined): CheckInPhas
   }, [phase, startTime, endTime, allDay]);
 
   return phase;
+}
+
+/**
+ * After check-in has closed: a conversation with somebody who can help, the
+ * event's organizer or else an administrator (check_in_missed picks), with a
+ * first line waiting in its box. Nothing is sent until the member sends it.
+ */
+export async function messageAboutMissedCheckIn(
+  eventId: string,
+): Promise<{ ok: true; value: string } | { ok: false; error: string }> {
+  const refusal = 'Could not open a message. Try again.';
+  try {
+    const { data, error } = (await getSupabase().rpc('check_in_missed', {
+      p_event: eventId,
+    })) as { data: string | null; error: Failure | null };
+    if (error) return { ok: false, error: describeError(error, refusal) };
+    if (!data) return { ok: false, error: refusal };
+    return { ok: true, value: data };
+  } catch (thrown) {
+    return { ok: false, error: describeThrown(thrown, refusal) };
+  }
 }
 
 /** What the printed code opens. */
