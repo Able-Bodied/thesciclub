@@ -122,3 +122,101 @@ export function useMute(target: MuteTarget, userId: string | null) {
 
   return { muted, busy, error, toggle };
 }
+
+/**
+ * How much a conversation notifies the reader (20261113150000): every message,
+ * only one that names them, or none. Off is the mute above, which is all an
+ * older copy of the app knows; Only mentions is its own row. Important
+ * messages come through either way.
+ */
+export type ThreadNotify = 'all' | 'mentions' | 'off';
+
+export async function readThreadNotify(threadId: string, userId: string): Promise<ThreadNotify> {
+  const supabase = getSupabase();
+  const [muted, mentions] = await Promise.all([
+    supabase
+      .from('chat_thread_mutes')
+      .select('thread_id')
+      .eq('member_id', userId)
+      .eq('thread_id', threadId)
+      .maybeSingle(),
+    supabase
+      .from('chat_thread_mention_only')
+      .select('thread_id')
+      .eq('member_id', userId)
+      .eq('thread_id', threadId)
+      .maybeSingle(),
+  ]);
+  if (muted.error)
+    throw new Error(describeError(muted.error, 'Could not check this conversation.'));
+  if (muted.data !== null) return 'off';
+  // A database without Only mentions yet reads as All.
+  return !mentions.error && mentions.data !== null ? 'mentions' : 'all';
+}
+
+export async function setThreadNotify(
+  threadId: string,
+  userId: string,
+  notify: ThreadNotify,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = getSupabase();
+  const muted = await writeMuted({ kind: 'thread', id: threadId }, userId, notify === 'off');
+  if (!muted.ok) return muted;
+  if (notify === 'mentions') {
+    const { error } = await supabase
+      .from('chat_thread_mention_only')
+      .insert({ member_id: userId, thread_id: threadId } as never);
+    if (error && error.code !== '23505') {
+      return { ok: false, error: describeError(error, 'It was not changed.') };
+    }
+  } else {
+    const { error } = await supabase
+      .from('chat_thread_mention_only')
+      .delete()
+      .eq('member_id', userId)
+      .eq('thread_id', threadId);
+    if (error) return { ok: false, error: describeError(error, 'It was not changed.') };
+  }
+  unreadChanged();
+  return { ok: true };
+}
+
+export function useThreadNotify(threadId: string, userId: string | null) {
+  const [notify, setState] = useState<ThreadNotify | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId || !mutesOffered()) return;
+    let live = true;
+    readThreadNotify(threadId, userId)
+      .then((value) => {
+        if (live) setState(value);
+      })
+      .catch((e: unknown) => {
+        if (live) setError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      live = false;
+    };
+  }, [threadId, userId]);
+
+  const choose = useCallback(
+    (next: ThreadNotify) => {
+      if (!userId || next === notify) return;
+      setBusy(true);
+      setError(null);
+      void setThreadNotify(threadId, userId, next)
+        .then((result) => {
+          if (result.ok) setState(next);
+          else setError(result.error);
+        })
+        .finally(() => {
+          setBusy(false);
+        });
+    },
+    [threadId, userId, notify],
+  );
+
+  return { notify, busy, error, choose };
+}
