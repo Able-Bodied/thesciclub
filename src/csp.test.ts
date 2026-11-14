@@ -93,12 +93,14 @@ describe('the Content-Security-Policy', () => {
     expect(directive('connect-src')).toContain(PHOTON_ORIGIN);
   });
 
-  // Only to copy a member's Google photo when they choose it (2026-10-22).
+  // Only to copy a member's Google photo when they choose it (2026-10-22),
+  // and to read a shared sheet of people to invite (2026-11-14).
   it("fetches from Google's photo host and no other of Google's", () => {
     const google = directive('connect-src').filter((s) => s.includes('google'));
     expect(google).toEqual([
       'https://lh3.googleusercontent.com',
       'https://accounts.google.com/gsi/',
+      'https://docs.google.com/spreadsheets/',
     ]);
   });
 
