@@ -33,6 +33,12 @@ describe('reading people to invite out of a spreadsheet', () => {
     ]);
   });
 
+  it('reads a bare list of addresses, however it is separated', () => {
+    expect(
+      readSheet('a@example.com, b@example.com;c@example.com d@example.com\ne@example.com').people,
+    ).toEqual(['a', 'b', 'c', 'd', 'e'].map((x) => ({ email: `${x}@example.com`, name: null })));
+  });
+
   it('turns a Google Sheets link into its CSV, keeping the tab', () => {
     const id = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
     expect(
