@@ -17,12 +17,46 @@ export interface InviteDetails {
   name?: string | null;
   /** The inviter's own words (20261114010000). */
   message?: string | null;
+  /** The event the invite is for (20261114020000): its title and when, already worded. */
+  event?: { title: string; when: string | null } | null;
 }
 
 export const SITE_URL = 'https://thesciclub.com';
 
 export function inviteLink(token: string, siteUrl: string = SITE_URL): string {
   return `${siteUrl.replace(/\/+$/, '')}/join?invite=${encodeURIComponent(token)}`;
+}
+
+/** An event invite opens the event's own page, which takes it from there. */
+export function eventInviteLink(
+  eventId: string,
+  token: string,
+  siteUrl: string = SITE_URL,
+): string {
+  return `${siteUrl.replace(/\/+$/, '')}/e/${encodeURIComponent(eventId)}?invite=${encodeURIComponent(token)}`;
+}
+
+/** "Saturday, November 22, 2:00 PM PST", in the event's own time zone. */
+export function eventWhen(
+  start: string | null,
+  timezone: string | null,
+  allDay: boolean,
+): string | null {
+  if (!start) return null;
+  const at = new Date(start);
+  if (Number.isNaN(at.getTime())) return null;
+  const zone = timezone ?? 'America/Los_Angeles';
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone: zone,
+      ...(allDay ? {} : { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }),
+    }).format(at);
+  } catch {
+    return null;
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -64,11 +98,15 @@ export function inviteEmail(details: InviteDetails | string, link: string): Invi
   const name = filled(d.name);
   const message = filled(d.message);
 
-  const subject = `${who} invited you to The SCI Club`;
+  const event = d.event?.title.trim() ? d.event : null;
+  const subject = event
+    ? `${who} invited you to ${event.title.trim()}`
+    : `${who} invited you to The SCI Club`;
   const senderName = d.inviter.trim() ? `${headerSafe(who)} via The SCI Club` : 'The SCI Club';
-  const invitedLine = organization
-    ? `${who} invited you to join The SCI Club as part of ${organization}.`
-    : `${who} invited you to join The SCI Club.`;
+  const joining = organization ? `The SCI Club as part of ${organization}` : 'The SCI Club';
+  const invitedLine = event
+    ? `${who} invited you to ${event.title.trim()}${event.when ? `, ${event.when}` : ''}. To come, accept the invite and join ${joining}.`
+    : `${who} invited you to join ${joining}.`;
   const what = [
     'The SCI Club is a private, members-only community. Members:',
     '- meet peers and mentors',
@@ -96,9 +134,12 @@ export function inviteEmail(details: InviteDetails | string, link: string): Invi
   // padding (the Fable review, 2026-11-14). Nothing under 18px.
   const href = escapeHtml(link);
   const p = 'margin:0 0 20px;font-size:20px;line-height:1.5;color:#111111;';
-  const preheader = organization
-    ? `Join The SCI Club as part of ${organization}.`
-    : 'Join The SCI Club.';
+  const preheader = event
+    ? `${event.title.trim()}${event.when ? `, ${event.when}` : ''}`
+    : `Join ${joining}.`;
+  const invitedHtml = event
+    ? `<strong>${escapeHtml(who)}</strong> invited you to <strong>${escapeHtml(event.title.trim())}</strong>${event.when ? `, ${escapeHtml(event.when)}` : ''}. To come, accept the invite and join The SCI Club${organization ? ` as part of <strong>${escapeHtml(organization)}</strong>` : ''}.`
+    : `<strong>${escapeHtml(who)}</strong> invited you to join The SCI Club${organization ? ` as part of <strong>${escapeHtml(organization)}</strong>` : ''}.`;
   const html = `<!doctype html>
 <html lang="en">
   <head>
@@ -115,7 +156,7 @@ export function inviteEmail(details: InviteDetails | string, link: string): Invi
             <tr>
               <td style="font-family:Arial,Helvetica,sans-serif;">
                 <p style="margin:0 0 20px;font-size:18px;font-weight:bold;letter-spacing:0.08em;text-transform:uppercase;color:#7a5c12;">The SCI Club</p>
-${name ? `                <p style="${p}">Hi ${escapeHtml(name)},</p>\n` : ''}                <p style="${p}"><strong>${escapeHtml(who)}</strong> invited you to join The SCI Club${organization ? ` as part of <strong>${escapeHtml(organization)}</strong>` : ''}.</p>
+${name ? `                <p style="${p}">Hi ${escapeHtml(name)},</p>\n` : ''}                <p style="${p}">${invitedHtml}</p>
 ${
   message
     ? `                <p style="margin:0 0 8px;font-size:18px;line-height:1.5;color:#333333;">${escapeHtml(who)} wrote:</p>

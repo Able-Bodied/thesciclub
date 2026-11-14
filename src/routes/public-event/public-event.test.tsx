@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as EventAudience from '@/lib/event-audience';
 import type { NextStep, PublicEvent, Registration } from '@/lib/event-audience';
+import type { EventInvite } from '@/lib/event-invite';
 
 /**
  * The public event page and its registration form (20261022180000,
@@ -19,6 +20,8 @@ const api = vi.hoisted(() => ({
   status: 'signed-out',
   next: null as NextStep | null,
   requests: [] as unknown[],
+  invite: null as EventInvite | null,
+  accepted: [] as unknown[],
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
@@ -35,6 +38,14 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
   },
   registrationNextStep: () =>
     Promise.resolve(api.next ? { ok: true, value: api.next } : { ok: false, error: 'no' }),
+}));
+vi.mock('@/lib/event-invite', () => ({
+  fetchEventInvite: (token: string) =>
+    Promise.resolve({ ok: true, value: token === 'tok' ? api.invite : null }),
+  acceptEventInvite: (...args: unknown[]) => {
+    api.accepted.push(args);
+    return Promise.resolve({ ok: true });
+  },
 }));
 vi.mock('@/lib/invite-requests', () => ({
   requestClubInvite: (request: unknown) => {
@@ -76,13 +87,18 @@ function JoinStandIn() {
   return <h1>{door ? `Door: ${door}` : 'Welcome'}</h1>;
 }
 
+function JoinStandInWithSearch() {
+  const search = useLocation().search;
+  return search.startsWith('?invite=') ? <h1>{`Onboarding ${search}`}</h1> : <JoinStandIn />;
+}
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/e/:id" element={<PublicEventPage />} />
         <Route path="/e/:id/register" element={<RegisterForEventPage />} />
-        <Route path="/join" element={<JoinStandIn />} />
+        <Route path="/join" element={<JoinStandInWithSearch />} />
         <Route path="/events/:id" element={<h1>The members' page</h1>} />
       </Routes>
     </MemoryRouter>,
@@ -97,6 +113,8 @@ beforeEach(() => {
   api.requests = [];
   api.refuse = null;
   api.status = 'signed-out';
+  api.invite = null;
+  api.accepted = [];
 });
 
 describe('the public event page', () => {
@@ -133,6 +151,37 @@ describe('the public event page', () => {
       '/join?next=%2Fevents%2Fpicnic',
     );
     expect(within(ask).getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  // The owner, 2026-11-14: an invite email opens the event, private or not, filled in.
+  it('shows a private event only to a live invite, filled in, and accepting goes to onboarding', async () => {
+    api.event = null; // Private: public_event shows it to nobody.
+    api.invite = {
+      event: { ...EVENT, id: 'dinner', title: 'Board dinner' },
+      guest: { email: 'ana@example.com', name: 'Ana Ruiz', phone: '' },
+      inviterName: 'Maya',
+      accepted: false,
+    };
+    renderAt('/e/dinner?invite=tok');
+    expect(await screen.findByRole('heading', { name: 'Board dinner' })).toBeInTheDocument();
+    const card = screen.getByRole('region', { name: 'Your invite' });
+    expect(within(card).getByLabelText('Your name')).toHaveValue('Ana Ruiz');
+    expect(card).toHaveTextContent('ana@example.com');
+    expect(screen.queryByRole('button', { name: 'RSVP' })).toBeNull();
+    await userEvent.click(
+      within(card).getByRole('button', { name: 'Accept invite and join the club' }),
+    );
+    expect(api.accepted).toEqual([['tok', 'Ana Ruiz', '']]);
+    expect(
+      await screen.findByRole('heading', { name: 'Onboarding ?invite=tok' }),
+    ).toBeInTheDocument();
+
+    // Any other token shows nothing of it.
+    renderAt('/e/dinner?invite=guessed');
+    expect(
+      await screen.findByRole('heading', { name: 'This event is not on the calendar' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Board dinner' })).toBeNull();
   });
 
   it('says "Join online" for a meeting link, to anybody with the page', async () => {
