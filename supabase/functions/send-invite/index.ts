@@ -72,7 +72,7 @@ const deps: Deps = {
   },
   async loadInvite(id) {
     const rows = await rest<InviteRow[]>(
-      `invites?select=id,email,status,sent_at,invited_by_member_id,invited_by_organization_id,for_organization_id,invitee_name,message&id=eq.${id}`,
+      `invites?select=id,email,status,sent_at,invited_by_member_id,invited_by_organization_id,for_organization_id,invitee_name,message,event_id&id=eq.${id}`,
     );
     return rows?.[0] ?? null;
   },
@@ -94,6 +94,15 @@ const deps: Deps = {
   async organizationName(id) {
     const rows = await rest<{ name: string }[]>(`organizations?select=name&id=eq.${id}`);
     return rows?.[0]?.name ?? '';
+  },
+  async eventFor(id) {
+    const rows = await rest<
+      { title: string; start_time: string | null; timezone: string | null; all_day: boolean }[]
+    >(`events?select=title,start_time,timezone,all_day&id=eq.${id}`);
+    const row = rows?.[0];
+    return row
+      ? { title: row.title, start: row.start_time, timezone: row.timezone, allDay: row.all_day }
+      : null;
   },
   async saveTokenHash(id, hash) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/invites?id=eq.${id}&status=eq.pending`, {

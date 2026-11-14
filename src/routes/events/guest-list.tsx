@@ -17,6 +17,7 @@ import {
 import { useEvents } from '@/lib/events';
 import { addedButNotSent, sendInvite } from '@/lib/send-invite';
 import { cn } from '@/lib/utils';
+import { EventInviteList } from '@/routes/events/event-invite-list';
 
 /**
  * An event's guest list, for its organizers and the club's administrators
@@ -295,6 +296,14 @@ export default function GuestListPage() {
                 setVersion((v) => v + 1);
               }}
             />
+            {event ? (
+              <EventInviteList
+                event={event}
+                onSent={() => {
+                  setVersion((v) => v + 1);
+                }}
+              />
+            ) : null}
 
             {guests.length > 0 ? (
               <div className="mt-4 flex gap-2.5">

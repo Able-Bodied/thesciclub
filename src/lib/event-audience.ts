@@ -246,7 +246,7 @@ export interface PublicEvent {
   organization: { id: string; name: string; shortCode: string; logoPath: string | null } | null;
 }
 
-interface PublicEventRow {
+export interface PublicEventRow {
   id: string;
   takes_rsvps: boolean | null;
   title: string;
@@ -280,38 +280,39 @@ export async function fetchPublicEvent(eventId: string): Promise<Result<PublicEv
   );
   if (!result.ok) return result;
   const row = result.value?.[0];
-  if (!row) return { ok: true, value: null };
+  return { ok: true, value: row ? publicEventFrom(row) : null };
+}
+
+/** A row of public_event, or of event_invite_page, as the page draws it. */
+export function publicEventFrom(row: PublicEventRow): PublicEvent {
   return {
-    ok: true,
-    value: {
-      id: row.id,
-      takesRsvps: row.takes_rsvps !== false,
-      title: row.title,
-      description: row.description ?? '',
-      descriptionHtml: row.description_html ?? '',
-      startTime: row.start_time,
-      endTime: row.end_time,
-      allDay: Boolean(row.all_day),
-      timezone: row.timezone,
-      location: row.location ?? '',
-      city: row.city,
-      state: row.state,
-      format: row.event_format,
-      url: row.url,
-      registrationUrl: row.registration_url,
-      photoPath: row.photo_path,
-      photoAlt: row.photo_alt,
-      morePhotos: row.more_photos ?? [],
-      organization:
-        row.organization_id && row.organization_name
-          ? {
-              id: row.organization_id,
-              name: row.organization_name,
-              shortCode: row.organization_short_code ?? '',
-              logoPath: row.organization_logo_path,
-            }
-          : null,
-    },
+    id: row.id,
+    takesRsvps: row.takes_rsvps !== false,
+    title: row.title,
+    description: row.description ?? '',
+    descriptionHtml: row.description_html ?? '',
+    startTime: row.start_time,
+    endTime: row.end_time,
+    allDay: Boolean(row.all_day),
+    timezone: row.timezone,
+    location: row.location ?? '',
+    city: row.city,
+    state: row.state,
+    format: row.event_format,
+    url: row.url,
+    registrationUrl: row.registration_url,
+    photoPath: row.photo_path,
+    photoAlt: row.photo_alt,
+    morePhotos: row.more_photos ?? [],
+    organization:
+      row.organization_id && row.organization_name
+        ? {
+            id: row.organization_id,
+            name: row.organization_name,
+            shortCode: row.organization_short_code ?? '',
+            logoPath: row.organization_logo_path,
+          }
+        : null,
   };
 }
 

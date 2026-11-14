@@ -1,9 +1,10 @@
 import { CalendarDays } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { fetchEventIdByShortLink, fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
+import { type EventInvite, fetchEventInvite } from '@/lib/event-invite';
 import { isEventOver } from '@/lib/event-over';
 import { recordRsvpClick, useRecordEventView } from '@/lib/event-views';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
@@ -15,6 +16,7 @@ import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
+import { InviteAccept } from '@/routes/public-event/invite-accept';
 
 /**
  * An event's page, for anybody with the link (the owner, 2026-10-22;
@@ -28,6 +30,9 @@ import { EventDescription, safeHref } from '@/routes/events/rich-text';
  * event's own page, which has all of that.
  *
  * The address holds the event's id or its short link (20261101070000).
+ *
+ * With ?invite=<token>, from an invite email (20261114020000), it shows the
+ * event to that person even when it is private, with their invite at the top.
  */
 const EVENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,6 +43,10 @@ export default function PublicEventPage() {
   const [event, setEvent] = useState<PublicEvent | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ link: string; id: string | null } | null>(null);
+  const [params] = useSearchParams();
+  const token = params.get('invite')?.trim() ?? '';
+  // Undefined while an invite link is read; null when it holds no live invite.
+  const [invite, setInvite] = useState<EventInvite | null | undefined>(token ? undefined : null);
   // Undefined while a short link is looked up, null when none has it.
   const id = EVENT_ID.test(given) ? given : opened?.link === given ? opened.id : undefined;
 
@@ -55,7 +64,23 @@ export default function PublicEventPage() {
   }, [given]);
 
   useEffect(() => {
-    if (id === undefined) return;
+    if (!token) return;
+    let cancelled = false;
+    void fetchEventInvite(token).then((result) => {
+      if (cancelled) return;
+      setInvite(result.ok ? result.value : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (invite) {
+      setEvent(invite.event);
+      return;
+    }
+    if (id === undefined || invite === undefined) return;
     if (id === null) {
       setEvent(null);
       return;
@@ -69,7 +94,7 @@ export default function PublicEventPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, invite]);
 
   // An open of the public page, counted with nothing about who (20261103070000).
   useRecordEventView(
@@ -162,9 +187,16 @@ export default function PublicEventPage() {
             />
           ) : null}
 
+          {invite && !over ? <InviteAccept token={token} invite={invite} /> : null}
+          {token && invite === null ? (
+            <p role="status" className="mt-4 text-[0.875rem] text-ink2 leading-[1.45]">
+              This invite link has been used or is no longer good. If it was yours, sign in.
+            </p>
+          ) : null}
+
           {over ? (
             <p className="mt-4 text-[0.875rem] text-grey">This event is over.</p>
-          ) : (
+          ) : invite ? null : (
             <div className="mt-4 flex gap-2.5">
               {/* Every event, also one whose host takes no RSVPs here: the form
                   says the club's list is not the host's sign-up. */}
@@ -218,6 +250,7 @@ export default function PublicEventPage() {
               buttons go to the same door, which asks which of the two. */}
           <section
             aria-label="Join the club"
+            hidden={Boolean(invite)}
             className="mt-6 rounded-[16px] bg-plate px-4 pt-4 pb-3 text-white"
           >
             <p className="font-extrabold font-head text-[1.0625rem] leading-[1.35]">
