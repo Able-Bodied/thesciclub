@@ -91,7 +91,12 @@ function headerSafe(value: string): string {
  *
  * Large, dark-on-white text, one button, and the link written out as well.
  */
-export function inviteEmail(details: InviteDetails | string, link: string): InviteEmail {
+export function inviteEmail(
+  details: InviteDetails | string,
+  link: string,
+  /** The open picture's address (invite-opened, 20261114030000), when there is one. */
+  pixel?: string | null,
+): InviteEmail {
   const d: InviteDetails = typeof details === 'string' ? { inviter: details } : details;
   const who = d.inviter.trim() || 'Someone in the club';
   const organization = filled(d.organization);
@@ -187,7 +192,7 @@ ${
           </table>
         </td>
       </tr>
-    </table>
+    </table>${pixel ? `\n    <img src="${escapeHtml(pixel)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />` : ''}
   </body>
 </html>
 `;

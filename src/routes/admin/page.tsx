@@ -20,6 +20,7 @@ import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { EventContactsSection } from '@/routes/admin/event-contacts-section';
 import { InviteForm } from '@/routes/admin/invite-form';
 import { InviteSheet } from '@/routes/admin/invite-sheet';
+import { InviteTrackingSection } from '@/routes/admin/invite-tracking-section';
 import { JoinTally } from '@/routes/admin/join-tally';
 import { JoiningSection } from '@/routes/admin/joining-section';
 import {
@@ -682,6 +683,12 @@ export default function AdminPage() {
                 </section>
                 <div className="min-w-0">
                   <JoinTally rows={tally} />
+                  <Section
+                    title="How the invites did"
+                    subtitle="Each event’s invites, and each day’s from one sender. Opened is a guess: some mail apps open every email by themselves, and some never say."
+                  >
+                    <InviteTrackingSection />
+                  </Section>
                   <Section
                     title="The list"
                     subtitle="An invite nobody has used can be taken off the list, or its link sent again."

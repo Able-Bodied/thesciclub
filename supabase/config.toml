@@ -475,6 +475,11 @@ verify_jwt = false
 [functions.calendar-inbound]
 verify_jwt = false
 
+# The open picture in an invite email: a mail app has no JWT. The key in its
+# address can only mark that one invite opened. 20261114030000.
+[functions.invite-opened]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

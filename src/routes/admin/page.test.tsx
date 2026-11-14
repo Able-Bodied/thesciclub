@@ -322,6 +322,9 @@ vi.mock('@/routes/admin/renewals', async (importOriginal) => ({
 vi.mock('@/routes/admin/event-contacts-section', () => ({
   EventContactsSection: () => <p>Going section</p>,
 }));
+vi.mock('@/routes/admin/invite-tracking-section', () => ({
+  InviteTrackingSection: () => <p>How the invites did</p>,
+}));
 
 const { default: AdminPage } = await import('@/routes/admin/page');
 
