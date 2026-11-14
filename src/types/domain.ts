@@ -701,7 +701,8 @@ export interface EventTag {
 /**
  * `followers` is the hosting organization's members; `organizations` the
  * members of the ones chosen; `people` invite only (20261106030000). The last
- * three are private: hidden from everyone else, even from the link.
+ * three are private in the club; only `people` is closed to its link too
+ * (20261114050000).
  */
 export const EVENT_AUDIENCES = ['club', 'followers', 'groups', 'organizations', 'people'] as const;
 export type EventAudience = (typeof EVENT_AUDIENCES)[number];

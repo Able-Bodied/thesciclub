@@ -247,16 +247,16 @@ describe('EventDetailPage', () => {
   });
 
   // The owner, 2026-11-06: private events say so, and are not for the link.
-  it('marks an invite-only event and says nobody else can see it', async () => {
+  // The owner, 2026-11-14: no link to share, only invites.
+  it('marks an invite-only event, says nobody else can see it, and offers no link', async () => {
     state.events = [makeEvent({ id: 'dinner', audience: 'people' })];
     renderDetail('dinner');
     // The chip at the top, and who it is for below.
     expect(await screen.findByText('Invite only · 3 people invited')).toBeInTheDocument();
     expect(screen.getByText('Invite only')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Nobody else can see it, in the app or from its link/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Private\. Only the people invited can see it/)).toBeInTheDocument();
     expect(screen.queryByText(/Share the link to invite anyone/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
   });
 
   // The owner, 2026-11-07: the count opens who is invited, and who organized it.

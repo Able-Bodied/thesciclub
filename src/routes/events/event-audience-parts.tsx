@@ -9,11 +9,13 @@ import {
   fetchAudienceHint,
   fetchEventVisibility,
   isPrivateAudience,
+  linkIsClosed,
   publicEventUrl,
 } from '@/lib/event-audience';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import type { AudienceOrganization } from '@/routes/events/audience-field';
 import { EventGroupCard } from '@/routes/events/event-group-card';
+import { EventInviteList } from '@/routes/events/event-invite-list';
 import { ShortLinkField, ShortLinkQr } from '@/routes/events/event-short-link';
 import { FollowButton } from '@/routes/events/follow-button';
 import { InviteesSheet } from '@/routes/events/invitees-sheet';
@@ -89,7 +91,8 @@ export function EventAudienceSection({
   const readerId = useAccount().userId;
   // Invite only, with the list this reader may see: the count opens it.
   const listed = event.audience === 'people' && visibility?.invitees ? visibility : null;
-  const hidden = isPrivateAudience(event.audience);
+  // Invite only has no link to share, only invites (the owner, 2026-11-14).
+  const hidden = linkIsClosed(event.audience);
   // Which organizations, or how many invited; and for the sheet, the lists.
   useEffect(() => {
     if (readAgain < 0 || (event.audience === 'club' && !canSetVisibility)) return;
@@ -169,45 +172,53 @@ export function EventAudienceSection({
           ) : null}
         </div>
         {hidden ? (
-          // The owner, 2026-11-06: a private event is not for whoever gets the link.
-          <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-            Private. Nobody else can see it, in the app or from its link.
-          </p>
+          // The owner, 2026-11-14: "There should be no option for an external
+          // link. There should only be an option to invite." Each invite
+          // emailed from a list carries its own link (20261114020000).
+          <>
+            <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+              Private. Only the people invited can see it. To invite people outside the club, send
+              invites from a list or a spreadsheet: each gets their own link.
+            </p>
+            {canChange ? <EventInviteList event={event} /> : null}
+          </>
         ) : (
-          // Every event, to invite whoever you like (the owner, 2026-10-29).
-          <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-            Share the link to invite anyone: they see the event and can add themselves to the guest
-            list. Who's going stays in the club.
-          </p>
+          <>
+            {/* Every event, to invite whoever you like (the owner, 2026-10-29). */}
+            <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+              Share the link to invite anyone: they see the event and can add themselves to the
+              guest list. Who's going stays in the club.
+            </p>
+            <div className="mt-2.5 flex items-center justify-between gap-3">
+              <span className="min-w-0 break-all text-[0.8125rem] text-ink2">{link}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(link).then(
+                    () => {
+                      say('Link copied');
+                    },
+                    () => {
+                      say('Could not copy the link');
+                    },
+                  );
+                }}
+                className="min-h-[44px] flex-none rounded-[10px] bg-tint px-3 font-bold text-[0.8125rem] text-emphasis"
+              >
+                Copy link
+              </button>
+            </div>
+            {canChange ? (
+              <ShortLinkField
+                eventId={event.id}
+                shortLink={shortLink}
+                onSaved={setShortLink}
+                say={say}
+              />
+            ) : null}
+            {shortLink ? <ShortLinkQr link={link} title={event.title} /> : null}
+          </>
         )}
-        <div className="mt-2.5 flex items-center justify-between gap-3">
-          <span className="min-w-0 break-all text-[0.8125rem] text-ink2">{link}</span>
-          <button
-            type="button"
-            onClick={() => {
-              void navigator.clipboard.writeText(link).then(
-                () => {
-                  say('Link copied');
-                },
-                () => {
-                  say('Could not copy the link');
-                },
-              );
-            }}
-            className="min-h-[44px] flex-none rounded-[10px] bg-tint px-3 font-bold text-[0.8125rem] text-emphasis"
-          >
-            Copy link
-          </button>
-        </div>
-        {canChange ? (
-          <ShortLinkField
-            eventId={event.id}
-            shortLink={shortLink}
-            onSaved={setShortLink}
-            say={say}
-          />
-        ) : null}
-        {shortLink ? <ShortLinkQr link={link} title={event.title} /> : null}
       </div>
       {listing && listed ? (
         <InviteesSheet

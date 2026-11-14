@@ -5,7 +5,7 @@ import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { missedCheckInHelpOpen, useCheckInPhase } from '@/lib/check-ins';
-import { isPrivateAudience } from '@/lib/event-audience';
+import { isPrivateAudience, linkIsClosed } from '@/lib/event-audience';
 import { useRecordEventView } from '@/lib/event-views';
 import {
   deleteEvent,
@@ -200,7 +200,8 @@ export default function EventDetailPage() {
               >
                 ← {backLabel(location)}
               </button>
-              {memberId ? (
+              {/* Invite only has no link to share (the owner, 2026-11-14). */}
+              {memberId && !linkIsClosed(event.audience) ? (
                 <ShareEventButton
                   eventId={event.id}
                   shortLink={event.shortLink ?? null}
