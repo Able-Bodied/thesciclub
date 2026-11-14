@@ -3,7 +3,7 @@
  * can be tested: who may send, what must be true, in what order.
  */
 
-import { inviteEmail, inviteLink } from './compose.ts';
+import { type InviteEmail, inviteEmail, inviteLink } from './compose.ts';
 
 export interface InviteRow {
   id: string;
@@ -12,6 +12,11 @@ export interface InviteRow {
   sent_at: string | null;
   invited_by_member_id: string | null;
   invited_by_organization_id: string | null;
+  /** The organization they join with (20261030000000); the email names it. */
+  for_organization_id?: string | null;
+  /** From a spreadsheet (20261114010000). */
+  invitee_name?: string | null;
+  message?: string | null;
 }
 
 export interface Deps {
@@ -21,10 +26,11 @@ export interface Deps {
   loadInvite(id: string): Promise<InviteRow | null>;
   /** The organization's name or the member's display name. */
   inviterName(invite: InviteRow): Promise<string>;
+  organizationName(id: string): Promise<string>;
   /** Stores the hash if the invite is still pending; false when it no longer is. */
   saveTokenHash(id: string, hash: string): Promise<boolean>;
   markSent(id: string, at: string): Promise<void>;
-  sendEmail(to: string, email: { subject: string; text: string; html: string }): Promise<boolean>;
+  sendEmail(to: string, email: InviteEmail): Promise<boolean>;
   now(): Date;
   /** 32 random bytes as base64url. */
   newToken(): string;
@@ -87,7 +93,21 @@ export async function sendInvite(
   if (!(await deps.saveTokenHash(invite.id, await sha256Hex(token)))) {
     return { status: 409, body: { error: 'That invite is no longer pending.' } };
   }
-  const email = inviteEmail(await deps.inviterName(invite), inviteLink(token, deps.siteUrl));
+  // An organization's own invite already says its name; one a member sends
+  // for an organization names it beside them.
+  const withOrganization =
+    invite.for_organization_id && invite.for_organization_id !== invite.invited_by_organization_id
+      ? await deps.organizationName(invite.for_organization_id)
+      : null;
+  const email = inviteEmail(
+    {
+      inviter: await deps.inviterName(invite),
+      organization: withOrganization,
+      name: invite.invitee_name ?? null,
+      message: invite.message ?? null,
+    },
+    inviteLink(token, deps.siteUrl),
+  );
   if (!(await deps.sendEmail(invite.email, email))) {
     return { status: 502, body: { error: 'The email could not be sent. Try again.' } };
   }

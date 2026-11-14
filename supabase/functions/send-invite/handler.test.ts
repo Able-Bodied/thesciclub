@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inviteEmail, inviteLink } from './compose.ts';
+import { fromHeader, inviteEmail, inviteLink } from './compose.ts';
 import {
   type Deps,
   type InviteRow,
@@ -32,6 +32,7 @@ function setup(row: InviteRow | null = invite(), admins: string[] = []) {
     isAdmin: (id) => Promise.resolve(admins.includes(id)),
     loadInvite: () => Promise.resolve(row),
     inviterName: () => Promise.resolve('Maya'),
+    organizationName: () => Promise.resolve('Able Bodied'),
     saveTokenHash: (_id, hash) => {
       log.hashes.push(hash);
       return Promise.resolve(true);
@@ -168,6 +169,31 @@ describe('the invite email', () => {
     expect(email.html).not.toContain('<b>Eve');
     expect(email.html).toContain('&lt;b&gt;Eve&lt;/b&gt; &amp; &quot;Co&quot;');
     expect(`${email.subject}${email.text}${email.html}`.toLowerCase()).not.toContain('injur');
+  });
+
+  it('names the organization, greets them, quotes the inviter, and keeps a name out of the headers', async () => {
+    const { deps, log } = setup(
+      invite({
+        for_organization_id: '44444444-4444-4444-8444-444444444444',
+        invitee_name: 'Suet Fei',
+        message: 'Come join us!\n<script>x</script>',
+      }),
+    );
+    expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(200);
+    const text = log.sent[0]?.text ?? '';
+    expect(text).toContain('Hi Suet Fei,');
+    expect(text).toContain('Maya invited you to join The SCI Club, with Able Bodied.');
+    expect(text).toContain('> Come join us!');
+
+    const email = inviteEmail(
+      { inviter: 'Eve\r\nBcc: x@evil.test', organization: 'A&B', message: '<b>hi</b>' },
+      'https://x/y',
+    );
+    expect(email.html).toContain('&lt;b&gt;hi&lt;/b&gt;');
+    expect(email.html).toContain('<strong>A&amp;B</strong>');
+    expect(fromHeader('The SCI Club <invites@thesciclub.com>', email.senderName)).toBe(
+      '"Eve Bcc: x@evil.test via The SCI Club" <invites@thesciclub.com>',
+    );
   });
 
   it('copes with a missing name', () => {

@@ -426,6 +426,47 @@ export async function createInvite(input: {
   return sent.ok ? { ok: true } : { ok: true, sendError: addedButNotSent(sent.error) };
 }
 
+export type ListOutcome = 'added' | 'repeat' | 'not_an_email' | 'blocked' | 'on_list' | 'member';
+
+export interface ListEntry {
+  email: string;
+  name: string | null;
+  outcome: ListOutcome;
+  inviteId: string | null;
+}
+
+/**
+ * Puts a list on the club's list in one go (admin_invite_list,
+ * 20261114010000), each invite from this administrator, for the organization
+ * chosen, with their message. Says what became of each address; the emails go
+ * afterwards, one at a time, through sendInvite.
+ */
+export async function inviteList(input: {
+  people: { email: string; name: string | null }[];
+  organizationId: string | null;
+  message: string | null;
+}): Promise<{ ok: true; entries: ListEntry[] } | { ok: false; error: string }> {
+  const result = await getSupabase().rpc('admin_invite_list', {
+    p_people: input.people,
+    p_organization: input.organizationId,
+    p_message: input.message,
+  });
+  if (result.error) {
+    return { ok: false, error: describeError(result.error, 'The list was not added.') };
+  }
+  const rows: unknown = result.data;
+  if (!Array.isArray(rows)) return { ok: false, error: 'The list was not added.' };
+  return {
+    ok: true,
+    entries: (rows as Record<string, unknown>[]).map((r) => ({
+      email: typeof r.email === 'string' ? r.email : '',
+      name: typeof r.name === 'string' ? r.name : null,
+      outcome: (typeof r.outcome === 'string' ? r.outcome : 'not_an_email') as ListOutcome,
+      inviteId: typeof r.invite_id === 'string' ? r.invite_id : null,
+    })),
+  };
+}
+
 /** Another link to the same address; the old link stops working. */
 export async function resendInvite(id: string): Promise<{ ok: boolean; error?: string }> {
   const sent = await sendInvite(id);
