@@ -228,15 +228,20 @@ export default function GuestListPage() {
                   >
                     {started ? (
                       // A finger-sized target round a box the size of the name.
+                      // A walk-in is on the list only by their check-in, so
+                      // unticking would drop them for good, and ticking again
+                      // is refused without a Going (the Fable review,
+                      // 2026-11-13): their box stays ticked; Remove takes them off.
                       <label className="-my-2.5 -ml-2.5 flex h-11 w-11 flex-none items-center justify-center">
                         <input
                           type="checkbox"
                           checked={guest.checkedIn}
+                          disabled={guest.status === 'walk_in'}
                           onChange={(e) => {
                             tick(guest, e.target.checked);
                           }}
                           aria-label={`${guest.name} was there`}
-                          className="h-6 w-6 accent-[var(--action)]"
+                          className="h-6 w-6 accent-[var(--action)] disabled:opacity-60"
                         />
                       </label>
                     ) : null}

@@ -164,4 +164,23 @@ describe('ticking who was there', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not undo');
     expect(box).toBeChecked();
   });
+
+  // The Fable review, 2026-11-13: an untick took a walk-in off for good.
+  it('keeps a walk-in ticked, since unticking would lose them', async () => {
+    state.guests = [
+      guest({
+        name: 'Lee',
+        status: 'walk_in',
+        state: 'member',
+        registrationId: null,
+        memberId: 'm-2',
+        checkedIn: true,
+      }),
+    ];
+    state.startTime = new Date(Date.now() - 86_400_000).toISOString();
+    renderList();
+    const box = await screen.findByRole('checkbox', { name: 'Lee was there' });
+    expect(box).toBeChecked();
+    expect(box).toBeDisabled();
+  });
 });
