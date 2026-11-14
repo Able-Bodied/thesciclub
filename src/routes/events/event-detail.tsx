@@ -1,11 +1,12 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { missedCheckInHelpOpen, useCheckInPhase } from '@/lib/check-ins';
 import { isPrivateAudience, linkIsClosed } from '@/lib/event-audience';
+import { fetchMyEventDeclined, setEventDeclined } from '@/lib/event-declines';
 import { useRecordEventView } from '@/lib/event-views';
 import {
   deleteEvent,
@@ -82,12 +83,29 @@ export default function EventDetailPage() {
   useRecordEventView(memberId && event ? event.id : null, false);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
+  // Can't go (20261114080000): the member's own, read apart from the RSVPs.
+  const eventId = event?.id ?? null;
+  const [declined, setDeclined] = useState(false);
+  useEffect(() => {
+    setDeclined(false);
+    if (!memberId || !eventId) return;
+    let cancelled = false;
+    void fetchMyEventDeclined(eventId).then((value) => {
+      if (!cancelled) setDeclined(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberId, eventId]);
+
   const onRsvp = useCallback(
     (next: RsvpStatus | null) => {
       if (!memberId || !event) return;
       setWriteError(null);
       void setRsvp(event.id, memberId, next).then((result) => {
         if (result.ok) {
+          // Going or Interested takes back Can't go, in the database too.
+          if (next !== null) setDeclined(false);
           // The button, and the Going list and tally under it.
           viewer.reload();
           reload?.();
@@ -99,14 +117,33 @@ export default function EventDetailPage() {
     [memberId, event, viewer, reload, reloadAttendees, rsvpSheetFor],
   );
 
+  const onDecline = useCallback(
+    (next: boolean) => {
+      if (!memberId || !eventId) return;
+      setWriteError(null);
+      void setEventDeclined(eventId, next).then((result) => {
+        if (result.ok) {
+          setDeclined(next);
+          // It takes back a Going or Interested.
+          viewer.reload();
+          reload?.();
+          reloadAttendees();
+          announce(next ? 'Saved: you can’t go.' : 'Taken back.');
+        } else setWriteError(result.error);
+      });
+    },
+    [memberId, eventId, viewer, reload, reloadAttendees, announce],
+  );
+
   // Going, Maybe or Can't go pressed in the invite email (20261114070000).
   const [fromLink, setFromLink] = useState<string | null>(null);
   const saveFromLink = useCallback(
     (answer: 'going' | 'interested' | 'no') => {
-      onRsvp(answer === 'no' ? null : answer);
+      if (answer === 'no') onDecline(true);
+      else onRsvp(answer);
       setFromLink(SAVED_FROM_LINK[answer]);
     },
-    [onRsvp],
+    [onRsvp, onDecline],
   );
   useRsvpFromLink(Boolean(memberId && event && !isPastEvent(event)), saveFromLink);
 
@@ -345,60 +382,81 @@ export default function EventDetailPage() {
                 ? 'You said you were going to this.'
                 : interested
                   ? 'You were interested in this.'
-                  : 'This has already happened.'}
+                  : declined
+                    ? 'You said you couldn’t go.'
+                    : 'This has already happened.'}
             </p>
           ) : (
             <div className="mt-5 grid grid-cols-2 gap-2">
-              {/* With a sign-up of the host's own, Register stands for Going
+              {/* Going, Interested and Can't go (the owner, 2026-11-14), three
+                across: the row the invite email has. */}
+              <div className="col-span-2 grid grid-cols-3 gap-2">
+                {/* With a sign-up of the host's own, Register stands for Going
                 (the owner, 2026-10-27): it marks them going here and opens
                 the host's page, in one press. Taking it back is Going ✓. */}
-              {registerHref && !going ? (
-                <a
-                  href={registerHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => {
-                    onRsvp('going');
-                  }}
-                  aria-describedby={registerNote}
-                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] bg-action px-5 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
-                >
-                  Register
-                  <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
-                </a>
-              ) : (
+                {registerHref && !going ? (
+                  <a
+                    href={registerHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      onRsvp('going');
+                    }}
+                    aria-describedby={registerNote}
+                    className="flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] bg-action px-2 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
+                  >
+                    Register
+                    <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRsvp(going ? null : 'going');
+                    }}
+                    aria-pressed={going}
+                    aria-describedby={reachesHost ? undefined : goingNote}
+                    className={cn(
+                      'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
+                      going
+                        ? 'bg-tint text-emphasis hover:bg-line'
+                        : 'bg-action text-white hover:bg-action-hi',
+                    )}
+                  >
+                    {going ? 'Going ✓' : reachesHost ? 'RSVP' : 'Going'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
-                    onRsvp(going ? null : 'going');
+                    onRsvp(interested ? null : 'interested');
                   }}
-                  aria-pressed={going}
-                  aria-describedby={reachesHost ? undefined : goingNote}
+                  aria-pressed={interested}
                   className={cn(
-                    'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
-                    going
+                    'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
+                    interested
                       ? 'bg-tint text-emphasis hover:bg-line'
-                      : 'bg-action text-white hover:bg-action-hi',
+                      : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
                   )}
                 >
-                  {going ? 'Going ✓' : reachesHost ? 'RSVP' : 'Going'}
+                  {interested ? 'Interested ✓' : 'Interested'}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  onRsvp(interested ? null : 'interested');
-                }}
-                aria-pressed={interested}
-                className={cn(
-                  'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
-                  interested
-                    ? 'bg-tint text-emphasis hover:bg-line'
-                    : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
-                )}
-              >
-                {interested ? 'Interested ✓' : 'Interested'}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDecline(!declined);
+                  }}
+                  aria-pressed={declined}
+                  className={cn(
+                    'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
+                    declined
+                      ? 'bg-tint text-emphasis hover:bg-line'
+                      : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
+                  )}
+                >
+                  {declined ? 'Can’t go ✓' : 'Can’t go'}
+                </button>
+              </div>
               {meeting ? (
                 <MeetingLinkButton
                   href={meeting.href}
