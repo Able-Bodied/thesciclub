@@ -58,7 +58,8 @@ export type NotificationKind =
   | 'organization_request'
   | 'introduction'
   | 'event_notice'
-  | 'family_link';
+  | 'family_link'
+  | 'checked_in';
 
 interface Row {
   id: string;
@@ -262,6 +263,12 @@ export function notificationSentence(n: AppNotification): string {
       return n.count > 1
         ? `${n.count} people asked for an invite${n.place ? ` through ${n.place}` : ''}`
         : `${n.detail ?? 'Somebody'} asked you for an invite${n.place ? ` through ${n.place}` : ''}`;
+    // An organizer ticked them as there: place is the event, detail the
+    // organization it made them a member of (20261113120000).
+    case 'checked_in':
+      return n.detail
+        ? `${name} checked you in to ${n.place ?? 'an event'}. You’re now a member of ${n.detail}`
+        : `${name} checked you in to ${n.place ?? 'an event'}`;
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       return `Did you make it to ${n.place ?? 'the event'}? Check in`;

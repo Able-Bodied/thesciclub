@@ -28,4 +28,5 @@ export const EVENTS: ReadonlySet<string> = new Set([
   'introduction',
   'event_notice',
   'family_link',
+  'checked_in',
 ]);

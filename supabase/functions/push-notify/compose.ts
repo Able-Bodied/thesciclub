@@ -420,6 +420,17 @@ export function compose(owed: Owed): PushMessage | null {
       const words = told[owed.detail ?? ''];
       return words ? { ...words, ...where } : null;
     }
+    // An organizer ticked them as there (20261113120000): subject the event,
+    // detail the organization it made them a member of.
+    case 'checked_in':
+      if (subject === '') return null;
+      return {
+        title: 'You’re checked in',
+        body: owed.detail
+          ? `${name} checked you in to ${subject}. You’re now a member of ${owed.detail}.`
+          : `${name} checked you in to ${subject}.`,
+        ...where,
+      };
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       if (subject === '') return null;

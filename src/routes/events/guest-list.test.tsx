@@ -45,6 +45,7 @@ vi.mock('@/lib/send-invite', async (importOriginal) => ({
     return Promise.resolve({ ok: true });
   },
 }));
+vi.mock('@/lib/chat/realtime', () => ({ useRealtimeRows: () => undefined }));
 vi.mock('@/lib/events', () => ({
   useEvents: () => ({
     events: state.startTime ? [{ id: 'e1', title: 'Picnic', startTime: state.startTime }] : [],
