@@ -50,8 +50,8 @@ export function EventInviteTracking({ eventId }: { eventId: string }) {
         Invited by email
       </h2>
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
-        Everybody sent an invite to this event, and how far each got. “Opened” is approximate: some
-        mail apps open every email automatically, and others never report it.
+        Everyone emailed an invite to this event, and how far each got. “Opened” is approximate:
+        some mail apps open every email automatically, and others never report it.
       </p>
       <div className="overflow-hidden rounded-[14px] border border-line bg-paper">
         <div className="px-3 pt-3 pb-2.5">
