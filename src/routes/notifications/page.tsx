@@ -9,6 +9,7 @@ import {
   Heart,
   HeartHandshake,
   type LucideIcon,
+  Megaphone,
   MessageCircle,
   SmilePlus,
   UserPen,
@@ -19,6 +20,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingCards } from '@/components/loading-cards';
 import { MemberAvatar } from '@/components/member-avatar';
+import {
+  acknowledgeImportant,
+  fetchMyImportant,
+  type WaitingImportant,
+} from '@/lib/chat/important';
 import { chatTime } from '@/lib/chat/time';
 import { markdownToPlain } from '@/lib/markdown';
 import {
@@ -32,6 +38,7 @@ import {
   notificationSentence,
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { importantWords } from '@/routes/chat/important';
 
 /**
  * Everything the club notified a member about in the last thirty days
@@ -65,6 +72,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   org_events: CalendarDays,
   event_notice: CalendarDays,
   checked_in: CalendarDays,
+  important: Megaphone,
   grant_open: HandCoins,
   profile_reminder: UserPen,
   blocks_weekly: Ban,
@@ -81,8 +89,13 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Important messages still to acknowledge, pinned above the rest (the owner,
+  // 2026-11-13: "up to the top"; 20261113140000).
+  const [waiting, setWaiting] = useState<WaitingImportant[]>([]);
+  const [acknowledging, setAcknowledging] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    void fetchMyImportant().then(setWaiting);
     const result = await loadNotifications();
     if (!result.ok) {
       setError(result.error);
@@ -136,6 +149,34 @@ export default function NotificationsPage() {
     announceNotificationsChanged();
   }
 
+  async function acknowledge(messageId: string) {
+    setAcknowledging(messageId);
+    const result = await acknowledgeImportant(messageId);
+    setAcknowledging(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setWaiting((current) => current.filter((w) => w.messageId !== messageId));
+    setItems((current) =>
+      current.map((n) =>
+        n.kind === 'important' && n.url.includes(`message=${messageId}`) ? { ...n, read: true } : n,
+      ),
+    );
+    announceNotificationsChanged();
+  }
+
+  // A pinned one is not listed twice.
+  const pinned = new Set(waiting.map((w) => w.messageId));
+  const listed = items.filter(
+    (n) =>
+      !(
+        n.kind === 'important' &&
+        n.detail !== 'waiting' &&
+        [...pinned].some((id) => n.url.includes(`message=${id}`))
+      ),
+  );
+
   const unread = items.filter((n) => !n.read).length;
 
   return (
@@ -171,9 +212,56 @@ export default function NotificationsPage() {
             {error}
           </p>
         ) : null}
+        {waiting.length > 0 ? (
+          <section aria-labelledby="important-heading" className="mb-4">
+            <h2
+              id="important-heading"
+              className="mb-2 flex items-center gap-1.5 font-bold text-[0.78125rem] text-gold-ink uppercase tracking-[0.06em]"
+            >
+              <Megaphone aria-hidden="true" className="h-4 w-4" />
+              Important: please acknowledge
+            </h2>
+            <ul className="flex flex-col gap-2">
+              {waiting.map((w) => (
+                <li
+                  key={w.messageId}
+                  className="rounded-[14px] border-2 border-gold bg-gold-lt px-3.5 py-3"
+                >
+                  <p className="font-bold font-head text-[0.875rem] text-ink">{w.group}</p>
+                  <p className="mt-0.5 line-clamp-3 whitespace-pre-line text-[0.84375rem] text-ink leading-[1.5]">
+                    <span className="font-bold">{w.authorName ?? 'Deleted member'}: </span>
+                    {importantWords(w.body, w.photoCount)}
+                  </p>
+                  <p className="mt-0.5 text-[0.75rem] text-grey">Marked {chatTime(w.markedAt)}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={acknowledging === w.messageId}
+                      onClick={() => {
+                        void acknowledge(w.messageId);
+                      }}
+                      className="min-h-[44px] rounded-full bg-action px-5 font-bold font-head text-[0.875rem] text-white hover:bg-action-hi disabled:opacity-60"
+                    >
+                      {acknowledging === w.messageId ? 'Acknowledging…' : 'Acknowledge'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigate(`/chat/t/${w.threadId}?message=${w.messageId}`);
+                      }}
+                      className="min-h-[44px] rounded-full border border-gold-dp bg-paper px-4 font-bold text-[0.84375rem] text-gold-ink hover:bg-gold-lt"
+                    >
+                      Open the conversation
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {loading ? (
           <LoadingCards label="Loading…" count={5} height={64} rows />
-        ) : items.length === 0 && !error ? (
+        ) : listed.length === 0 && waiting.length === 0 && !error ? (
           <div className="rounded-[14px] border border-line bg-paper px-4 py-6 text-center">
             <p className="font-bold font-head text-[0.9375rem] text-ink">Nothing yet</p>
             <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.5]">
@@ -182,7 +270,7 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <ul className="arrive overflow-hidden rounded-[14px] border border-line bg-paper">
-            {items.map((item) => (
+            {listed.map((item) => (
               <li key={item.id} className="border-line border-b last:border-b-0">
                 <NotificationRow
                   item={item}
