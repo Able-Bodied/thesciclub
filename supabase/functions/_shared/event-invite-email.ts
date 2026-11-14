@@ -12,7 +12,9 @@
  * join. A member (invited by name to an invite-only event): the links open
  * the event in the club.
  *
- * Tables, filled cells for buttons and nothing under 18px, as the invite email
+ * The answer comes before the picture, so the buttons are on a phone's first
+ * screen, and the three look alike, as none is chosen yet (the Fable review,
+ * 2026-11-14). Tables, filled cells for buttons and nothing under 18px, as the invite email
  * after its review (send-invite/compose.ts, 2026-11-14): Outlook ignores
  * max-width, padding on a link and rounded corners, and Gmail can drop the
  * body's own padding.
@@ -166,12 +168,10 @@ export function shortDescription(text: string | null): string | null {
   return `${(space > DESCRIPTION_MAX * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-function button(href: string, label: string, tone: 'gold' | 'plain', width: string): string {
-  const fill = tone === 'gold' ? GOLD : '#ffffff';
-  const border = tone === 'gold' ? GOLD : PLATE;
-  const color = tone === 'gold' ? ON_GOLD : PLATE;
-  return `<td width="${width}" align="center" bgcolor="${fill}" style="background:${fill};border:2px solid ${border};border-radius:12px;padding:0;">
-                            <a href="${escapeHtml(href)}" style="display:block;padding:14px 6px;color:${color};font-family:${FONT};font-size:18px;font-weight:bold;line-height:1.2;text-decoration:none;">${label}</a>
+/** All three alike: on the page a gold answer is the saved one, and here none is yet. */
+function button(href: string, label: string): string {
+  return `<td width="32%" align="center" bgcolor="#ffffff" style="background:#ffffff;border:2px solid ${PLATE};border-radius:12px;padding:0;">
+                            <a href="${escapeHtml(href)}" style="display:block;padding:14px 2px;color:${PLATE};font-family:${FONT};font-size:18px;font-weight:bold;line-height:1.2;text-decoration:none;">${label}</a>
                           </td>`;
 }
 
@@ -198,8 +198,8 @@ export function eventInviteEmail(input: EventInviteInput): EventInviteEmail {
   const club =
     'The SCI Club is a private, members-only community where members meet peers and mentors, ask questions and find events near them.';
   const footer = guest
-    ? 'This invite is just for you. If you were not expecting it, you can ignore this email.'
-    : `You get this because ${named} invited you to this event in The SCI Club.`;
+    ? 'This invite is just for you, so please do not forward it: its buttons answer for you. If you were not expecting it, you can ignore this email.'
+    : `You got this email because ${named} invited you to this event in The SCI Club.`;
 
   const text = [
     ...(name ? [`Hi ${name},`, ''] : []),
@@ -224,7 +224,7 @@ export function eventInviteEmail(input: EventInviteInput): EventInviteEmail {
   ].join('\n');
 
   const p = `margin:0 0 20px;font-family:${FONT};font-size:20px;line-height:1.5;color:${INK};`;
-  const greeting = `${name ? `<p style="${p}">Hi ${escapeHtml(name)},</p>\n                ` : ''}<p style="${p}"><strong>${escapeHtml(named)}</strong> invited you to this event.</p>`;
+  const greeting = `${name ? `<p style="${p}">Hi ${escapeHtml(name)},</p>\n                ` : ''}<p style="${p}"><strong>${escapeHtml(named)}</strong> invited you to <strong>${escapeHtml(title)}</strong>.</p>`;
   const quote = message
     ? `
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
@@ -237,13 +237,13 @@ export function eventInviteEmail(input: EventInviteInput): EventInviteEmail {
     ? `
                     <tr>
                       <td style="padding:0;">
-                        <img src="${escapeHtml(event.imageUrl)}" width="560" alt="${escapeHtml(filled(event.imageAlt) ?? '')}" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:15px 15px 0 0;" />
+                        <img src="${escapeHtml(event.imageUrl)}" width="560" alt="${escapeHtml(filled(event.imageAlt) ?? '')}" style="display:block;width:100%;max-width:560px;height:auto;border:0;" />
                       </td>
                     </tr>`
     : '';
   const aboutHtml = about
     ? `
-                        <p style="margin:24px 0 0;font-family:${FONT};font-size:18px;line-height:1.55;color:${INK};">${escapeHtml(about).replace(/\n/g, '<br>')}</p>`
+                        <p style="margin:${event.imageUrl ? 20 : 4}px 0 0;font-family:${FONT};font-size:18px;line-height:1.55;color:${INK};">${escapeHtml(about).replace(/\n/g, '<br>')}</p>`
     : '';
   const hostHtml = host
     ? `
@@ -280,28 +280,32 @@ export function eventInviteEmail(input: EventInviteInput): EventInviteEmail {
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml([day, whenWhere].filter(Boolean).join(', ') || title)}</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6f9;">
       <tr>
-        <td align="center" style="padding:24px 16px;">
+        <td align="center" style="padding:24px 12px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
             <tr>
               <td style="font-family:${FONT};text-align:left;">
                 <p style="margin:0 0 20px;font-size:18px;font-weight:bold;letter-spacing:0.08em;text-transform:uppercase;color:${GOLD_DP};">The SCI Club</p>
                 ${greeting}${quote}
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background:#ffffff;border:1px solid ${LINE};border-radius:16px;margin:0 0 28px;">${picture}
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background:#ffffff;border:1px solid ${LINE};border-radius:16px;margin:0 0 28px;">
                   <tr>
-                    <td style="padding:20px;">
+                    <td style="padding:20px 16px;">
                         <p style="margin:0;font-family:${FONT};font-size:18px;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;color:${GOLD_DP};">${escapeHtml(day ?? 'Date to be set')}</p>
                         <p style="margin:8px 0 0;font-family:${FONT};font-size:28px;font-weight:bold;line-height:1.25;color:${INK};"><a href="${escapeHtml(links.page)}" style="color:${INK};text-decoration:none;">${escapeHtml(title)}</a></p>
 ${whenWhere ? `                        <p style="margin:8px 0 0;font-family:${FONT};font-size:18px;line-height:1.45;color:${INK2};">${escapeHtml(whenWhere)}</p>\n` : ''}                        <p style="margin:20px 0 10px;font-family:${FONT};font-size:18px;font-weight:bold;color:${INK};">Are you coming?</p>
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                           <tr>
-                          ${button(links.going, 'Going', 'gold', '34%')}
+                          ${button(links.going, 'Going')}
                           <td width="2%" style="font-size:0;line-height:0;">&nbsp;</td>
-                          ${button(links.interested, 'Maybe', 'plain', '30%')}
+                          ${button(links.interested, 'Maybe')}
                           <td width="2%" style="font-size:0;line-height:0;">&nbsp;</td>
-                          ${button(links.no, 'Can&#39;t go', 'plain', '32%')}
+                          ${button(links.no, 'Can&#39;t go')}
                           </tr>
                         </table>
-                        <p style="margin:10px 0 0;font-family:${FONT};font-size:18px;line-height:1.45;color:${INK2};">One tap saves your answer. You can change it later.</p>${aboutHtml}${hostHtml}
+                        <p style="margin:10px 0 0;font-family:${FONT};font-size:18px;line-height:1.45;color:${INK2};">One tap saves your answer. You can change it later.</p>
+                    </td>
+                  </tr>${picture}
+                  <tr>
+                    <td style="padding:0 16px 20px;">${aboutHtml}${hostHtml}
                         <p style="margin:20px 0 0;font-family:${FONT};font-size:18px;"><a href="${escapeHtml(links.page)}" style="color:#0b3d91;font-weight:bold;">See the event</a></p>
                     </td>
                   </tr>

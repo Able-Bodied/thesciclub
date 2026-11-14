@@ -171,7 +171,7 @@ export function InviteAccept({
             Join The SCI Club to see who else is going and talk with them before the day.
           </p>
           <p className="mt-1 text-[#B9CADF] text-[0.8125rem] leading-[1.45]">
-            It takes a couple of minutes. What you entered here is kept for it.
+            It takes a couple of minutes, and your answer comes with you.
           </p>
           <Link
             to={`/join?invite=${encodeURIComponent(token)}`}
