@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupInvites, type TrackedInvite } from '@/routes/admin/invite-tracking';
+import { groupInvites, type TrackedInvite } from '@/lib/invite-tracking';
 
 const base: TrackedInvite = {
   id: '1',

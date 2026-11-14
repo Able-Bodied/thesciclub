@@ -46,8 +46,8 @@ export function InviteAccept({ token, invite }: { token: string; invite: EventIn
         {invite.inviterName ? `${invite.inviterName} invited you` : 'You’re invited'}
       </p>
       <p className="mt-1 text-[0.875rem] text-ink2 leading-[1.45]">
-        Accept to say you’re coming, and join The SCI Club to see who else is and talk with them
-        before the day. It takes a couple of minutes.
+        Accept to say you’re coming. Then join The SCI Club to see who else is going and talk with
+        them before the day. It takes a couple of minutes.
       </p>
 
       <label htmlFor="invite-name" className="mt-3 block font-bold text-[0.8125rem] text-ink">

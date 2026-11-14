@@ -94,17 +94,21 @@ select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-1412-0000-0000-00000000000b","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
 \echo ''
-\echo '== 9. a member who is not an administrator sees no tracking (expect ERROR: Not an administrator) =='
-select count(*) from public.admin_invite_tracking();
+\echo '== 9. somebody who does not organize it sees none of its invites (expect ERROR: Only the event''s organizers) =='
+select count(*) from public.event_invite_tracking('cccccccc-1412-0000-0000-000000000001');
 reset role;
 
 select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-1412-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
 \echo ''
-\echo '== 10. an administrator does (expect Probe dinner, going, joined t) =='
-select event_title, rsvp, joined_at is not null as joined
-  from public.admin_invite_tracking() where email = 'out1412@example.com';
+\echo '== 10. its organizer sees each and how far they got (expect going, viewed t) =='
+select rsvp, link_opened_at is not null as viewed
+  from public.event_invite_tracking('cccccccc-1412-0000-0000-000000000001')
+ where email = 'out1412@example.com';
+\echo ''
+\echo '== 11. and it is not among the administrator''s club invites (expect 0) =='
+select count(*) from public.admin_invite_tracking() where email = 'out1412@example.com';
 reset role;
 
 rollback;

@@ -225,6 +225,8 @@ export default function OnboardingPage() {
   useSignInOnceConfirmed(step === 'check-email' ? awaiting : null);
   // The address the invitation was sent to, once the club has said, for the Email field.
   const [inviteAddress, setInviteAddress] = useState<string | null>(null);
+  // Accepted an event invite on its page (20261114020000): they are going.
+  const [goingFromInvite, setGoingFromInvite] = useState(false);
   useEffect(() => {
     if (!params.has(INVITE_PARAM) && !params.has(QR_PARAM)) return;
     // A link opened while this page is already up (the store app, by a
@@ -255,6 +257,7 @@ export default function OnboardingPage() {
       if (details === null) return;
       const { email: address, name, phone } = details;
       setInviteAddress(address);
+      setGoingFromInvite(details.eventId !== null && details.status === 'going');
       // Sent from an event's guest list (20261104000000): what they typed
       // when they registered, into whatever is still empty.
       setData((d) => ({
@@ -1140,6 +1143,7 @@ export default function OnboardingPage() {
           set={set}
           ways={ways}
           invited={invited || heldInviteToken() !== null}
+          goingFromInvite={goingFromInvite}
           joiningOpen={joiningOpen}
           fromCode={fromCode}
           inviteAddress={

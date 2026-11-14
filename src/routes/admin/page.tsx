@@ -685,7 +685,7 @@ export default function AdminPage() {
                   <JoinTally rows={tally} />
                   <Section
                     title="How the invites did"
-                    subtitle="Each event’s invites, and each day’s from one sender. Opened is a guess: some mail apps open every email by themselves, and some never say."
+                    subtitle="Club invites, one card per sender and day. Tap a card for each person. An event’s invites are on its guest list. “Opened” is approximate: some mail apps open every email automatically, and others never report it."
                   >
                     <InviteTrackingSection />
                   </Section>
