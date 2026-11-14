@@ -9,6 +9,7 @@ import {
   useNotificationKinds,
 } from '@/lib/push/notifications';
 import { cn } from '@/lib/utils';
+import { NotificationVolume } from '@/routes/me/notification-volume';
 import { PauseNotifications } from '@/routes/me/pause-notifications';
 
 /**
@@ -244,6 +245,7 @@ export function NotificationSettings({
           </p>
         ) : null}
 
+        {state === 'on' ? <NotificationVolume /> : null}
         {state === 'on' ? <PauseNotifications /> : null}
         {state === 'on' ? (
           <NotificationKinds userId={userId} isMentor={isMentor} isAdmin={isAdmin} />
