@@ -25,6 +25,8 @@ export interface InviteRow {
   message?: string | null;
   /** The event it was sent for (20261114020000). */
   event_id?: string | null;
+  /** Names it in the email's open picture (20261114030000). */
+  open_key?: string | null;
 }
 
 export interface EventSummary {
@@ -52,6 +54,8 @@ export interface Deps {
   /** 32 random bytes as base64url. */
   newToken(): string;
   siteUrl: string;
+  /** Where invite-opened answers: https://<ref>.supabase.co/functions/v1/invite-opened. */
+  openPixelUrl?: string;
 }
 
 export interface Reply {
@@ -131,6 +135,9 @@ export async function sendInvite(
     invite.event_id && event
       ? eventInviteLink(invite.event_id, token, deps.siteUrl)
       : inviteLink(token, deps.siteUrl),
+    invite.open_key && deps.openPixelUrl
+      ? `${deps.openPixelUrl}?k=${encodeURIComponent(invite.open_key)}`
+      : null,
   );
   if (!(await deps.sendEmail(invite.email, email))) {
     return { status: 502, body: { error: 'The email could not be sent. Try again.' } };

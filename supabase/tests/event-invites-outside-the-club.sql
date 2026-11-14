@@ -77,4 +77,34 @@ select count(*) from public.event_invitees
  where event_id = 'cccccccc-1412-0000-0000-000000000001'
    and member_id = 'aaaaaaaa-1412-0000-0000-00000000000c';
 
+-- How the invites did (20261114030000).
+update public.invites set sent_at = now() where email = 'out1412@example.com';
+
+\echo ''
+\echo '== 7. opening the link was noted (expect t) =='
+select link_opened_at is not null from public.invites where email = 'out1412@example.com';
+
+set local role anon;
+\echo ''
+\echo '== 8. only the open picture''s function marks opened (expect ERROR: permission denied) =='
+select public.invite_opened((select open_key from public.invites where email = 'out1412@example.com'));
+reset role;
+
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1412-0000-0000-00000000000b","role":"authenticated"}', true) is not null as ok;
+set local role authenticated;
+\echo ''
+\echo '== 9. a member who is not an administrator sees no tracking (expect ERROR: Not an administrator) =='
+select count(*) from public.admin_invite_tracking();
+reset role;
+
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1412-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
+set local role authenticated;
+\echo ''
+\echo '== 10. an administrator does (expect Probe dinner, going, joined t) =='
+select event_title, rsvp, joined_at is not null as joined
+  from public.admin_invite_tracking() where email = 'out1412@example.com';
+reset role;
+
 rollback;
