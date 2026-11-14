@@ -77,7 +77,7 @@ export function TopicCard({
         <Link
           to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
           state={linkState}
-          className="mt-2 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] after:absolute after:inset-0 after:rounded-[17px]"
+          className="mt-2 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-[17px]"
         >
           {topic.title}
         </Link>

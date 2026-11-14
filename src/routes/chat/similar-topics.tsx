@@ -25,7 +25,7 @@ export function SimilarTopics({ text, linkState }: { text: string; linkState?: u
               state={linkState}
               className="flex min-h-[44px] items-center gap-2 py-1 text-[0.875rem] text-emphasis underline-offset-2 hover:underline"
             >
-              <span className="min-w-0 flex-1 font-semibold">{topic.title}</span>
+              <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">{topic.title}</span>
               <span className="flex-none text-[0.75rem] text-grey">
                 {topic.replyCount === 0
                   ? 'No replies yet'

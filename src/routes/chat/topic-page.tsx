@@ -503,7 +503,7 @@ export default function TopicPage() {
           <h1
             ref={heading}
             tabIndex={-1}
-            className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3] outline-none"
+            className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3] outline-none [overflow-wrap:anywhere]"
           >
             {topic.title}
           </h1>
