@@ -47,6 +47,11 @@ export default function PrivacyPage() {
             Can’t go: one tap saves your answer, and its organizers see it. A member invited by name
             to an invite-only event is now emailed it too, as well as told in the app (see Emails).
           </li>
+          <li>
+            <b>Added:</b> an event’s page has Can’t go beside Going and Interested. It takes back
+            your Going or Interested, and only you and the event’s organizers see it, on its guest
+            list. Going or Interested again clears it.
+          </li>
         </List>
       </Note>
       <Note title="What changed on November 7, 2026">
