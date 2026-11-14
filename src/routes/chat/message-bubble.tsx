@@ -194,18 +194,7 @@ export function MessageBubble({
   const controls =
     removed || message.pending ? null : (
       <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-        {important ? (
-          <button
-            type="button"
-            onClick={important.onShowWho}
-            data-target="small"
-            className={`${control} text-gold-ink hover:text-emphasis`}
-          >
-            {important.asked === 0
-              ? 'Nobody to acknowledge'
-              : `Acknowledged by ${String(important.acknowledged)} of ${String(important.asked)}`}
-          </button>
-        ) : null}
+        {/* Behind the message's ••• with the rest (the owner, 2026-11-13). */}
         {onToggleImportant ? (
           <button
             type="button"
@@ -315,10 +304,25 @@ export function MessageBubble({
       </>
     );
 
+  // Always in view, not behind the •••: who has acknowledged it.
+  const acknowledgedLine =
+    important && !removed && !message.pending ? (
+      <button
+        type="button"
+        onClick={important.onShowWho}
+        className="inline-flex min-h-11 items-center font-semibold text-[0.75rem] text-gold-ink underline decoration-gold underline-offset-2 hover:text-emphasis"
+      >
+        {important.asked === 0
+          ? 'Nobody to acknowledge'
+          : `Acknowledged by ${String(important.acknowledged)} of ${String(important.asked)}`}
+      </button>
+    ) : null;
+
   if (mine) {
     return (
       <div id={anchor} className="mb-3.5 flex flex-col items-end">
         {content}
+        {acknowledgedLine}
       </div>
     );
   }
@@ -355,6 +359,7 @@ export function MessageBubble({
           {author?.level ? ` · ${author.level}` : ''}
         </p>
         {content}
+        {acknowledgedLine}
       </div>
     </div>
   );
