@@ -1,41 +1,90 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { acceptEventInvite, type EventInvite } from '@/lib/event-invite';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  answerEventInvite,
+  type EventInvite,
+  fetchInviteAnswer,
+  type InviteAnswer,
+} from '@/lib/event-invite';
+import { cn } from '@/lib/utils';
 
 /**
  * The top of an event's page opened from an invite email (20261114020000):
- * who asked, their name and address already filled in, and one button that
- * accepts and goes on to join the club. Onboarding then starts from what is
- * here (invite_details_for_token reads the registration this makes).
+ * who asked, and Going, Maybe or Can't go (20261114070000). The email has the
+ * same three buttons; the one pressed there arrives as `linkAnswer` and is
+ * saved as the page opens, so one tap in the email is the whole answer.
  *
- * The address is the one the invite went to and is not edited here: it is
- * how the club knows the invite is theirs. Name and phone can change.
+ * Going or Maybe then offers the club: joining starts onboarding from this
+ * invite (invite_details_for_token reads the registration the answer made).
+ * Without a name on the invite, a box asks for one for the host's list.
  */
-export function InviteAccept({ token, invite }: { token: string; invite: EventInvite }) {
-  const navigate = useNavigate();
-  const [name, setName] = useState(invite.guest.name);
-  const [phone, setPhone] = useState(invite.guest.phone);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function accept() {
-    if (!name.trim()) {
-      setError('Add your name.');
-      return;
-    }
-    setBusy(true);
+const ANSWERS: { value: InviteAnswer; label: string }[] = [
+  { value: 'going', label: 'Going' },
+  { value: 'interested', label: 'Maybe' },
+  { value: 'no', label: 'Can’t go' },
+];
+
+const SAVED: Record<InviteAnswer, string> = {
+  going: 'You’re going. Saved.',
+  interested: 'You might go. Saved.',
+  no: 'You can’t go. Saved.',
+};
+
+export function InviteAccept({
+  token,
+  invite,
+  linkAnswer = null,
+  onLinkAnswered,
+}: {
+  token: string;
+  invite: EventInvite;
+  /** The answer pressed in the email, to save now. */
+  linkAnswer?: InviteAnswer | null;
+  /** Called once it is used, so a reload does not answer again. */
+  onLinkAnswered?: () => void;
+}) {
+  // Undefined while read.
+  const [answer, setAnswer] = useState<InviteAnswer | null | undefined>(undefined);
+  const [saving, setSaving] = useState<InviteAnswer | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [nameSaved, setNameSaved] = useState(false);
+  const started = useRef(false);
+  const inviter = invite.inviterName;
+
+  async function choose(next: InviteAnswer, typedName?: string) {
+    setSaving(next);
     setError(null);
-    const result = await acceptEventInvite(token, name.trim(), phone.trim());
-    setBusy(false);
+    const result = await answerEventInvite(token, next, typedName);
+    setSaving(null);
     if (!result.ok) {
       setError(result.error);
-      return;
+      return false;
     }
-    void navigate(`/join?invite=${encodeURIComponent(token)}`);
+    setAnswer(next);
+    return true;
   }
 
-  const field =
-    'mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2.5 text-[1rem] text-ink outline-none focus:border-emphasis';
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, as the page opens.
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    if (linkAnswer) {
+      void choose(linkAnswer).then(() => onLinkAnswered?.());
+      return;
+    }
+    void fetchInviteAnswer(token).then(setAnswer);
+  }, []);
+
+  const coming = answer === 'going' || answer === 'interested';
+  const status = saving
+    ? 'Saving your answer…'
+    : answer
+      ? SAVED[answer]
+      : answer === null
+        ? `Are you coming? ${inviter ?? 'The host'} will see your answer.`
+        : '';
 
   return (
     <section
@@ -43,45 +92,37 @@ export function InviteAccept({ token, invite }: { token: string; invite: EventIn
       className="mt-4 rounded-[16px] border-[1.6px] border-gold bg-paper px-4 pt-4 pb-4"
     >
       <p className="font-extrabold font-head text-[1.0625rem] text-ink leading-[1.35]">
-        {invite.inviterName ? `${invite.inviterName} invited you` : 'You’re invited'}
+        {inviter ? `${inviter} invited you` : 'You’re invited'}
       </p>
-      <p className="mt-1 text-[0.875rem] text-ink2 leading-[1.45]">
-        Accept to say you’re coming. Then join The SCI Club to see who else is going and talk with
-        them before the day. It takes a couple of minutes.
-      </p>
-
-      <label htmlFor="invite-name" className="mt-3 block font-bold text-[0.8125rem] text-ink">
-        Your name
-      </label>
-      <input
-        id="invite-name"
-        autoComplete="name"
-        value={name}
-        onChange={(e) => {
-          setName(e.target.value);
-        }}
-        className={field}
-      />
-
-      <p className="mt-3 font-bold text-[0.8125rem] text-ink">Email</p>
-      <p className="mt-1 text-[0.9375rem] text-ink [overflow-wrap:anywhere]">
-        {invite.guest.email}
+      <p role="status" className="mt-1 min-h-[1.3em] text-[0.875rem] text-ink2 leading-[1.45]">
+        {status}
       </p>
 
-      <label htmlFor="invite-phone" className="mt-3 block font-bold text-[0.8125rem] text-ink">
-        Phone (optional)
-      </label>
-      <input
-        id="invite-phone"
-        type="tel"
-        autoComplete="tel"
-        inputMode="tel"
-        value={phone}
-        onChange={(e) => {
-          setPhone(e.target.value);
-        }}
-        className={field}
-      />
+      <fieldset className="mt-3 grid grid-cols-3 gap-2">
+        <legend className="sr-only">Your answer</legend>
+        {ANSWERS.map((choice) => {
+          const chosen = answer === choice.value;
+          return (
+            <button
+              key={choice.value}
+              type="button"
+              aria-pressed={chosen}
+              disabled={saving !== null}
+              onClick={() => {
+                if (!chosen) void choose(choice.value);
+              }}
+              className={cn(
+                'flex min-h-[48px] items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.9375rem] disabled:opacity-60',
+                chosen
+                  ? 'bg-gold text-on-gold'
+                  : 'border-[1.6px] border-emphasis bg-paper text-emphasis',
+              )}
+            >
+              {choice.label}
+            </button>
+          );
+        })}
+      </fieldset>
 
       {error ? (
         <p role="alert" className="mt-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
@@ -89,16 +130,61 @@ export function InviteAccept({ token, invite }: { token: string; invite: EventIn
         </p>
       ) : null}
 
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          void accept();
-        }}
-        className="mt-4 flex min-h-[52px] w-full items-center justify-center rounded-[13px] bg-gold px-3 text-center font-bold font-head text-[1rem] text-on-gold disabled:opacity-50"
-      >
-        {busy ? 'One moment…' : 'Accept invite and join the club'}
-      </button>
+      {coming && !invite.guest.name && !nameSaved ? (
+        <form
+          className="mt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!name.trim()) return;
+            void choose(answer, name).then((ok) => {
+              if (ok) setNameSaved(true);
+            });
+          }}
+        >
+          <label htmlFor="invite-name" className="block font-bold text-[0.8125rem] text-ink">
+            Your name, for the host’s guest list
+          </label>
+          <div className="mt-1.5 flex gap-2">
+            <input
+              id="invite-name"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+              }}
+              className="min-w-0 flex-1 rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+            />
+            <button
+              type="submit"
+              disabled={saving !== null || !name.trim()}
+              className="rounded-[11px] border-[1.6px] border-emphasis px-4 font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {coming ? (
+        <div className="mt-4 rounded-[14px] bg-plate px-4 pt-4 pb-4 text-white">
+          <p className="font-extrabold font-head text-[1rem] leading-[1.35]">
+            Join The SCI Club to see who else is going and talk with them before the day.
+          </p>
+          <p className="mt-1 text-[#B9CADF] text-[0.8125rem] leading-[1.45]">
+            It takes a couple of minutes. What you entered here is kept for it.
+          </p>
+          <Link
+            to={`/join?invite=${encodeURIComponent(token)}`}
+            className="mt-3 flex min-h-[48px] items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
+          >
+            Join the club
+          </Link>
+        </div>
+      ) : answer === 'no' ? (
+        <p className="mt-3 text-[0.875rem] text-ink2 leading-[1.45]">
+          {`Thanks for letting ${inviter ?? 'the host'} know. If that changes, choose Going or Maybe.`}
+        </p>
+      ) : null}
     </section>
   );
 }

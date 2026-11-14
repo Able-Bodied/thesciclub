@@ -41,6 +41,7 @@ import { Place } from '@/routes/events/place-link';
 import { PrivacyChip, privacyLabel } from '@/routes/events/privacy-chip';
 import { RepeatsLine } from '@/routes/events/repeats-line';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
+import { SAVED_FROM_LINK, useRsvpFromLink } from '@/routes/events/rsvp-from-link';
 import { ShareEventButton } from '@/routes/events/share-event';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 import type { EventAttendee, RsvpStatus } from '@/types/domain';
@@ -97,6 +98,17 @@ export default function EventDetailPage() {
     },
     [memberId, event, viewer, reload, reloadAttendees, rsvpSheetFor],
   );
+
+  // Going, Maybe or Can't go pressed in the invite email (20261114070000).
+  const [fromLink, setFromLink] = useState<string | null>(null);
+  const saveFromLink = useCallback(
+    (answer: 'going' | 'interested' | 'no') => {
+      onRsvp(answer === 'no' ? null : answer);
+      setFromLink(SAVED_FROM_LINK[answer]);
+    },
+    [onRsvp],
+  );
+  useRsvpFromLink(Boolean(memberId && event && !isPastEvent(event)), saveFromLink);
 
   if (loading) {
     return (
@@ -423,6 +435,13 @@ export default function EventDetailPage() {
           {writeError ? (
             <p className="mt-3 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
               {writeError}
+            </p>
+          ) : fromLink ? (
+            <p
+              role="status"
+              className="mt-3 rounded-xl bg-tint px-3.5 py-2.5 text-[0.8125rem] text-ink leading-[1.45]"
+            >
+              {fromLink}
             </p>
           ) : null}
 

@@ -16,6 +16,7 @@
  * by the platform.
  */
 
+import { signedPhotoUrl } from '../_shared/event-invite-email.ts';
 import { fromHeader, SITE_URL } from './compose.ts';
 import { type Deps, type InviteRow, sendInvite } from './handler.ts';
 
@@ -97,12 +98,50 @@ const deps: Deps = {
   },
   async eventFor(id) {
     const rows = await rest<
-      { title: string; start_time: string | null; timezone: string | null; all_day: boolean }[]
-    >(`events?select=title,start_time,timezone,all_day&id=eq.${id}`);
+      {
+        title: string;
+        start_time: string | null;
+        end_time: string | null;
+        timezone: string | null;
+        all_day: boolean;
+        event_format: string | null;
+        location: string | null;
+        city: string | null;
+        description: string | null;
+        photo_path: string | null;
+        photo_alt: string | null;
+        organization_id: string | null;
+      }[]
+    >(
+      `events?select=title,start_time,end_time,timezone,all_day,event_format,location,city,description,photo_path,photo_alt,organization_id&id=eq.${id}`,
+    );
     const row = rows?.[0];
-    return row
-      ? { title: row.title, start: row.start_time, timezone: row.timezone, allDay: row.all_day }
-      : null;
+    if (!row) return null;
+    const place =
+      row.event_format === 'online'
+        ? 'Online'
+        : [row.location, row.city]
+            .map((part) => part?.trim())
+            .filter(Boolean)
+            .join(', ') || null;
+    return {
+      title: row.title,
+      start: row.start_time,
+      end: row.end_time,
+      timezone: row.timezone,
+      allDay: row.all_day,
+      place,
+      description: row.description,
+      imageUrl: await signedPhotoUrl(SUPABASE_URL, serviceHeaders, row.photo_path),
+      imageAlt: row.photo_alt,
+      organization: row.organization_id
+        ? ((
+            await rest<{ name: string }[]>(
+              `organizations?select=name&id=eq.${row.organization_id}&removed_at=is.null`,
+            )
+          )?.[0]?.name ?? null)
+        : null,
+    };
   },
   async saveTokenHash(id, hash) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/invites?id=eq.${id}&status=eq.pending`, {

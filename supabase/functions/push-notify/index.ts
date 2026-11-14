@@ -24,9 +24,11 @@
  * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
  */
 
+import { fromWithName, signedPhotoUrl } from '../_shared/event-invite-email.ts';
 import { apnsDevice, apnsGone, apnsKeys, sendApns } from './apns.ts';
 import { compose, type Owed, type PushMessage } from './compose.ts';
 import { EVENTS } from './events.ts';
+import { type DueInvite, memberInviteEmail } from './invite-email.ts';
 import { type DueEmail, reminderEmail } from './reminder-email.ts';
 import { sendPush } from './webpush.ts';
 
@@ -186,7 +188,11 @@ Deno.serve(async (request) => {
   }
 
   const emailed =
-    event === 'daily' || event === 'day_before' ? await emailReminders(secret, key) : 0;
+    event === 'daily' || event === 'day_before'
+      ? await emailReminders(secret, key)
+      : event === 'event_notice'
+        ? await emailInvites(secret, key)
+        : 0;
 
   return reply(200, { owed: owed.length, sent, skipped, forgotten: gone.length, emailed });
 });
@@ -225,6 +231,63 @@ async function emailReminders(secret: string, key: unknown): Promise<number> {
       else console.error('push-notify: a reminder email was refused', sendResponse.status);
     } catch (e) {
       console.error('push-notify: a reminder email failed', e);
+    }
+  }
+  return emailed;
+}
+
+const SITE = Deno.env.get('SITE_URL') ?? 'https://thesciclub.com';
+
+/**
+ * Members invited by name to an invite-only event, emailed the event with
+ * Going, Maybe and Can't go (20261114070000), once each: event_invite_emails
+ * records each one it returns. One that Resend refuses is logged, not retried.
+ */
+async function emailInvites(secret: string, key: unknown): Promise<number> {
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    console.log('push-notify: RESEND_API_KEY or INVITE_FROM is not set; no invite emails');
+    return 0;
+  }
+  const dueResponse = await rpc('event_invite_emails', { p_secret: secret, p_key: key });
+  if (!dueResponse.ok) {
+    console.error(
+      'push-notify: event_invite_emails failed',
+      dueResponse.status,
+      await dueResponse.text(),
+    );
+    return 0;
+  }
+  const due = (await dueResponse.json()) as DueInvite[];
+  const headers: Record<string, string> = {
+    apikey: SERVICE_KEY,
+    'Content-Type': 'application/json',
+  };
+  if (!SERVICE_KEY.startsWith('sb_')) headers.Authorization = `Bearer ${SERVICE_KEY}`;
+  // One picture for the event, signed once.
+  const pictures = new Map<string, Promise<string | null>>();
+  let emailed = 0;
+  for (const row of due) {
+    try {
+      if (row.photo_path && !pictures.has(row.photo_path)) {
+        pictures.set(row.photo_path, signedPhotoUrl(SUPABASE_URL, headers, row.photo_path));
+      }
+      const imageUrl = row.photo_path ? ((await pictures.get(row.photo_path)) ?? null) : null;
+      const message = memberInviteEmail(row, SITE, imageUrl);
+      const sendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: fromWithName(EMAIL_FROM, message.senderName),
+          to: [row.email],
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+        }),
+      });
+      if (sendResponse.ok) emailed++;
+      else console.error('push-notify: an invite email was refused', sendResponse.status);
+    } catch (e) {
+      console.error('push-notify: an invite email failed', e);
     }
   }
   return emailed;
