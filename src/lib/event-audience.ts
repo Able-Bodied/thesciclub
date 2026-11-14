@@ -447,11 +447,14 @@ export function forgetPendingRegistration(): void {
 
 export type GuestState = 'member' | 'joining' | 'unconfirmed';
 
+/** Going or Interested, or a member who checked in without saying Going (20261113110000). */
+export type GuestStatus = RsvpStatus | 'walk_in';
+
 export interface Guest {
   name: string;
   email: string | null;
   phone: string | null;
-  status: RsvpStatus;
+  status: GuestStatus;
   state: GuestState;
   respondedAt: string;
   /** A registration from the public page; null for a member's RSVP. */
@@ -460,25 +463,31 @@ export interface Guest {
   invite: 'pending' | 'consumed' | null;
   /** The pending invite, where this viewer may send it again. */
   inviteId: string | null;
+  /** A member's id; null for a registration. */
+  memberId: string | null;
+  /** Ticked as there: checked in themselves, or by an organizer. */
+  checkedIn: boolean;
 }
 
 interface GuestRow {
   name: string | null;
   email: string | null;
   phone: string | null;
-  status: RsvpStatus;
+  status: GuestStatus;
   state: GuestState;
   responded_at: string;
   registration_id?: string | null;
   invite_status?: string | null;
   invite_id?: string | null;
+  member_id?: string | null;
+  checked_in?: boolean | null;
 }
 
 /** The event's guest list, for its organizers and administrators. */
 export async function fetchGuestList(eventId: string): Promise<Result<Guest[]>> {
   const result = await call<GuestRow[] | null>(
     'event_guest_list',
-    { event: eventId },
+    { event: eventId, p_with_walk_ins: true },
     'Could not load the guest list.',
   );
   if (!result.ok) return result;
@@ -497,9 +506,69 @@ export async function fetchGuestList(eventId: string): Promise<Result<Guest[]>> 
           ? row.invite_status
           : null,
       inviteId: row.invite_id ?? null,
+      memberId: row.member_id ?? null,
+      checkedIn: row.checked_in === true,
     })),
   };
 }
+
+/** A guest by whichever id they have: a member's, or a registration's. */
+function whichGuest(guest: Pick<Guest, 'memberId' | 'registrationId'>) {
+  return guest.memberId
+    ? { p_member: guest.memberId, p_registration: null }
+    : { p_member: null, p_registration: guest.registrationId };
+}
+
+/**
+ * Ticks a guest as there, or not (the owner, 2026-11-13; 20261113110000): by
+ * an organizer, once the event has started, with no end to it.
+ */
+export function setGuestCheckedIn(
+  eventId: string,
+  guest: Pick<Guest, 'memberId' | 'registrationId'>,
+  checked: boolean,
+): Promise<Result<null>> {
+  return call<null>(
+    'event_guest_check_in',
+    { p_event: eventId, p_checked: checked, ...whichGuest(guest) },
+    checked ? 'Could not check them in.' : 'Could not undo their check-in.',
+  );
+}
+
+/** Takes a guest off the list, at any time: a member's RSVP and check-in, or a registration. */
+export function removeGuest(
+  eventId: string,
+  guest: Pick<Guest, 'memberId' | 'registrationId'>,
+): Promise<Result<null>> {
+  return call<null>(
+    'event_guest_remove',
+    { p_event: eventId, ...whichGuest(guest) },
+    'Could not remove them.',
+  );
+}
+
+/** Puts somebody on the list by hand, as Going: a name, and an email or phone if they have one. */
+export function addGuest(
+  eventId: string,
+  guest: { name: string; email: string; phone: string },
+): Promise<Result<string>> {
+  return call<string>(
+    'event_guest_add',
+    {
+      p_event: eventId,
+      p_name: guest.name.trim(),
+      p_email: guest.email.trim() || null,
+      p_phone: guest.phone.trim() || null,
+    },
+    'Could not add them.',
+  );
+}
+
+export const GUEST_STATUS_LABEL: Record<GuestStatus, string> = {
+  going: 'Going',
+  interested: 'Interested',
+  walk_in: 'Came without an RSVP',
+};
 
 /**
  * Invites somebody who registered on the public page (20261104000000), then
@@ -532,11 +601,19 @@ export function guestListCsv(guests: Guest[]): string {
     return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
   };
   const rows = guests.map((g) =>
-    [g.name, g.email, g.phone, g.status, GUEST_STATE_LABEL[g.state], g.respondedAt]
+    [
+      g.name,
+      g.email,
+      g.phone,
+      g.status,
+      GUEST_STATE_LABEL[g.state],
+      g.respondedAt,
+      g.checkedIn ? 'yes' : 'no',
+    ]
       .map(cell)
       .join(','),
   );
-  return ['Name,Email,Phone,Response,In the club,Responded', ...rows].join('\r\n');
+  return ['Name,Email,Phone,Response,In the club,Responded,Checked in', ...rows].join('\r\n');
 }
 
 export const GUEST_STATE_LABEL: Record<GuestState, string> = {

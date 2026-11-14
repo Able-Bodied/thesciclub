@@ -25,6 +25,8 @@ const guest = (o: Partial<Guest> = {}): Guest => ({
   registrationId: 'reg-1',
   invite: null,
   inviteId: null,
+  memberId: null,
+  checkedIn: false,
   ...o,
 });
 
@@ -32,9 +34,9 @@ describe('the guest list as a spreadsheet', () => {
   it('has a header and a row per guest, saying whether they are in the club', () => {
     const csv = guestListCsv([guest(), guest({ name: 'Sam', state: 'member', phone: null })]);
     const lines = csv.split('\r\n');
-    expect(lines[0]).toBe('Name,Email,Phone,Response,In the club,Responded');
+    expect(lines[0]).toBe('Name,Email,Phone,Response,In the club,Responded,Checked in');
     expect(lines[1]).toBe(
-      'Maria Lopez,maria@example.com,(408) 555-0112,going,Not confirmed,2026-10-22T18:00:00Z',
+      'Maria Lopez,maria@example.com,(408) 555-0112,going,Not confirmed,2026-10-22T18:00:00Z,no',
     );
     expect(lines[2]).toContain('Sam,maria@example.com,,going,Member');
   });

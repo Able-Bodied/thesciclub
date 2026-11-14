@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
 import {
+  addGuest,
   fetchGuestList,
   GUEST_STATE_LABEL,
+  GUEST_STATUS_LABEL,
   type Guest,
   type GuestState,
   guestListCsv,
   inviteGuest,
+  removeGuest,
+  setGuestCheckedIn,
 } from '@/lib/event-audience';
 import { useEvents } from '@/lib/events';
 import { addedButNotSent, sendInvite } from '@/lib/send-invite';
@@ -21,6 +25,11 @@ import { cn } from '@/lib/utils';
  *
  * "Not confirmed" is somebody who only filled in the form: the address has
  * not been proven theirs. "Joining" has an account and has not finished.
+ *
+ * The owner, 2026-11-13 (20261113110000): the same people tick who was there,
+ * once the event has started and for ever after; add a guest by hand; and
+ * remove one at any time. Members who checked in without saying Going are
+ * listed too, as having come.
  */
 
 const TAG: Record<GuestState, string> = {
@@ -36,7 +45,11 @@ export default function GuestListPage() {
   const event = events.find((e) => e.id === id) ?? null;
   const [guests, setGuests] = useState<Guest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+  const started = event !== null && Date.parse(event.startTime) <= Date.now();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version is how adding a guest reads the list again.
   useEffect(() => {
     let cancelled = false;
     void fetchGuestList(id).then((result) => {
@@ -47,17 +60,56 @@ export default function GuestListPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, version]);
 
   const going = guests?.filter((g) => g.status === 'going').length ?? 0;
   const interested = guests?.filter((g) => g.status === 'interested').length ?? 0;
   const outside = guests?.filter((g) => g.state !== 'member').length ?? 0;
+  const here = guests?.filter((g) => g.checkedIn).length ?? 0;
+
+  function tick(guest: Guest, checked: boolean) {
+    setActionError(null);
+    const swap = (to: boolean) => {
+      setGuests((current) =>
+        (current ?? []).map((g) =>
+          g === guest || sameGuest(g, guest) ? { ...g, checkedIn: to } : g,
+        ),
+      );
+    };
+    swap(checked);
+    void setGuestCheckedIn(id, guest, checked).then((result) => {
+      if (result.ok) {
+        announce(checked ? `${guest.name} is checked in.` : `${guest.name} is not checked in.`);
+        return;
+      }
+      swap(!checked);
+      setActionError(result.error);
+    });
+  }
+
+  function remove(guest: Guest) {
+    const ok = window.confirm(
+      guest.memberId
+        ? `Take ${guest.name} off the guest list? Their RSVP and check-in are removed. They can still say Going again.`
+        : `Take ${guest.name} off the guest list?`,
+    );
+    if (!ok) return;
+    setActionError(null);
+    void removeGuest(id, guest).then((result) => {
+      if (!result.ok) {
+        setActionError(result.error);
+        return;
+      }
+      setGuests((current) => (current ?? []).filter((g) => !sameGuest(g, guest)));
+      announce(`${guest.name} is off the guest list.`);
+    });
+  }
 
   function copyList() {
     if (!guests) return;
     const text = guests
       .map((g) =>
-        [g.name, g.status === 'going' ? 'Going' : 'Interested', g.email, g.phone]
+        [g.name, GUEST_STATUS_LABEL[g.status], g.checkedIn ? 'Checked in' : null, g.email, g.phone]
           .filter(Boolean)
           .join(' · '),
       )
@@ -92,7 +144,10 @@ export default function GuestListPage() {
         <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink">Guest list</h1>
         <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
           For the event's organizers and the club's administrators only. Members are listed when
-          they RSVP. Registrations from the public page are listed either way.
+          they RSVP. Registrations from the public page are listed either way.{' '}
+          {started
+            ? 'Tick who was there, at any time from now on.'
+            : 'Once the event starts, you can tick who was there.'}
         </p>
 
         {error ? (
@@ -108,11 +163,12 @@ export default function GuestListPage() {
 
         {guests ? (
           <>
-            <dl className="mt-4 grid grid-cols-3 gap-2">
+            <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
                 ['Going', going],
                 ['Interested', interested],
                 ['Not in the club', outside],
+                ['Checked in', here],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-[12px] border border-line bg-paper px-3 py-2">
                   <dd className="font-extrabold font-head text-[1.25rem] text-ink">{value}</dd>
@@ -120,6 +176,12 @@ export default function GuestListPage() {
                 </div>
               ))}
             </dl>
+
+            {actionError ? (
+              <p role="alert" className="mt-3 text-[0.8125rem] text-destructive leading-[1.45]">
+                {actionError}
+              </p>
+            ) : null}
 
             {guests.length === 0 ? (
               <p className="mt-6 text-center text-[0.875rem] text-ink2">Nobody yet.</p>
@@ -129,19 +191,29 @@ export default function GuestListPage() {
                   <li
                     // Name and address together are the guest; the index keeps
                     // two who typed the same name apart.
-                    key={`${guest.email ?? ''}-${guest.name}-${String(index)}`}
-                    className="flex items-start justify-between gap-3 border-line border-b py-3 last:border-b-0"
+                    key={`${guest.memberId ?? guest.registrationId ?? ''}-${guest.name}-${String(index)}`}
+                    className="flex items-start gap-3 border-line border-b py-3 last:border-b-0"
                   >
-                    <span className="min-w-0">
+                    {started ? (
+                      // A finger-sized target round a box the size of the name.
+                      <label className="-my-2.5 -ml-2.5 flex h-11 w-11 flex-none items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={guest.checkedIn}
+                          onChange={(e) => {
+                            tick(guest, e.target.checked);
+                          }}
+                          aria-label={`${guest.name} was there`}
+                          className="h-6 w-6 accent-[var(--action)]"
+                        />
+                      </label>
+                    ) : null}
+                    <span className="min-w-0 flex-1">
                       <span className="block font-bold text-[0.9375rem] text-ink">
                         {guest.name}
                       </span>
                       <span className="block break-words text-[0.8125rem] text-ink2 leading-[1.45]">
-                        {[
-                          guest.status === 'going' ? 'Going' : 'Interested',
-                          guest.email,
-                          guest.phone,
-                        ]
+                        {[GUEST_STATUS_LABEL[guest.status], guest.email, guest.phone]
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
@@ -155,6 +227,16 @@ export default function GuestListPage() {
                           );
                         }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          remove(guest);
+                        }}
+                        aria-label={`Remove ${guest.name} from the guest list`}
+                        className="mt-0.5 min-h-11 font-bold text-[0.8125rem] text-grey underline underline-offset-2"
+                      >
+                        Remove
+                      </button>
                     </span>
                     <span
                       className={cn(
@@ -168,6 +250,14 @@ export default function GuestListPage() {
                 ))}
               </ul>
             )}
+
+            <AddGuest
+              eventId={id}
+              onAdded={(name) => {
+                announce(`${name} is on the guest list.`);
+                setVersion((v) => v + 1);
+              }}
+            />
 
             {guests.length > 0 ? (
               <div className="mt-4 flex gap-2.5">
@@ -198,6 +288,138 @@ export default function GuestListPage() {
   );
 }
 
+function sameGuest(a: Guest, b: Guest): boolean {
+  return a.memberId
+    ? a.memberId === b.memberId
+    : a.registrationId !== null && a.registrationId === b.registrationId;
+}
+
+/**
+ * Somebody put on the list by hand (the owner, 2026-11-13): at the door, or
+ * told some other way. A name is enough; an email lets them be invited to the
+ * club from here later.
+ */
+function AddGuest({ eventId, onAdded }: { eventId: string; onAdded: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const ids = { name: useId(), email: useId(), phone: useId() };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+        }}
+        className="mt-3 flex min-h-[46px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.875rem] text-emphasis"
+      >
+        Add a guest
+      </button>
+    );
+  }
+
+  const field =
+    'mt-1 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3 py-2 text-[1rem] text-ink outline-none focus:border-emphasis';
+  const label = 'mt-3 block font-bold font-head text-[0.8125rem] text-ink';
+
+  return (
+    <form
+      className="mt-3 rounded-[14px] border border-line bg-paper p-3.5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) {
+          setFailure('Give the guest’s name.');
+          return;
+        }
+        setBusy(true);
+        setFailure(null);
+        void addGuest(eventId, { name, email, phone }).then((result) => {
+          setBusy(false);
+          if (!result.ok) {
+            setFailure(result.error);
+            return;
+          }
+          onAdded(name.trim());
+          setName('');
+          setEmail('');
+          setPhone('');
+          setOpen(false);
+        });
+      }}
+    >
+      <p className="font-bold font-head text-[0.9375rem] text-ink">Add a guest</p>
+      <label htmlFor={ids.name} className={label}>
+        Name
+      </label>
+      <input
+        id={ids.name}
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+        }}
+        maxLength={100}
+        autoComplete="off"
+        className={field}
+      />
+      <label htmlFor={ids.email} className={label}>
+        Email <span className="font-normal text-grey">(optional)</span>
+      </label>
+      <input
+        id={ids.email}
+        type="email"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+        }}
+        autoComplete="off"
+        className={field}
+      />
+      <label htmlFor={ids.phone} className={label}>
+        Phone <span className="font-normal text-grey">(optional)</span>
+      </label>
+      <input
+        id={ids.phone}
+        type="tel"
+        value={phone}
+        onChange={(e) => {
+          setPhone(e.target.value);
+        }}
+        maxLength={32}
+        autoComplete="off"
+        className={field}
+      />
+      {failure ? (
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+          {failure}
+        </p>
+      ) : null}
+      <div className="mt-3 flex gap-2.5">
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex min-h-[46px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.875rem] text-on-gold disabled:opacity-50"
+        >
+          {busy ? 'Adding…' : 'Add to the list'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setFailure(null);
+          }}
+          className="min-h-[46px] px-3 text-[0.875rem] text-grey"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 /**
  * For somebody who registered on the public page and is not in the club (the
  * owner, 2026-11-04): an invite to their address, whose link starts
@@ -215,7 +437,13 @@ function GuestInvite({
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<{ text: string; failed: boolean } | null>(null);
 
-  if (!guest.registrationId || guest.state === 'member' || guest.invite === 'consumed') {
+  // Somebody added by hand with no email has no address to invite.
+  if (
+    !guest.registrationId ||
+    !guest.email ||
+    guest.state === 'member' ||
+    guest.invite === 'consumed'
+  ) {
     return null;
   }
   const registrationId = guest.registrationId;

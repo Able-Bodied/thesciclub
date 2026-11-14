@@ -10,11 +10,16 @@ type InviteAnswer =
   | { ok: true; inviteId: string; sendError?: string }
   | { ok: false; error: string };
 
+type TickAnswer = { ok: true; value: null } | { ok: false; error: string };
+
 const state = vi.hoisted(() => ({
   guests: [] as Guest[],
   invited: [] as string[],
   inviteAnswer: null as InviteAnswer | null,
   sentAgain: [] as string[],
+  startTime: null as string | null,
+  ticks: [] as { guest: string | null; checked: boolean }[],
+  tickAnswer: null as TickAnswer | null,
 }));
 
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
@@ -23,6 +28,14 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
   inviteGuest: (id: string) => {
     state.invited.push(id);
     return Promise.resolve(state.inviteAnswer ?? { ok: true, inviteId: 'inv-1' });
+  },
+  setGuestCheckedIn: (
+    _event: string,
+    g: { memberId: string | null; registrationId: string | null },
+    checked: boolean,
+  ) => {
+    state.ticks.push({ guest: g.memberId ?? g.registrationId, checked });
+    return Promise.resolve(state.tickAnswer ?? { ok: true, value: null });
   },
 }));
 vi.mock('@/lib/send-invite', async (importOriginal) => ({
@@ -33,7 +46,11 @@ vi.mock('@/lib/send-invite', async (importOriginal) => ({
   },
 }));
 vi.mock('@/lib/events', () => ({
-  useEvents: () => ({ events: [], loading: false, error: null }),
+  useEvents: () => ({
+    events: state.startTime ? [{ id: 'e1', title: 'Picnic', startTime: state.startTime }] : [],
+    loading: false,
+    error: null,
+  }),
 }));
 
 const { default: GuestListPage } = await import('@/routes/events/guest-list');
@@ -48,6 +65,8 @@ const guest = (o: Partial<Guest> = {}): Guest => ({
   registrationId: 'reg-1',
   invite: null,
   inviteId: null,
+  memberId: null,
+  checkedIn: false,
   ...o,
 });
 
@@ -62,6 +81,9 @@ function renderList() {
 }
 
 beforeEach(() => {
+  state.startTime = null;
+  state.ticks = [];
+  state.tickAnswer = null;
   state.invited = [];
   state.sentAgain = [];
   state.inviteAnswer = { ok: true, inviteId: 'inv-1' };
@@ -110,5 +132,35 @@ describe('inviting a guest from the public page', () => {
       await screen.findByRole('button', { name: 'Invite Maria Lopez to the club' }),
     );
     expect(await screen.findByRole('alert')).toHaveTextContent('already on the list');
+  });
+});
+
+// The owner, 2026-11-13 (20261113110000).
+describe('ticking who was there', () => {
+  it('offers boxes only once the event has started, and puts a refused tick back', async () => {
+    state.guests = [guest({ name: 'Sam', state: 'member', registrationId: null, memberId: 'm-1' })];
+    state.startTime = new Date(Date.now() + 3_600_000).toISOString();
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/events/e1/guests']}>
+        <Routes>
+          <Route path="/events/:id/guests" element={<GuestListPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByText('Sam');
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    unmount();
+
+    state.startTime = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    renderList();
+    const box = await screen.findByRole('checkbox', { name: 'Sam was there' });
+    await userEvent.click(box);
+    expect(state.ticks).toEqual([{ guest: 'm-1', checked: true }]);
+    expect(box).toBeChecked();
+
+    state.tickAnswer = { ok: false, error: 'Could not undo their check-in.' };
+    await userEvent.click(box);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not undo');
+    expect(box).toBeChecked();
   });
 });
