@@ -40,6 +40,17 @@ interface Line {
   why?: string;
 }
 
+/**
+ * What the message box starts with (the owner, 2026-11-14: "a default message
+ * and let the admin customize"). Short and warm, since the email already says
+ * what the club is, and nothing about anybody's health.
+ */
+export function suggestedMessage(organization: string | null): string {
+  return organization
+    ? `I'd love for you to join ${organization} in The SCI Club. Signing up only takes a couple of minutes. See you inside!`
+    : "I'd love for you to join me in The SCI Club. Signing up only takes a couple of minutes. See you inside!";
+}
+
 const wait = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
@@ -57,7 +68,8 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
   const [fromLink, setFromLink] = useState<ReadSheet | null>(null);
   const [reading, setReading] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [message, setMessage] = useState('');
+  /** Null until they change it: the suggested message, which follows the organization. */
+  const [edited, setEdited] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lines, setLines] = useState<Line[] | null>(null);
   const [sending, setSending] = useState(false);
@@ -69,6 +81,8 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
   // One organization of theirs is the one they mean; with several, they pick.
   const chosen = organizationId ?? (organizations.length === 1 ? (organizations[0]?.id ?? '') : '');
   const organizationName = organizations.find((o) => o.id === chosen)?.name ?? null;
+  const suggested = suggestedMessage(organizationName);
+  const message = edited ?? suggested;
 
   const read = useMemo(() => (pasted.trim() ? readSheet(pasted) : fromLink), [pasted, fromLink]);
   const people = read?.people ?? [];
@@ -173,7 +187,7 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
     setLink('');
     setPasted('');
     setFromLink(null);
-    setMessage('');
+    setEdited(null);
     setError(null);
   }
 
@@ -334,22 +348,34 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
       </select>
 
       <label htmlFor="sheet-message" className={`${label} mt-3`}>
-        Your message (optional)
+        Your message
       </label>
       <textarea
         id="sheet-message"
-        rows={3}
+        rows={4}
         maxLength={1000}
-        placeholder="We would love to have you in the club."
+        placeholder="Leave it empty to send the email without a message."
         value={message}
         onChange={(e) => {
-          setMessage(e.target.value);
+          setEdited(e.target.value);
         }}
         className={field}
       />
       <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-        Quoted in the email, from you. Others can see an inbox, so keep it general.
+        A suggestion to change as you like. It is quoted in the email, from you. Others can see an
+        inbox, so keep it general.
       </p>
+      {edited !== null && edited !== suggested ? (
+        <button
+          type="button"
+          onClick={() => {
+            setEdited(null);
+          }}
+          className="mt-1.5 min-h-[36px] rounded-full bg-tint px-3 font-bold font-head text-[0.75rem] text-emphasis"
+        >
+          Use the suggested message
+        </button>
+      ) : null}
 
       <details className="mt-3 rounded-[11px] border border-line">
         <summary className="cursor-pointer px-3 py-2 font-bold text-[0.8125rem] text-emphasis">
