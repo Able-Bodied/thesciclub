@@ -125,11 +125,20 @@ export function peopleIn(table: string[][]): ReadSheet {
         continue;
       }
       for (const cell of holding) {
-        const email = EMAIL.exec(cell)?.[0] ?? '';
-        const around = nameFrom(cell.replace(email, ''));
-        const beside =
-          holding.length === 1 ? nameFrom(row.find((c) => c.trim() && !EMAIL.test(c))) : null;
-        found.push({ email, name: around ?? beside });
+        // Several addresses in one cell ("a@x.com b@y.com"): each one, named
+        // by the words just before it ("Ana Ruiz <ana@x.com>").
+        const matches = [...cell.matchAll(new RegExp(EMAIL.source, 'g'))];
+        let from = 0;
+        for (const match of matches) {
+          const at = match.index;
+          const around = nameFrom(cell.slice(from, at));
+          from = at + match[0].length;
+          const beside =
+            holding.length === 1 && matches.length === 1
+              ? nameFrom(row.find((c) => c.trim() && !EMAIL.test(c)))
+              : null;
+          found.push({ email: match[0], name: around ?? beside });
+        }
       }
     }
   }

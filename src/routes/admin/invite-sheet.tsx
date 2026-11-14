@@ -280,18 +280,23 @@ export function InviteSheet({ onCreated }: { onCreated: () => void }) {
       </p>
 
       <label htmlFor="sheet-paste" className={`${label} mt-3`}>
-        Or paste the rows
+        Or paste email addresses
       </label>
       <textarea
         id="sheet-paste"
         rows={3}
-        placeholder={'Ana Ruiz\tana@example.com\nbo@example.com'}
+        autoCapitalize="none"
+        placeholder={'Ana Ruiz <ana@example.com>, bo@example.com, cy@example.com'}
         value={pasted}
         onChange={(e) => {
           setPasted(e.target.value);
         }}
         className={field}
       />
+      <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
+        Separated by commas, spaces or new lines, copied from Gmail’s To line with the names, or
+        rows copied out of a spreadsheet.
+      </p>
 
       {read ? (
         <div className="mt-3">
