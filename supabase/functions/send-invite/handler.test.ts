@@ -182,7 +182,7 @@ describe('the invite email', () => {
     expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(200);
     const text = log.sent[0]?.text ?? '';
     expect(text).toContain('Hi Suet Fei,');
-    expect(text).toContain('Maya invited you to join The SCI Club, with Able Bodied.');
+    expect(text).toContain('Maya invited you to join The SCI Club as part of Able Bodied.');
     expect(text).toContain('> Come join us!');
 
     const email = inviteEmail(
