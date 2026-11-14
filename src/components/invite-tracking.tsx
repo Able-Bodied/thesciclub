@@ -11,7 +11,7 @@ function Step({ on, children }: { on: boolean; children: React.ReactNode }) {
   return (
     <span
       className={
-        on ? 'rounded-full bg-tint px-2 py-0.5 font-bold text-emphasis' : 'px-1 py-0.5 text-grey/55'
+        on ? 'rounded-full bg-tint px-2 py-0.5 font-bold text-emphasis' : 'px-1 py-0.5 text-grey/75'
       }
     >
       {on ? null : <span className="sr-only">Not yet: </span>}
