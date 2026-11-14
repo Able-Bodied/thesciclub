@@ -8,11 +8,15 @@
  * ---------------------------------------------------------------------------
  * What counts as a link
  * ---------------------------------------------------------------------------
- * Anything starting `http://`, `https://` or `www.`. Not a bare `amazon.com`:
- * guessing that "e.g." or "T6.Complete" is not a domain is a game this file
- * would lose, and a link that goes somewhere wrong is worse than one that is
- * not a link. The address is rebuilt with `new URL` and must come out http or
- * https with a dotted host, so nothing typed can become `javascript:`.
+ * Anything starting `http://`, `https://` or `www.`. A bare `amazon.com` too
+ * (the owner, 2026-11-10), but only when it ends in a web ending on the list
+ * below: "e.g." and "T6.Complete" do not, so they stay words. The address is
+ * rebuilt with `new URL` and must come out http or https with a dotted host,
+ * so nothing typed can become `javascript:`.
+ *
+ * An email address opens a new email, and a US phone number written in
+ * groups (408-555-1234, (408) 555-1234, +1 408 555 1234) starts a call
+ * (the owner, 2026-11-10). A run of digits alone is not a phone number.
  *
  * Punctuation that ends a sentence is not part of the address: "see
  * https://example.com/x." links to /x. A closing bracket is kept only when the
@@ -33,6 +37,17 @@ export const LABEL_LENGTH = 48;
 export type Piece = { kind: 'text'; text: string } | { kind: 'link'; href: string; label: string };
 
 const CANDIDATE = /\b(?:https?:\/\/|www\.)[^\s<>"]+/gi;
+
+/** Web endings a bare address must end in. Not `it`, `me` or `in`: "got.it". */
+const ENDINGS =
+  'com|org|net|edu|gov|mil|io|co|us|info|biz|app|dev|tv|ly|ai|ca|uk|au|nz|de|fr|es|nl|mx|health|news|shop|store|online|site|tech|club|link|page|fit|gg';
+const EMAIL = '[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}';
+const PHONE = '(?:\\+?1[\\s.-]?)?(?:\\(\\d{3}\\)\\s?|\\d{3}[\\s.-])\\d{3}[\\s.-]\\d{4}';
+const BARE = `(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.)+(?:${ENDINGS})(?:\\/[^\\s<>"]*)?`;
+const OTHER = new RegExp(
+  `(?<![\\w.+@/-])(?:(?<email>${EMAIL})|(?<phone>${PHONE})|(?<bare>${BARE}))(?![\\w@-])`,
+  'gi',
+);
 const TRAILING = /[.,;:!?'"’”)\]}>]$/;
 
 /** Strip sentence punctuation off the end, and a bracket the address did not open. */
@@ -83,50 +98,125 @@ export function labelFor(href: string): string {
  * place does (routes/events/place.ts). The member reads the address as they
  * wrote it; only the tap is new.
  *
- * Only the shape that is plainly one: a number, a capitalised street name of
- * up to four words, and a street word (St, Avenue, Blvd…). "I did 3 laps" and
- * "2 big dogs" are not addresses; "Meet at 1200 Valencia St" is. A unit, a
- * city and a US state with its ZIP code are kept when they follow, since they
- * are what pins the right spot. A state is only one of the real two letters,
- * so "123 Main St, Oakland OK" ends where it should and capitals that happen
- * to follow do not ride along.
+ * The shape: a number, a street name of up to four words, and a street word
+ * (St, Avenue, Blvd…), in any case, since members type "1600 pennsylvania
+ * ave" (the owner, 2026-11-12). "I did 3 laps" and "2 big dogs" have no street
+ * word; "5 miles down the road" has one, so a name word may never be a common
+ * word (STOP). An all-lowercase name before a word that is also plain English
+ * (way, place, drive…) needs a city, state or ZIP after it: "1 long way".
+ *
+ * What follows is kept when it pins the spot: a unit, then a city and state
+ * (commas optional, on the next line too), a ZIP, or a capitalised city alone
+ * at the end of a sentence. A state in capitals counts anywhere; "ca" or "ok"
+ * only after a city and with a ZIP or at the very end, so "12 main st ok"
+ * does not send the map to Oklahoma.
  */
 const STREET_WORD =
-  '(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Place|Pl|Parkway|Pkwy|Highway|Hwy|Terrace|Ter|Circle|Cir|Square|Sq|Trail|Trl|Plaza|Plz|Alley|Loop)';
-const NAME_WORD = "(?:[A-Z][A-Za-z'’-]*\\.?|\\d+(?:st|nd|rd|th))";
-const POINT = '(?:N|S|E|W|NE|NW|SE|SW|North|South|East|West)';
+  'Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Place|Pl|Parkway|Pkwy|Highway|Hwy|Terrace|Ter|Circle|Cir|Square|Sq|Trail|Trl|Plaza|Plz|Alley|Loop';
+const LOOSE_STREET =
+  /^(?:way|drive|dr|lane|ln|court|ct|place|pl|square|sq|circle|cir|trail|trl|loop|terrace|ter|plaza|plz|alley)$/i;
+const STOP = new Set(
+  (
+    'a an the and or but to of in on at by for from with into onto down up over under around ' +
+    'across along past through near my your our their his her its this that these those some ' +
+    'more most many few other same long short big small little few laps lap miles mile km ' +
+    'blocks block times minutes hours days weeks months years people kids guys is are was were ' +
+    'be been i we you he she they it me us them'
+  ).split(' '),
+);
+const WORD = "[A-Za-z][A-Za-z'’-]*|[A-Za-z]\\.|\\d+(?:st|nd|rd|th)";
+const POINT = 'N|S|E|W|NE|NW|SE|SW|North|South|East|West';
 const STATES =
   'AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY';
+const PLACE_WORD = "[A-Za-z][A-Za-z.'’-]*";
+/** A city ending a sentence: no dot, or it would take the full stop. */
+const CITY_WORD = "[A-Za-z][A-Za-z'’-]*";
+const ZIP = '\\d{5}(?:-\\d{4})?';
 const ADDRESS = new RegExp(
   [
-    '\\b\\d{1,6}[A-Z]?',
-    `(?:\\s+${NAME_WORD}){1,4}?`,
-    `\\s+${STREET_WORD}\\b\\.?`,
-    `(?:\\s+${POINT}(?![A-Za-z]))?`,
+    '\\b\\d{1,6}(?:-\\d{1,4})?[A-Za-z]?',
+    `(?<name>(?:\\s+(?:${WORD})){1,4}?)`,
+    `\\s+(?<street>${STREET_WORD})\\b\\.?`,
+    `(?<point>\\s+(?:${POINT})(?![A-Za-z]))?`,
     '(?:,?\\s+(?:Suite|Ste\\.?|Apt\\.?|Unit|#)\\s*[A-Za-z0-9-]+)?',
-    "(?:,\\s*[A-Z][A-Za-z.'’-]*(?:\\s+[A-Z][a-z][A-Za-z.'’-]*){0,2}(?=,?\\s+(?:" +
-      STATES +
-      ')\\b))?',
-    `(?:,?\\s+(?:${STATES})\\b(?:\\s+\\d{5}(?:-\\d{4})?)?)?`,
+    '(?<tail>',
+    `(?:,?\\s+(?<city>${PLACE_WORD}(?:\\s+${PLACE_WORD}){0,2}?))?,?\\s+(?<state>${STATES})\\b(?:\\s+(?<zip>${ZIP}))?`,
+    `|,?\\s+(?<zipOnly>${ZIP})\\b`,
+    `|,\\s*(?<cityOnly>${CITY_WORD}(?:\\s+${CITY_WORD}){0,2})(?=\\s*(?:$|[.!?\\n]))`,
+    ')?',
   ].join(''),
-  'g',
+  'gi',
 );
+
+const words = (text: string | undefined) => (text ?? '').trim().split(/\s+/).filter(Boolean);
+const common = (word: string) => STOP.has(word.replace(/\.$/, '').toLowerCase());
+
+/** The address in a match, without a tail that does not hold up, or null for none. */
+function addressIn(match: RegExpExecArray, text: string): string | null {
+  const { name, street = '', point, tail, city, state, zip, cityOnly } = match.groups ?? {};
+  const names = words(name);
+  if (names.some(common)) return null;
+  let keepTail = Boolean(tail);
+  if (state) {
+    const atEnd = !/[A-Za-z0-9]/.test(text.slice(match.index + match[0].length));
+    const capitals = state === state.toUpperCase();
+    keepTail =
+      !words(city).some(common) && (capitals || (Boolean(city) && (Boolean(zip) || atEnd)));
+  } else if (cityOnly) {
+    keepTail = words(cityOnly).every((word) => /^[A-Z]/.test(word) && !common(word));
+  }
+  const core = tail ? match[0].slice(0, match[0].length - tail.length) : match[0];
+  const lowercase = !names.some((word) => /^[A-Z]/.test(word));
+  if (lowercase && LOOSE_STREET.test(street) && !point && !keepTail) return null;
+  return keepTail ? match[0] : core;
+}
 
 /** Google Maps for an address a member wrote. */
 export function mapsHref(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.replace(/\s+/g, ' '))}`;
 }
 
 /** Words with the street addresses in them split out as links to a map. */
 function withAddresses(text: string, pieces: Piece[]) {
   let at = 0;
   for (const match of text.matchAll(ADDRESS)) {
-    const address = match[0];
+    const address = addressIn(match, text);
+    if (!address) continue;
     if (match.index > at) pieces.push({ kind: 'text', text: text.slice(at, match.index) });
     pieces.push({ kind: 'link', href: mapsHref(address), label: address });
     at = match.index + address.length;
   }
   if (at < text.length) pieces.push({ kind: 'text', text: text.slice(at) });
+}
+
+/** A phone number as a tel: address, +1 and its ten digits. */
+function telHref(written: string): string | null {
+  const digits = written.replace(/\D/g, '');
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  return ten.length === 10 ? `tel:+1${ten}` : null;
+}
+
+/** Emails, phone numbers and bare addresses split out; the rest goes on to addresses. */
+function withOthers(text: string, pieces: Piece[]) {
+  let at = 0;
+  for (const match of text.matchAll(OTHER)) {
+    const { email, phone, bare } = match.groups ?? {};
+    let written = match[0];
+    let href: string | null = null;
+    let label = written;
+    if (email) href = `mailto:${email}`;
+    else if (phone) href = telHref(phone);
+    else if (bare) {
+      written = trimEnd(bare);
+      href = hrefFor(`https://${written}`);
+      if (href) label = labelFor(href);
+    }
+    if (!href) continue;
+    if (match.index > at) withAddresses(text.slice(at, match.index), pieces);
+    pieces.push({ kind: 'link', href, label });
+    at = match.index + written.length;
+  }
+  if (at < text.length) withAddresses(text.slice(at), pieces);
 }
 
 /** The text in order, with every link (and street address) found in it split out. */
@@ -138,10 +228,10 @@ export function findLinks(text: string): Piece[] {
     const candidate = trimEnd(match[0]);
     const href = hrefFor(candidate);
     if (!href) continue;
-    if (start > at) withAddresses(text.slice(at, start), pieces);
+    if (start > at) withOthers(text.slice(at, start), pieces);
     pieces.push({ kind: 'link', href, label: labelFor(href) });
     at = start + candidate.length;
   }
-  if (at < text.length) withAddresses(text.slice(at), pieces);
+  if (at < text.length) withOthers(text.slice(at), pieces);
   return pieces;
 }

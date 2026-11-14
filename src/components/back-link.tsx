@@ -4,12 +4,8 @@ import { Link } from 'react-router-dom';
 /**
  * Back, to a named screen.
  *
- * Deliberately a Link with a fixed destination rather than `navigate(-1)`,
- * which is what the member profile uses. That screen is reachable from two
- * places, so history is the only honest answer to "back" there and the label
- * has to be worked out. These are reachable from one — the Invites card on Me
- * — so naming the destination is both true and sturdier: `navigate(-1)` on a
- * deep link or a refresh leaves the app entirely while the label still says Me.
+ * A fixed destination keeps the label true after tab switches, shared links
+ * or refreshes, when browser history may point at an unrelated screen.
  */
 export function BackLink({ to, label }: { to: string; label: string }) {
   return (

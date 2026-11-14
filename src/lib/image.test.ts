@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fittedSize, MAX_PHOTO_EDGE, preparePhoto, prepareThumb, THUMB_EDGE } from '@/lib/image';
+import { sniffImageType } from '../../supabase/functions/_shared/image-type';
 
 describe('fittedSize', () => {
   it('fits a landscape photo by its long edge', () => {
@@ -37,7 +38,12 @@ describe('fittedSize', () => {
 });
 
 describe('preparePhoto', () => {
-  const file = (name: string, size = 2_642_000) => ({ name, size, type: 'image/jpeg' }) as File;
+  /** A file that starts like a JPEG, as a phone photograph does. */
+  const file = (name: string, size = 2_642_000) => {
+    const bytes = new Uint8Array(size);
+    bytes.set([0xff, 0xd8, 0xff, 0xe0]);
+    return new File([bytes], name, { type: 'image/jpeg' });
+  };
 
   // Every step is best-effort. savePhoto already refuses to let a failed upload
   // cost somebody their signup; this is the same rule one layer up. An
@@ -46,7 +52,26 @@ describe('preparePhoto', () => {
     const original = file('holiday.JPEG');
     const result = await preparePhoto(original);
     expect(result.blob).toBe(original);
-    expect(result.ext).toBe('jpeg');
+    expect(result.ext).toBe('jpg');
+  });
+
+  // Nightly check uploads/nonimage_as_jpg: storage trusts the label, so the
+  // original is labelled by its bytes, and a non-image is one no bucket takes.
+  it('labels an undecodable original by its bytes, and a non-image as one no bucket takes', async () => {
+    const text = new File(['this is not a jpeg, just text'], 'cat.jpg', { type: 'image/jpeg' });
+    const refused = await preparePhoto(text);
+    expect(refused.blob.type).toBe('application/octet-stream');
+
+    const png = new File(
+      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0])],
+      'a.jpg',
+      {
+        type: 'image/jpeg',
+      },
+    );
+    const relabelled = await preparePhoto(png);
+    expect(relabelled.blob.type).toBe('image/png');
+    expect(relabelled.ext).toBe('png');
   });
 
   it('falls back when decoding throws, rather than propagating', async () => {
@@ -57,7 +82,7 @@ describe('preparePhoto', () => {
     const original = file('not-really.png');
     const result = await preparePhoto(original);
     expect(result.blob).toBe(original);
-    expect(result.ext).toBe('png');
+    expect(result.ext).toBe('jpg');
     vi.unstubAllGlobals();
   });
 
@@ -200,5 +225,23 @@ describe('prepareThumb', () => {
 
   it('makes none where the browser cannot decode images', async () => {
     expect(await prepareThumb(new Blob(['x'], { type: 'image/webp' }))).toBeNull();
+  });
+});
+
+// upload-guard deletes whatever this does not recognise, so a miss here would
+// delete every photograph of that type, not just refuse a fake.
+describe('sniffImageType', () => {
+  it('knows each kept type by its first bytes, and nothing else', () => {
+    const bytes = (...parts: (string | number[])[]) =>
+      new Uint8Array(
+        parts.flatMap((p) => (typeof p === 'string' ? Array.from(new TextEncoder().encode(p)) : p)),
+      );
+    expect(sniffImageType(bytes([0xff, 0xd8, 0xff, 0xdb]))).toBe('image/jpeg');
+    expect(sniffImageType(bytes([0x89], 'PNG', [0x0d, 0x0a, 0x1a, 0x0a]))).toBe('image/png');
+    expect(sniffImageType(bytes('RIFF', [0x24, 0x10, 0, 0], 'WEBPVP8 '))).toBe('image/webp');
+    expect(sniffImageType(bytes('GIF89a', [1, 0]))).toBe('image/gif');
+    expect(sniffImageType(bytes('RIFF', [0, 0, 0, 0], 'WAVEfmt '))).toBeNull();
+    expect(sniffImageType(bytes('<svg xmlns="http://www.w3.org/2000/svg">'))).toBeNull();
+    expect(sniffImageType(bytes([0xff, 0xd8]))).toBeNull();
   });
 });

@@ -504,3 +504,36 @@ describe('adding photographs while editing a post', () => {
     expect(screen.getByRole('button', { name: /4 photographs is the most/ })).toBeDisabled();
   });
 });
+
+// The owner, 2026-11-10: switching tabs and coming back keeps what was typed.
+describe('a kept draft', () => {
+  it('comes back with the box, per conversation, and goes once sent', async () => {
+    sessionStorage.clear();
+    const onSend = vi.fn<OnSend>(() => Promise.resolve(null));
+    const box = (key: string) => (
+      <AnnounceProvider>
+        <Composer
+          placeholder="Message Bo"
+          sendLabel="Send this message"
+          onSend={onSend}
+          draftKey={key}
+        />
+      </AnnounceProvider>
+    );
+    const first = render(box('thread:a'));
+    await userEvent.type(screen.getByPlaceholderText('Message Bo'), 'Half a thought');
+    first.unmount();
+
+    const other = render(box('thread:b'));
+    expect(screen.getByPlaceholderText('Message Bo')).toHaveValue('');
+    other.unmount();
+
+    render(box('thread:a'));
+    expect(screen.getByPlaceholderText('Message Bo')).toHaveValue('Half a thought');
+    await userEvent.click(screen.getByRole('button', { name: 'Send this message' }));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Message Bo')).toHaveValue('');
+    });
+    expect(sessionStorage.getItem('club:draft:thread:a')).toBeNull();
+  });
+});

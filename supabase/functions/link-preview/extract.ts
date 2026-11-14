@@ -175,7 +175,8 @@ export function isPublicAddress(ip: string): boolean {
  * `resolve` is Deno.resolveDns in index.ts and a stand-in in the tests.
  *
  * fetch looks the name up again for itself, so a name whose answer changes
- * between the two lookups (DNS rebinding) is not covered by this.
+ * between the two lookups (DNS rebinding) is not covered by this; the
+ * link-fetch Worker (LINK_FETCH_URL) is, as it fetches from Cloudflare.
  */
 export async function resolvesPublicly(
   host: string,

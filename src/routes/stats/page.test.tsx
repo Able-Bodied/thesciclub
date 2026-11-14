@@ -469,6 +469,8 @@ describe('connecting members', () => {
       within(section).getByLabelText('A note to both of them'),
       'You both race.',
     );
+    expect(within(section).getByText('Name the group.')).toBeInTheDocument();
+    await userEvent.type(within(section).getByLabelText('Group name'), 'Racers');
     return section;
   }
 
@@ -480,10 +482,19 @@ describe('connecting members', () => {
     await fill();
     await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
     expect(state.connected).toEqual([
-      [{ people: ['ana', 'bo'], note: 'You both race.', join: false, groupId: null, name: '' }],
+      [
+        {
+          people: ['ana', 'bo'],
+          note: 'You both race.',
+          join: false,
+          groupId: null,
+          name: 'Racers',
+          copy: false,
+        },
+      ],
     ]);
     expect(
-      await within(section).findByText('Ana Ruiz and Bo Chan are connected in “Ana & Bo”.'),
+      await within(section).findByText('Ana Ruiz and Bo Chan are connected in “Racers”.'),
     ).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Connect them' })).toBeDisabled();
   });
@@ -493,10 +504,6 @@ describe('connecting members', () => {
     const section = await fill();
     await add(section, 'cy', /Cy Park/);
     expect(within(section).getByLabelText('A note to everyone')).toHaveValue('You both race.');
-    expect(
-      within(section).getByText(/Leave it blank to call it “Ana, Bo & Cy”/),
-    ).toBeInTheDocument();
-    await userEvent.type(within(section).getByLabelText(/Group name/), 'Racers');
     await userEvent.click(within(section).getByRole('button', { name: 'Connect them' }));
     expect(state.connected[0]?.[0]).toMatchObject({ people: ['ana', 'bo', 'cy'], name: 'Racers' });
     expect(
@@ -525,6 +532,8 @@ describe('connecting members', () => {
     await userEvent.click(within(section).getByRole('radio', { name: /Existing group/ }));
     expect(within(section).getByText('Choose a group.')).toBeInTheDocument();
     await userEvent.click(within(section).getByRole('radio', { name: /Tuesday swimmers/ }));
+    // A new group with its members is the default; adding into it is chosen.
+    await userEvent.click(within(section).getByRole('radio', { name: /Add them to this group/ }));
     // Already in it: nothing to join.
     expect(
       within(section).queryByRole('checkbox', { name: 'Join the conversation yourself' }),

@@ -323,6 +323,11 @@ export default function MePage() {
                     percent={detailsDone}
                   />
                   <ProfileLink
+                    to="/me/posts"
+                    title="My posts"
+                    description="Questions and posts you started, by type and room."
+                  />
+                  <ProfileLink
                     to="/me/saved"
                     title="Saved"
                     description="Topics and posts you saved. Only you can see them."

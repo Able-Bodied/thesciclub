@@ -39,6 +39,7 @@ function open(onSent = vi.fn()) {
 async function chooseMaya() {
   await userEvent.type(screen.getByLabelText('Who are you introducing?'), 'ma');
   await userEvent.click(await screen.findByRole('button', { name: /Maya Local/ }));
+  await userEvent.type(screen.getByLabelText('Group name'), 'C6 crew');
 }
 
 describe('introducing two members', () => {
@@ -84,13 +85,14 @@ describe('introducing two members', () => {
       note: 'Both C6 in San Jose.',
       join: false,
       groupId: null,
-      name: '',
+      name: 'C6 crew',
+      copy: false,
     });
     await waitFor(() => {
       expect(onSent).toHaveBeenCalled();
     });
     expect(state.announce).toHaveBeenCalledWith(
-      'Sam Lee and Maya Local are connected in “Sam & Maya”.',
+      'Sam Lee and Maya Local are connected in “C6 crew”.',
     );
   });
 
@@ -105,7 +107,7 @@ describe('introducing two members', () => {
     expect(state.make).toHaveBeenCalledWith(expect.objectContaining({ join: true }));
   });
 
-  it('introduces the member to a group the partner started', async () => {
+  it('starts a new group from one the partner started, leaving it as it is', async () => {
     state.make.mockResolvedValue({ ok: true, value: 'g1' });
     state.groups.mockResolvedValue({
       ok: true,
@@ -116,12 +118,23 @@ describe('introducing two members', () => {
     await userEvent.click(await screen.findByRole('radio', { name: /Saturday riders/ }));
     expect(screen.getByText(/3 members · You started it/)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('A note to everyone'), 'Sam rides too.');
-    await userEvent.click(screen.getByRole('button', { name: 'Add to the group' }));
+    // A new group's name is never made up (the owner, 2026-11-10).
+    expect(screen.getByRole('button', { name: 'Start the new group' })).toBeDisabled();
+    expect(screen.getByText('Name the group.')).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('Group name'), 'Saturday riders and Sam');
+    await userEvent.click(screen.getByRole('button', { name: 'Start the new group' }));
     expect(state.make).toHaveBeenCalledWith(
-      expect.objectContaining({ people: ['sam'], groupId: 'g1', join: false }),
+      expect.objectContaining({
+        people: ['sam'],
+        groupId: 'g1',
+        copy: true,
+        name: 'Saturday riders and Sam',
+      }),
     );
     await waitFor(() => {
-      expect(state.announce).toHaveBeenCalledWith('Sam Lee was added to “Saturday riders”.');
+      expect(state.announce).toHaveBeenCalledWith(
+        'Sam Lee is connected with “Saturday riders” in a new group, “Saturday riders and Sam”.',
+      );
     });
   });
 

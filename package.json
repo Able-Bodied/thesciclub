@@ -30,7 +30,8 @@
     "check-chat-photo-policy": "node scripts/check-chat-photo-policy.mjs",
     "map-tiles": "node scripts/map-tiles.mjs",
     "tiles-worker:deploy": "pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.149.0 deploy --config tiles-worker/wrangler.toml",
-    "count-worker:deploy": "pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.149.0 deploy --config count-worker/wrangler.toml"
+    "count-worker:deploy": "pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.149.0 deploy --config count-worker/wrangler.toml",
+    "link-fetch-worker:deploy": "pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.149.0 deploy --config link-fetch-worker/wrangler.toml"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

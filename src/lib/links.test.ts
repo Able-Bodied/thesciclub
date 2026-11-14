@@ -40,8 +40,22 @@ describe('findLinks', () => {
   // The whole point of the scheme check.
   it('never makes a link of anything that is not a web address', () => {
     expect(links('javascript:alert(1)')).toEqual([]);
-    expect(links('mail me at bo@example.com')).toEqual([]);
-    expect(links('e.g. T6.Complete amazon.com')).toEqual([]);
+    expect(links('e.g. T6.Complete, U.S. and v1.2 on 2026-11-10 at 3.30')).toEqual([]);
+  });
+
+  // The owner, 2026-11-10: as a member types them, in a chat or a post.
+  it('links a bare address, an email and a phone number, and not a bare run of digits', () => {
+    expect(links('see test.thesciclub.com and reeve.org/grants.')).toEqual([
+      'https://test.thesciclub.com/',
+      'https://reeve.org/grants',
+    ]);
+    expect(links('mail bo@example.com, or @bo.com')).toEqual(['mailto:bo@example.com']);
+    expect(links('call 408-555-1234, (408) 555 1234 or +1 408.555.1234')).toEqual([
+      'tel:+14085551234',
+      'tel:+14085551234',
+      'tel:+14085551234',
+    ]);
+    expect(links('member 4085551234 got 12 of 15')).toEqual([]);
   });
 });
 
@@ -71,6 +85,24 @@ describe('street addresses', () => {
     expect(addresses('See you at 9 Main St, I will be early')).toEqual(['9 Main St']);
   });
 
+  // The owner, 2026-11-12: "1600 pennsylvania ave" in a chat was not a link.
+  it('links one typed in lowercase, without commas or across two lines', () => {
+    expect(addresses('1600 pennsylvania ave')).toEqual(['1600 pennsylvania ave']);
+    expect(addresses('1600 pennsylvania avenue nw\nwashington DC')).toEqual([
+      '1600 pennsylvania avenue nw\nwashington DC',
+    ]);
+    expect(addresses('come to 123 main st oakland ca')).toEqual(['123 main st oakland ca']);
+    expect(addresses('450 Main Street Oakland CA 94607')).toEqual([
+      '450 Main Street Oakland CA 94607',
+    ]);
+    expect(addresses('Meet at 9 Main St, Oakland.')).toEqual(['9 Main St, Oakland']);
+    expect(addresses('123-45 Queens Blvd, Queens, NY 11375')).toEqual([
+      '123-45 Queens Blvd, Queens, NY 11375',
+    ]);
+    // "ok" at the end is a word, not Oklahoma.
+    expect(addresses('meet at 12 main st ok')).toEqual(['12 main st']);
+  });
+
   it('leaves numbers that are not addresses alone', () => {
     for (const text of [
       'I did 3 laps around the track',
@@ -78,6 +110,10 @@ describe('street addresses', () => {
       'Back at 10 PM',
       'C5 since 2012, T6 Complete',
       'Room 204 is on the left',
+      'we drove 5 miles down the road',
+      'it was 1 long way home',
+      'my 3 kids drive me crazy',
+      'There were 40 People Way too many',
     ]) {
       expect(addresses(text)).toEqual([]);
     }

@@ -1,11 +1,13 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
+import { forgetDrafts } from '@/lib/chat/drafts';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { ownRowChanged, readOwnRow } from '@/lib/own-row';
 import { forgetThisDevice } from '@/lib/push/notifications';
 import { forgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
+import { forgetTabPlaces } from '@/lib/tab-places';
 
 /**
  * Where somebody stands with the club, in one answer.
@@ -273,6 +275,10 @@ export async function signOut(): Promise<{ ok: boolean; error?: string }> {
   // phone signs their own.
   if (!error) {
     resetAttachmentUrls();
+    // Unsent words, which the next person on this device must not read.
+    forgetDrafts();
+    // And where each tab was left.
+    forgetTabPlaces();
     // And anything else held in memory for the screens (lib/shared-reads.ts).
     forgetSharedReads();
   }
