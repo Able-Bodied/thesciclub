@@ -102,6 +102,7 @@ vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
 // Mutes read and write the club; the button has its own test.
 vi.mock('@/lib/chat/mutes', () => ({
   useMute: () => ({ muted: null, busy: false, error: null, toggle: () => undefined }),
+  useThreadNotify: () => ({ notify: null, busy: false, error: null, choose: () => undefined }),
 }));
 
 vi.mock('@/lib/account', () => ({

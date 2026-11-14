@@ -37,7 +37,7 @@ import { Composer } from '@/routes/chat/composer';
 import { DeleteConversation } from '@/routes/chat/delete-conversation';
 import { ImportantBanner, ImportantPeopleSheet } from '@/routes/chat/important';
 import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
-import { MuteButton } from '@/routes/chat/mute-button';
+import { ThreadNotifyButton } from '@/routes/chat/mute-button';
 import { NoticeLine } from '@/routes/chat/notice-line';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
@@ -501,10 +501,11 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
               </Link>
             ) : null}
             {/* Every member of a conversation is notified of it, so every
-                member can mute it. Draws nothing while notifications are off. */}
-            <MuteButton
-              target={{ kind: 'thread', id: thread.id }}
-              what="this conversation"
+                member chooses how much: All, Only mentions (a group), or Off
+                (20261113150000). Draws nothing while notifications are off. */}
+            <ThreadNotifyButton
+              threadId={thread.id}
+              group={thread.kind === 'group'}
               className="flex-none"
             />
           </div>

@@ -132,11 +132,12 @@ describe('apnsPayload', () => {
     tag: 'thread:1',
   };
 
-  it('carries the title, the words, the badge and where a tap goes', () => {
+  it('carries the title, the words, the badge, its stack and where a tap goes', () => {
     expect(JSON.parse(apnsPayload({ ...message, badge: 3 }) ?? '')).toEqual({
       aps: {
         alert: { title: 'Bo', body: 'See you there' },
         sound: 'default',
+        'thread-id': 'thread:1',
         badge: 3,
       },
       url: '/chat/t/1',
