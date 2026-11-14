@@ -112,7 +112,7 @@ export function PhotoCard({
         to={to}
         state={linkState}
         data-target="small"
-        className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] underline-offset-2 hover:underline after:absolute after:inset-0 after:rounded-[17px]"
+        className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] underline-offset-2 hover:underline after:absolute after:inset-0 after:rounded-[17px]"
       >
         {topic.title}
       </Link>

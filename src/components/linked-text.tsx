@@ -29,8 +29,8 @@ export function clubPath(href: string): string | null {
  *
  * The colour is inherited and the underline carries it, so the same link reads
  * on a navy bubble and on paper without a second palette to keep above AA.
- * `overflow-wrap: anywhere` because a shortened label can still be one long
- * word on a 320px screen.
+ * `overflow-wrap: anywhere` on links and words alike, because a shortened label,
+ * a long number or a held-down key can be one word wider than a 320px screen.
  *
  * An @username of a member with a profile links to it, as in a post
  * (the owner, 2026-10-31). Other @names stay words.
@@ -42,7 +42,7 @@ export function LinkedText({ text }: { text: string }) {
       {findLinks(text).map((piece, index) =>
         piece.kind === 'text' ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional and never reorder
-          <span key={index}>
+          <span key={index} className="[overflow-wrap:anywhere]">
             {splitMentions(piece.text).map((part, at) => {
               const member = part.kind === 'mention' ? members.get(part.username) : undefined;
               return member?.hasProfile ? (
