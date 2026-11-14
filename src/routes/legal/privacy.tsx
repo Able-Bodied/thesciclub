@@ -23,6 +23,27 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 14, 2026">
+        <List>
+          <li>
+            <b>Changed:</b> an event for the members of chosen organizations can again be opened by
+            anyone with its link, as other events can. Who is going stays in the club. An
+            invite-only event has no link to share: its organizers invite people by email, and each
+            email carries that person’s own link (see Event hosts).
+          </li>
+          <li>
+            <b>Added:</b> administrators and event organizers can invite a list of people at once,
+            from a Google Sheet or pasted addresses. The email comes from them by name, greets each
+            person by the name given, and can quote their message (see Emails).
+          </li>
+          <li>
+            <b>Added:</b> an invite email carries a tiny picture. When your mail app loads it, we
+            note that the email was opened. We also note when its link is first used, and whether
+            you accept, say you are going and join. Whoever sent it sees this for each invite (see
+            Emails).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 7, 2026">
         <List>
           <li>
@@ -667,10 +688,13 @@ export default function PrivacyPage() {
         {/* Public event pages and registrations, 2026-10-22 (20261022190000);
             every event's since 2026-10-29 (20261029110000). */}
         <P>
-          Every event has a page that anyone with its link can open, unless it is private: an event
-          for the members of chosen organizations, or for people its organizer invited, opens only
-          for them and its organizers: whoever added or changed it, the org admins of its host and
-          of any co-host, and the club’s administrators. Everyone invited to an invite-only event
+          Every event has a page that anyone with its link can open, unless it is invite only. In
+          the club, an event for the members of chosen organizations shows only for them, but its
+          link opens for anyone. An invite-only event opens only for the people invited and its
+          organizers: whoever added or changed it, the org admins of its host and of any co-host,
+          and the club’s administrators. Somebody outside the club invited to it by email gets their
+          own link, which opens that event for them with their name and address filled in; accepting
+          adds them to its guest list as going, as below. Everyone invited to an invite-only event
           sees who else is invited, by name and photograph, and who organized it: who added it, and
           anyone who changed it or invited people, except members hidden from Peers or blocked
           either way. It shows the event's details only, never who is going or how many. Adding
@@ -698,10 +722,15 @@ export default function PrivacyPage() {
           We email you only to run your account: the code and link that confirm your address, a link
           to reset or change your password, a notice when your password changes, and the invitation
           link if somebody invites you. Invitation links are sent by the club on behalf of the
-          member or organization that invited you. If you add an event by calendar invitation, we
-          email you what became of it, and when it waits for approval we email whoever may approve
-          it, with your address. We also email you the day before an event you are going to, unless
-          you switch that off (see Notifications). We do not send newsletters or promotions.
+          member or organization that invited you, and can carry their name and message. An
+          invitation email has a tiny picture in it: when your mail app loads it, we note the time,
+          as a sign that it was opened. We also note when its link is first used, and whether you
+          accept, say you are going and join. Whoever invited you sees this: the event’s organizers
+          for an invite to an event, and the club’s administrators. If you add an event by calendar
+          invitation, we email you what became of it, and when it waits for approval we email
+          whoever may approve it, with your address. We also email you the day before an event you
+          are going to, unless you switch that off (see Notifications). We do not send newsletters
+          or promotions.
         </P>
         <P>
           <b>

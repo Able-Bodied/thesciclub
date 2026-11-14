@@ -47,9 +47,21 @@ export function setEventAudience(
   );
 }
 
-/** Members of chosen organizations, or invite only: nobody else sees it, even from the link. */
+/**
+ * Members of chosen organizations, or invite only: nobody else in the club
+ * sees it, and its chat is for its audience and whoever answered it.
+ */
 export function isPrivateAudience(audience: EventAudience): boolean {
   return audience === 'followers' || audience === 'organizations' || audience === 'people';
+}
+
+/**
+ * Invite only: no link to share, only invites, each with its own link. An
+ * organization's event opens from its link (the owner, 2026-11-14;
+ * 20261114050000).
+ */
+export function linkIsClosed(audience: EventAudience): boolean {
+  return audience === 'people';
 }
 
 export interface VisibilityOrganization {

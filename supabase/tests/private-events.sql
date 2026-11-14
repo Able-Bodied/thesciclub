@@ -137,11 +137,12 @@ insert into seen select 'Fay', exists (select 1 from public.events where id = 'e
 select * from seen;
 
 \echo ''
-\echo '== 9. the link: signed out, the dinner is not there and the open day is (expect 0 | 1) =='
+\echo '== 9. the link: signed out, the invite-only dinner is not there; the open day is, and so is the organizations'' ride (20261114050000) (expect 0 | 1 | 1) =='
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
 select (select count(*) from public.public_event('eeeeeeee-9e9e-0000-0000-0000000000e1')) as dinner,
-       (select count(*) from public.public_event('eeeeeeee-9e9e-0000-0000-0000000000e3')) as open_day;
+       (select count(*) from public.public_event('eeeeeeee-9e9e-0000-0000-0000000000e3')) as open_day,
+       (select count(*) from public.public_event('eeeeeeee-9e9e-0000-0000-0000000000e2')) as ride;
 
 \echo ''
 \echo '== 10. nor can anyone sign up for it from the link (expect ERROR not taking registrations) =='

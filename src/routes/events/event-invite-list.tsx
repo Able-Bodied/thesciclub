@@ -40,7 +40,7 @@ export function suggestedEventMessage(title: string): string {
   return `I'd love for you to come to ${title}. Accept the invite and join The SCI Club so we can see who's coming and plan together.`;
 }
 
-export function EventInviteList({ event, onSent }: { event: ClubEvent; onSent: () => void }) {
+export function EventInviteList({ event, onSent }: { event: ClubEvent; onSent?: () => void }) {
   const account = useAccount();
   const [open, setOpen] = useState(false);
   const [read, setRead] = useState<ReadSheet | null>(null);
@@ -95,7 +95,7 @@ export function EventInviteList({ event, onSent }: { event: ClubEvent; onSent: (
       const start = linesFor(added.entries, SAYS);
       setLines(start);
       await sendEach(added.entries, start, setLines);
-      onSent();
+      onSent?.();
     } catch (e) {
       setError(describeThrown(e, 'The invites did not all go. Check the list below.'));
     } finally {
@@ -112,14 +112,14 @@ export function EventInviteList({ event, onSent }: { event: ClubEvent; onSent: (
         }}
         className="mt-3 flex min-h-[46px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.875rem] text-emphasis"
       >
-        Invite a list by email
+        Invite from a list or spreadsheet
       </button>
     );
   }
 
   return (
     <section
-      aria-label="Invite a list by email"
+      aria-label="Invite from a list or spreadsheet"
       className="mt-3 overflow-hidden rounded-[14px] border border-line bg-paper"
     >
       {lines ? (
@@ -137,7 +137,9 @@ export function EventInviteList({ event, onSent }: { event: ClubEvent; onSent: (
         />
       ) : (
         <div className="p-3.5">
-          <p className="font-bold font-head text-[0.9375rem] text-ink">Invite a list by email</p>
+          <p className="font-bold font-head text-[0.9375rem] text-ink">
+            Invite from a list or spreadsheet
+          </p>
           <p className="mt-1 mb-3 text-[0.8125rem] text-ink2 leading-[1.45]">
             People outside the club get an email from you that opens this event with their name
             filled in, and a button to accept and join the club.
