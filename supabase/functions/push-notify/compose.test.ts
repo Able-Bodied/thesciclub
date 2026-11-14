@@ -26,52 +26,52 @@ const owed = (over: Partial<Owed>): Owed => ({
 });
 
 describe('compose', () => {
-  it('says a direct message is one, who from, and what it said', () => {
+  it('titles a direct message with who sent it, and says what it said', () => {
     expect(compose(owed({}))).toEqual({
-      title: 'Direct message from Bo',
+      title: 'Bo',
       body: 'See you Friday',
       url: '/chat/t/abc?n=thread%3Aabc',
       tag: 'thread:abc',
     });
   });
 
-  it('says a group message is one, who sent it, and what it said', () => {
+  it('titles a group message Group chat when unnamed, with who sent it before the words', () => {
     expect(compose(owed({ kind: 'group', body: 'Who is driving?' }))).toMatchObject({
-      title: 'Group message from Bo',
-      body: 'Who is driving?',
+      title: 'Group chat',
+      body: 'Bo: Who is driving?',
     });
   });
 
-  // The owner, 2026-11-05: and which group.
+  // The owner, 2026-11-05: and which group; first, since 2026-11-13.
   it('names the group a message is in, when it has a name', () => {
     expect(
       compose(owed({ kind: 'group', body: 'Who is driving?', subject: 'Weekend Crew' })),
-    ).toMatchObject({ title: 'Group message from Bo in Weekend Crew', body: 'Who is driving?' });
+    ).toMatchObject({ title: 'Weekend Crew', body: 'Bo: Who is driving?' });
   });
 
   // 20261105160000: one push per 2 minutes says how many are unread.
   it('says how many messages are unread when more than one', () => {
     expect(compose(owed({ detail: '3' }))).toMatchObject({
-      title: '3 new messages from Bo',
+      title: 'Bo · 3 new',
       body: 'See you Friday',
       tag: 'thread:abc',
     });
     expect(compose(owed({ kind: 'group', body: 'Who is driving?', detail: '5' }))).toMatchObject({
-      title: '5 new group messages',
+      title: 'Group chat · 5 new',
       body: 'Bo: Who is driving?',
     });
     expect(
       compose(owed({ kind: 'group', body: 'Who is driving?', detail: '5', subject: 'Crew' }))
         ?.title,
-    ).toBe('5 new messages in Crew');
+    ).toBe('Crew · 5 new');
     expect(compose(owed({ kind: 'group', body: '', detail: '2' }))?.body).toBe(
       'Bo: Shared a post.',
     );
   });
 
   it('reads a count of one, or none, as a single message', () => {
-    expect(compose(owed({ detail: '1' }))?.title).toBe('Direct message from Bo');
-    expect(compose(owed({ kind: 'group', detail: 'x' }))?.title).toBe('Group message from Bo');
+    expect(compose(owed({ detail: '1' }))?.title).toBe('Bo');
+    expect(compose(owed({ kind: 'group', detail: 'x' }))?.title).toBe('Group chat');
   });
 
   // The owner, 2026-10-01: a reply says who, and what they replied, cut short.
@@ -123,7 +123,9 @@ describe('compose', () => {
 
   it('says a post was shared, without quoting it, when there is nothing else', () => {
     expect(compose(owed({ body: '', photo_count: 0 }))?.body).toBe('Shared a post.');
-    expect(compose(owed({ kind: 'group', body: '', photo_count: 0 }))?.body).toBe('Shared a post.');
+    expect(compose(owed({ kind: 'group', body: '', photo_count: 0 }))?.body).toBe(
+      'Bo: Shared a post.',
+    );
     expect(compose(owed({ body: 'Thought of you', photo_count: 0 }))?.body).toBe('Thought of you');
   });
 
@@ -132,8 +134,8 @@ describe('compose', () => {
   });
 
   it('names somebody who has left as a member', () => {
-    expect(compose(owed({ actor_name: null }))?.title).toBe('Direct message from A member');
-    expect(compose(owed({ actor_name: '  ' }))?.title).toBe('Direct message from A member');
+    expect(compose(owed({ actor_name: null }))?.title).toBe('A member');
+    expect(compose(owed({ actor_name: '  ' }))?.title).toBe('A member');
   });
 
   it('carries the badge to the app icon when it has one, whatever the kind', () => {
@@ -199,7 +201,7 @@ describe('compose', () => {
         }),
       ),
     ).toMatchObject({
-      title: 'Bo reacted 👍 to your message',
+      title: 'Bo 👍 your message',
       // A message is not formatted, so its asterisks stay.
       body: '“See you *Friday*”',
       url: '/chat/t/t1?message=m1&n=reaction%3Am1',
@@ -210,9 +212,9 @@ describe('compose', () => {
   it('says post or topic for a reaction in a room, without the formatting', () => {
     expect(
       compose(owed({ kind: 'reaction', body: '**Bring water**', detail: 'post:❤️' })),
-    ).toMatchObject({ title: 'Bo reacted ❤️ to your post', body: '“Bring water”' });
+    ).toMatchObject({ title: 'Bo ❤️ your post', body: '“Bring water”' });
     expect(compose(owed({ kind: 'reaction', body: 'Morning?', detail: 'topic:🎉' }))?.title).toBe(
-      'Bo reacted 🎉 to your topic',
+      'Bo 🎉 your topic',
     );
   });
 

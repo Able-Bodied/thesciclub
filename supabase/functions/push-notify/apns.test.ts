@@ -126,7 +126,7 @@ describe('providerToken', () => {
 
 describe('apnsPayload', () => {
   const message = {
-    title: 'Direct message from Bo',
+    title: 'Bo',
     body: 'See you there',
     url: '/chat/t/1',
     tag: 'thread:1',
@@ -135,7 +135,7 @@ describe('apnsPayload', () => {
   it('carries the title, the words, the badge and where a tap goes', () => {
     expect(JSON.parse(apnsPayload({ ...message, badge: 3 }) ?? '')).toEqual({
       aps: {
-        alert: { title: 'Direct message from Bo', body: 'See you there' },
+        alert: { title: 'Bo', body: 'See you there' },
         sound: 'default',
         badge: 3,
       },
