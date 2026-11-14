@@ -72,7 +72,7 @@ const deps: Deps = {
   },
   async loadInvite(id) {
     const rows = await rest<InviteRow[]>(
-      `invites?select=id,email,status,sent_at,invited_by_member_id,invited_by_organization_id,for_organization_id,invitee_name,message,event_id&id=eq.${id}`,
+      `invites?select=id,email,status,sent_at,invited_by_member_id,invited_by_organization_id,for_organization_id,invitee_name,message,event_id,open_key&id=eq.${id}`,
     );
     return rows?.[0] ?? null;
   },
@@ -144,6 +144,7 @@ const deps: Deps = {
       .replaceAll('=', '');
   },
   siteUrl: SITE,
+  openPixelUrl: `${SUPABASE_URL}/functions/v1/invite-opened`,
 };
 
 Deno.serve(async (request) => {
