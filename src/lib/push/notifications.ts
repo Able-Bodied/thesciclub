@@ -610,6 +610,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'event_starting', label: 'Events I am going to, 10 minutes before', who: 'all' },
   { kind: 'check_in_reminder', label: 'Reminders to check in after an event', who: 'all' },
   { kind: 'checked_in', label: 'An organizer checking me in to an event', who: 'all' },
+  { kind: 'important', label: 'A message marked Important in my groups', who: 'all' },
   { kind: 'event_followup', label: 'How an event I checked in to went', who: 'all' },
   { kind: 'org_events', label: 'New events from organizations I belong to', who: 'all' },
   { kind: 'event_notice', label: 'Events my organizations invite me to', who: 'all' },

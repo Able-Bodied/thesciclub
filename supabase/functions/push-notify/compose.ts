@@ -426,6 +426,28 @@ export function compose(owed: Owed): PushMessage | null {
           : `${name} checked you in to ${subject}.`,
         ...where,
       };
+    // A group message marked Important (20261113140000), titled as a group
+    // message is. detail 'reminder' on the second and third push; 'waiting:3'
+    // to whoever marked it, when 3 have not acknowledged after those.
+    case 'important': {
+      const group = subject === '' ? 'Group chat' : subject;
+      const said = `${name}: ${words(owed) || 'Shared a post.'}`;
+      if (owed.detail?.startsWith('waiting:')) {
+        const left = Number(owed.detail.slice('waiting:'.length));
+        const who = left === 1 ? '1 person hasn’t' : `${String(left)} people haven’t`;
+        return {
+          title: `${group} · Not yet acknowledged`,
+          body: `${who} acknowledged your Important message. Remind them, or let it be. ${said}`,
+          ...where,
+        };
+      }
+      return {
+        title:
+          owed.detail === 'reminder' ? `${group} · Important, reminder` : `${group} · Important`,
+        body: said,
+        ...where,
+      };
+    }
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       if (subject === '') return null;

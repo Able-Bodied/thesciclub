@@ -59,7 +59,8 @@ export type NotificationKind =
   | 'introduction'
   | 'event_notice'
   | 'family_link'
-  | 'checked_in';
+  | 'checked_in'
+  | 'important';
 
 interface Row {
   id: string;
@@ -269,6 +270,19 @@ export function notificationSentence(n: AppNotification): string {
       return n.detail
         ? `${name} checked you in to ${n.place ?? 'an event'}. You’re now a member of ${n.detail}`
         : `${name} checked you in to ${n.place ?? 'an event'}`;
+    // A group message marked Important (20261113140000): place is the group,
+    // detail 'reminder', or 'waiting' to whoever marked it, with how many
+    // have not acknowledged as the count.
+    case 'important': {
+      const group = n.place ?? 'a group';
+      if (n.detail === 'waiting')
+        return n.count === 1
+          ? `1 person hasn’t acknowledged your Important message in ${group}`
+          : `${n.count} people haven’t acknowledged your Important message in ${group}`;
+      return n.detail === 'reminder'
+        ? `Reminder: ${name}’s message in ${group} is Important`
+        : `${name}’s message in ${group} is Important`;
+    }
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       return `Did you make it to ${n.place ?? 'the event'}? Check in`;

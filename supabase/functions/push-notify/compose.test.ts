@@ -563,3 +563,23 @@ describe('a formatted post in a notification', () => {
     expect(plainPost('2 * 3 * 4 and room_one_two')).toBe('2 * 3 * 4 and room_one_two');
   });
 });
+
+// The owner, 2026-11-13 (20261113140000): three pushes, then whoever marked it.
+describe('an Important message', () => {
+  const important = (over: Partial<Owed>) =>
+    compose(owed({ kind: 'important', subject: 'Board', body: 'Vote by Friday', ...over }));
+
+  it('says the group, that it is Important, and who said what; then a reminder', () => {
+    expect(important({})).toMatchObject({ title: 'Board · Important', body: 'Bo: Vote by Friday' });
+    expect(important({ detail: 'reminder' })?.title).toBe('Board · Important, reminder');
+    expect(important({ subject: null })?.title).toBe('Group chat · Important');
+  });
+
+  it('tells whoever marked it how many have not acknowledged', () => {
+    expect(important({ detail: 'waiting:1' })?.body).toMatch(/^1 person hasn’t acknowledged/);
+    expect(important({ detail: 'waiting:3' })).toMatchObject({
+      title: 'Board · Not yet acknowledged',
+    });
+    expect(important({ detail: 'waiting:3' })?.body).toMatch(/^3 people haven’t acknowledged/);
+  });
+});
