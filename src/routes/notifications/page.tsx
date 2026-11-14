@@ -64,6 +64,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   join_request: UserPlus,
   org_events: CalendarDays,
   event_notice: CalendarDays,
+  checked_in: CalendarDays,
   grant_open: HandCoins,
   profile_reminder: UserPen,
   blocks_weekly: Ban,

@@ -61,6 +61,20 @@ select checked_in_by = 'cccccccc-1311-0000-0000-00000000000c' as by_cy
  where event_id = '14141414-1311-0000-0000-000000000001' and member_id = 'aaaaaaaa-1311-0000-0000-00000000000a';
 
 \echo ''
+\echo '== 4b. Ana is told Cy checked her in (expect 1) (20261113120000) =='
+select count(*) from public.notifications
+ where member_id = 'aaaaaaaa-1311-0000-0000-00000000000a' and kind = 'checked_in'
+   and actor_id = 'cccccccc-1311-0000-0000-00000000000c'
+   and event_id = '14141414-1311-0000-0000-000000000001';
+
+\echo ''
+\echo '== 4c. Cy, an organizer, reads the check-in itself, as the live guest list does (expect 1) =='
+set local role authenticated;
+select count(*) from public.event_check_ins
+ where event_id = '14141414-1311-0000-0000-000000000001';
+reset role;
+
+\echo ''
 \echo '== 5. a guest added at the door, with no email, ticked (expect t) =='
 select public.event_guest_check_in('14141414-1311-0000-0000-000000000001', true, null,
   public.event_guest_add('14141414-1311-0000-0000-000000000001', 'Door guest'));

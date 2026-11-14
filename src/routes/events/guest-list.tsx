@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import {
   addGuest,
   fetchGuestList,
@@ -30,6 +31,12 @@ import { cn } from '@/lib/utils';
  * once the event has started and for ever after; add a guest by hand; and
  * remove one at any time. Members who checked in without saying Going are
  * listed too, as having come.
+ *
+ * Live (the owner, 2026-11-13): a member who checks in themselves, or is
+ * ticked by another organizer, is ticked here as it happens
+ * (event_check_ins in supabase_realtime, 20261113120000). An untick is not
+ * heard (Realtime cannot filter deletes); it shows on the next return to the
+ * page. The boxes appear by themselves when the event starts.
  */
 
 const TAG: Record<GuestState, string> = {
@@ -47,7 +54,32 @@ export default function GuestListPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
-  const started = event !== null && Date.parse(event.startTime) <= Date.now();
+  const [, setNow] = useState(0);
+  const startsAt = event ? Date.parse(event.startTime) : null;
+  const started = startsAt !== null && startsAt <= Date.now();
+
+  useRealtimeRows({
+    table: 'event_check_ins',
+    filter: `event_id=eq.${id}`,
+    enabled: id !== '',
+    onChange: () => {
+      setVersion((v) => v + 1);
+    },
+  });
+
+  // A page opened before the start shows its boxes at the start.
+  useEffect(() => {
+    if (startsAt === null || started) return;
+    const timer = window.setTimeout(
+      () => {
+        setNow(Date.now());
+      },
+      Math.min(Math.max(startsAt - Date.now(), 0) + 500, 2 ** 31 - 1),
+    );
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [startsAt, started]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: version is how adding a guest reads the list again.
   useEffect(() => {
