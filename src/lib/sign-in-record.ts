@@ -1,5 +1,6 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { noteSignedInHere, rememberWayIn, wayInOf } from '@/lib/last-way-in';
+import { isNative } from '@/lib/standalone';
 
 /**
  * Tells the club about each new sign-in, for Admin → Stats (20261016000000).
@@ -82,6 +83,7 @@ export function sessionIdOf(session: Session): string | null {
 }
 
 let reporting: string | null = null;
+let notedInApp = false;
 
 async function report(client: SupabaseClient, id: string): Promise<void> {
   const hint = readHint(Date.now());
@@ -104,6 +106,16 @@ export function watchSignIns(client: SupabaseClient): void {
     if (!session || (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION')) return;
     noteSignedInHere();
     rememberWayIn(wayInOf(session, readHint(Date.now())?.provider ?? null));
+    // The iPhone app tells the club it is here, once a launch, so the website's
+    // nudge offers Open in the app only to members who have it (20261115130000).
+    if (isNative() && !notedInApp) {
+      notedInApp = true;
+      setTimeout(() => {
+        void client.rpc('note_in_the_app').then(({ error }) => {
+          if (error) notedInApp = false;
+        });
+      }, 0);
+    }
     const id = sessionIdOf(session);
     if (!id || id === reporting || id === recorded()) return;
     reporting = id;
