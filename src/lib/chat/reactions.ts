@@ -17,7 +17,22 @@ export const REACTIONS = [
   { emoji: '🎉', name: 'Celebrate' },
   { emoji: '💪', name: 'Strength' },
 ] as const;
-export type ReactionEmoji = (typeof REACTIONS)[number]['emoji'];
+/** One of the eight, or any other single emoji from the + (2026-11-14). */
+export type ReactionEmoji = string;
+/** The database's `is_reaction_emoji` (20261114090000), kept in step. */
+const EMOJI_ONLY =
+  /^(?:[0-9#*\u00A9\u00AE\u2000-\u200C\u200E-\u20CF\u2100-\u33FF\u{1F000}-\u{1FAFF}\u{E0020}-\u{E007F}]|\u200D|\u20E3|\uFE0F){1,12}$/u;
+export function isReactionEmoji(value: string): boolean {
+  return (
+    EMOJI_ONLY.test(value) &&
+    /[^0-9#*]/.test(value) &&
+    (!/[0-9#*]/.test(value) || value.includes('\u20E3'))
+  );
+}
+/** A reaction's name for a screen reader: the eight have words, others are read as the emoji. */
+export function reactionName(emoji: string): string {
+  return REACTIONS.find((r) => r.emoji === emoji)?.name ?? emoji;
+}
 export type ReactionKind = 'post' | 'message';
 export interface ReactionRow {
   target_id: string;
@@ -190,7 +205,8 @@ export function useReactions(
       if (typeof target !== 'string' || !wantedNow.current.includes(target)) return;
       const emoji = raw.emoji ?? null;
       const valid =
-        typeof member === 'string' && (emoji === null || REACTIONS.some((r) => r.emoji === emoji));
+        typeof member === 'string' &&
+        (emoji === null || (typeof emoji === 'string' && isReactionEmoji(emoji)));
       if (!valid || busy.current.has(`${scope}:${target}`)) {
         void read([target]);
         return;
@@ -200,7 +216,7 @@ export function useReactions(
         const next = new Map(old.byTarget);
         next.set(target, [
           ...(old.byTarget.get(target) ?? []).filter((r) => r.member_id !== member),
-          { target_id: target, member_id: member, emoji: emoji as ReactionEmoji | null },
+          { target_id: target, member_id: member, emoji: emoji as string | null },
         ]);
         return { scope, byTarget: next };
       });

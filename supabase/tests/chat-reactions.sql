@@ -60,6 +60,11 @@ select pg_temp.refused($q$select public.chat_set_reaction('message','88000000-00
 select pg_temp.refused($q$select public.chat_set_reaction('message','88000000-0000-0000-0000-000000000024','👍')$q$);
 select pg_temp.refused($q$select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000099','👍')$q$);
 select pg_temp.refused($q$select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000011','not emoji')$q$,'22023');
+-- Any one emoji, from the + (2026-11-14); still never words or markup.
+select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000011','👨‍👩‍👧');
+select pg_temp.check_true((select emoji='👨‍👩‍👧' from public.chat_post_reactions where target_id='88000000-0000-0000-0000-000000000011' and member_id='aa000000-8888-0000-0000-000000000001'),'Any emoji from the +');
+select pg_temp.refused($q$select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000011','<b>1</b>')$q$,'22023');
+select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000011','❤️');
 select pg_temp.refused($q$select public.chat_set_reaction('other','88000000-0000-0000-0000-000000000011','👍')$q$,'22023');
 select pg_temp.refused($q$insert into public.chat_post_reactions values ('88000000-0000-0000-0000-000000000011','aa000000-8888-0000-0000-000000000002','😢')$q$);
 select pg_temp.refused($q$update public.chat_message_reactions set emoji='😢'$q$);
