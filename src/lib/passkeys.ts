@@ -373,3 +373,21 @@ export async function deletePasskey(passkeyId: string): Promise<Result> {
     ? { ok: false, error: describeError(error, 'The passkey was not removed.') }
     : { ok: true };
 }
+
+/**
+ * Whether the signed-in account had already finished joining: it has a member
+ * row of its own. The passkey offer waits for a sign-in after that one (the
+ * owner, 2026-11-14: "let's not collect the passkey until after the second
+ * time the user signs in"), so joining, and signing in only to finish
+ * joining, go without it.
+ */
+export async function joinedBefore(): Promise<boolean> {
+  const supabase = getSupabase();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const id = session?.user.id;
+  if (!id) return false;
+  const { data, error } = await supabase.from('members').select('id').eq('id', id).maybeSingle();
+  return !error && data !== null;
+}
