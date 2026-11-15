@@ -49,7 +49,9 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
     Promise.resolve(api.removeFails ? { ok: false, error: api.removeFails } : { ok: true }),
 }));
 
+vi.mock('@/components/app-nav', () => ({ AppNav: () => null }));
 vi.mock('@/routes/profile/profile-api', () => ({
+  loadAnswers: () => Promise.resolve({ ok: true as const, answers: {}, declined: new Set() }),
   saveDeclined: (_id: string, declined: ReadonlySet<string>) => {
     api.declineSaves.push([...declined]);
     return Promise.resolve({ ok: true });
@@ -157,7 +159,7 @@ describe('Your details', () => {
     const name = await screen.findByLabelText('Name');
     await userEvent.clear(name);
     await userEvent.type(name, 'Nikki');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.displayName).toBe('Nikki');
     });
@@ -171,7 +173,7 @@ describe('Your details', () => {
     await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
     expect(screen.getByLabelText('Level of injury')).toHaveValue('');
     await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'T10');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(() => {
       expect(api.saves[0]?.levelRange).toBe('T7–T12');
     });
@@ -190,7 +192,7 @@ describe('Your details', () => {
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     expect(injury.getByLabelText('Year')).toHaveValue('2016');
     expect(injury.getByLabelText('Month')).toHaveValue('');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.injuryDatePrecision).toBe('year');
     });
@@ -202,7 +204,7 @@ describe('Your details', () => {
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.type(injury.getByLabelText('Month'), 'March');
     expect(screen.getByText('March 2016')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.injuryDate).toBe('2016-03-01');
     });
@@ -213,7 +215,7 @@ describe('Your details', () => {
     renderDetails('injury');
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.clear(injury.getByLabelText('Year'));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(() => {
       expect(api.saves[0]?.details.injuryDate).toBeNull();
     });
@@ -228,7 +230,7 @@ describe('Your details', () => {
     await userEvent.clear(injury.getByLabelText('Year'));
     await userEvent.type(injury.getByLabelText('Year'), '20');
     expect(screen.getByText('Add the year, in four digits.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   // Mid-typing is not a mistake, so it is said quietly, not as an alert about
@@ -240,7 +242,7 @@ describe('Your details', () => {
     await userEvent.type(birthday.getByLabelText('Year'), '19');
     expect(screen.getByText(/Add the month, day and year/)).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   // Month, day, year, as the birthday and onboarding ask it.
@@ -264,7 +266,7 @@ describe('Your details', () => {
     expect(injury.getByLabelText('Month')).toHaveValue('');
     expect(injury.getByLabelText('Year')).toHaveValue('2013');
     expect(injury.getByLabelText('Year')).toHaveFocus();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
   // Somebody correcting the start of a box is not done with it.
@@ -283,7 +285,7 @@ describe('Your details', () => {
     await userEvent.clear(birthday.getByLabelText('Year'));
     await userEvent.type(birthday.getByLabelText('Year'), String(new Date().getFullYear() - 10));
     expect(await screen.findByRole('alert')).toHaveTextContent(/The club is 18\+/);
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   it('does not carry the deck switch, which lives on Me', async () => {
@@ -299,7 +301,7 @@ describe('Your details', () => {
     api.failWith = 'permission denied';
     renderDetails('name');
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('permission denied')).toBeInTheDocument();
     expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
   });
@@ -307,10 +309,11 @@ describe('Your details', () => {
   // Leaving the page is silent to somebody who cannot see it change, and the
   // page that said it is gone by the time it is read, so the region is above
   // the routes (src/lib/announce.tsx).
+  // Home's card opens one part with only=1: Save, then back.
   it('says the details are saved, and is still saying it on Your profile', async () => {
     render(
       <AnnounceProvider>
-        <MemoryRouter initialEntries={['/profile/details?part=name']}>
+        <MemoryRouter initialEntries={['/profile/details?part=name&only=1']}>
           <Routes>
             <Route path="/profile/details" element={<ProfileDetailsPage />} />
             <Route path="/profile/answers" element={<p>Your profile page</p>} />
@@ -325,11 +328,12 @@ describe('Your details', () => {
     });
   });
 
-  it('returns to Your profile once it has saved', async () => {
+  // The owner, 2026-11-14: Change goes on through each one, as the questions do.
+  it('goes on to the next part once it has saved', async () => {
     renderDetails('name');
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Your profile page')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('heading', { name: 'Birthday' })).toBeInTheDocument();
   });
 
   it('says why a photograph was refused', async () => {
@@ -393,7 +397,7 @@ describe('Your details', () => {
       const field = await screen.findByLabelText('Describe your photo');
       expect(field).toHaveAccessibleDescription(/members who use a screen reader/);
       await userEvent.type(field, 'Me at Ocean Beach');
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
       await waitFor(() => {
         expect(api.saves[0]?.details.photoAlt).toBe('Me at Ocean Beach');
       });
@@ -415,7 +419,7 @@ describe('Your details', () => {
     api.failWith = 'permission denied';
     renderDetails('name');
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('permission denied');
     expect(screen.queryByText('Your profile page')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();

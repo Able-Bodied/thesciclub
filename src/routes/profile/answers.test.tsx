@@ -84,7 +84,7 @@ describe('Your answers', () => {
     expect(within(injury).getByText('C6')).toBeInTheDocument();
     expect(
       within(injury).getByRole('link', { name: 'Change Injury or condition' }),
-    ).toHaveAttribute('href', '/profile/details?part=injury&only=1');
+    ).toHaveAttribute('href', '/profile/details?part=injury');
     expect(within(section('Where you live')).getByText('CA')).toBeInTheDocument();
     expect(within(section('About you')).getByText('English, Spanish')).toBeInTheDocument();
     expect(within(section('Brief bio')).getByText('Rugby on Tuesdays.')).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('Your answers', () => {
     const family = await screen.findByRole('region', { name: 'Family' });
     expect(within(family).getByRole('link', { name: 'Add Family' })).toHaveAttribute(
       'href',
-      `/profile?screen=${SCREENS.findIndex((s) => s.title === 'Family')}&only=1`,
+      `/profile?screen=${SCREENS.findIndex((s) => s.title === 'Family')}`,
     );
   });
 

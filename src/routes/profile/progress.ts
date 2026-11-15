@@ -4,7 +4,13 @@ import {
   detailsPercent,
   type MemberDetails,
 } from '@/routes/profile/details-api';
-import { type Answers, firstOpenScreen, progressOf, SCREENS } from '@/routes/profile/questions';
+import {
+  type Answers,
+  firstOpenScreen,
+  progressOf,
+  SCREENS,
+  screensThatApply,
+} from '@/routes/profile/questions';
 
 /**
  * Your profile as one thing (the owner, 2026-11-12): the details onboarding
@@ -68,14 +74,47 @@ export function nextStep(
 }
 
 /**
- * Where a step opens. `walk` goes on to the next open step after saving;
- * otherwise it is that one step, then back to Your profile.
+ * Where a step opens. `walk` goes on to the next open step; otherwise on to
+ * the next step in order, done or not (the owner, 2026-11-14).
  */
 export function stepHref(step: Step, walk: boolean): string {
-  const mode = walk ? 'walk=1' : 'only=1';
+  const mode = walk ? '&walk=1' : '';
   return step.kind === 'details'
-    ? `/profile/details?part=${step.part}&${mode}`
-    : `/profile?screen=${step.screen}&${mode}`;
+    ? `/profile/details?part=${step.part}${mode}`
+    : `/profile?screen=${step.screen}${mode}`;
+}
+
+/** Every step this member sees: the details, then the screens that apply. */
+export function stepsInOrder(answers: Answers): Step[] {
+  return [
+    ...DETAIL_PARTS.map((part): Step => ({ kind: 'details', part })),
+    ...screensThatApply(answers).map((screen): Step => ({ kind: 'survey', screen })),
+  ];
+}
+
+/** Where a step falls in that order; a screen that does not apply sits where it would. */
+function orderOf(step: Step, answers: Answers): number {
+  if (step.kind === 'details') return DETAIL_PARTS.indexOf(step.part);
+  return DETAIL_PARTS.length + screensThatApply(answers).filter((i) => i < step.screen).length;
+}
+
+/** The step before or after this one, or null at either end. */
+export function stepBeside(step: Step, direction: 1 | -1, answers: Answers): Step | null {
+  const all = stepsInOrder(answers);
+  const at = orderOf(step, answers);
+  const here = all[at];
+  const onIt =
+    here !== undefined &&
+    (here.kind === 'details'
+      ? step.kind === 'details' && here.part === step.part
+      : step.kind === 'survey' && here.screen === step.screen);
+  // Off the list, the next one is already at `at`.
+  return all[direction === 1 ? (onIt ? at + 1 : at) : at - 1] ?? null;
+}
+
+/** "3 of 14", counted over the steps this member sees. */
+export function stepPosition(step: Step, answers: Answers): { position: number; total: number } {
+  return { position: orderOf(step, answers) + 1, total: stepsInOrder(answers).length };
 }
 
 /** The one percentage Me, Home and Your profile show: details and answers, half each. */

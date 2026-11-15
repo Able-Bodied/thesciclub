@@ -28,6 +28,10 @@ vi.mock('@/components/app-nav', () => ({
     </nav>
   ),
 }));
+// The details count toward the percentage; none here, so it is the answers'.
+vi.mock('@/routes/profile/details-api', () => ({
+  loadDetails: () => Promise.resolve({ ok: false as const, error: 'none' }),
+}));
 vi.mock('@/routes/profile/organizations-picker', () => ({
   OrganizationsPicker: () => <p>The organizations</p>,
 }));
@@ -47,6 +51,7 @@ vi.mock('@/routes/profile/profile-api', () => ({
   },
 }));
 
+const { DETAIL_PARTS } = await import('@/routes/profile/progress');
 const { default: ProfileSurveyPage } = await import('@/routes/profile/page');
 
 function renderSurvey() {
@@ -156,7 +161,10 @@ describe('opened from Your answers', () => {
     renderAt(`/profile?screen=${at('Family')}`);
     expect(await screen.findByRole('heading', { name: 'Family' })).toBeInTheDocument();
     expect(
-      screen.getByText(`${SHOWN.indexOf(at('Family')) + 1} of ${SHOWN.length}`, { exact: false }),
+      screen.getByText(
+        `${DETAIL_PARTS.length + SHOWN.indexOf(at('Family')) + 1} of ${DETAIL_PARTS.length + SHOWN.length}`,
+        { exact: false },
+      ),
     ).toBeInTheDocument();
   });
 
@@ -191,7 +199,11 @@ describe('the profile survey', () => {
   it('starts on the first screen and says where you are', async () => {
     renderSurvey();
     expect(await screen.findByText('About you')).toBeInTheDocument();
-    expect(screen.getByText(`1 of ${SHOWN.length}`, { exact: false })).toBeInTheDocument();
+    expect(
+      screen.getByText(`${DETAIL_PARTS.length + 1} of ${DETAIL_PARTS.length + SHOWN.length}`, {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
   });
 
   describe('the specifics', () => {
@@ -203,7 +215,9 @@ describe('the profile survey', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
       expect(await screen.findByRole('heading', { name: 'The specifics' })).toBeInTheDocument();
       // One more screen than a blank member is shown.
-      expect(screen.getByText(`of ${SHOWN.length + 1}`, { exact: false })).toBeInTheDocument();
+      expect(
+        screen.getByText(`of ${DETAIL_PARTS.length + SHOWN.length + 1}`, { exact: false }),
+      ).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Back' }));
       expect(await screen.findByRole('heading', { name: 'Self-care devices' })).toBeInTheDocument();
     });

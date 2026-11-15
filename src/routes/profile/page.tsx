@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
+import { Check, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
@@ -9,8 +9,10 @@ import { describeThrown } from '@/lib/describe-error';
 import { MEMBER_LIST_ITEM_MAX, memberTextMax } from '@/lib/member-limits';
 import { signInDoor } from '@/lib/sign-in-destination';
 import { cn } from '@/lib/utils';
+import { loadDetails, type MemberDetails } from '@/routes/profile/details-api';
 import { OrganizationsPicker } from '@/routes/profile/organizations-picker';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
+import { profilePercent, stepBeside, stepHref, stepPosition } from '@/routes/profile/progress';
 import {
   type Answer,
   type Answers,
@@ -18,14 +20,13 @@ import {
   canDecline,
   firstOpenScreen,
   isAnswered,
-  progressOf,
   type Question,
   questionsOn,
   SCREENS,
-  screensThatApply,
   stepFrom,
   toggleMany,
 } from '@/routes/profile/questions';
+import { StepTop } from '@/routes/profile/step-top';
 
 /**
  * The profile survey.
@@ -69,9 +70,14 @@ export default function ProfileSurveyPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // For the one percentage and the way back to the details.
+  const [details, setDetails] = useState<MemberDetails | null>(null);
 
   useEffect(() => {
     if (account.status !== 'member') return;
+    void loadDetails().then((result) => {
+      if (result.ok) setDetails(result.details);
+    });
     // Saved over screen by screen: the row as it is now.
     void loadAnswers({ fresh: true }).then((result) => {
       if (result.ok) {
@@ -233,10 +239,10 @@ export default function ProfileSurveyPage() {
   if (!screen) return <Navigate to="/me" replace />;
 
   const questions = questionsOn(screen, answers);
-  const progress = progressOf(answers, declined);
-  // Counted over the screens this member will see, not all of them.
-  const shown = screensThatApply(answers);
-  const position = shown.filter((i) => i <= index).length;
+  const here = { kind: 'survey', screen: index } as const;
+  const { position, total } = stepPosition(here, answers);
+  const before = only ? null : stepBeside(here, -1, answers);
+  const percent = details ? profilePercent(details, answers, declined) : null;
   const isLast = walk
     ? firstOpenScreen(answers, declined, index + 1) === null
     : stepFrom(index + 1, 1, answers) >= SCREENS.length;
@@ -268,53 +274,31 @@ export default function ProfileSurveyPage() {
         <AppNav />
       </div>
       <main className="mx-auto flex min-h-0 w-full max-w-[520px] flex-1 flex-col">
-        <div className="flex-none px-[18px] pt-4">
-          <div className="flex min-h-[30px] items-center justify-between gap-3">
-            {index > 0 && !only ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setIndex(stepFrom(index - 1, -1, answers));
-                }}
-                className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </button>
-            ) : (
-              <span />
-            )}
-            {/* The way out, on every screen and not only the first.
-              
-              Twelve screens with Back was the only exit, so somebody eight
-              questions in who wanted to stop had to walk back through all of
-              them. It commits first — `commit` past the last screen is the same
-              path Finish takes — so leaving keeps the answers on the screen
-              you are looking at, which pressing Back never did. */}
-            <button
-              type="button"
-              disabled={saving || loading}
-              onClick={() => {
-                commit(SCREENS.length);
-              }}
-              className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
-            >
-              {walk ? 'Done for now' : fromAnswers ? 'Finish' : 'Finish later'}
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
-            <div
-              className="h-full rounded-full bg-emphasis transition-[width] duration-300"
-              style={{ width: `${(position / shown.length) * 100}%` }}
-            />
-          </div>
-          {/* Under the bar it describes, rather than beside the buttons, which
-            now hold the two ways out. */}
-          <p className="mt-1.5 text-right text-[0.78125rem] text-grey">
-            {position} of {shown.length} · {progress.percent}% complete
-          </p>
-        </div>
+        {/* The way out is on every screen: it saves this one first. */}
+        <StepTop
+          onBack={
+            before
+              ? () => {
+                  if (before.kind === 'survey') {
+                    setIndex(before.screen);
+                    return;
+                  }
+                  // Back into the details: this screen's answers go first.
+                  if (account.userId)
+                    void saveAnswers(account.userId, screen.keys, answers).catch(() => undefined);
+                  void navigate(stepHref(before, walk));
+                }
+              : null
+          }
+          doneLabel={walk ? 'Done for now' : fromAnswers ? 'Finish' : 'Finish later'}
+          onDone={() => {
+            commit(SCREENS.length);
+          }}
+          disabled={saving || loading}
+          position={position}
+          total={total}
+          percent={percent}
+        />
 
         <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">
           <h1 className="font-extrabold font-display text-[1.4375rem] text-ink leading-tight tracking-[-0.01em]">
