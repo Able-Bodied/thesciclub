@@ -44,9 +44,9 @@ function signIn(session: unknown) {
   for (const listener of fake.listeners) listener('SIGNED_IN', session);
 }
 
-function show(pairing = PAIRING) {
+function show(pairing = PAIRING, more = '') {
   render(
-    <MemoryRouter initialEntries={[`/app-sign-in?pairing=${pairing}`]}>
+    <MemoryRouter initialEntries={[`/app-sign-in?pairing=${pairing}${more}`]}>
       <AppSignInPage />
     </MemoryRouter>,
   );
@@ -90,6 +90,27 @@ describe('/app-sign-in', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('Now go back to the app')).toBeInTheDocument();
     expect(fake.rpc).toHaveBeenCalledWith('pair_home_screen_app', { pairing: PAIRING });
+  });
+
+  // The owner, 2026-11-15: the iPhone app's "Continue sign in using your browser".
+  it('for the iPhone app: signs in on the club’s doors and comes back, still asks, then leads back with no code', async () => {
+    show(PAIRING, '&from=app');
+    const door = await screen.findByRole('link', { name: 'Sign in' });
+    const next = new URL(door.getAttribute('href') ?? '', 'https://x.invalid').searchParams.get(
+      'next',
+    );
+    expect(next).toBe(`/app-sign-in?pairing=${PAIRING}&from=app`);
+    signIn(SIGNED_IN);
+    expect(
+      await screen.findByText(/just tapped Continue sign in using your browser/),
+    ).toBeInTheDocument();
+    fake.rpc.mockResolvedValue({ data: true, error: null });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    // The app collects with the secret it kept; the way back carries nothing.
+    expect(await screen.findByRole('link', { name: 'Back to the app' })).toHaveAttribute(
+      'href',
+      'thesciclub://open?path=%2Fjoin',
+    );
   });
 
   it('a pairing another account filled cannot be used', async () => {
