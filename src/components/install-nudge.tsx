@@ -21,7 +21,7 @@ import { isNative } from '@/lib/standalone';
  *
  * Why it matters here more than on most sites: on an iPhone the club can only
  * send notifications once it is on the Home Screen, and it opens full screen
- * and in one tap. Only inside the club, after joining and the passkey offer
+ * and in one tap. Only inside the club, after joining
  * (the owner, 2026-10-30): iOS keeps the Home Screen app's sign-in separate from
  * Safari's, so added while signed in, the app opens signed in by the handoff
  * (src/lib/home-screen-handoff.ts), and added before, it starts at the doors.

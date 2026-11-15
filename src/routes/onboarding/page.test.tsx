@@ -214,6 +214,18 @@ vi.mock('@/lib/push/notifications', () => ({
 
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
+    // The account's own member row: there once it has joined.
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () =>
+            Promise.resolve({
+              data: calls.status === 'member' ? { id: 'u1' } : null,
+              error: null,
+            }),
+        }),
+      }),
+    }),
     auth: {
       signInWithOAuth: (options: { provider: string; options?: { redirectTo?: string } }) => {
         calls.order.push(`signInWithOAuth:${options.provider}`);
@@ -1334,6 +1346,7 @@ describe('signing in with email', () => {
     beforeEach(() => {
       vi.stubEnv('VITE_PASSKEYS', '1');
       calls.afterPassword = 'member';
+      calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
       Object.defineProperty(window, 'PublicKeyCredential', {
         value: () => undefined,
         configurable: true,
@@ -1358,13 +1371,12 @@ describe('signing in with email', () => {
       expect(Number(window.localStorage.getItem('club:passkey-offer-snoozed'))).toBeGreaterThan(0);
     });
 
-    // Nov 12: Not now, then finishing joining, offered it again and the second
-    // Not now went back to the photo step ("You are already a member").
-    it('asks once when someone part way through joining signs in, then lets them in', async () => {
+    // The owner, 2026-11-14: not until the sign-in after the one that joins.
+    // (Nov 12: offered again on finishing, a second Not now went back to the
+    // photo step.) Neither signing in part way through nor finishing asks.
+    it('does not ask someone part way through joining, nor once they finish', async () => {
       calls.afterPassword = 'signed-up';
       await signIn();
-      expect(await screen.findByRole('heading', { name: offer })).toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
       await userEvent.type(await screen.findByPlaceholderText('ex. Ajay Shenoy'), 'Dana');
       await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
       await userEvent.click(await screen.findByRole('button', { name: '@dana' }));
@@ -1373,6 +1385,7 @@ describe('signing in with email', () => {
       await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
       expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: offer })).toBeNull();
+      expect(calls.order).not.toContain('registerPasskey');
     });
 
     it('lets an account that has one straight in', async () => {
@@ -2345,55 +2358,16 @@ describe('somebody already in the club', () => {
 });
 
 describe('the passkey offer after joining', () => {
-  async function finishLater() {
+  // The owner, 2026-11-14: it waits for a later sign-in with a password.
+  it('is not made on finishing, even where the browser could', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: () => undefined,
+      configurable: true,
+    });
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
-  }
-
-  it('is made when the switch is on and the browser can', async () => {
-    vi.stubEnv('VITE_PASSKEYS', '1');
-    Object.defineProperty(window, 'PublicKeyCredential', {
-      value: () => undefined,
-      configurable: true,
-    });
-    await finishLater();
-    expect(await screen.findByText('Sign in faster next time?')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Set up a passkey' }));
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(calls.order).toContain('registerPasskey');
-  });
-
-  it('can be put off', async () => {
-    vi.stubEnv('VITE_PASSKEYS', '1');
-    Object.defineProperty(window, 'PublicKeyCredential', {
-      value: () => undefined,
-      configurable: true,
-    });
-    await finishLater();
-    await userEvent.click(await screen.findByRole('button', { name: 'Not now' }));
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(calls.order).not.toContain('registerPasskey');
-  });
-
-  it.each(['google', 'apple'])('is not made to whoever joined with %s', async (way) => {
-    vi.stubEnv('VITE_PASSKEYS', '1');
-    Object.defineProperty(window, 'PublicKeyCredential', {
-      value: () => undefined,
-      configurable: true,
-    });
-    window.localStorage.setItem('club:way-in', way);
-    try {
-      await finishLater();
-      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-      expect(screen.queryByText('Sign in faster next time?')).toBeNull();
-    } finally {
-      window.localStorage.removeItem('club:way-in');
-    }
-  });
-
-  it('is not made while the switch is off', async () => {
-    await finishLater();
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(screen.queryByText('Sign in faster next time?')).toBeNull();
   });

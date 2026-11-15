@@ -48,6 +48,7 @@ import {
 } from '@/lib/native-sign-in';
 import {
   hasPasskey,
+  joinedBefore,
   passkeyAutofill,
   passkeyAutofillAvailable,
   passkeyOfferSnoozed,
@@ -716,15 +717,17 @@ export default function OnboardingPage() {
    * After a password, an account with no passkey gets one suggested: the
    * browser saves one quietly where it can, else "Sign in faster next
    * time?", not again for 30 days after Not now (the owner, 2026-10-27).
+   * Only once it has joined: not while joining, nor on the sign-in that
+   * finishes it (the owner, 2026-11-14: "let's not collect the passkey until
+   * after the second time the user signs in").
    */
-  const [offerAfterSignIn, setOfferAfterSignIn] = useState(false);
   const [passkeyHold, setPasskeyHold] = useState(false);
   async function suggestPasskeyAfterPassword() {
     setPhase('passkey-check');
     try {
       if ((await hasPasskey()) !== false) return;
+      if (!(await joinedBefore())) return;
       if (await upgradeToPasskeyQuietly()) return;
-      setOfferAfterSignIn(true);
       setPhase('passkey');
     } catch {
       // Not worth stopping a sign-in over: on to the club.
@@ -732,18 +735,6 @@ export default function OnboardingPage() {
       setPhase((now) => (now === 'passkey-check' ? 'wizard' : now));
       setPasskeyHold(false);
     }
-  }
-
-  function leaveToPasskeyOrHome() {
-    // Not for whoever joined with Google or Apple (the owner, 2026-11-03):
-    // that is one tap already, and a passkey saves them nothing. Me → Sign-in
-    // still has it.
-    const way = lastWayIn();
-    if (passkeysAvailable() && !passkeyOfferSnoozed() && way !== 'google' && way !== 'apple') {
-      setPhase('passkey');
-      return;
-    }
-    void navigate(destination, { replace: true });
   }
 
   /**
@@ -776,7 +767,9 @@ export default function OnboardingPage() {
     // join in a browser before they install the app, so asking now asks the
     // wrong place. The installed app asks once as it opens (AskOnOpening), and
     // Me → Settings has the switch.
-    leaveToPasskeyOrHome();
+    // No passkey offer either (the owner, 2026-11-14): it waits for a later
+    // sign-in with a password. Me → Sign-in has it meanwhile.
+    void navigate(destination, { replace: true });
   }
 
   if (account.status === 'error') return <AccountProblem account={account} />;
@@ -791,14 +784,9 @@ export default function OnboardingPage() {
     );
   }
   if (phase === 'passkey') {
-    // After a sign-in the account may not have finished joining, so the
-    // usual checks below decide where to go; after joining, home.
+    // Only after a sign-in now: the usual checks below decide where to go.
     const leave = () => {
-      if (offerAfterSignIn) {
-        // Once: finishing the wizard afterwards goes home, not back here.
-        setOfferAfterSignIn(false);
-        setPhase('wizard');
-      } else void navigate(destination, { replace: true });
+      setPhase('wizard');
     };
     return (
       <PasskeyOffer
