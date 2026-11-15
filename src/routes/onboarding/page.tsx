@@ -36,7 +36,7 @@ import {
   INVITE_PARAM,
 } from '@/lib/invite-token';
 import { useJoiningIsOpen } from '@/lib/joining';
-import { lastWayIn } from '@/lib/last-way-in';
+import { lastWayIn, signedInHereBefore } from '@/lib/last-way-in';
 import {
   type NativeResult,
   nativeWaysIn,
@@ -219,8 +219,14 @@ export default function OnboardingPage() {
   // So does a scanned code: it was held up so that somebody would join.
   // Sent from an event's registration to one door (public-event/next-step.tsx).
   const door = (useLocation().state as { door?: unknown } | null)?.door;
-  const [step, setStep] = useState<Step>(
-    invited || cameByCode || door === 'join' ? 'join' : door === 'signin' ? 'signin' : 'welcome',
+  // A device somebody has signed in on before opens on Welcome back (the owner,
+  // 2026-11-15), unless the Welcome screen has news: an event just registered for.
+  const [step, setStep] = useState<Step>(() =>
+    invited || cameByCode || door === 'join'
+      ? 'join'
+      : door === 'signin' || (!registered && signedInHereBefore())
+        ? 'signin'
+        : 'welcome',
   );
   // What was just typed, so the link opened on another device lets this one in.
   const [awaiting, setAwaiting] = useState<Credentials | null>(null);

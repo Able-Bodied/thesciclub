@@ -531,6 +531,13 @@ describe('the welcome screen', () => {
     );
   });
 
+  it('opens on Welcome back on a device somebody has signed in on before', () => {
+    window.localStorage.setItem('club:signed-in-here', '1');
+    renderJoin();
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Join the club' })).not.toBeInTheDocument();
+  });
+
   it('shows the club mark and offers both doors', () => {
     renderJoin();
     expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();

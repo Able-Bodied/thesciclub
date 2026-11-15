@@ -45,3 +45,27 @@ export function rememberWayIn(way: WayIn | null): void {
     // Private browsing: the screen opens as it does for anybody new.
   }
 }
+
+/**
+ * Whether anybody has been signed in on this device, any way at all (a code
+ * from the browser too), so a signed-out visit opens on Welcome back rather
+ * than Welcome (the owner, 2026-11-15). Kept through signing out, as above.
+ * Noted on every session, so a device already signed in has it on its next open.
+ */
+const BEFORE_KEY = 'club:signed-in-here';
+
+export function signedInHereBefore(): boolean {
+  try {
+    return localStorage.getItem(BEFORE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function noteSignedInHere(): void {
+  try {
+    localStorage.setItem(BEFORE_KEY, '1');
+  } catch {
+    // Private browsing: the Welcome screen, as for anybody new.
+  }
+}
