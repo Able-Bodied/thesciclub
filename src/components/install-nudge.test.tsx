@@ -52,8 +52,9 @@ afterEach(() => {
 });
 
 describe('the Home Screen nudge', () => {
-  // The owner, 2026-11-15: on an iPhone, the club's own app, opened signed in.
-  it('offers the club’s app on an iPhone after a moment, opening it at this page signed in', async () => {
+  // The owner, 2026-11-15: on an iPhone, the club's own app, got from the App
+  // Store first (a page cannot tell it is installed), then opened signed in.
+  it('offers the club’s app on an iPhone after a moment: Get the app, then Open in the app at this page signed in', async () => {
     browserIs(IPHONE_SAFARI);
     const opened: string[] = [];
     // Only its address is set: the app's link, then the App Store.
@@ -71,7 +72,15 @@ describe('the Home Screen nudge', () => {
     await vi.waitFor(() => {
       expect(issued).toContain('issue_app_handoff');
     });
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Open in the app' }));
+    const get = screen.getByRole('link', { name: 'Get the app' });
+    expect(get).toHaveAttribute('href', 'https://apps.apple.com/app/id6825594961');
+    // jsdom does not navigate; the press is what is remembered.
+    get.addEventListener('click', (event) => {
+      event.preventDefault();
+    });
+    const user = userEvent.setup();
+    await user.click(get);
+    await user.click(screen.getByRole('button', { name: 'Open in the app, signed in' }));
     expect(opened[0]).toBe(`thesciclub://open?path=%2Fevents%2F7&code=${'C'.repeat(43)}`);
     assign.mockRestore();
   });

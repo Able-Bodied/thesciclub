@@ -3,7 +3,15 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { OpenInAppButton } from '@/components/open-in-app';
 import { useAnnounce } from '@/lib/announce';
-import { appCouldOpen, appNoteSeen, markAppNoteSeen, onIphoneHomeScreen } from '@/lib/app-handoff';
+import {
+  APP_STORE_PAGE,
+  appCouldOpen,
+  appNoteSeen,
+  appStoreVisited,
+  markAppNoteSeen,
+  markAppStoreVisited,
+  onIphoneHomeScreen,
+} from '@/lib/app-handoff';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import {
   currentAppleDevice,
@@ -178,9 +186,12 @@ function BrowserInstallNudge() {
 }
 
 /**
- * The nudge in an iPhone browser: the club's app from the App Store, opened
- * signed in and on this page where it is installed (app-handoff.ts). Only
- * inside the club, so always for somebody signed in.
+ * The nudge in an iPhone browser, in place of the Home Screen one, and so only
+ * inside the club, after signing in (the owner, 2026-11-15: sign in in the
+ * browser, where autofill helps, then get the app). Get the app first: a page
+ * cannot tell whether the app is installed (app-handoff.ts). Once the App
+ * Store has been visited, Open in the app, which carries the browser's
+ * sign-in over, so no password again, and opens on this page.
  */
 function AppNudge({
   onNotNow,
@@ -193,6 +204,12 @@ function AppNudge({
   fromHomeScreen?: boolean;
 }) {
   const { pathname, search } = useLocation();
+  const [gotApp, setGotApp] = useState(() => appStoreVisited());
+  const path = `${pathname}${search}`;
+  const primary =
+    'mt-2.5 flex min-h-[44px] w-full items-center justify-center rounded-[12px] bg-action px-4 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi';
+  const secondary =
+    'mt-1 flex min-h-[44px] items-center text-left text-[0.8125rem] text-emphasis underline underline-offset-2';
   return (
     <aside
       aria-label="The club’s iPhone app"
@@ -211,21 +228,38 @@ function AppNudge({
           </p>
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
             {fromHomeScreen
-              ? 'The same club, from the App Store. You stay signed in.'
-              : 'The club in one tap, with notifications. You stay signed in.'}
+              ? 'The same club, from the App Store, with notifications.'
+              : 'The club in one tap, with notifications.'}
           </p>
-          <OpenInAppButton
-            path={`${pathname}${search}`}
-            signedIn
-            onOpen={onOpen}
-            className="mt-2.5 min-h-[44px] w-full rounded-[12px] bg-action px-4 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi"
-          >
-            Open in the app
-          </OpenInAppButton>
-          <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.4]">
-            Not installed yet? This takes you to the App Store. Come back and tap it again to open
-            the app signed in.
-          </p>
+          {gotApp ? (
+            <>
+              <OpenInAppButton path={path} signedIn onOpen={onOpen} className={primary}>
+                Open in the app, signed in
+              </OpenInAppButton>
+              <a href={APP_STORE_PAGE} className={secondary}>
+                Not installed yet? Get it from the App Store
+              </a>
+            </>
+          ) : (
+            <>
+              <a
+                href={APP_STORE_PAGE}
+                onClick={() => {
+                  markAppStoreVisited();
+                  setGotApp(true);
+                }}
+                className={primary}
+              >
+                Get the app
+              </a>
+              <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.4]">
+                Then come back here and tap Open in the app: it opens signed in, no password.
+              </p>
+              <OpenInAppButton path={path} signedIn onOpen={onOpen} className={secondary}>
+                Already have it? Open it signed in
+              </OpenInAppButton>
+            </>
+          )}
         </div>
         <button
           type="button"
