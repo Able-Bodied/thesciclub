@@ -1,6 +1,6 @@
 import { Plus, SmilePlus, X } from 'lucide-react';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import { createPortal, flushSync } from 'react-dom';
+import { createPortal } from 'react-dom';
 import { MemberAvatar } from '@/components/member-avatar';
 import { SheetGrip } from '@/components/sheet-grip';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -13,6 +13,7 @@ import {
   reactionName,
 } from '@/lib/chat/reactions';
 import { useDialogFocus } from '@/lib/dialog-focus';
+import { EmojiGrid } from '@/routes/chat/emoji-grid';
 import { ItemActions } from '@/routes/chat/item-actions';
 
 /** Visible, generously sized controls: no long press or hover required to
@@ -577,10 +578,8 @@ function ReactionSheet({
   const dialog = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLParagraphElement>(null);
   useDialogFocus(dialog, heading, onClose);
-  // The + (2026-11-14): the device's own emoji keyboard, as WhatsApp's + opens all of them.
-  const [typing, setTyping] = useState(false);
-  const [notEmoji, setNotEmoji] = useState(false);
-  const field = useRef<HTMLInputElement>(null);
+  // The + (2026-11-14): every emoji, as WhatsApp's + opens.
+  const [browsing, setBrowsing] = useState(false);
   // The owner, 2026-10-10: a picker that is the emoji and little else. A
   // choice is saved and the picker closes as soon as it is tapped (it stays
   // open only when saving fails, to try again). No Done button; a small Close,
@@ -642,50 +641,23 @@ function ReactionSheet({
           ))}
           <button
             type="button"
-            aria-label="Any emoji"
-            aria-expanded={typing}
+            aria-label="Every emoji"
+            aria-expanded={browsing}
             disabled={pending || !known}
             onClick={() => {
-              // In the tap itself, or a phone will not open its keyboard.
-              flushSync(() => {
-                setTyping(true);
-              });
-              field.current?.focus();
+              setBrowsing((open) => !open);
             }}
-            className={`grid min-h-12 place-items-center rounded-xl border text-grey disabled:opacity-50 ${typing ? 'border-emphasis bg-tint' : 'border-line hover:bg-tint'}`}
+            className={`grid min-h-12 place-items-center rounded-xl border text-grey disabled:opacity-50 ${browsing ? 'border-emphasis bg-tint' : 'border-line hover:bg-tint'}`}
           >
             <Plus aria-hidden="true" className="h-6 w-6" />
           </button>
         </div>
-        {typing ? (
-          <div className="mt-3">
-            <input
-              ref={field}
-              type="text"
-              aria-label="Any emoji"
-              aria-describedby="any-emoji-hint"
-              placeholder="Pick an emoji"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="done"
-              disabled={pending}
-              onChange={(event) => {
-                const picked = firstCharacter(event.target.value.trim());
-                if (!picked) return;
-                event.target.value = '';
-                if (isReactionEmoji(picked)) {
-                  setNotEmoji(false);
-                  void choose(picked);
-                } else setNotEmoji(true);
-              }}
-              className="min-h-12 w-full rounded-xl border border-line bg-paper px-4 text-[1rem] text-ink placeholder:text-grey focus:border-emphasis focus:outline-none"
-            />
-            <p id="any-emoji-hint" className="mt-1.5 text-[0.75rem] text-grey">
-              {notEmoji ? 'Only an emoji can be a reaction. ' : ''}
-              {emojiKeyboardHint()}
-            </p>
-          </div>
+        {browsing ? (
+          <EmojiGrid
+            onPick={(emoji) => {
+              if (isReactionEmoji(emoji) && !pending) void choose(emoji);
+            }}
+          />
         ) : null}
         {known ? null : (
           <p role="status" className="mt-2 text-[0.75rem] text-grey">
@@ -700,29 +672,10 @@ function ReactionSheet({
             {failure}
           </p>
         ) : null}
-        {rows.length ? <WhoReactedList rows={rows} /> : null}
+        {rows.length && !browsing ? <WhoReactedList rows={rows} /> : null}
       </div>
     </>
   );
-}
-
-/** The first character as a person sees it: a family or a flag is one. */
-function firstCharacter(text: string): string {
-  if (!text) return '';
-  if (typeof Intl.Segmenter === 'function') {
-    const first = new Intl.Segmenter().segment(text)[Symbol.iterator]().next();
-    return first.done ? '' : first.value.segment;
-  }
-  return Array.from(text)[0] ?? '';
-}
-
-/** Where this device keeps its emoji. */
-function emojiKeyboardHint(): string {
-  if (!pointerIsMouse()) return 'Tap the emoji key (😀 or 🌐) on your keyboard.';
-  const ua = navigator.userAgent;
-  if (/Mac/.test(ua)) return 'Press Control + Command + Space for every emoji.';
-  if (/Windows/.test(ua)) return 'Press the Windows key + . (full stop) for every emoji.';
-  return 'Use your keyboard’s emoji picker, or paste one.';
 }
 
 /** How much of what is being reacted to is quoted back. */
