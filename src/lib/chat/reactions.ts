@@ -216,7 +216,7 @@ export function useReactions(
         const next = new Map(old.byTarget);
         next.set(target, [
           ...(old.byTarget.get(target) ?? []).filter((r) => r.member_id !== member),
-          { target_id: target, member_id: member, emoji: emoji as string | null },
+          { target_id: target, member_id: member, emoji: emoji },
         ]);
         return { scope, byTarget: next };
       });

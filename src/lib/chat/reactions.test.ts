@@ -73,7 +73,7 @@ vi.mock('@/lib/supabase', () => ({
       if (!db.writeError)
         db.rows = [
           ...db.rows.filter((r) => r.target_id !== args.target || r.member_id !== 'me'),
-          { target_id: args.target, member_id: 'me', emoji: args.reaction as ReactionRow['emoji'] },
+          { target_id: args.target, member_id: 'me', emoji: args.reaction },
         ];
       return { error: db.writeError };
     },

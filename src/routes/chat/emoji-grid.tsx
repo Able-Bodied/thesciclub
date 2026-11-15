@@ -16,13 +16,13 @@ export function EmojiGrid({ onPick }: { onPick: (emoji: string) => void }) {
     let picker: HTMLElement | null = null;
     let gone = false;
     const onClick = (event: Event) => {
-      const unicode = (event as CustomEvent<{ unicode?: string }>).detail?.unicode;
+      const unicode = (event as CustomEvent<{ unicode?: string }>).detail.unicode;
       if (unicode) pick.current(unicode);
     };
     import('emoji-picker-element')
       .then(({ Picker }) => {
         if (gone || !box.current) return;
-        picker = new Picker({ dataSource, locale: 'en' }) as unknown as HTMLElement;
+        picker = new Picker({ dataSource, locale: 'en' });
         picker.className = 'light';
         // The app's own colours, light or dark, in place of the picker's.
         picker.setAttribute(
