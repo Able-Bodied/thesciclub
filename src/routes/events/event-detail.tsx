@@ -304,8 +304,10 @@ export default function EventDetailPage() {
           {checkInPhase === 'open' && account.status === 'member' ? (
             <CheckInCard
               eventId={event.id}
+              eventTitle={event.title}
               memberId={account.userId}
               organizationId={event.organizationId}
+              hostName={organization?.name ?? null}
             />
           ) : null}
           {checkInPhase === 'soon' && account.status === 'member' ? <CheckInNotYet /> : null}

@@ -1,7 +1,7 @@
 import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
-import { readDraft, writeDraft } from '@/lib/chat/drafts';
+import { forgetHandedPhotos, handedPhotos, readDraft, writeDraft } from '@/lib/chat/drafts';
 import type { MentionScope } from '@/lib/mentions';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
@@ -126,7 +126,11 @@ export function Composer({
 }) {
   const announce = useAnnounce();
   const [draft, setDraft] = useState(() => (draftKey ? readDraft(draftKey) : ''));
-  const [files, setFiles] = useState<File[]>([]);
+  // A selfie from checking in arrives attached (lib/chat/drafts.ts).
+  const [files, setFiles] = useState<File[]>(() => handedPhotos(draftKey));
+  useEffect(() => {
+    if (draftKey) forgetHandedPhotos(draftKey);
+  }, [draftKey]);
   // Added to the post being edited: apart from the draft's, which wait for it.
   const [editFiles, setEditFiles] = useState<File[]>([]);
   // Pictures pasted into the box join the photographs (lib/paste-photos.ts).
