@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ReactionsState } from '@/lib/chat/reactions';
 import { excerpt, HOLD_MS, ReactionBar } from '@/routes/chat/reaction-bar';
 
+vi.mock('emoji-picker-element', () => ({
+  Picker: function Picker() {
+    const element = document.createElement('div');
+    element.dataset.testid = 'fake-picker';
+    return element;
+  },
+}));
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () =>
     new Map([
@@ -170,20 +177,20 @@ describe('reaction controls', () => {
     expect(data.choose).toHaveBeenCalledWith('p1', '🎉');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
-  // The owner, 2026-11-14: a + for any emoji, from the device's own keyboard.
-  it('reacts with any emoji typed after +, and refuses words', async () => {
+  // The owner, 2026-11-14: a + opens every emoji, as WhatsApp's does.
+  it('reacts with any emoji picked after +, and never with words', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'other', emoji: '😍' }] });
     render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
     expect(screen.getByRole('button', { name: /😍: 1 reaction/ })).toBeInTheDocument();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'React to “the message”' }));
-    await user.click(screen.getByRole('button', { name: 'Any emoji' }));
-    const field = screen.getByRole('textbox', { name: 'Any emoji' });
-    expect(field).toHaveFocus();
-    await user.type(field, 'hi');
+    await user.click(screen.getByRole('button', { name: 'Every emoji' }));
+    const grid = await screen.findByTestId('fake-picker');
+    const click = (unicode: string) =>
+      grid.dispatchEvent(new CustomEvent('emoji-click', { detail: { unicode } }));
+    click('hi');
     expect(data.choose).not.toHaveBeenCalled();
-    expect(screen.getByText(/Only an emoji can be a reaction/)).toBeInTheDocument();
-    fireEvent.change(field, { target: { value: '👨‍👩‍👧' } });
+    click('👨‍👩‍👧');
     expect(data.choose).toHaveBeenCalledWith('m1', '👨‍👩‍👧');
   });
   it('removes your reaction from its count chip', async () => {
