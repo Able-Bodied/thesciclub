@@ -91,6 +91,7 @@ const {
   linkTarget,
   notificationPath,
   openedLinkPath,
+  readOpenedLink,
   startNativeShell,
   systemTextScale,
 } = await import('@/lib/native-shell');
@@ -147,6 +148,44 @@ describe('a link that opened the app', () => {
       openedLinkPath('com.googleusercontent.apps.123-abc:/oauth2redirect?code=x', app),
     ).toBeNull();
     expect(openedLinkPath('https://norcalsci.org/join', app)).toBeNull();
+  });
+});
+
+// A link can carry a sign-in (20261115100000): what it may sign in to and
+// send the app to is the security of it.
+describe('a link that opened the app with a sign-in', () => {
+  const app = 'capacitor://localhost';
+  const code = 'A'.repeat(43);
+
+  it('takes the page and the code from "Open in the app" and from the banner, and drops the code from the address', () => {
+    expect(
+      readOpenedLink(
+        `thesciclub://open?path=${encodeURIComponent('/events/7?invite=t')}&code=${code}`,
+        app,
+      ),
+    ).toEqual({ path: '/events/7?invite=t', code });
+    expect(
+      readOpenedLink(`https://thesciclub.com/peers?tab=near&app_handoff=${code}`, app),
+    ).toEqual({ path: '/peers?tab=near', code });
+    expect(readOpenedLink('https://thesciclub.com/join?invite=tok-1', app)).toEqual({
+      path: '/join?invite=tok-1',
+      code: null,
+    });
+  });
+
+  it('sends the app to no other site, and signs nothing in with a code that is not one', () => {
+    expect(readOpenedLink(`thesciclub://open?path=//evil.example/x&code=${code}`, app)).toBeNull();
+    expect(
+      readOpenedLink(`thesciclub://open?path=https://evil.example&code=${code}`, app),
+    ).toBeNull();
+    expect(readOpenedLink(`https://norcalsci.org/x?app_handoff=${code}`, app)).toBeNull();
+    expect(readOpenedLink('thesciclub://open?path=/home&code=short', app)).toEqual({
+      path: '/home',
+      code: null,
+    });
+    expect(
+      readOpenedLink('com.googleusercontent.apps.123-abc:/oauth2redirect?code=x', app),
+    ).toBeNull();
   });
 });
 
