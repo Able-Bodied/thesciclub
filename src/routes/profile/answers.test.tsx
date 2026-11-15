@@ -89,14 +89,18 @@ describe('Your answers', () => {
     expect(within(section('About you')).getByText('English, Spanish')).toBeInTheDocument();
     expect(within(section('Brief bio')).getByText('Rugby on Tuesdays.')).toBeInTheDocument();
     expect(within(section('How it began')).getByText('Rather not say')).toBeInTheDocument();
-    expect(within(section('Work')).getByText('Not answered yet')).toBeInTheDocument();
+    // The owner, 2026-11-15: an empty answer is a link to give it.
+    expect(
+      within(section('Work')).getAllByRole('link', { name: /^Answer now/ })[0],
+    ).toHaveAttribute('href', `/profile?screen=${SCREENS.findIndex((s) => s.title === 'Work')}`);
+    expect(within(section('Your details')).getByText('4 of 5 done')).toBeInTheDocument();
   });
 
   it('opens just that screen for a Change', async () => {
     api.answers = { gender: 'Woman' };
     renderAnswers();
     const family = await screen.findByRole('region', { name: 'Family' });
-    expect(within(family).getByRole('link', { name: 'Add Family' })).toHaveAttribute(
+    expect(within(family).getAllByRole('link', { name: /^Answer now/ })[0]).toHaveAttribute(
       'href',
       `/profile?screen=${SCREENS.findIndex((s) => s.title === 'Family')}`,
     );
@@ -121,15 +125,18 @@ describe('Your answers', () => {
   it('picks up where it was left: a detail first, then the questions', async () => {
     api.answers = { gender: 'Woman', languages: ['English'] };
     const first = renderAnswers();
-    expect(
-      await screen.findByRole('heading', { name: 'Next: Where you live' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Carry on' })).toHaveAttribute('href', '/profile/next');
+    // On the row it is about, carrying on from there (the owner, 2026-11-15).
+    const place = await screen.findByRole('region', { name: 'Where you live' });
+    expect(within(place).getByText('Recommended next: Add where you live')).toBeInTheDocument();
+    expect(within(place).getByRole('link', { name: 'Add now' })).toHaveAttribute(
+      'href',
+      '/profile/details?part=place&walk=1',
+    );
     first.unmount();
     api.city = 'Santa Clara';
     renderAnswers();
     expect(
-      await screen.findByRole('heading', { name: `Next: ${SCREENS[1]?.title}` }),
+      await screen.findByText(`Recommended next: Answer “${SCREENS[1]?.title}”`),
     ).toBeInTheDocument();
   });
 });

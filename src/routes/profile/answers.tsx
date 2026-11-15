@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
@@ -19,7 +19,7 @@ import {
   stepHref,
 } from '@/routes/profile/progress';
 import { type Answers, answerInWords, questionsOn, SCREENS } from '@/routes/profile/questions';
-import { cityAndState, injuryLabel } from '@/types/domain';
+import { cityAndState, hasNoInjury, injuryLabel } from '@/types/domain';
 
 /**
  * Your profile, as one thing (the owner, 2026-11-12): the details onboarding
@@ -64,6 +64,16 @@ export default function ProfileAnswersPage() {
 
   const next = details ? nextStep(details, answers, declined) : null;
   const percent = details ? profilePercent(details, answers, declined) : null;
+  // The screens with something to ask this member, as rows.
+  const screens = SCREENS.flatMap((screen, index) => {
+    const questions = questionsOn(screen, answers);
+    if (questions.length === 0) return [];
+    const lines = questions.map((q) => ({
+      label: questions.length > 1 ? q.title : null,
+      value: answerInWords(q, answers, declined),
+    }));
+    return [{ title: screen.title, index, lines, open: lines.some((l) => OPEN.has(l.value)) }];
+  });
 
   // The tab bar, so this is not a dead end on a phone (the owner, 2026-11-01).
   return (
@@ -106,6 +116,16 @@ export default function ProfileAnswersPage() {
           <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.5]">
             What other members can find you by. Change any of it whenever you like.
           </p>
+          {/* The recommended step, before the list it is in (the owner, 2026-11-15). */}
+          {next ? (
+            <Link
+              to="/profile/next"
+              className="mt-2 inline-flex items-center gap-0.5 font-semibold text-[0.8125rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
+            >
+              Next: {stepAction(next)}
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          ) : null}
         </header>
 
         {/* Keep the absolutely positioned screen-reader labels inside this
@@ -121,40 +141,45 @@ export default function ProfileAnswersPage() {
             </p>
           ) : (
             <>
-              {next ? <NextCard step={next} /> : null}
-              <section
-                aria-label="Everything on your profile"
-                className="rounded-[17px] border border-line bg-paper px-3.5"
+              <Group
+                id="profile-details"
+                title="Your details"
+                done={DETAIL_PARTS.filter((part) => !partOpen(details, part)).length}
+                total={DETAIL_PARTS.length}
               >
-                {DETAIL_PARTS.map((part) => (
-                  <Row
-                    key={part}
-                    title={PART_TITLES[part]}
-                    lines={detailLines(details, part)}
-                    open={partOpen(details, part)}
-                    isNext={next?.kind === 'details' && next.part === part}
-                    href={stepHref({ kind: 'details', part }, false)}
-                  />
-                ))}
-                {SCREENS.map((screen, index) => {
-                  const questions = questionsOn(screen, answers);
-                  if (questions.length === 0) return null;
-                  const lines = questions.map((q) => ({
-                    label: questions.length > 1 ? q.title : null,
-                    value: answerInWords(q, answers, declined),
-                  }));
+                {DETAIL_PARTS.map((part) => {
+                  const step: Step = { kind: 'details', part };
                   return (
                     <Row
-                      key={screen.title}
-                      title={screen.title}
-                      lines={lines}
-                      open={lines.some((l) => l.value === 'Not answered yet')}
-                      isNext={next?.kind === 'survey' && next.screen === index}
-                      href={stepHref({ kind: 'survey', screen: index }, false)}
+                      key={part}
+                      title={PART_TITLES[part]}
+                      lines={detailLines(details, part)}
+                      open={partOpen(details, part)}
+                      next={next?.kind === 'details' && next.part === part ? next : null}
+                      href={stepHref(step, false)}
+                      verb="Add"
                     />
                   );
                 })}
-              </section>
+              </Group>
+              <Group
+                id="profile-questions"
+                title="More about you"
+                done={screens.filter((row) => !row.open).length}
+                total={screens.length}
+              >
+                {screens.map((row) => (
+                  <Row
+                    key={row.title}
+                    title={row.title}
+                    lines={row.lines}
+                    open={row.open}
+                    next={next?.kind === 'survey' && next.screen === row.index ? next : null}
+                    href={stepHref({ kind: 'survey', screen: row.index }, false)}
+                    verb="Answer"
+                  />
+                ))}
+              </Group>
             </>
           )}
         </div>
@@ -163,33 +188,57 @@ export default function ProfileAnswersPage() {
   );
 }
 
-/** What comes next, at the top: where the member left off. */
-function NextCard({ step }: { step: Step }) {
-  const title =
-    step.kind === 'details' ? PART_TITLES[step.part] : (SCREENS[step.screen]?.title ?? '');
+const ACTIONS: Record<DetailPart, string> = {
+  photo: 'Add a profile photo',
+  name: 'Add your name',
+  birthday: 'Add your birthday',
+  injury: 'Add your injury or condition',
+  place: 'Add where you live',
+};
+
+/** The recommended step, said as a thing to do. */
+function stepAction(step: Step): string {
+  return step.kind === 'details'
+    ? ACTIONS[step.part]
+    : `Answer “${SCREENS[step.screen]?.title ?? ''}”`;
+}
+
+/** A headed half of the list, with how much of it is done. */
+function Group({
+  id,
+  title,
+  done,
+  total,
+  children,
+}: {
+  id: string;
+  title: string;
+  done: number;
+  total: number;
+  children: React.ReactNode;
+}) {
   return (
-    <section
-      aria-labelledby="profile-next"
-      className="mb-3 rounded-[17px] border-2 border-emphasis bg-tint p-3.5"
-    >
-      <h2 id="profile-next" className="font-extrabold font-head text-[0.96875rem] text-ink">
-        Next: {title}
-      </h2>
-      <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.5]">
-        Pick up where you left off. Each step can be skipped, and you can stop at any time.
-      </p>
-      <Link
-        to="/profile/next"
-        className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi"
-      >
-        Carry on
-      </Link>
+    <section aria-labelledby={id} className="mb-5 last:mb-0">
+      <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
+        <h2
+          id={id}
+          className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+        >
+          {title}
+        </h2>
+        <span className="text-[0.78125rem] text-grey">
+          {done} of {total} done
+        </span>
+      </div>
+      <div className="rounded-[17px] border border-line bg-paper px-3.5">{children}</div>
     </section>
   );
 }
 
 const NOT_YET = 'Not added yet';
-const QUIET = new Set([NOT_YET, 'Not answered yet', 'Rather not say']);
+/** Nothing said yet: shown as a link to say it. */
+const OPEN = new Set([NOT_YET, 'Not answered yet']);
+const QUIET = new Set([...OPEN, 'Rather not say']);
 
 /** A part of the details, in the same shape as a screen's answers. */
 function detailLines(
@@ -222,7 +271,10 @@ function detailLines(
               : null,
           ),
         },
-        { label: 'Date', value: say('injuryDate', injuryDateLabel(details)) },
+        // Not asked of somebody without an injury, so not listed either.
+        ...(hasNoInjury(details.injuryType)
+          ? []
+          : [{ label: 'Date', value: say('injuryDate', injuryDateLabel(details)) }]),
       ];
     case 'place':
       return [
@@ -235,36 +287,37 @@ function Row({
   title,
   lines,
   open,
-  isNext,
+  next,
   href,
+  verb,
 }: {
   title: string;
   lines: { label: string | null; value: string }[];
   open: boolean;
-  isNext: boolean;
+  /** The recommended step, when it is this row. */
+  next: Step | null;
   href: string;
+  verb: 'Add' | 'Answer';
 }) {
   const id = `profile-${title.replace(/\W+/g, '-').toLowerCase()}`;
   return (
     <section aria-labelledby={id} className="border-line border-b py-3 last:border-b-0">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id={id} className="font-extrabold font-head text-[0.9375rem] text-ink">
+        <h3 id={id} className="font-extrabold font-head text-[0.9375rem] text-ink">
           {title}
-        </h2>
-        {isNext ? (
-          <span className="mr-auto rounded-full bg-gold px-2 py-0.5 font-bold text-[0.6875rem] text-on-gold">
-            Next
-          </span>
-        ) : null}
-        <Link
-          to={href}
-          // The word on screen first, then which one.
-          aria-label={`${open ? 'Add' : 'Change'} ${title}`}
-          data-target="small"
-          className="flex-none font-semibold text-[0.8125rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
-        >
-          {open ? 'Add' : 'Change'}
-        </Link>
+        </h3>
+        {/* Open rows are added to from their empty answers instead. */}
+        {open ? null : (
+          <Link
+            to={href}
+            // The word on screen first, then which one.
+            aria-label={`Change ${title}`}
+            data-target="small"
+            className="flex-none font-semibold text-[0.8125rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
+          >
+            Change
+          </Link>
+        )}
       </div>
       <dl className="mt-1">
         {lines.map((line) => (
@@ -281,11 +334,37 @@ function Row({
                   : 'line-clamp-3 text-[0.875rem] text-ink leading-[1.5]'
               }
             >
-              {line.value}
+              {OPEN.has(line.value) && !next ? (
+                <Link
+                  to={href}
+                  aria-label={`${verb} now: ${line.label ?? title}`}
+                  className="font-semibold text-emphasis not-italic underline decoration-line underline-offset-2 hover:decoration-emphasis"
+                >
+                  {verb} now
+                </Link>
+              ) : (
+                line.value
+              )}
             </dd>
           </div>
         ))}
       </dl>
+      {next ? (
+        <div className="mt-2.5 rounded-[13px] border-2 border-emphasis bg-tint p-3">
+          <p className="font-extrabold font-head text-[0.9375rem] text-ink">
+            Recommended next: {stepAction(next)}
+          </p>
+          <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.5]">
+            Then carry on through the rest. Skip any, stop at any time.
+          </p>
+          <Link
+            to={stepHref(next, true)}
+            className="mt-2.5 flex min-h-[44px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi"
+          >
+            {verb} now
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }
