@@ -8,6 +8,7 @@ import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
+import { noteSent } from '@/lib/push/notifications';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 import { PlaceAsk } from '@/routes/chat/place-ask';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
@@ -125,6 +126,7 @@ export default function NewTopicPage() {
           setFailure(result.error);
           return;
         }
+        noteSent();
         // Straight to the topic, which is also what marks it read, so the
         // member's own new topic is not bold in the list they land back on.
         // From Home, the topic is handed the same state, so its back link says

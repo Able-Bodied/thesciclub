@@ -1,13 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AskOnOpening } from '@/components/ask-on-opening';
+import { AskAfterSending } from '@/components/ask-after-sending';
 import { AccessibilityProvider } from '@/lib/accessibility';
 import type * as Notifications from '@/lib/push/notifications';
+import { noteSent } from '@/lib/push/notifications';
 
 /**
  * What the device says is stubbed (jsdom has no Notification and is never an
- * installed app); `askOnOpening`, the screen, and remembering the answer in
+ * installed app); `mayAskForNotifications`, the screen, and remembering the answer in
  * localStorage are the real ones.
  */
 interface Db {
@@ -46,15 +47,25 @@ vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'member', userId: 'me', isAdmin: false, displayName: 'Dana' }),
 }));
 
-function renderOpening() {
+function renderClub() {
   return render(
     <AccessibilityProvider>
-      <AskOnOpening>
+      <AskAfterSending>
         <h1>Home</h1>
-      </AskOnOpening>
+      </AskAfterSending>
     </AccessibilityProvider>,
   );
 }
+
+/** As the composer, a new topic or Home's ask box does once something is sent. */
+async function send() {
+  await act(async () => {
+    noteSent();
+    await Promise.resolve();
+  });
+}
+
+const QUESTION = 'Get notified when they reply?';
 
 beforeEach(() => {
   localStorage.clear();
@@ -64,64 +75,45 @@ beforeEach(() => {
   db.app = false;
 });
 
-describe('the first time the installed app opens', () => {
-  it('asks before the club, and Turn on asks the phone', async () => {
-    renderOpening();
-    expect(screen.getByText('Turn on notifications?')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Home' })).toBeNull();
+// The owner, 2026-11-15: not on opening, but once something has been sent.
+describe('after the first message, reply or topic', () => {
+  it('does not ask on opening, and asks once something is sent; Turn on asks the phone', async () => {
+    renderClub();
+    expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText(QUESTION)).toBeNull();
+    await send();
+    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+    expect(screen.getByText(/as soon as somebody responds/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Turn on notifications' }));
     expect(db.turnedOn).toBe(1);
   });
 
-  it('goes on to the club once the phone said yes, and remembers', () => {
-    db.state = 'on';
-    renderOpening();
-    expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  it('Not now goes back to the club and remembers', async () => {
+    renderClub();
+    await send();
+    await userEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+    expect(screen.queryByText(QUESTION)).toBeNull();
     expect(localStorage.getItem('thesciclub.notificationsAsked')).not.toBeNull();
   });
 
-  it('Not now goes on to the club and remembers', async () => {
-    renderOpening();
-    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
-    expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(localStorage.getItem('thesciclub.notificationsAsked')).not.toBeNull();
-  });
-
-  it('is drawn in light', () => {
-    renderOpening();
-    expect(document.documentElement.dataset.forceLight).toBe('');
-  });
-});
-
-describe('every other opening', () => {
   it.each<[string, Partial<Notifications.OpeningFacts>]>([
     ['in a browser tab', { standalone: false }],
     ['within five days of Not now on this phone', { askedRecently: true }],
     ['when the phone already said yes', { permission: 'granted' }],
     ['when the phone said no', { permission: 'denied' }],
     ['while the club cannot send', { enabled: false }],
-  ])('goes straight to the club %s', (_, over) => {
+  ])('does not ask %s', async (_, over) => {
     db.facts = { ...db.facts, ...over };
-    renderOpening();
-    expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.queryByText('Turn on notifications?')).toBeNull();
-    // Out of light, too: nothing of the question was ever drawn.
+    renderClub();
+    await send();
+    expect(screen.queryByText(QUESTION)).toBeNull();
     expect(document.documentElement.dataset.forceLight).toBeUndefined();
   });
-});
 
-describe('in the iPhone app', () => {
-  it('asks once iOS has answered', async () => {
+  it('asks in the iPhone app once iOS has answered', async () => {
     db.app = true;
-    renderOpening();
-    expect(await screen.findByText('Turn on notifications?')).toBeInTheDocument();
-  });
-
-  it('goes to the club when it should not ask, the first launch included', async () => {
-    db.app = true;
-    db.facts = { ...db.facts, askedRecently: true };
-    renderOpening();
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.queryByText('Turn on notifications?')).toBeNull();
+    renderClub();
+    await send();
+    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
   });
 });

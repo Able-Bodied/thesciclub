@@ -137,8 +137,19 @@ export interface OpeningFacts {
   askedRecently: boolean;
 }
 
-/** Pure: whether opening the club should ask first. Tested as a table. */
-export function askOnOpening(facts: OpeningFacts): boolean {
+/**
+ * A member has just sent something: a message, a reply or a topic (the owner,
+ * 2026-11-15: ask for notifications "after the first time a user makes a
+ * comment or sends a chat"). AskAfterSending listens.
+ */
+export const SENT_EVENT = 'club:sent';
+
+export function noteSent(): void {
+  window.dispatchEvent(new Event(SENT_EVENT));
+}
+
+/** Pure: whether the club may ask for notifications now. Tested as a table. */
+export function mayAskForNotifications(facts: OpeningFacts): boolean {
   return (
     facts.enabled && facts.standalone && facts.permission === 'default' && !facts.askedRecently
   );
