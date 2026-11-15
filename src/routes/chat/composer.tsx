@@ -4,6 +4,7 @@ import { useAnnounce } from '@/lib/announce';
 import { forgetHandedPhotos, handedPhotos, readDraft, writeDraft } from '@/lib/chat/drafts';
 import type { MentionScope } from '@/lib/mentions';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
+import { noteSent } from '@/lib/push/notifications';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
@@ -284,6 +285,7 @@ export function Composer({
         if (draftVersion.current === submittedVersion) setDraft('');
         else if (setAside.current?.version === submittedVersion) setAside.current.text = '';
         setFiles([]);
+        noteSent();
         // The box shrinks back only once the words have actually gone.
         requestAnimationFrame(resize);
       })

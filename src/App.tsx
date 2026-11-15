@@ -1,7 +1,7 @@
 import { Activity, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
-import { AskOnOpening } from '@/components/ask-on-opening';
+import { AskAfterSending } from '@/components/ask-after-sending';
 import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
@@ -539,10 +539,10 @@ function AppRoutes() {
           path="/*"
           element={
             <RequireMember>
-              {/* Once, the first time the installed app opens: see AskOnOpening. */}
-              <AskOnOpening>
+              {/* After the first thing a member sends: see AskAfterSending. */}
+              <AskAfterSending>
                 <AppShell />
-              </AskOnOpening>
+              </AskAfterSending>
             </RequireMember>
           }
         />
