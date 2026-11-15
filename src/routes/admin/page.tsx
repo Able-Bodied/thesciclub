@@ -40,6 +40,7 @@ import {
   fetchMemberPage,
   fetchMemberReach,
   fetchPendingInvites,
+  fetchProfileProgress,
   fetchStrikes,
   INVITE_PAGE,
   type InvitingOrganization,
@@ -47,6 +48,7 @@ import {
   inviteState,
   isOldPhoneInvite,
   type MemberReach,
+  type ProfileProgress,
   ROSTER_PAGE,
   type RosterCounts,
   reinviteByEmail,
@@ -88,7 +90,16 @@ const ADMIN_TAB_VALUES = [
   'stats',
 ] as const;
 
-type MemberFilter = 'all' | 'joined' | 'directory' | 'attention';
+type MemberFilter = 'all' | 'joined' | 'directory' | 'attention' | 'unfinished';
+
+/**
+ * Profile unfinished (the owner, 2026-11-15) is worked out here, not by the
+ * search: it reads every joined member at once and keeps the unfinished.
+ * Fine for a club of this size; past a thousand it needs the database.
+ */
+const UNFINISHED_READ = 1000;
+const searchFilter = (filter: MemberFilter): Exclude<MemberFilter, 'unfinished'> =>
+  filter === 'unfinished' ? 'joined' : filter;
 
 /** Wide enough for the form beside the list on a desktop; a phone is narrower anyway. */
 const ADMIN_MEASURE = 'max-w-[960px]';
@@ -123,6 +134,8 @@ export default function AdminPage() {
   const [only, setOnly] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [strikes, setStrikes] = useState<Strike[]>([]);
+  // Each joined member's profile percentage and next step, as their Me card has it.
+  const [progress, setProgress] = useState<Map<string, ProfileProgress> | null>(null);
   // The two invite lists, each read a page at a time (20261104201000). Two,
   // because "The list" should mean the people who are on it: withdrawn rows
   // carry who vouched and when, and cost nothing kept apart.
@@ -186,11 +199,12 @@ export default function AdminPage() {
   const shown = useRef(0);
   const readRoster = useCallback(async (limit: number) => {
     const ask = rosterAsk.current;
+    const unfinished = !ask.only && ask.filter === 'unfinished';
     const result = await fetchMemberPage({
       query: ask.only ? '' : ask.query,
-      filter: ask.only ? 'all' : ask.filter,
+      filter: ask.only ? 'all' : searchFilter(ask.filter),
       memberId: ask.only,
-      limit,
+      limit: unfinished ? UNFINISHED_READ : limit,
     });
     if (rosterAsk.current !== ask) return null;
     if (result.ok) {
@@ -244,6 +258,10 @@ export default function AdminPage() {
       fetchMemberReach(),
       fetchPartnerTitles(),
     ]);
+    // Apart, so a database without 20261115090000 still shows the roster.
+    void fetchProfileProgress().then((result) => {
+      if (result.ok) setProgress(result.byMember);
+    });
     if (countResult.ok) setCounts(countResult.counts);
     setReach(reachResult);
     setPartners(partnerTitles);
@@ -297,7 +315,7 @@ export default function AdminPage() {
     setMore(true);
     fetchMemberPage({
       query: ask.query,
-      filter: ask.filter,
+      filter: searchFilter(ask.filter),
       offset: members.length,
     })
       .then((result) => {
@@ -430,7 +448,19 @@ export default function AdminPage() {
   // The database found these (searched and filtered); here they are only
   // split into who joined and the directory.
   const query = only ? '' : asked;
-  const real = members.filter((m) => !m.isSeed);
+  const joinedRows = members.filter((m) => !m.isSeed);
+  // Least finished first.
+  const real =
+    filter === 'unfinished'
+      ? joinedRows
+          .filter((m) => (progress?.get(m.id)?.percent ?? 100) < 100)
+          .sort(
+            (a, b) => (progress?.get(a.id)?.percent ?? 100) - (progress?.get(b.id)?.percent ?? 100),
+          )
+      : joinedRows;
+  const unfinishedCount = progress
+    ? [...progress.values()].filter((p) => p.percent < 100).length
+    : 0;
   const seeded = members.filter((m) => m.isSeed);
   const showJoined = filter !== 'directory';
   const showDirectory = filter === 'all' || filter === 'directory';
@@ -564,10 +594,12 @@ export default function AdminPage() {
                           ['joined', `Joined · ${joinedCount}`],
                           ['directory', `Directory · ${directoryCount}`],
                           ['attention', `Paused or struck · ${attentionCount}`],
+                          ['unfinished', `Profile unfinished · ${unfinishedCount}`],
                         ]
                       : [
                           ['all', `All · ${counts.everyone}`],
                           ['attention', `Paused or struck · ${attentionCount}`],
+                          ['unfinished', `Profile unfinished · ${unfinishedCount}`],
                         ]
                   }
                 />
@@ -861,6 +893,7 @@ export default function AdminPage() {
                   }}
                   strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
                   reach={reach?.get(m.id)}
+                  profile={progress?.get(m.id)}
                   onWithdrawStrike={(id, reason) => {
                     act(m.id, () => withdrawStrike(id, reason));
                   }}
@@ -880,7 +913,9 @@ export default function AdminPage() {
                     ? 'No joined members match your search.'
                     : filter === 'attention'
                       ? 'Nobody is paused or on a strike.'
-                      : 'Nobody has joined yet.'}
+                      : filter === 'unfinished'
+                        ? 'Every profile is complete.'
+                        : 'Nobody has joined yet.'}
                 </p>
               ) : null}
             </Section>
@@ -943,7 +978,7 @@ export default function AdminPage() {
               ))}
             </Section>
 
-            {tab === 'members' && !only && members.length < found ? (
+            {tab === 'members' && !only && filter !== 'unfinished' && members.length < found ? (
               <div className="mt-3 flex flex-col items-center gap-1.5">
                 <p className="text-[0.8125rem] text-grey">
                   Showing {members.length} of {found}
@@ -1053,6 +1088,7 @@ function Row({
   onStrike,
   strikes,
   reach,
+  profile,
   onWithdrawStrike,
   deciding,
   onCloseDecision,
@@ -1079,6 +1115,8 @@ function Row({
   strikes: Strike[];
   /** Notifications and the Home Screen app; absent when not known. */
   reach?: MemberReach | undefined;
+  /** Their profile percentage and next step; absent for a directory row or until read. */
+  profile?: ProfileProgress | undefined;
   onWithdrawStrike: (id: string, reason: string) => void;
   /** Whether the strike just issued was the last one, and the membership is owed an answer. */
   deciding: boolean;
@@ -1191,6 +1229,14 @@ function Row({
         {/* Whether the club can reach them (the owner, 2026-10-21). */}
         {reach && !member.isSeed ? (
           <span className="mt-0.5 block text-[0.75rem] text-grey">{reachInWords(reach)}</span>
+        ) : null}
+        {/* As their own Me card says it (the owner, 2026-11-15). */}
+        {profile && !member.isSeed ? (
+          <span className="mt-0.5 block text-[0.75rem] text-grey">
+            {profile.next
+              ? `Profile ${profile.percent}% · next: ${profile.next}`
+              : 'Profile complete'}
+          </span>
         ) : null}
       </span>
 
