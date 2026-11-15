@@ -3,7 +3,9 @@ import {
   eventIdIn,
   isOrganizationsLink,
   isPreviewer,
+  organizationIdIn,
   organizationMapPage,
+  organizationPage,
   type PreviewEvent,
   previewPage,
   shortLinkIn,
@@ -78,6 +80,23 @@ describe('a link to an event in a text message', () => {
       '<meta property="og:title" content="Map of SCI organizations on The SCI Club" />',
     );
     expect(page).toContain('content="https://thesciclub.com/share/organization-map.jpg"');
+    expect(organizationIdIn(`/events/organizations/${ID}`)).toBe(ID);
+    expect(organizationIdIn(`/events/organizations/${ID}/review`)).toBeNull();
+    expect(organizationIdIn(`/events/${ID}`)).toBeNull();
+    const one = organizationPage(
+      {
+        id: ID,
+        name: 'Rock & "Roll"',
+        summary: null,
+        city: 'San Jose',
+        state: 'CA',
+        logo_path: null,
+      },
+      null,
+    );
+    expect(one).toContain('<meta property="og:title" content="Rock &amp; &quot;Roll&quot;" />');
+    expect(one).toContain('content="San Jose, CA"');
+    expect(isPreviewer('Mozilla/5.0 (compatible; TheSCIClubLinkPreview/1.0)')).toBe(true);
   });
 
   it('falls back to the club’s picture', () => {
