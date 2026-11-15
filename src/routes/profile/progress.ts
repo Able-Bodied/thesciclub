@@ -125,3 +125,18 @@ export function profilePercent(
 ): number {
   return Math.round((detailsPercent(details) + progressOf(answers, declined).percent) / 2);
 }
+
+const ACTIONS: Record<DetailPart, string> = {
+  photo: 'Add a profile photo',
+  name: 'Add your name',
+  birthday: 'Add your birthday',
+  injury: 'Add your injury or condition',
+  place: 'Add where you live',
+};
+
+/** The recommended step, said as a thing to do. */
+export function stepAction(step: Step): string {
+  return step.kind === 'details'
+    ? ACTIONS[step.part]
+    : `Answer “${SCREENS[step.screen]?.title ?? ''}”`;
+}

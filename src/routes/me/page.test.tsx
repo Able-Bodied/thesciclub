@@ -441,18 +441,19 @@ describe('MePage', () => {
   });
 
   // One card for the details and the survey (the owner, 2026-11-09): their
-  // average, and what is still missing named.
+  // average. Since 2026-11-15 it names the next step and opens it, with Edit
+  // profile for the whole list.
   it('combines the details and the survey in one card, at their average', async () => {
     survey.answers = { gender: 'Female' }; // 6%
     details.current = { ...completeDetails, photoPath: null, city: null, state: '' }; // 40%
     renderMe();
     expect(await screen.findByText('23%')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Your details and answers. Still to add: a photo, your city and your state.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Complete your profile/ })).toHaveAttribute(
+    expect(screen.getByText('Next: Add a profile photo')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Complete your profile' })).toHaveAttribute(
+      'href',
+      '/profile/details?part=photo&walk=1',
+    );
+    expect(screen.getByRole('link', { name: 'Edit profile' })).toHaveAttribute(
       'href',
       '/profile/answers',
     );
