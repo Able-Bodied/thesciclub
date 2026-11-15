@@ -9,7 +9,13 @@ import { getSupabase } from '@/lib/supabase';
  * keeps everything meanwhile. Preset buttons, not a time picker, so it is one
  * press for anybody.
  *
- * Across the member's devices: the pause is theirs, not this phone's.
+ * Across the member's devices: the pause is theirs, not this phone's. So it
+ * shows wherever it can matter (the owner, 2026-11-14), and never where it
+ * would suggest notifications are on when they are not:
+ * - paused: on every device, with Resume, so it can be undone from anywhere;
+ * - this device notifies: Pause as ever;
+ * - it does not, but another of theirs does: Pause for those, saying so;
+ * - none of theirs notifies: nothing.
  */
 
 /** 8am tomorrow, here; in the small hours, 8am today, which is what "tomorrow" means then. */
@@ -34,9 +40,18 @@ function when(iso: string): string {
   });
 }
 
-export function PauseNotifications() {
+export function PauseNotifications({
+  userId,
+  deviceOn,
+}: {
+  userId: string;
+  /** Whether this device gets the club's notifications. */
+  deviceOn: boolean;
+}) {
   /** Undefined while read; null when not paused. */
   const [until, setUntil] = useState<string | null | undefined>(undefined);
+  /** How many devices of theirs get notifications; undefined while read. */
+  const [devices, setDevices] = useState<number | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,12 +65,23 @@ export function PauseNotifications() {
         if (failed) return;
         setUntil(typeof data === 'string' ? data : null);
       });
+    void getSupabase()
+      .from('push_subscriptions')
+      .select('endpoint', { count: 'exact', head: true })
+      .eq('member_id', userId)
+      .then(({ count, error: failed }) => {
+        if (live) setDevices(failed ? 0 : (count ?? 0));
+      });
     return () => {
       live = false;
     };
-  }, []);
+  }, [userId]);
 
-  if (until === undefined) return null;
+  if (until === undefined || devices === undefined) return null;
+  // Devices other than this one that notify.
+  const others = Math.max(devices - (deviceOn ? 1 : 0), 0);
+  if (!until && !deviceOn && others === 0) return null;
+  const elsewhere = !deviceOn && !until;
 
   async function pause(next: Date | null) {
     setBusy(true);
@@ -73,11 +99,15 @@ export function PauseNotifications() {
 
   return (
     <div className="mt-3 border-line border-t pt-3">
-      <p className="font-bold font-head text-[0.875rem] text-ink">Pause notifications</p>
+      <p className="font-bold font-head text-[0.875rem] text-ink">
+        {elsewhere ? 'Pause your other devices' : 'Pause notifications'}
+      </p>
       <p aria-live="polite" className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
         {until
-          ? `Paused until ${when(until)}. Everything still waits in the bell.`
-          : 'Nothing on any of your devices for a while. They come back by themselves, and the bell keeps everything.'}
+          ? `Paused on all your devices until ${when(until)}. Everything still waits in the bell.`
+          : elsewhere
+            ? `Notifications are off on this device, but ${others === 1 ? 'your other device still gets them' : `your ${others} other devices still get them`}. Pause them for a while; they come back by themselves.`
+            : 'Nothing on any of your devices for a while. They come back by themselves, and the bell keeps everything.'}
       </p>
       {until ? (
         <button
