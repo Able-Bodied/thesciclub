@@ -16,6 +16,7 @@ import {
   signUpWithEmail,
   verifySignUpCode,
 } from '@/lib/auth-email';
+import { useBrowserSignIn } from '@/lib/browser-sign-in';
 import { describeError } from '@/lib/describe-error';
 import { keepPendingRegistration, pendingRegistration } from '@/lib/event-audience';
 import { useGoogleInBrowser } from '@/lib/google-in-browser';
@@ -565,6 +566,9 @@ export default function OnboardingPage() {
   // On an iPhone's Home Screen, Google goes by way of Chrome or Safari. Here
   // rather than on the button, so the sign-in is collected on any door.
   const googleInBrowser = useGoogleInBrowser();
+  // The iPhone app, signed in by the browser's sign-in. Here too, so it is
+  // collected whichever screen the app comes back to.
+  const browserSignIn = useBrowserSignIn();
 
   // Open while the Home Screen app waits on a Google sign-in, so its "Finish in
   // Chrome" is not hidden behind Apple.
@@ -575,6 +579,7 @@ export default function OnboardingPage() {
     native,
     appleTaps,
     googleInBrowser,
+    browserSignIn,
     onGoogleNative: () => {
       void continueNatively(signInWithGoogleNatively);
     },

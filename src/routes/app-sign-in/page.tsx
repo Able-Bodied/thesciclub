@@ -1,10 +1,13 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { GoogleButton } from '@/components/google-button';
+import { appLink } from '@/lib/app-handoff';
+import { FROM_APP, FROM_PARAM } from '@/lib/browser-sign-in';
 import { describeError } from '@/lib/describe-error';
-import { googleGoesToBrowser, PAIRING_PARAM } from '@/lib/google-in-browser';
+import { APP_SIGN_IN_PATH, googleGoesToBrowser, PAIRING_PARAM } from '@/lib/google-in-browser';
 import { GOOGLE_NOT_SIGNED_IN, signInWithGoogleToken } from '@/lib/google-sign-in';
+import { signInDoor } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { noteSignInStarted } from '@/lib/url-session';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
@@ -30,6 +33,10 @@ const PAIRING = /^[0-9a-f]{64}$/;
 export default function AppSignInPage() {
   const [params] = useSearchParams();
   const pairing = params.get(PAIRING_PARAM) ?? '';
+  // The iPhone app's "Continue sign in using your browser" (browser-sign-in.ts):
+  // any way of signing in here, and a way back to the app.
+  const fromApp = params.get(FROM_PARAM) === FROM_APP;
+  const asked = fromApp ? 'Continue sign in using your browser' : 'Sign in with Google';
   const [phase, setPhase] = useState<Phase>('loading');
   const [email, setEmail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -115,7 +122,20 @@ export default function AppSignInPage() {
   if (!PAIRING.test(pairing) || phase === 'refused') {
     return (
       <Message title="This sign-in cannot be used">
-        Go back to the SCI Club app and tap Sign in with Google again.
+        Go back to the SCI Club app and tap {asked} again.
+      </Message>
+    );
+  }
+  if (phase === 'done' && fromApp) {
+    return (
+      <Message title="Now go back to the app">
+        The SCI Club app on this phone is signing you in.
+        <a
+          href={appLink('/join', null)}
+          className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
+        >
+          Back to the app
+        </a>
       </Message>
     );
   }
@@ -141,6 +161,22 @@ export default function AppSignInPage() {
     </p>
   ) : null;
 
+  if (phase === 'signed-out' && fromApp) {
+    // Any way in, on the club's own doors, and back here after.
+    const back = `${APP_SIGN_IN_PATH}?${new URLSearchParams({ [PAIRING_PARAM]: pairing, [FROM_PARAM]: FROM_APP })}`;
+    return (
+      <Message title="Sign in to the SCI Club app">
+        Sign in on the website first. Your browser can fill in your details. Then you will go back
+        to the app.
+        <Link
+          to={signInDoor(back)}
+          className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
+        >
+          Sign in
+        </Link>
+      </Message>
+    );
+  }
   if (phase === 'signed-out') {
     return (
       <StepFrame stepNumber={null} totalSteps={0} onSubmit={() => undefined} footer={failure}>
@@ -194,8 +230,8 @@ export default function AppSignInPage() {
         <span className="font-bold text-ink">{email ?? 'this account'}</span>.
       </Sub>
       <p className="mt-4 text-[0.84375rem] text-ink2 leading-[1.5]">
-        Only continue if you just tapped Sign in with Google in the SCI Club app on this phone. If
-        somebody sent you this link, close this page.
+        Only continue if you just tapped {asked} in the SCI Club app on this phone. If somebody sent
+        you this link, close this page.
       </p>
     </StepFrame>
   );

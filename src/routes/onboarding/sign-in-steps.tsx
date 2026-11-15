@@ -1,12 +1,14 @@
 import { ChevronDown, KeyRound } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BrowserSignInButton } from '@/components/browser-sign-in-button';
 import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { OpeningIcon } from '@/components/opening-icon';
 import { PasswordReveal } from '@/components/password-reveal';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { CODE_LENGTH, CONFIRMATION_FROM, looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
+import type { BrowserSignIn } from '@/lib/browser-sign-in';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { currentInstallPlatform } from '@/lib/install';
 import type { NativeWaysIn } from '@/lib/native-sign-in';
@@ -48,6 +50,8 @@ interface WaysIn {
   onGoogleRedirect: () => void;
   /** The iPhone Home Screen app's way to Google, through Chrome or Safari; null elsewhere. */
   googleInBrowser: GoogleInBrowser | null;
+  /** The iPhone app signed in by the browser's sign-in; null elsewhere. */
+  browserSignIn: BrowserSignIn | null;
   onApple: () => void;
   /** Taps that have left for Apple, for the button's circle. */
   appleTaps: number;
@@ -266,6 +270,9 @@ export function SignInStep({
         <p role="status" className="mt-3 text-[0.84375rem] text-ink2 leading-[1.5]">
           {notice}
         </p>
+      ) : null}
+      {ways.browserSignIn ? (
+        <BrowserSignInButton signIn={ways.browserSignIn} disabled={ways.busy} />
       ) : null}
       {offersSocial(ways.native) ? (
         <>
