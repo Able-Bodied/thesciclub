@@ -34,4 +34,26 @@ export function forgetDrafts() {
   } catch {
     // Nothing kept.
   }
+  handed.clear();
+}
+
+/**
+ * Photographs handed to a conversation's box from elsewhere: the selfie taken
+ * on checking in to an event (the owner, 2026-11-15). In memory only, as a
+ * File cannot be kept, until that box opens with them; nothing leaves the
+ * phone before Send.
+ */
+const handed = new Map<string, File[]>();
+
+export function handPhotos(key: string, files: File[]) {
+  handed.set(key, files);
+}
+
+/** What was handed to this box, left in place: a box drawn twice finds it both times. */
+export function handedPhotos(key: string | undefined): File[] {
+  return key ? (handed.get(key) ?? []) : [];
+}
+
+export function forgetHandedPhotos(key: string) {
+  handed.delete(key);
 }
