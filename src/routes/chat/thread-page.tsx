@@ -593,7 +593,9 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
             <p className="py-10 text-center text-[0.875rem] text-grey leading-relaxed">
               Nothing has been said yet.
               <br />
-              Whatever you write here is between the two of you.
+              {thread?.kind === 'group'
+                ? 'Whatever you write here, everyone in the group sees.'
+                : 'Whatever you write here is between the two of you.'}
             </p>
           ) : (
             shown.map((message, index) => (
