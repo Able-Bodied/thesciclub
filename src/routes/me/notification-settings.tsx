@@ -246,7 +246,11 @@ export function NotificationSettings({
         ) : null}
 
         {state === 'on' ? <NotificationVolume /> : null}
-        {state === 'on' ? <PauseNotifications /> : null}
+        {/* Wherever it can matter, not only here: the pause is the member's.
+            Keyed by the state, so switching this device reads the count again. */}
+        {userId ? (
+          <PauseNotifications key={state} userId={userId} deviceOn={state === 'on'} />
+        ) : null}
         {state === 'on' ? (
           <NotificationKinds userId={userId} isMentor={isMentor} isAdmin={isAdmin} />
         ) : null}
