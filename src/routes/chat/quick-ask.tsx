@@ -5,6 +5,7 @@ import { roomsByCategory } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import type { ChatRoom } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { noteSent } from '@/lib/push/notifications';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { SimilarTopics } from '@/routes/chat/similar-topics';
@@ -105,6 +106,7 @@ export function QuickAsk({
           return;
         }
         setText('');
+        noteSent();
         void navigate(`/chat/rooms/${target.id}/topics/${result.value}`, { state: linkState });
       })
       .catch((e: unknown) => {

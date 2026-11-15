@@ -5,8 +5,9 @@ import { markNotificationsAsked, useDeviceNotifications } from '@/lib/push/notif
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 
 /**
- * "Turn on notifications?", the screen the installed app opens on, once,
- * before the club (AskOnOpening, 2026-10-05).
+ * "Get notified when they reply?", over the club once a member has sent
+ * something (AskAfterSending, 2026-11-15; until then, the screen the installed
+ * app opened on, 2026-10-05).
  *
  * It used to be shown at the end of signing up as well (the owner,
  * 2026-10-01). Taken out of signing up on 2026-10-14: most people join in a
@@ -80,12 +81,14 @@ export function NotificationsStep({
       }
     >
       <Question>
-        {install ? `Get notifications on your ${currentAppleDevice()}` : 'Turn on notifications?'}
+        {install
+          ? `Get notifications on your ${currentAppleDevice()}`
+          : 'Get notified when they reply?'}
       </Question>
       <Sub>
         {install
           ? 'Add the club to your Home Screen: tap Share, then Add to Home Screen, and open it from there. You will sign in once more inside the app.'
-          : 'Know when somebody messages you or replies to your topic. You can change this any time on Me.'}
+          : 'Turn on notifications and you will know as soon as somebody responds to what you sent. You can change this any time on Me.'}
       </Sub>
     </StepFrame>
   );

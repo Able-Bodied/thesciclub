@@ -3,11 +3,11 @@ import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   appOpeningFacts,
-  askOnOpening,
   base64UrlToBytes,
   type DeviceFacts,
   forgetThisDevice,
   markNotificationsAsked,
+  mayAskForNotifications,
   notificationState,
   notificationsAskedRecently,
   type OpeningFacts,
@@ -196,7 +196,7 @@ const opening = (over: Partial<OpeningFacts>): OpeningFacts => ({
   ...over,
 });
 
-describe('askOnOpening', () => {
+describe('mayAskForNotifications', () => {
   it.each<[string, Partial<OpeningFacts>, boolean]>([
     ['the installed app, never asked on this phone', {}, true],
     // Signing up in Safari said how to install; nothing could be asked there.
@@ -212,7 +212,7 @@ describe('askOnOpening', () => {
     ],
     ['a phone that answered Not now in the last five days', { askedRecently: true }, false],
   ])('%s: %s', (_, over, expected) => {
-    expect(askOnOpening(opening(over))).toBe(expected);
+    expect(mayAskForNotifications(opening(over))).toBe(expected);
   });
 });
 
@@ -349,7 +349,7 @@ describe('turning on and off', () => {
     it('never asks on opening, whatever the permission says', () => {
       permission = 'default';
       expect(openingFacts().permission).toBeNull();
-      expect(askOnOpening(openingFacts())).toBe(false);
+      expect(mayAskForNotifications(openingFacts())).toBe(false);
     });
 
     it('draws no row on Me: the state is never read', async () => {
@@ -502,9 +502,9 @@ describe('turning on and off', () => {
         permission: 'default',
         askedRecently: false,
       });
-      expect(askOnOpening(facts)).toBe(true);
+      expect(mayAskForNotifications(facts)).toBe(true);
       markNotificationsAsked();
-      expect(askOnOpening(await appOpeningFacts())).toBe(false);
+      expect(mayAskForNotifications(await appOpeningFacts())).toBe(false);
     });
   });
 
@@ -532,7 +532,7 @@ describe('turning on and off', () => {
   it('on the website, the same phone would be asked', () => {
     permission = 'default';
     vi.stubGlobal('navigator', { userAgent: 'test', standalone: true, serviceWorker: {} });
-    expect(askOnOpening(openingFacts())).toBe(true);
+    expect(mayAskForNotifications(openingFacts())).toBe(true);
   });
 
   // iOS ignores a permission request that is not the direct result of a tap.
