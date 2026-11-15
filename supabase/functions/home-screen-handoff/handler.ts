@@ -7,6 +7,11 @@ export interface Deps {
   /** Uses the code up; the account's confirmed address, or null for any refusal. */
   redeem: (code: string) => Promise<string | null>;
   /**
+   * The same, for a code with the secret the app kept (20261115110000): a code
+   * /app-sign-in bound to that secret is answered only with it.
+   */
+  redeemWithSecret: (code: string, verifier: string) => Promise<string | null>;
+  /**
    * Uses up the sign-in a browser left for this secret (20261015010000); the
    * address, or null for one not left yet, used or expired.
    */
@@ -29,19 +34,25 @@ const CODE = /^[A-Za-z0-9_-]{43}$/;
 /**
  * `{ code }`: the cookie iOS copied in when the app was added.
  * `{ pairing }`: the app's secret, for the sign-in Chrome or Safari left it.
+ * `{ code, verifier }`: a code the iPhone app was sent, with the secret it kept.
  */
 export async function handOff(payload: unknown, deps: Deps): Promise<Reply> {
   // Malformed, unknown, used and expired all answer alike: nothing to learn.
   // A pairing not filled yet answers the same; the app asks again.
   const gone: Reply = { status: 404, body: { error: 'That sign-in has expired. Sign in here.' } };
-  const given = payload as { code?: unknown; pairing?: unknown } | null;
+  const given = payload as { code?: unknown; pairing?: unknown; verifier?: unknown } | null;
   const code = given?.code;
   const pairing = given?.pairing;
+  const verifier = given?.verifier;
   let email: string | null;
-  if (typeof code === 'string' && CODE.test(code)) email = await deps.redeem(code);
-  else if (typeof pairing === 'string' && CODE.test(pairing))
+  if (typeof code === 'string' && CODE.test(code)) {
+    email =
+      typeof verifier === 'string' && CODE.test(verifier)
+        ? await deps.redeemWithSecret(code, verifier)
+        : await deps.redeem(code);
+  } else if (typeof pairing === 'string' && CODE.test(pairing)) {
     email = await deps.redeemPairing(pairing);
-  else return gone;
+  } else return gone;
   if (!email) return gone;
 
   const tokenHash = await deps.signInHash(email);

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Open in the app: the code a browser's sign-in is carried in by
 -- ============================================================================
--- 20261115100000.
+-- 20261115100000, and 20261115110000 (section 5).
 --
 --   psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/tests/open-in-the-app.sql
 --
@@ -52,5 +52,29 @@ select count(*), date_trunc('second', min(expires_at - now()))
 select public.redeem_home_screen_handoff(current_setting('probe.first'));
 select public.redeem_home_screen_handoff(current_setting('probe.latest'));
 select public.redeem_home_screen_handoff(current_setting('probe.latest'));
+
+\echo ''
+\echo '== 5. a code /app-sign-in binds to the app''s secret (20261115110000) =='
+\echo '   expect: null (malformed); null, 1 (code alone refused, kept); null, null (wrong secret uses it up);'
+\echo '           ada1515@example.com, null (the right secret, once); ERROR permission denied for anon'
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1515-0000-0000-00000000000a","role":"authenticated","session_id":"dddddddd-1515-0000-0000-00000000000a"}',
+  true) is not null as ok;
+set local role authenticated;
+select public.issue_app_handoff_for('not-a-pairing');
+select set_config('probe.bound', public.issue_app_handoff_for(encode(extensions.digest(repeat('s', 43), 'sha256'), 'hex')), true) is not null as bound;
+reset role;
+select public.redeem_home_screen_handoff(current_setting('probe.bound'));
+select count(*) from public.home_screen_handoffs where challenge is not null;
+select public.redeem_app_handoff(current_setting('probe.bound'), repeat('x', 43));
+select public.redeem_app_handoff(current_setting('probe.bound'), repeat('s', 43));
+set local role authenticated;
+select set_config('probe.bound', public.issue_app_handoff_for(encode(extensions.digest(repeat('s', 43), 'sha256'), 'hex')), true) is not null as bound;
+reset role;
+select public.redeem_app_handoff(current_setting('probe.bound'), repeat('s', 43));
+select public.redeem_app_handoff(current_setting('probe.bound'), repeat('s', 43));
+set local role anon;
+select public.issue_app_handoff_for(repeat('a', 64));
+reset role;
 
 rollback;
