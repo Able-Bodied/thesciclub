@@ -140,47 +140,37 @@ export default function ProfileAnswersPage() {
               {error ?? 'Could not load your profile.'}
             </p>
           ) : (
-            <>
-              <Group
-                id="profile-details"
-                title="Your details"
-                done={DETAIL_PARTS.filter((part) => !partOpen(details, part)).length}
-                total={DETAIL_PARTS.length}
-              >
-                {DETAIL_PARTS.map((part) => {
-                  const step: Step = { kind: 'details', part };
-                  return (
-                    <Row
-                      key={part}
-                      title={PART_TITLES[part]}
-                      lines={detailLines(details, part)}
-                      open={partOpen(details, part)}
-                      next={next?.kind === 'details' && next.part === part ? next : null}
-                      href={stepHref(step, false)}
-                      verb="Add"
-                    />
-                  );
-                })}
-              </Group>
-              <Group
-                id="profile-questions"
-                title="More about you"
-                done={screens.filter((row) => !row.open).length}
-                total={screens.length}
-              >
-                {screens.map((row) => (
+            // One list, details then questions (the owner, 2026-11-15).
+            <section
+              aria-label="Everything on your profile"
+              className="rounded-[17px] border border-line bg-paper px-3.5"
+            >
+              {DETAIL_PARTS.map((part) => {
+                const step: Step = { kind: 'details', part };
+                return (
                   <Row
-                    key={row.title}
-                    title={row.title}
-                    lines={row.lines}
-                    open={row.open}
-                    next={next?.kind === 'survey' && next.screen === row.index ? next : null}
-                    href={stepHref({ kind: 'survey', screen: row.index }, false)}
-                    verb="Answer"
+                    key={part}
+                    title={PART_TITLES[part]}
+                    lines={detailLines(details, part)}
+                    open={partOpen(details, part)}
+                    next={next?.kind === 'details' && next.part === part ? next : null}
+                    href={stepHref(step, false)}
+                    verb="Add"
                   />
-                ))}
-              </Group>
-            </>
+                );
+              })}
+              {screens.map((row) => (
+                <Row
+                  key={row.title}
+                  title={row.title}
+                  lines={row.lines}
+                  open={row.open}
+                  next={next?.kind === 'survey' && next.screen === row.index ? next : null}
+                  href={stepHref({ kind: 'survey', screen: row.index }, false)}
+                  verb="Answer"
+                />
+              ))}
+            </section>
           )}
         </div>
       </main>
@@ -201,38 +191,6 @@ function stepAction(step: Step): string {
   return step.kind === 'details'
     ? ACTIONS[step.part]
     : `Answer “${SCREENS[step.screen]?.title ?? ''}”`;
-}
-
-/** A headed half of the list, with how much of it is done. */
-function Group({
-  id,
-  title,
-  done,
-  total,
-  children,
-}: {
-  id: string;
-  title: string;
-  done: number;
-  total: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <section aria-labelledby={id} className="mb-5 last:mb-0">
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
-        <h2
-          id={id}
-          className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-        >
-          {title}
-        </h2>
-        <span className="text-[0.78125rem] text-grey">
-          {done} of {total} done
-        </span>
-      </div>
-      <div className="rounded-[17px] border border-line bg-paper px-3.5">{children}</div>
-    </section>
-  );
 }
 
 const NOT_YET = 'Not added yet';
@@ -303,9 +261,9 @@ function Row({
   return (
     <section aria-labelledby={id} className="border-line border-b py-3 last:border-b-0">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 id={id} className="font-extrabold font-head text-[0.9375rem] text-ink">
+        <h2 id={id} className="font-extrabold font-head text-[0.9375rem] text-ink">
           {title}
-        </h3>
+        </h2>
         {/* Open rows are added to from their empty answers instead. */}
         {open ? null : (
           <Link

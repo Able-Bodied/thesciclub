@@ -93,7 +93,6 @@ describe('Your answers', () => {
     expect(
       within(section('Work')).getAllByRole('link', { name: /^Answer now/ })[0],
     ).toHaveAttribute('href', `/profile?screen=${SCREENS.findIndex((s) => s.title === 'Work')}`);
-    expect(within(section('Your details')).getByText('4 of 5 done')).toBeInTheDocument();
   });
 
   it('opens just that screen for a Change', async () => {
