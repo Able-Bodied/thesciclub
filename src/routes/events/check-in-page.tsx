@@ -63,8 +63,10 @@ export default function CheckInPage() {
             {phase === 'open' ? (
               <CheckInCard
                 eventId={event.id}
+                eventTitle={event.title}
                 memberId={memberId}
                 organizationId={event.organization?.id ?? null}
+                hostName={event.organization?.name ?? null}
               />
             ) : phase === 'over' ? (
               <CheckInClosed

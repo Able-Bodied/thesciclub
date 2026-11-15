@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { handedPhotos, readDraft } from '@/lib/chat/drafts';
 import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 
 const api = vi.hoisted(() => ({
@@ -31,7 +32,15 @@ vi.mock('@/lib/supabase', () => ({
 function renderCard() {
   render(
     <MemoryRouter>
-      <CheckInCard eventId="e1" memberId="m1" organizationId="o1" />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <CheckInCard eventId="e1" eventTitle="Game day" memberId="m1" organizationId="o1" />
+          }
+        />
+        <Route path="/chat/t/:id" element={<h1>Group chat</h1>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -68,6 +77,23 @@ describe('checking in', () => {
       'href',
       '/events/organizations/o1',
     );
+  });
+
+  it('puts a selfie, once checked in, in the event group chat box for them to send', async () => {
+    api.checkedIn = true;
+    localStorage.clear();
+    sessionStorage.clear();
+    renderCard();
+    await screen.findByText("You're checked in");
+    api.rpc = { data: 't9', error: null };
+    const selfie = new File(['x'], 'selfie.jpg', { type: 'image/jpeg' });
+    const camera = document.querySelector<HTMLInputElement>('input[capture="user"]');
+    if (!camera) throw new Error('no front camera input');
+    await userEvent.upload(camera, selfie);
+    expect(await screen.findByRole('heading', { name: 'Group chat' })).toBeInTheDocument();
+    expect(api.calls).toContainEqual(['chat_join_event_group', { event: 'e1' }]);
+    expect(handedPhotos('thread:t9')).toEqual([selfie]);
+    expect(readDraft('thread:t9')).toBe('Here at Game day!');
   });
 
   it('shows it is done when they come back', async () => {
