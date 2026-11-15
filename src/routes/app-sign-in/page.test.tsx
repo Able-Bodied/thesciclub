@@ -93,24 +93,29 @@ describe('/app-sign-in', () => {
   });
 
   // The owner, 2026-11-15: the iPhone app's "Continue sign in using your browser".
-  it('for the iPhone app: signs in on the club’s doors and comes back, still asks, then leads back with no code', async () => {
+  it('for the iPhone app: signs in on the club’s doors, comes back, and goes straight to the app with a code bound to its secret', async () => {
+    const opened: string[] = [];
+    vi.spyOn(window, 'location', 'get').mockReturnValue({
+      set href(value: string) {
+        opened.push(value);
+      },
+    } as unknown as Location);
     show(PAIRING, '&from=app');
     const door = await screen.findByRole('link', { name: 'Sign in' });
     const next = new URL(door.getAttribute('href') ?? '', 'https://x.invalid').searchParams.get(
       'next',
     );
     expect(next).toBe(`/app-sign-in?pairing=${PAIRING}&from=app`);
+    const CODE = 'c'.repeat(43);
+    fake.rpc.mockResolvedValue({ data: CODE, error: null });
     signIn(SIGNED_IN);
-    expect(
-      await screen.findByText(/just tapped Continue sign in using your browser/),
-    ).toBeInTheDocument();
-    fake.rpc.mockResolvedValue({ data: true, error: null });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    // The app collects with the secret it kept; the way back carries nothing.
-    expect(await screen.findByRole('link', { name: 'Back to the app' })).toHaveAttribute(
-      'href',
-      'thesciclub://open?path=%2Fjoin',
-    );
+    // No Continue: the code is no use to whoever made the link (20261115110000).
+    await vi.waitFor(() => {
+      expect(opened).toEqual([`thesciclub://open?path=%2Fjoin&code=${CODE}`]);
+    });
+    expect(fake.rpc).toHaveBeenCalledWith('issue_app_handoff_for', { pairing: PAIRING });
+    expect(fake.rpc).not.toHaveBeenCalledWith('pair_home_screen_app', expect.anything());
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
   });
 
   it('a pairing another account filled cannot be used', async () => {

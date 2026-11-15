@@ -7,6 +7,7 @@ function deps(overrides: Partial<Deps> = {}): Deps {
   return {
     redeem: vi.fn(() => Promise.resolve('dana@example.com')),
     redeemPairing: vi.fn(() => Promise.resolve('dana@example.com')),
+    redeemWithSecret: vi.fn(() => Promise.resolve('dana@example.com')),
     signInHash: vi.fn(() => Promise.resolve('the-hash')),
     ...overrides,
   };
@@ -21,6 +22,18 @@ describe('home-screen-handoff', () => {
     });
     expect(d.redeem).toHaveBeenCalledWith(CODE);
     expect(d.signInHash).toHaveBeenCalledWith('dana@example.com');
+  });
+
+  // 20261115110000: a code /app-sign-in bound to the app's secret.
+  it('passes the iPhone app’s secret along with its code, and a malformed one not at all', async () => {
+    const d = deps();
+    await handOff({ code: CODE, verifier: 'v'.repeat(43) }, d);
+    expect(d.redeemWithSecret).toHaveBeenCalledWith(CODE, 'v'.repeat(43));
+    expect(d.redeem).not.toHaveBeenCalled();
+    const plain = deps();
+    await handOff({ code: CODE, verifier: 'short' }, plain);
+    expect(plain.redeem).toHaveBeenCalledWith(CODE);
+    expect(plain.redeemWithSecret).not.toHaveBeenCalled();
   });
 
   it('answers a malformed code without touching the database', async () => {

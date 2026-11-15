@@ -1,29 +1,25 @@
 import { Capacitor } from '@capacitor/core';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  APP_SIGN_IN_PATH,
-  COLLECT_EVERY_MS,
-  COLLECT_TRIES,
-  collectPairing,
-  makePairing,
-  PAIRING_PARAM,
-  PENDING_MS,
-} from '@/lib/google-in-browser';
+import { APP_SIGN_IN_PATH, makePairing, PAIRING_PARAM, PENDING_MS } from '@/lib/google-in-browser';
 import { SITE_ORIGIN } from '@/lib/site-origin';
 import { isNative } from '@/lib/standalone';
 
 /**
  * The iPhone app, signed in by the browser's sign-in (the owner, 2026-11-15:
  * "Could we add an option in the app to open the browser and pass the cookie
- * back?"): "Continue sign in using your browser (no password)" on Welcome back.
+ * back?", then "without even having the user tap"; 20261115110000):
+ * "Continue sign in using your browser (no password)" on Welcome back.
  *
- * The Home Screen app's way to Google (google-in-browser.ts), for the store
- * app and any sign-in: the app keeps a secret and opens /app-sign-in in the
- * member's own browser with only its hash. Signed in there already, or once
- * they sign in there, where autofill knows them, they confirm; the app, back
- * in front, trades its secret for a sign-in of its own (home-screen-handoff).
- * Whoever holds the secret collects it, so another app that caught the way
- * back (thesciclub://, which any app could claim) has nothing to trade.
+ * The app makes a secret, keeps it, and opens /app-sign-in in the member's own
+ * browser with only its sha256 (the pairing). That browser, signed in already
+ * or once they sign in there, where autofill knows them, sends a two-minute
+ * code bound to the pairing straight back to the app
+ * (thesciclub://open?...&code=...), and the app redeems it with the secret
+ * (takeAppHandoff). iOS's own "Open in The SCI Club?" is the only tap.
+ *
+ * The code goes to the phone the browser is on, never to whoever made the
+ * link, and is no use without the secret: a link somebody made and sent a
+ * member hands their sign-in to nobody.
  *
  * A thesciclub.com address, not Safari's own: iOS opens it in the browser the
  * member chose, as /app-sign-in is never taken by the app
@@ -56,14 +52,6 @@ export function browserSignInAddress(pairing: string, origin = SITE_ORIGIN): str
   return url.href;
 }
 
-function savePending(pending: Pending): void {
-  try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-  } catch {
-    // Nothing to collect then; the member signs in another way.
-  }
-}
-
 function readPending(now = Date.now()): Pending | null {
   try {
     const kept = JSON.parse(localStorage.getItem(PENDING_KEY) ?? 'null') as Partial<Pending> | null;
@@ -82,7 +70,12 @@ function readPending(now = Date.now()): Pending | null {
   }
 }
 
-function forget(): void {
+/** The secret to redeem a code from the browser with, while one is awaited. */
+export function browserSignInSecret(): string | null {
+  return readPending()?.secret ?? null;
+}
+
+export function forgetBrowserSignIn(): void {
   try {
     localStorage.removeItem(PENDING_KEY);
   } catch {
@@ -91,8 +84,6 @@ function forget(): void {
 }
 
 export const BROWSER_TOOK_TOO_LONG = 'That took too long. Tap Continue sign in again.';
-export const BROWSER_NOT_SIGNED_IN =
-  'The browser did not sign you in. Try again, or use your email.';
 
 export interface BrowserSignIn {
   waiting: boolean;
@@ -115,7 +106,15 @@ export function useBrowserSignIn(
   const start = useCallback(() => {
     setProblem(null);
     void makePairing().then(({ secret, pairing }) => {
-      savePending({ secret, pairing, startedAt: Date.now() });
+      try {
+        localStorage.setItem(
+          PENDING_KEY,
+          JSON.stringify({ secret, pairing, startedAt: Date.now() } satisfies Pending),
+        );
+      } catch {
+        // No secret kept, so nothing the browser sends can be redeemed.
+        return;
+      }
       setWaiting(true);
       go(browserSignInAddress(pairing));
     });
@@ -132,59 +131,21 @@ export function useBrowserSignIn(
   }, [go]);
 
   const cancel = useCallback(() => {
-    forget();
+    forgetBrowserSignIn();
     setWaiting(false);
     setProblem(null);
   }, []);
 
-  // Back in front: ask a few times, then wait for the next return.
+  // Back in front without the code (iOS's question answered Cancel, or the
+  // app opened another way): still waiting while the secret lasts.
   useEffect(() => {
     if (!waiting) return;
-    const controller = new AbortController();
-    const stopped = () => controller.signal.aborted;
-    let timer = 0;
-    let tries = 0;
-    let asking = false;
-    async function ask() {
-      window.clearTimeout(timer);
-      if (stopped() || asking || document.visibilityState !== 'visible') return;
-      const pending = readPending();
-      if (!pending) {
-        setWaiting(false);
-        setProblem(BROWSER_TOOK_TOO_LONG);
-        return;
-      }
-      asking = true;
-      const answer = await collectPairing(pending.secret, {}).catch(() => 'not-yet' as const);
-      asking = false;
-      if (stopped()) return;
-      if (answer !== 'not-yet') {
-        // Signed in, the page's gate takes it from here.
-        forget();
-        setWaiting(false);
-        if (answer === 'failed') setProblem(BROWSER_NOT_SIGNED_IN);
-        return;
-      }
-      tries += 1;
-      if (tries < COLLECT_TRIES) {
-        timer = window.setTimeout(() => {
-          void ask();
-        }, COLLECT_EVERY_MS);
-      }
-    }
     function onReturn() {
-      if (document.visibilityState !== 'visible') return;
-      tries = 0;
-      void ask();
+      if (document.visibilityState === 'visible' && !readPending()) setWaiting(false);
     }
-    void ask();
     document.addEventListener('visibilitychange', onReturn);
-    window.addEventListener('focus', onReturn);
     return () => {
-      controller.abort();
-      window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onReturn);
-      window.removeEventListener('focus', onReturn);
     };
   }, [waiting]);
 

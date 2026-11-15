@@ -18,8 +18,8 @@ export function BrowserSignInButton({
       <div role="status" className="mt-2 rounded-[13px] border-[1.6px] border-line px-4 py-3.5">
         <p className="font-bold font-head text-[0.9375rem] text-ink">Finish in your browser</p>
         <p className="mt-1 text-[0.84375rem] text-ink2 leading-[1.5]">
-          Sign in there if it asks, then press Continue. Come back to this app, and you will be
-          signed in.
+          Sign in there if it asks. When your iPhone asks to open The SCI Club, tap Open, and you
+          will be signed in here.
         </p>
         <button
           type="button"

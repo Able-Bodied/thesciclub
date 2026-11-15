@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { currentInstallPlatform } from '@/lib/install';
-import { hintSignIn, type SignInHint } from '@/lib/sign-in-record';
+import { hintSignIn } from '@/lib/sign-in-record';
 import { isNative, isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
@@ -249,18 +249,14 @@ export function forgetPairing(): void {
  * Asks for the sign-in the browser left for this secret. 'not-yet' until the
  * member has confirmed there; a network failure is 'not-yet' too, and asked again.
  */
-export async function collectPairing(
-  secret: string,
-  /** For Admin → Stats; the store app's browser sign-in says nothing more. */
-  hint: SignInHint = { provider: 'google', homeScreen: true },
-): Promise<'signed-in' | 'not-yet' | 'failed'> {
+export async function collectPairing(secret: string): Promise<'signed-in' | 'not-yet' | 'failed'> {
   const supabase = getSupabase();
   const answer = await supabase.functions.invoke<{ token_hash?: unknown }>('home-screen-handoff', {
     body: { pairing: secret },
   });
   const tokenHash = answer.data?.token_hash;
   if (answer.error || typeof tokenHash !== 'string') return 'not-yet';
-  hintSignIn(hint);
+  hintSignIn({ provider: 'google', homeScreen: true });
   const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
   return verified.error ? 'failed' : 'signed-in';
 }
