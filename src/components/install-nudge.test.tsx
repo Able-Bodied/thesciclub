@@ -7,9 +7,11 @@ import { InstallNudge, InstallSettings } from '@/components/install-nudge';
 
 // The app nudge keeps a code for Open in the app; no database here.
 const issued: string[] = [];
+const club = { hasApp: false };
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (name: string) => {
+      if (name === 'i_have_the_app') return Promise.resolve({ data: club.hasApp, error: null });
       issued.push(name);
       return Promise.resolve({ data: 'C'.repeat(43), error: null });
     },
@@ -52,12 +54,26 @@ afterEach(() => {
 });
 
 describe('the Home Screen nudge', () => {
-  // The owner, 2026-11-15: on an iPhone, the club's own app, got from the App
-  // Store first (a page cannot tell it is installed), then opened signed in.
-  it('offers the club’s app on an iPhone after a moment: Get the app, then Open in the app at this page signed in', async () => {
+  // The owner, 2026-11-15: on an iPhone, the club's own app, opened signed in,
+  // but only where the club knows it is installed: Install everywhere else, as
+  // Safari answers the app's link with an error when it is not there.
+  it('says Install the app on an iPhone without it, and Open in the app, signed in, with it', async () => {
     browserIs(IPHONE_SAFARI);
+    club.hasApp = false;
+    const first = renderAfterWait();
+    expect(await screen.findByText('Get the club’s iPhone app')).toBeInTheDocument();
+    expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Install the app' })).toHaveAttribute(
+      'href',
+      'https://apps.apple.com/app/id6825594961',
+    );
+    expect(screen.queryByRole('button', { name: /Open/ })).toBeNull();
+    expect(issued).not.toContain('issue_app_handoff');
+    first.unmount();
+
+    club.hasApp = true;
     const opened: string[] = [];
-    // Only its address is set: the app's link, then the App Store.
+    // Only its address is set: the app's link.
     const assign = vi.spyOn(window, 'location', 'get').mockReturnValue({
       get href() {
         return 'http://localhost/events/7';
@@ -67,20 +83,11 @@ describe('the Home Screen nudge', () => {
       },
     } as unknown as Location);
     renderAfterWait();
-    expect(screen.getByText('Get the club’s iPhone app')).toBeInTheDocument();
-    expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
+    const open = await screen.findByRole('button', { name: 'Open in the app, signed in' });
     await vi.waitFor(() => {
       expect(issued).toContain('issue_app_handoff');
     });
-    const get = screen.getByRole('link', { name: 'Get the app' });
-    expect(get).toHaveAttribute('href', 'https://apps.apple.com/app/id6825594961');
-    // jsdom does not navigate; the press is what is remembered.
-    get.addEventListener('click', (event) => {
-      event.preventDefault();
-    });
-    const user = userEvent.setup();
-    await user.click(get);
-    await user.click(screen.getByRole('button', { name: 'Open in the app, signed in' }));
+    await userEvent.setup().click(open);
     expect(opened[0]).toBe(`thesciclub://open?path=%2Fevents%2F7&code=${'C'.repeat(43)}`);
     assign.mockRestore();
   });
@@ -104,7 +111,7 @@ describe('the Home Screen nudge', () => {
   it('goes away for three days on Not now', async () => {
     browserIs(IPHONE_SAFARI);
     const view = renderAfterWait();
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Not now' }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Not now' }));
     expect(screen.queryByText('Get the club’s iPhone app')).toBeNull();
     view.unmount();
     renderAfterWait();
@@ -117,7 +124,7 @@ describe('the Home Screen nudge', () => {
     Object.defineProperty(navigator, 'standalone', { value: true, configurable: true });
     try {
       const view = renderAfterWait();
-      expect(screen.getByText('The club now has an iPhone app')).toBeInTheDocument();
+      expect(await screen.findByText('The club now has an iPhone app')).toBeInTheDocument();
       await userEvent.setup().click(screen.getByRole('button', { name: 'Not now' }));
       expect(screen.queryByText('The club now has an iPhone app')).toBeNull();
       view.unmount();
