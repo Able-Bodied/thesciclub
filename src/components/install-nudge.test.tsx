@@ -1,8 +1,20 @@
 import { Capacitor } from '@capacitor/core';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InstallNudge, InstallSettings } from '@/components/install-nudge';
+
+// The app nudge keeps a code for Open in the app; no database here.
+const issued: string[] = [];
+vi.mock('@/lib/supabase', () => ({
+  getSupabase: () => ({
+    rpc: (name: string) => {
+      issued.push(name);
+      return Promise.resolve({ data: 'C'.repeat(43), error: null });
+    },
+  }),
+}));
 
 const IPHONE_SAFARI =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -18,7 +30,11 @@ function browserIs(userAgent: string) {
 /** Past the moment it waits before showing. */
 function renderAfterWait() {
   vi.useFakeTimers({ shouldAdvanceTime: true });
-  const view = render(<InstallNudge />);
+  const view = render(
+    <MemoryRouter initialEntries={['/events/7']}>
+      <InstallNudge />
+    </MemoryRouter>,
+  );
   act(() => {
     vi.advanceTimersByTime(3100);
   });
@@ -36,21 +52,33 @@ afterEach(() => {
 });
 
 describe('the Home Screen nudge', () => {
-  it('waits a moment, then offers the steps on an iPhone, naming notifications', () => {
+  // The owner, 2026-11-15: on an iPhone, the club's own app, opened signed in.
+  it('offers the club’s app on an iPhone after a moment, opening it at this page signed in', async () => {
     browserIs(IPHONE_SAFARI);
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    render(<InstallNudge />);
+    const opened: string[] = [];
+    // Only its address is set: the app's link, then the App Store.
+    const assign = vi.spyOn(window, 'location', 'get').mockReturnValue({
+      get href() {
+        return 'http://localhost/events/7';
+      },
+      set href(value: string) {
+        opened.push(value);
+      },
+    } as unknown as Location);
+    renderAfterWait();
+    expect(screen.getByText('Get the club’s iPhone app')).toBeInTheDocument();
     expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
-    act(() => {
-      vi.advanceTimersByTime(3100);
+    await vi.waitFor(() => {
+      expect(issued).toContain('issue_app_handoff');
     });
-    expect(screen.getByText('Put the club on your Home Screen')).toBeInTheDocument();
-    expect(screen.getByText(/notifications on your iPhone/)).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Open in the app' }));
+    expect(opened[0]).toBe(`thesciclub://open?path=%2Fevents%2F7&code=${'C'.repeat(43)}`);
+    assign.mockRestore();
   });
 
-  it('shows Safari’s steps, and says what to do if the app is signed out', async () => {
+  it('shows Safari’s Home Screen steps on Me, and says what to do if the app is signed out', async () => {
     browserIs(IPHONE_SAFARI);
-    renderAfterWait();
+    render(<InstallSettings />);
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Show me how' }));
     const sheet = screen.getByRole('dialog', { name: 'Add the club to your Home Screen' });
@@ -68,10 +96,10 @@ describe('the Home Screen nudge', () => {
     browserIs(IPHONE_SAFARI);
     const view = renderAfterWait();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Not now' }));
-    expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
+    expect(screen.queryByText('Get the club’s iPhone app')).toBeNull();
     view.unmount();
     renderAfterWait();
-    expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
+    expect(screen.queryByText('Get the club’s iPhone app')).toBeNull();
   });
 
   it('uses the browser’s own Install where it offers one', async () => {
@@ -173,7 +201,7 @@ describe('the iPhone steps match the phones', () => {
     browserIs(
       'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1',
     );
-    renderAfterWait();
+    render(<InstallSettings />);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Tap View More');
   });
@@ -220,7 +248,7 @@ describe('the how-to video', () => {
   // 2026-10-28: by itself, muted and on repeat, once the steps open.
   it('plays the clip from the site by itself, on repeat, once the steps open in Chrome', async () => {
     browserIs(IPHONE_CHROME);
-    renderAfterWait();
+    render(<InstallSettings />);
     expect(document.querySelector('video')).toBeNull();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
     const video = document.querySelector('video');
@@ -243,7 +271,7 @@ describe('the how-to video', () => {
       removeEventListener: () => undefined,
     }));
     try {
-      renderAfterWait();
+      render(<InstallSettings />);
       await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
       const video = document.querySelector('video');
       expect(video).not.toHaveAttribute('autoplay');
@@ -255,7 +283,7 @@ describe('the how-to video', () => {
 
   it('plays with Safari’s steps too, much the same as Chrome’s', async () => {
     browserIs(IPHONE_SAFARI);
-    renderAfterWait();
+    render(<InstallSettings />);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
     expect(document.querySelector('video')).not.toBeNull();
   });

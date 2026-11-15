@@ -18,6 +18,9 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:thesciclub.com</string>
+		<!-- Passwords saved for thesciclub.com offered in the app's sign-in
+		     (the owner, 2026-11-15); the site's half is in the same file. -->
+		<string>webcredentials:thesciclub.com</string>
 	</array>
 </dict>
 </plist>
