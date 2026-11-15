@@ -387,7 +387,8 @@ function WhoReactedSheet({
   const dialog = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useDialogFocus(dialog, heading, onClose);
-  const [tab, setTab] = useState<ReactionEmoji | 'all'>('all');
+  // An emoji, or 'all' (no emoji is spelt that way).
+  const [tab, setTab] = useState<ReactionEmoji>('all');
   const authors = useChatAuthors(rows.map((r) => r.member_id));
   const used = emojiIn(rows, first);
   const order = (r: ReactionRow) =>
