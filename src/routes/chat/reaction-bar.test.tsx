@@ -170,6 +170,22 @@ describe('reaction controls', () => {
     expect(data.choose).toHaveBeenCalledWith('p1', '🎉');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+  // The owner, 2026-11-14: a + for any emoji, from the device's own keyboard.
+  it('reacts with any emoji typed after +, and refuses words', async () => {
+    const data = state({ rows: [{ target_id: 'm1', member_id: 'other', emoji: '😍' }] });
+    render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
+    expect(screen.getByRole('button', { name: /😍: 1 reaction/ })).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'React to “the message”' }));
+    await user.click(screen.getByRole('button', { name: 'Any emoji' }));
+    const field = screen.getByRole('textbox', { name: 'Any emoji' });
+    expect(field).toHaveFocus();
+    await user.type(field, 'hi');
+    expect(data.choose).not.toHaveBeenCalled();
+    expect(screen.getByText(/Only an emoji can be a reaction/)).toBeInTheDocument();
+    fireEvent.change(field, { target: { value: '👨‍👩‍👧' } });
+    expect(data.choose).toHaveBeenCalledWith('m1', '👨‍👩‍👧');
+  });
   it('removes your reaction from its count chip', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'me', emoji: '👍' }] });
     render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
