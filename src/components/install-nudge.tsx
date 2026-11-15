@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { OpenInAppButton } from '@/components/open-in-app';
 import { useAnnounce } from '@/lib/announce';
-import { appCouldOpen } from '@/lib/app-handoff';
+import { appCouldOpen, appNoteSeen, markAppNoteSeen, onIphoneHomeScreen } from '@/lib/app-handoff';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import {
   currentAppleDevice,
@@ -52,6 +52,11 @@ function BrowserInstallNudge() {
   const [ready, setReady] = useState(false);
   const [dismissed, setDismissed] = useState(() => nudgeSnoozed());
   const [showing, setShowing] = useState(false);
+  // The club on an iPhone's Home Screen: told of the app once (the owner,
+  // 2026-11-15), and never again after Not now or Open in the app.
+  const [homeScreenNote, setHomeScreenNote] = useState(
+    () => onIphoneHomeScreen() && !appNoteSeen(),
+  );
   const announce = useAnnounce();
 
   useEffect(() => {
@@ -64,6 +69,20 @@ function BrowserInstallNudge() {
   }, []);
 
   if (!isHandheld(platform)) return null;
+
+  if (homeScreenNote) {
+    return ready ? (
+      <AppNudge
+        fromHomeScreen
+        onOpen={markAppNoteSeen}
+        onNotNow={() => {
+          markAppNoteSeen();
+          setHomeScreenNote(false);
+          announce('Hidden. Search for The SCI Club in the App Store any time.');
+        }}
+      />
+    ) : null;
+  }
 
   // An iPhone browser: the club's own app, not the website on the Home Screen
   // (the owner, 2026-11-15). Me, then Settings, still has the Home Screen steps.
@@ -163,7 +182,16 @@ function BrowserInstallNudge() {
  * signed in and on this page where it is installed (app-handoff.ts). Only
  * inside the club, so always for somebody signed in.
  */
-function AppNudge({ onNotNow }: { onNotNow: () => void }) {
+function AppNudge({
+  onNotNow,
+  onOpen,
+  fromHomeScreen = false,
+}: {
+  onNotNow: () => void;
+  onOpen?: () => void;
+  /** In the Home Screen copy, which is told once, as news. */
+  fromHomeScreen?: boolean;
+}) {
   const { pathname, search } = useLocation();
   return (
     <aside
@@ -179,14 +207,17 @@ function AppNudge({ onNotNow }: { onNotNow: () => void }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-extrabold font-head text-[0.9375rem] text-ink leading-[1.3]">
-            Get the club’s iPhone app
+            {fromHomeScreen ? 'The club now has an iPhone app' : 'Get the club’s iPhone app'}
           </p>
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-            The club in one tap, with notifications. You stay signed in.
+            {fromHomeScreen
+              ? 'The same club, from the App Store. You stay signed in.'
+              : 'The club in one tap, with notifications. You stay signed in.'}
           </p>
           <OpenInAppButton
             path={`${pathname}${search}`}
             signedIn
+            onOpen={onOpen}
             className="mt-2.5 min-h-[44px] w-full rounded-[12px] bg-action px-4 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi"
           >
             Open in the app
