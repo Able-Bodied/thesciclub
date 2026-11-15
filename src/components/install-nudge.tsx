@@ -7,9 +7,7 @@ import {
   APP_STORE_PAGE,
   appCouldOpen,
   appNoteSeen,
-  appStoreVisited,
   markAppNoteSeen,
-  markAppStoreVisited,
   onIphoneHomeScreen,
 } from '@/lib/app-handoff';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -25,6 +23,7 @@ import {
   useInstallPrompt,
 } from '@/lib/install';
 import { isNative } from '@/lib/standalone';
+import { getSupabase } from '@/lib/supabase';
 
 /**
  * A nudge to put the club on the Home Screen, for somebody using it in a
@@ -186,12 +185,41 @@ function BrowserInstallNudge() {
 }
 
 /**
+ * Whether the club knows this member has the iPhone app (the owner,
+ * 2026-11-15: "If ... the app is not installed it should say install and not
+ * open"; 20261115130000). A page cannot see the phone's apps, and Safari
+ * answers a thesciclub:// link to a missing app with an error. Null while
+ * asked; no on any failure, as Install is never wrong.
+ */
+function useHasTheApp(): boolean | null {
+  const [has, setHas] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void getSupabase()
+      .rpc('i_have_the_app')
+      .then(
+        ({ data }) => {
+          if (live) setHas(data === true);
+        },
+        () => {
+          if (live) setHas(false);
+        },
+      );
+    return () => {
+      live = false;
+    };
+  }, []);
+  return has;
+}
+
+/**
  * The nudge in an iPhone browser, in place of the Home Screen one, and so only
  * inside the club, after signing in (the owner, 2026-11-15: sign in in the
- * browser, where autofill helps, then get the app). Get the app first: a page
- * cannot tell whether the app is installed (app-handoff.ts). Once the App
- * Store has been visited, Open in the app, which carries the browser's
- * sign-in over, so no password again, and opens on this page.
+ * browser, where autofill helps, then get the app). Install the app, unless
+ * the club knows the member has it (useHasTheApp); then Open in the app,
+ * which carries the browser's sign-in over, so no password again, and opens
+ * on this page. A fresh install signs in from Welcome back's Continue sign in
+ * using your browser, which the hint names.
  */
 function AppNudge({
   onNotNow,
@@ -204,12 +232,14 @@ function AppNudge({
   fromHomeScreen?: boolean;
 }) {
   const { pathname, search } = useLocation();
-  const [gotApp, setGotApp] = useState(() => appStoreVisited());
+  const hasApp = useHasTheApp();
   const path = `${pathname}${search}`;
   const primary =
     'mt-2.5 flex min-h-[44px] w-full items-center justify-center rounded-[12px] bg-action px-4 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi';
   const secondary =
     'mt-1 flex min-h-[44px] items-center text-left text-[0.8125rem] text-emphasis underline underline-offset-2';
+  // Asked first, so Open in the app is never offered to a phone without it.
+  if (hasApp === null) return null;
   return (
     <aside
       aria-label="The club’s iPhone app"
@@ -231,33 +261,24 @@ function AppNudge({
               ? 'The same club, from the App Store, with notifications.'
               : 'The club in one tap, with notifications.'}
           </p>
-          {gotApp ? (
+          {hasApp ? (
             <>
               <OpenInAppButton path={path} signedIn onOpen={onOpen} className={primary}>
                 Open in the app, signed in
               </OpenInAppButton>
               <a href={APP_STORE_PAGE} className={secondary}>
-                Not installed yet? Get it from the App Store
+                Not installed? Get it from the App Store
               </a>
             </>
           ) : (
             <>
-              <a
-                href={APP_STORE_PAGE}
-                onClick={() => {
-                  markAppStoreVisited();
-                  setGotApp(true);
-                }}
-                className={primary}
-              >
-                Get the app
+              <a href={APP_STORE_PAGE} className={primary}>
+                Install the app
               </a>
               <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.4]">
-                Then come back here and tap Open in the app: it opens signed in, no password.
+                Once it is installed, open it and tap Continue sign in using your browser: no
+                password.
               </p>
-              <OpenInAppButton path={path} signedIn onOpen={onOpen} className={secondary}>
-                Already have it? Open it signed in
-              </OpenInAppButton>
             </>
           )}
         </div>

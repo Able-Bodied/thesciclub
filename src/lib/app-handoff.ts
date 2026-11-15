@@ -14,10 +14,11 @@ import { getSupabase } from '@/lib/supabase';
  * suggested: the nudge that was the Home Screen one (install-nudge.tsx), with
  * no Smart App Banner and nothing on the pages before signing in.
  *
- * The nudge first sends to the App Store (Get the app), since a web page
- * cannot tell whether an app is installed and a link to one that is not makes
- * Safari say the address is invalid. Once that has been pressed, it offers
- * "Open in the app": the app’s own link, thesciclub://open?path=...&code=...,
+ * A web page cannot tell whether an app is installed, and a link to one that
+ * is not makes Safari say the address is invalid. So the nudge says Install
+ * the app unless the club knows the member has it (20261115130000: the app
+ * says so when signed in, or holds a notification token), and only then
+ * offers "Open in the app": the app’s own link, thesciclub://open?path=...&code=...,
  * with a two-minute code made for it (any app could claim that scheme), ending
  * in the app signed in, on the page the browser was showing. A plain
  * thesciclub.com link would not do: iOS opens the app only for a link from
@@ -87,25 +88,6 @@ export function appLink(path: string, code: string | null): string {
 export function clubPath(path: string | null): string | null {
   if (!path?.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) return null;
   return path;
-}
-
-const APP_STORE_KEY = 'club:app-store-visited';
-
-/** Whether this browser has been sent to the App Store for the app already. */
-export function appStoreVisited(): boolean {
-  try {
-    return localStorage.getItem(APP_STORE_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-export function markAppStoreVisited(now = Date.now()): void {
-  try {
-    localStorage.setItem(APP_STORE_KEY, String(now));
-  } catch {
-    // Private browsing: Get the app again next time, which is no harm.
-  }
 }
 
 /** A two-minute code for the app's link; null when none could be made. */
