@@ -18,10 +18,27 @@ const FALLBACK_IMAGE = `${SITE}/favicon-512x512.png`;
 /** A message keeps its picture long after it is sent, and the bucket is private. */
 const IMAGE_FOR_SECONDS = 60 * 60 * 24 * 30;
 
+// TheSCIClubLinkPreview is the club's own Chat (supabase/functions/link-preview).
 const PREVIEWERS =
-  /facebookexternalhit|facebot|twitterbot|slackbot|whatsapp|linkedinbot|discordbot|telegrambot|skypeuripreview|applebot/i;
+  /facebookexternalhit|facebot|twitterbot|slackbot|whatsapp|linkedinbot|discordbot|telegrambot|skypeuripreview|applebot|thesciclublinkpreview/i;
 const EVENT_PATH =
   /^\/(?:e|events)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i;
+const ORGANIZATION_PATH =
+  /^\/events\/organizations\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i;
+
+/** What anybody, signed in or not, reads of an organization (its public page). */
+export interface PreviewOrganization {
+  id: string;
+  name: string;
+  summary: string | null;
+  city: string | null;
+  state: string | null;
+  logo_path: string | null;
+}
+
+export function organizationIdIn(path: string): string | null {
+  return ORGANIZATION_PATH.exec(path)?.[1] ?? null;
+}
 
 export interface PreviewEvent {
   id: string;
@@ -95,6 +112,35 @@ export function organizationMapPage(): string {
 </html>`;
 }
 
+/**
+ * An organization's link (the owner, 2026-11-15: it showed only "The Sci Club"):
+ * its name, what it does and where, and its logo, small, as a logo is square.
+ */
+export function organizationPage(org: PreviewOrganization, logo: string | null): string {
+  const place = [org.city, org.state].filter(Boolean).join(', ');
+  const title = escaped(org.name);
+  const description = escaped(
+    [org.summary, place].filter(Boolean).join(' · ') || 'An organization on The SCI Club',
+  );
+  const url = `${SITE}/events/organizations/${org.id}`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${title}</title>
+<meta name="description" content="${description}" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="The SCI Club" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${description}" />
+<meta property="og:url" content="${url}" />
+<meta property="og:image" content="${escaped(logo ?? FALLBACK_IMAGE)}" />
+<meta name="twitter:card" content="summary" />
+</head>
+<body><a href="${url}">${title}</a></body>
+</html>`;
+}
+
 export function previewPage(event: PreviewEvent, image: string | null): string {
   const when = whenLine(event);
   const place = [event.location, event.city, event.state].filter(Boolean).join(', ');
@@ -142,6 +188,21 @@ async function readShortLink(base: string, key: string, link: string): Promise<s
   return (await response.json()) as string | null;
 }
 
+/** As the signed-out public page reads it, so no more than that is shown. */
+async function readOrganization(
+  base: string,
+  key: string,
+  id: string,
+): Promise<PreviewOrganization | null> {
+  const response = await fetch(
+    `${base}/rest/v1/organizations?select=id,name,summary,city,state,logo_path&id=eq.${id}`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  );
+  if (!response.ok) return null;
+  const rows = (await response.json()) as PreviewOrganization[];
+  return rows[0] ?? null;
+}
+
 async function signImage(base: string, key: string, path: string): Promise<string | null> {
   const response = await fetch(`${base}/storage/v1/object/sign/photos/${path}`, {
     method: 'POST',
@@ -169,8 +230,24 @@ export default async function eventPreview(
   }
   const givenId = eventIdIn(url.pathname);
   const shortLink = shortLinkIn(url.pathname);
+  const orgId = organizationIdIn(url.pathname);
   const base = Netlify.env.get('VITE_SUPABASE_URL');
   const key = Netlify.env.get('VITE_SUPABASE_ANON_KEY');
+  if (orgId && base && key && previewing) {
+    try {
+      const org = await readOrganization(base, key, orgId);
+      if (!org) return await context.next();
+      const logo = org.logo_path ? await signImage(base, key, org.logo_path) : null;
+      return new Response(organizationPage(org, logo), {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=300',
+        },
+      });
+    } catch {
+      return await context.next();
+    }
+  }
   if ((!givenId && !shortLink) || !base || !key || !previewing) {
     return await context.next();
   }
