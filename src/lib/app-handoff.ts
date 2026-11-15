@@ -44,6 +44,34 @@ export function appCouldOpen(): boolean {
   return currentInstallPlatform().startsWith('ios') && currentAppleDevice() === 'iPhone';
 }
 
+/**
+ * The club added to an iPhone's Home Screen, the way to it before the app:
+ * told of the app once (the owner, 2026-11-15), since no nudge shows there.
+ */
+export function onIphoneHomeScreen(): boolean {
+  if (isNative() || !isStandalone()) return false;
+  return currentInstallPlatform().startsWith('ios') && currentAppleDevice() === 'iPhone';
+}
+
+const APP_NOTE_KEY = 'club:app-note-seen';
+
+/** Whether the Home Screen copy has shown its note about the app already. */
+export function appNoteSeen(): boolean {
+  try {
+    return localStorage.getItem(APP_NOTE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function markAppNoteSeen(now = Date.now()): void {
+  try {
+    localStorage.setItem(APP_NOTE_KEY, String(now));
+  } catch {
+    // Private browsing: shown again next time, which is no harm.
+  }
+}
+
 /** The app's own link to `path`, with a code to sign in by if there is one. */
 export function appLink(path: string, code: string | null): string {
   const query = new URLSearchParams({ path });
