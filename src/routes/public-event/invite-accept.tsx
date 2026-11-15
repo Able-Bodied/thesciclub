@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { OpenInAppButton } from '@/components/open-in-app';
+import { appCouldOpen } from '@/lib/app-handoff';
 import {
   answerEventInvite,
   type EventInvite,
@@ -52,6 +54,14 @@ export function InviteAccept({
   const [nameSaved, setNameSaved] = useState(false);
   const started = useRef(false);
   const inviter = invite.inviterName;
+  // On an iPhone, this page in the club's app (app-handoff.ts): the invite
+  // comes along, so joining there starts from it. Without the answer the
+  // email's button left, already saved here.
+  const [onIphone] = useState(() => appCouldOpen());
+  const { pathname, search } = useLocation();
+  const inApp = new URLSearchParams(search);
+  inApp.delete('rsvp');
+  const appPath = `${pathname}${inApp.size > 0 ? `?${inApp.toString()}` : ''}`;
 
   async function choose(next: InviteAnswer, typedName?: string) {
     setSaving(next);
@@ -184,6 +194,16 @@ export function InviteAccept({
         <p className="mt-3 text-[0.875rem] text-ink2 leading-[1.45]">
           {`Thanks for letting ${inviter ?? 'the host'} know. If that changes, choose Going or Maybe.`}
         </p>
+      ) : null}
+
+      {onIphone ? (
+        <OpenInAppButton
+          path={appPath}
+          signedIn={false}
+          className="mt-3 flex min-h-11 w-full items-center justify-center font-bold text-[0.875rem] text-emphasis underline underline-offset-2"
+        >
+          Open this in the club’s iPhone app
+        </OpenInAppButton>
       ) : null}
     </section>
   );

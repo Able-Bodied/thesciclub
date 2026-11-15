@@ -28,6 +28,17 @@
 				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
 			</array>
 		</dict>
+		<!-- "Open in the app" on an iPhone browser (src/lib/app-handoff.ts):
+		     thesciclub://open?path=...&code=... A page's own link to the same
+		     site never opens the app, so this does. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>open-in-the-app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>thesciclub</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>

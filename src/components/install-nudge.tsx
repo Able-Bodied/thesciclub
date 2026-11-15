@@ -1,6 +1,9 @@
 import { Download, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { OpenInAppButton } from '@/components/open-in-app';
 import { useAnnounce } from '@/lib/announce';
+import { appCouldOpen } from '@/lib/app-handoff';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import {
   currentAppleDevice,
@@ -61,6 +64,20 @@ function BrowserInstallNudge() {
   }, []);
 
   if (!isHandheld(platform)) return null;
+
+  // An iPhone browser: the club's own app, not the website on the Home Screen
+  // (the owner, 2026-11-15). Me, then Settings, still has the Home Screen steps.
+  if (appCouldOpen()) {
+    return dismissed || !ready ? null : (
+      <AppNudge
+        onNotNow={() => {
+          snoozeNudge();
+          setDismissed(true);
+          announce(`Hidden for ${NUDGE_SNOOZE_DAYS} days.`);
+        }}
+      />
+    );
+  }
 
   if (installed || dismissed || !ready) {
     return showing ? (
@@ -138,6 +155,57 @@ function BrowserInstallNudge() {
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * The nudge in an iPhone browser: the club's app from the App Store, opened
+ * signed in and on this page where it is installed (app-handoff.ts). Only
+ * inside the club, so always for somebody signed in.
+ */
+function AppNudge({ onNotNow }: { onNotNow: () => void }) {
+  const { pathname, search } = useLocation();
+  return (
+    <aside
+      aria-label="The club’s iPhone app"
+      className="z-30 flex-none border-line border-t bg-paper px-4 py-3"
+    >
+      <div className="mx-auto flex w-full max-w-[480px] items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="grid h-[2.6em] w-[2.6em] flex-none place-items-center rounded-[12px] bg-tint text-emphasis"
+        >
+          <Download className="h-[1.3em] w-[1.3em]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold font-head text-[0.9375rem] text-ink leading-[1.3]">
+            Get the club’s iPhone app
+          </p>
+          <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            The club in one tap, with notifications. You stay signed in.
+          </p>
+          <OpenInAppButton
+            path={`${pathname}${search}`}
+            signedIn
+            className="mt-2.5 min-h-[44px] w-full rounded-[12px] bg-action px-4 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi"
+          >
+            Open in the app
+          </OpenInAppButton>
+          <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.4]">
+            Not installed yet? This takes you to the App Store. Come back and tap it again to open
+            the app signed in.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onNotNow}
+          aria-label="Not now"
+          className="-mt-1 -mr-1 grid h-11 w-11 flex-none place-items-center rounded-full text-grey hover:bg-tint"
+        >
+          <X aria-hidden="true" className="h-5 w-5" />
+        </button>
+      </div>
+    </aside>
   );
 }
 

@@ -5,6 +5,13 @@ import { Keyboard } from '@capacitor/keyboard';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TextZoom } from '@capacitor/text-zoom';
+import {
+  APP_SCHEME,
+  clubPath,
+  HANDOFF_CODE,
+  LINK_CODE_PARAM,
+  takeAppHandoff,
+} from '@/lib/app-handoff';
 import { SITE_ORIGIN } from '@/lib/site-origin';
 
 /**
@@ -50,6 +57,36 @@ export function linkTarget(href: string, appOrigin: string, newTab = false): Lin
 export function openedLinkPath(href: string, appOrigin: string): string | null {
   const target = linkTarget(href, appOrigin);
   return target && 'inside' in target ? target.inside : null;
+}
+
+/**
+ * What a link that opened the app asks for: a page, and a code to sign in by
+ * if it carries one (app-handoff.ts). The app's own thesciclub://open link
+ * ("Open in the app"), or a club address: a Universal Link, or the address
+ * Safari's banner hands over. A code that is not one is dropped, and taken
+ * out of the address either way, so it never stays in the app's history.
+ */
+export function readOpenedLink(
+  href: string,
+  appOrigin: string,
+): { path: string; code: string | null } | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  const codeFrom = (value: string | null) => (value && HANDOFF_CODE.test(value) ? value : null);
+  if (url.protocol === `${APP_SCHEME}:`) {
+    const path = clubPath(url.searchParams.get('path'));
+    return path ? { path, code: codeFrom(url.searchParams.get('code')) } : null;
+  }
+  const inside = openedLinkPath(href, appOrigin);
+  if (!inside) return null;
+  const page = new URL(inside, SITE_ORIGIN);
+  const code = codeFrom(page.searchParams.get(LINK_CODE_PARAM));
+  page.searchParams.delete(LINK_CODE_PARAM);
+  return { path: `${page.pathname}${page.search}${page.hash}`, code };
 }
 
 /**
@@ -146,11 +183,21 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
   );
 
   // A link that opened the app, cold or warm: an invite, an emailed link, a
-  // shared page. Kept by the plugin until this listener takes it.
+  // shared page, or a browser's "Open in the app" carrying its sign-in
+  // (app-handoff.ts). Kept by the plugin until this listener takes it.
   listeners.push(
     App.addListener('appUrlOpen', ({ url }) => {
-      const path = openedLinkPath(url, window.location.origin);
-      if (path) navigate(path);
+      const opened = readOpenedLink(url, window.location.origin);
+      if (!opened) return;
+      if (!opened.code) {
+        navigate(opened.path);
+        return;
+      }
+      void takeAppHandoff(opened.code)
+        .catch(() => 'refused')
+        .then(() => {
+          navigate(opened.path);
+        });
     }),
   );
 
