@@ -8,19 +8,19 @@ import { getSupabase } from '@/lib/supabase';
  * owner, 2026-11-15: "What would be the smoothest way to pass the account from
  * the browser into the iOS app?"; 20261115100000).
  *
- * Two ways in, both ending in the app with a single-use code it trades for a
- * session of its own, on the page the browser was showing:
+ * Signing in or joining is always in the browser (the owner, 2026-11-15:
+ * autofill fills in name, phone and the rest there), and only then is the app
+ * suggested: the nudge that was the Home Screen one (install-nudge.tsx), with
+ * no Smart App Banner and nothing on the pages before signing in.
  *
- * - Safari's Smart App Banner (index.html): Get, then Open once installed.
- *   Its app-argument is this page's address with the thirty-minute code a
- *   signed-in iPhone tab already keeps for the Home Screen app
- *   (home-screen-handoff.ts). Apple hands it to this app and no other.
- * - "Open in the app", in any iPhone browser (Chrome shows no banner): the
- *   app's own link, thesciclub://open?path=...&code=..., with a two-minute
- *   code made for it, since any app could claim that scheme. A plain
- *   thesciclub.com link would not do: iOS opens the app only for a link from
- *   another site, never from a page of the same one. Where the app is not
- *   installed nothing opens, and the page goes on to the App Store.
+ * The nudge first sends to the App Store (Get the app), since a web page
+ * cannot tell whether an app is installed and a link to one that is not makes
+ * Safari say the address is invalid. Once that has been pressed, it offers
+ * "Open in the app": the app’s own link, thesciclub://open?path=...&code=...,
+ * with a two-minute code made for it (any app could claim that scheme), ending
+ * in the app signed in, on the page the browser was showing. A plain
+ * thesciclub.com link would not do: iOS opens the app only for a link from
+ * another site, never from a page of the same one.
  *
  * The app itself: native-shell.ts reads the link, takeAppHandoff signs in.
  */
@@ -29,7 +29,7 @@ export const APP_STORE_ID = '6825594961';
 export const APP_STORE_PAGE = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 /** CFBundleURLTypes in ios/App/App/Info.plist. */
 export const APP_SCHEME = 'thesciclub';
-/** The banner's code, on the page address it hands the app. */
+/** A code on a club address the app is opened with (native-shell.ts). */
 export const LINK_CODE_PARAM = 'app_handoff';
 /** What the database makes (issue_app_handoff, issue_home_screen_handoff). */
 export const HANDOFF_CODE = /^[A-Za-z0-9_-]{43}$/;
@@ -88,15 +88,23 @@ export function clubPath(path: string | null): string | null {
   return path;
 }
 
-/**
- * The page address the banner hands the app: this page, with the code when a
- * signed-in tab holds one.
- */
-export function bannerArgument(origin: string, path: string, code: string | null): string {
-  const url = new URL(path, origin);
-  url.searchParams.delete(LINK_CODE_PARAM);
-  if (code && HANDOFF_CODE.test(code)) url.searchParams.set(LINK_CODE_PARAM, code);
-  return url.href;
+const APP_STORE_KEY = 'club:app-store-visited';
+
+/** Whether this browser has been sent to the App Store for the app already. */
+export function appStoreVisited(): boolean {
+  try {
+    return localStorage.getItem(APP_STORE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function markAppStoreVisited(now = Date.now()): void {
+  try {
+    localStorage.setItem(APP_STORE_KEY, String(now));
+  } catch {
+    // Private browsing: Get the app again next time, which is no harm.
+  }
 }
 
 /** A two-minute code for the app's link; null when none could be made. */

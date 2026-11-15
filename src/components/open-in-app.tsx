@@ -4,7 +4,7 @@ import { openInApp, useAppLinkCode } from '@/lib/app-handoff';
 /**
  * "Open in the app", for an iPhone browser (app-handoff.ts): opens the club's
  * app at `path`, signed in when `signedIn`, or the App Store where the app is
- * not installed. Shown only where appCouldOpen() says so; that is the caller's.
+ * not installed. Only in the nudge (install-nudge.tsx), after signing in.
  */
 export function OpenInAppButton({
   path,

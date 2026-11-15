@@ -1,7 +1,6 @@
 import { Activity, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
-import { AppStoreBanner } from '@/components/app-store-banner';
 import { AskOnOpening } from '@/components/ask-on-opening';
 import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { InstallNudge } from '@/components/install-nudge';
@@ -350,7 +349,6 @@ export default function App() {
         <InstalledApp />
         <NativeShell />
         <LeaveHomeScreenHandoff />
-        <AppStoreBanner />
         <RouteChange />
         <ScreenTimer />
         <CountVisit />
