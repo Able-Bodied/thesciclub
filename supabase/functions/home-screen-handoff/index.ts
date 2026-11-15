@@ -13,6 +13,9 @@
  * 20261015010000): the secret the app kept when it sent the member to Chrome or
  * Safari for Google, collecting the sign-in that browser left for it.
  *
+ * `POST { code, verifier }` is the iPhone app's, sent a code by /app-sign-in in
+ * the member's browser with the secret it kept (20261115110000).
+ *
  * verify_jwt is off in config.toml: the caller has no JWT to verify.
  * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
  */
@@ -59,6 +62,19 @@ Deno.serve(async (request) => {
       });
       if (!response.ok) {
         console.error('home-screen-handoff: redeem failed', response.status);
+        return null;
+      }
+      const email: unknown = await response.json();
+      return typeof email === 'string' && email !== '' ? email : null;
+    },
+    async redeemWithSecret(code, verifier) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/redeem_app_handoff`, {
+        method: 'POST',
+        headers: serviceHeaders,
+        body: JSON.stringify({ code, verifier }),
+      });
+      if (!response.ok) {
+        console.error('home-screen-handoff: redeem with secret failed', response.status);
         return null;
       }
       const email: unknown = await response.json();

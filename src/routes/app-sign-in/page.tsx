@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { GoogleButton } from '@/components/google-button';
 import { appLink } from '@/lib/app-handoff';
@@ -126,17 +126,18 @@ export default function AppSignInPage() {
       </Message>
     );
   }
-  if (phase === 'done' && fromApp) {
+  if (phase === 'confirm' && fromApp) {
     return (
-      <Message title="Now go back to the app">
-        The SCI Club app on this phone is signing you in.
-        <a
-          href={appLink('/join', null)}
-          className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
-        >
-          Back to the app
-        </a>
-      </Message>
+      <SendToApp
+        pairing={pairing}
+        email={email}
+        onRefused={() => {
+          setPhase('refused');
+        }}
+        onOtherAccount={() => {
+          void otherAccount();
+        }}
+      />
     );
   }
   if (phase === 'done') {
@@ -230,10 +231,87 @@ export default function AppSignInPage() {
         <span className="font-bold text-ink">{email ?? 'this account'}</span>.
       </Sub>
       <p className="mt-4 text-[0.84375rem] text-ink2 leading-[1.5]">
-        Only continue if you just tapped {asked} in the SCI Club app on this phone. If somebody sent
-        you this link, close this page.
+        Only continue if you just tapped Sign in with Google in the SCI Club app on this phone. If
+        somebody sent you this link, close this page.
       </p>
     </StepFrame>
+  );
+}
+
+/**
+ * Signed in, for the iPhone app (20261115110000): straight back to it with a
+ * code bound to the app's secret. No confirmation, as the Home Screen app's
+ * Google pairing has: the code goes to the app on this phone, and signs in
+ * only with the secret that app kept, so a link somebody else made gets them
+ * nothing. iOS asks "Open in The SCI Club?" itself; the button is for after
+ * Cancel, and makes a fresh code, each lasting two minutes.
+ */
+function SendToApp({
+  pairing,
+  email,
+  onRefused,
+  onOtherAccount,
+}: {
+  pairing: string;
+  email: string | null;
+  onRefused: () => void;
+  onOtherAccount: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sent = useRef(false);
+
+  const send = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    const issued = await getSupabase().rpc('issue_app_handoff_for', { pairing });
+    const code: unknown = issued.data;
+    setBusy(false);
+    if (issued.error) {
+      setError(describeError(issued.error, 'The app was not signed in. Try again.'));
+      return;
+    }
+    if (typeof code !== 'string') {
+      onRefused();
+      return;
+    }
+    window.location.href = appLink('/join', code);
+  }, [pairing, onRefused]);
+
+  useEffect(() => {
+    if (sent.current) return;
+    sent.current = true;
+    void send();
+  }, [send]);
+
+  return (
+    <Message title="Opening the app">
+      Signed in as <span className="font-bold text-ink">{email ?? 'this account'}</span>. If the SCI
+      Club app did not open, tap below.
+      {error ? (
+        <span role="alert" className="mt-3 block text-[0.8125rem] text-destructive">
+          {error}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          void send();
+        }}
+        className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Open the app'}
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onOtherAccount}
+        className="mt-1 flex min-h-[44px] w-full items-center justify-center font-semibold text-[0.84375rem] text-emphasis"
+      >
+        Not you? Use a different account
+      </button>
+    </Message>
   );
 }
 

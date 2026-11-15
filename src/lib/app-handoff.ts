@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { browserSignInSecret, forgetBrowserSignIn } from '@/lib/browser-sign-in';
 import { currentAppleDevice, currentInstallPlatform } from '@/lib/install';
 import { isNative, isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
@@ -189,11 +190,15 @@ export async function takeAppHandoff(code: string): Promise<'none' | 'signed-in'
   const supabase = getSupabase();
   const { data: current } = await supabase.auth.getSession();
   if (current.session) return 'none';
+  // Sent by the browser for "Continue sign in using your browser": redeemed
+  // only with the secret this app kept (browser-sign-in.ts, 20261115110000).
+  const verifier = browserSignInSecret();
   const answer = await supabase.functions.invoke<{ token_hash?: unknown }>('home-screen-handoff', {
-    body: { code },
+    body: verifier ? { code, verifier } : { code },
   });
   const tokenHash = answer.data?.token_hash;
   if (answer.error || typeof tokenHash !== 'string') return 'refused';
+  forgetBrowserSignIn();
   const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
   return verified.error ? 'refused' : 'signed-in';
 }
