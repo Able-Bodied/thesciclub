@@ -225,7 +225,7 @@ function SelfieForTheGroup({
     }
     const key = `thread:${result.value}`;
     handPhotos(key, [file]);
-    if (!readDraft(key)) writeDraft(key, `Here at ${eventTitle}!`);
+    if (!readDraft(key)) writeDraft(key, `Checked in at ${eventTitle}!`);
     markSelfieDone(eventId);
     void navigate(`/chat/t/${result.value}`);
   }
@@ -234,11 +234,11 @@ function SelfieForTheGroup({
     <div className="mt-3 border-line border-t pt-3">
       <p className="font-bold text-[0.9375rem] text-ink">Take a picture and share it</p>
       <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-        Share it in the event's group chat.{' '}
+        It goes in the event's group chat.{' '}
         {hostName
           ? `It really helps ${hostName}, the organization sponsoring this event.`
           : 'It really helps whoever is putting on this event.'}{' '}
-        You'll see it before it's sent.
+        Nothing is sent until you press Send.
       </p>
       <input
         ref={input}
