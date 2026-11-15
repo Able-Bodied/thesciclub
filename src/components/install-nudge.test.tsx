@@ -102,6 +102,26 @@ describe('the Home Screen nudge', () => {
     expect(screen.queryByText('Get the club’s iPhone app')).toBeNull();
   });
 
+  // The owner, 2026-11-15: members already on the Home Screen copy hear of the app, once.
+  it('tells the Home Screen copy of the app once, and never again after Not now', async () => {
+    browserIs(IPHONE_SAFARI);
+    Object.defineProperty(navigator, 'standalone', { value: true, configurable: true });
+    try {
+      const view = renderAfterWait();
+      expect(screen.getByText('The club now has an iPhone app')).toBeInTheDocument();
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Not now' }));
+      expect(screen.queryByText('The club now has an iPhone app')).toBeNull();
+      view.unmount();
+      // Long after the three days a browser's nudge is hidden for.
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 30 * 86_400_000);
+      renderAfterWait();
+      expect(screen.queryByText('The club now has an iPhone app')).toBeNull();
+      expect(screen.queryByRole('complementary')).toBeNull();
+    } finally {
+      Reflect.deleteProperty(navigator, 'standalone');
+    }
+  });
+
   it('uses the browser’s own Install where it offers one', async () => {
     browserIs(ANDROID);
     const prompt = vi.fn(() => Promise.resolve());

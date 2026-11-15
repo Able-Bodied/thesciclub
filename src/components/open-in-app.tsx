@@ -10,11 +10,14 @@ export function OpenInAppButton({
   path,
   signedIn,
   className,
+  onOpen,
   children,
 }: {
   path: string;
   signedIn: boolean;
   className?: string;
+  /** Called as it is pressed. */
+  onOpen?: (() => void) | undefined;
   children: ReactNode;
 }) {
   const code = useAppLinkCode(signedIn);
@@ -22,6 +25,7 @@ export function OpenInAppButton({
     <button
       type="button"
       onClick={() => {
+        onOpen?.();
         openInApp(path, code);
       }}
       className={className}
