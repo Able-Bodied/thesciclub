@@ -55,6 +55,19 @@ export async function heldInviteAddress(): Promise<string | null> {
   return typeof address === 'string' && address !== '' ? address : null;
 }
 
+/**
+ * Who the held invite is from (20261115170000): the organization's name, or
+ * the inviting member's. Null for no live invite, and on any failure: the
+ * welcome screen then says only that there is an invite.
+ */
+export async function heldInviteFrom(): Promise<string | null> {
+  const token = heldInviteToken();
+  if (!token) return null;
+  const result = await getSupabase().rpc('invite_from_for_token', { token });
+  const from: unknown = result.data;
+  return !result.error && typeof from === 'string' && from.trim() ? from.trim() : null;
+}
+
 /** What a held invite link says about the person it went to (20261104000000). */
 export interface InviteDetails {
   email: string;

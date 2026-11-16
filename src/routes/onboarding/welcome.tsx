@@ -19,6 +19,7 @@ export function WelcomeScreen({
   onSignIn,
   joiningOpen = false,
   registered = null,
+  invite = null,
 }: {
   onJoin: () => void;
   onSignIn: () => void;
@@ -26,6 +27,8 @@ export function WelcomeScreen({
   joiningOpen?: boolean;
   /** Just registered for a public event (src/lib/event-audience.ts). */
   registered?: { organizer?: string } | null;
+  /** Came by an invite's link: who it is for and from, first names, where known. */
+  invite?: { name: string | null; from: string | null } | null;
 }) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
@@ -99,7 +102,13 @@ export function WelcomeScreen({
         </p>
         {/* The request page for somebody with no invite (the owner, 2026-10-28); the blocked
             screen offers the same. */}
-        {joiningOpen ? null : (
+        {/* In place of the request link, for somebody who came by an invite
+            (the owner, 2026-11-15). */}
+        {invite ? (
+          <p className="mt-1.5 text-center font-bold text-[0.875rem] text-emphasis">
+            {inviteLine(invite)}
+          </p>
+        ) : joiningOpen ? null : (
           <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
             No invite yet?{' '}
             <Link
@@ -119,4 +128,10 @@ export function WelcomeScreen({
       </footer>
     </main>
   );
+}
+
+/** "Ana, you have an invite from Wojtek.", with what is known of the two. */
+export function inviteLine(invite: { name: string | null; from: string | null }): string {
+  const line = invite.from ? `you have an invite from ${invite.from}.` : 'you have an invite.';
+  return invite.name ? `${invite.name}, ${line}` : `Y${line.slice(1)}`;
 }

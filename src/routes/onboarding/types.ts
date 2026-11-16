@@ -22,8 +22,6 @@ export interface OnboardingData {
   /** The sign-in and join forms. Never stored in the member row. */
   email: string;
   password: string;
-  /** The join form's second password field. Never goes anywhere. */
-  passwordAgain: string;
   displayName: string;
   /** The @name, lowercase and without the "@". */
   username: string;
@@ -77,7 +75,6 @@ export interface OnboardingData {
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   email: '',
   password: '',
-  passwordAgain: '',
   displayName: '',
   username: '',
   usernameChecked: '',

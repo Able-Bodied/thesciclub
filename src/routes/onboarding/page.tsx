@@ -32,6 +32,7 @@ import {
   claimHeldInvite,
   forgetInviteToken,
   heldInviteDetails,
+  heldInviteFrom,
   heldInviteToken,
   INVITE_PARAM,
 } from '@/lib/invite-token';
@@ -124,6 +125,12 @@ import {
 } from '@/routes/onboarding/types';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
 
+/** "Ana" of "Ana Lopez". */
+function firstName(name: string | null): string | null {
+  const first = name?.trim().split(/\s+/)[0];
+  return first === undefined || first === '' ? null : first;
+}
+
 /**
  * Joining the club, and signing back in.
  *
@@ -214,15 +221,15 @@ export default function OnboardingPage() {
   }, [heldCode]);
   // Only what the doors say; the database decides who gets in.
   const joiningOpen = useJoiningIsOpen();
-  // An invitation goes straight to joining: its link is the reason they came, and
-  // the Welcome screen's "Join the club" would only ask what the link already said.
-  // So does a scanned code: it was held up so that somebody would join.
+  // An invitation opens on the Welcome screen, which says who it is from (the
+  // owner, 2026-11-15); it went straight to joining before. A scanned code
+  // does: it was held up so that somebody would join.
   // Sent from an event's registration to one door (public-event/next-step.tsx).
   const door = (useLocation().state as { door?: unknown } | null)?.door;
   // A device somebody has signed in on before opens on Welcome back (the owner,
   // 2026-11-15), unless the Welcome screen has news: an event just registered for.
   const [step, setStep] = useState<Step>(() =>
-    invited || cameByCode || door === 'join'
+    cameByCode || door === 'join'
       ? 'join'
       : door === 'signin' || (!registered && signedInHereBefore())
         ? 'signin'
@@ -233,6 +240,21 @@ export default function OnboardingPage() {
   useSignInOnceConfirmed(step === 'check-email' ? awaiting : null);
   // The address the invitation was sent to, once the club has said, for the Email field.
   const [inviteAddress, setInviteAddress] = useState<string | null>(null);
+  // Who the invite is for and from, first names, for the Welcome screen.
+  const [inviteNames, setInviteNames] = useState<{ name: string | null; from: string | null }>({
+    name: null,
+    from: null,
+  });
+  // Asked once for each token held, including one that arrives while the page is up.
+  const askedFromFor = useRef<string | null>(null);
+  const askWhoItIsFrom = useCallback(() => {
+    const token = heldInviteToken();
+    if (token === null || askedFromFor.current === token) return;
+    askedFromFor.current = token;
+    void heldInviteFrom().then((from) => {
+      setInviteNames((now) => ({ ...now, from }));
+    });
+  }, []);
   // Accepted an event invite on its page (20261114020000): they are going.
   const [goingFromInvite, setGoingFromInvite] = useState(false);
   useEffect(() => {
@@ -241,7 +263,13 @@ export default function OnboardingPage() {
     // Universal Link) arrives here, not in the first render: keep it too.
     const linked = captureInviteToken(params.toString()) !== null && params.has(INVITE_PARAM);
     const coded = captureQrCode(params.toString()) !== null && params.has(QR_PARAM);
-    if (linked || coded) setStep((now) => (DOORS.includes(now) ? 'join' : now));
+    // A code goes on to joining; an invite's link opens on Welcome, which says so.
+    if (coded) setStep((now) => (DOORS.includes(now) ? 'join' : now));
+    else if (linked) {
+      setStep((now) => (DOORS.includes(now) ? 'welcome' : now));
+      // Signed out only, as the address below; before the answer, that effect asks.
+      if (account.status === 'signed-out') askWhoItIsFrom();
+    }
     setParams(
       (p) => {
         p.delete(INVITE_PARAM);
@@ -250,7 +278,7 @@ export default function OnboardingPage() {
       },
       { replace: true },
     );
-  }, [params, setParams]);
+  }, [params, setParams, askWhoItIsFrom, account.status]);
 
   // Asked once, signed out, and only filled in when nothing has been typed yet: a
   // typo in the address is a confirmation email that goes nowhere. It stays a
@@ -261,10 +289,12 @@ export default function OnboardingPage() {
       return;
     }
     askedAddress.current = true;
+    askWhoItIsFrom();
     void heldInviteDetails().then((details) => {
       if (details === null) return;
       const { email: address, name, phone } = details;
       setInviteAddress(address);
+      setInviteNames((now) => ({ ...now, name: firstName(name) }));
       setGoingFromInvite(details.eventId !== null && details.status === 'going');
       // Sent from an event's guest list (20261104000000): what they typed
       // when they registered, into whatever is still empty.
@@ -287,7 +317,7 @@ export default function OnboardingPage() {
         });
       }
     });
-  }, [account.status]);
+  }, [account.status, askWhoItIsFrom]);
 
   // Somebody with a profile has no use for a held invite, or a held code.
   useEffect(() => {
@@ -618,7 +648,7 @@ export default function OnboardingPage() {
     const result = await signInWithEmail(data.email, data.password);
     setBusy(false);
     if (result.ok) {
-      set({ password: '', passwordAgain: '' });
+      set({ password: '' });
       if (suggest) void suggestPasskeyAfterPassword();
       return;
     }
@@ -639,7 +669,7 @@ export default function OnboardingPage() {
     const result = await signUpWithEmail(data.email, data.password);
     setBusy(false);
     if (!result.ok && result.notInvited) {
-      set({ password: '', passwordAgain: '' });
+      set({ password: '' });
       setBlockedEmail(cleanEmail(data.email));
       setBlockedAtSignUp(true);
       setPhase('blocked');
@@ -647,7 +677,7 @@ export default function OnboardingPage() {
     }
     // Their email is kept; Sign in says why it is here.
     if (!result.ok && result.alreadyJoined) {
-      set({ password: '', passwordAgain: '' });
+      set({ password: '' });
       setStep('signin');
       setNotice(result.error);
       return;
@@ -666,12 +696,12 @@ export default function OnboardingPage() {
     // No email to wait for: the session is here, and the gate takes over as
     // after a code.
     if (result.signedIn) {
-      set({ password: '', passwordAgain: '' });
+      set({ password: '' });
       return;
     }
     setAwaiting({ email: data.email, password: data.password });
     rememberAwaiting(data.email);
-    set({ password: '', passwordAgain: '' });
+    set({ password: '' });
     setResendLeft(RESEND_WAIT);
     setStep('check-email');
   }
@@ -854,7 +884,7 @@ export default function OnboardingPage() {
             setPhase('wizard');
             setStep('signin');
             setBlockedEmail(null);
-            set({ password: '', passwordAgain: '' });
+            set({ password: '' });
           });
         }}
       />
@@ -865,6 +895,7 @@ export default function OnboardingPage() {
     return (
       <WelcomeScreen
         joiningOpen={joiningOpen}
+        invite={invited || heldInviteToken() !== null ? inviteNames : null}
         registered={registered}
         onJoin={() => {
           setStep('join');
@@ -913,12 +944,7 @@ export default function OnboardingPage() {
   /** The doors take an address, not a question's answer. */
   function doorReady(): boolean {
     if (step === 'signin') return looksLikeEmail(data.email) && data.password.length > 0;
-    if (step === 'join')
-      return (
-        looksLikeEmail(data.email) &&
-        data.password.length >= MIN_PASSWORD &&
-        data.password === data.passwordAgain
-      );
+    if (step === 'join') return looksLikeEmail(data.email) && data.password.length >= MIN_PASSWORD;
     if (step === 'forgot') return looksLikeEmail(data.email);
     if (step === 'checking') return error !== null;
     return false;
