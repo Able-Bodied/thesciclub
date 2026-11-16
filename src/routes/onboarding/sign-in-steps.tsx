@@ -489,9 +489,7 @@ function JoinFields({
           />
         )}
       </PasswordReveal>
-      <Fine>
-        At least {MIN_PASSWORD} characters. We will email you a link to confirm the address.
-      </Fine>
+      <Fine>At least {MIN_PASSWORD} characters.</Fine>
     </>
   );
 }
