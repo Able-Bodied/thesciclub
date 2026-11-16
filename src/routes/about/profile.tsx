@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
@@ -25,6 +25,10 @@ export default function AboutProfilePage() {
   const { url: photo, onError: photoFailed } = usePhoto(found?.member.photoPath);
   const [photoOpen, setPhotoOpen] = useState(false);
   const photoButton = useRef<HTMLButtonElement | null>(null);
+  // Opened from the list scrolled down: start at the top, at the photograph.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   if (failed || (team && !found)) {
     return (
