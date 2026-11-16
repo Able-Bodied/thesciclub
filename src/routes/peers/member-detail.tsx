@@ -30,14 +30,13 @@ import { FamilySheet } from '@/routes/peers/family-sheet';
 import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { MentorSheet, mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
+import { Chips, childrenLabel, DetailRow, Section } from '@/routes/peers/profile-parts';
+
+export { childrenLabel };
+
 import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
-import {
-  type BeforeAfter,
-  type BrowseMember,
-  cityAndState,
-  type RepresentedOrganization,
-} from '@/types/domain';
+import { type BrowseMember, cityAndState, type RepresentedOrganization } from '@/types/domain';
 
 /**
  * One member's full profile — where a tapped card lands.
@@ -51,30 +50,6 @@ import {
  * built and which the owner does not want; a control that opens nothing is
  * worse than no control. Report and Block are in the •••.
  */
-
-/**
- * "Children", for the details card.
- *
- * Whether somebody became a parent before or after their injury is the part a
- * peer is actually reaching for. Raising a child you already had and learning
- * to parent from a chair from the start are different experiences, and they
- * draw different questions — so the survey has asked it all along
- * (`children_when`, Before/After/Both) and no screen showed the answer.
- *
- * Only rendered for members who said yes. A row reading "Children: No" is not
- * the fact this exists to carry, and nobody answering a yes/no about their
- * family asked for the negative to be published on their profile.
- */
-export function childrenLabel(
-  hasChildren: boolean | null,
-  when: BeforeAfter | null,
-): string | null {
-  if (hasChildren !== true) return null;
-  if (when === 'Before') return 'Yes — before the injury';
-  if (when === 'After') return 'Yes — since the injury';
-  if (when === 'Both') return 'Yes — before and since the injury';
-  return 'Yes';
-}
 
 /**
  * Return to the named screen, even when a tab restored this profile after
@@ -154,34 +129,6 @@ function MessageButton({ memberId, name }: { memberId: string; name: string }) {
           {failure}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-/** A labelled row in the details card, skipped entirely when empty. */
-function DetailRow({ label, value }: { label: string; value: string | null }) {
-  if (!value) return null;
-  return (
-    <div className="flex gap-3 border-line border-b py-3 last:border-b-0">
-      <span className="w-[104px] flex-none text-[0.78125rem] text-grey">{label}</span>
-      <span className="text-[0.85rem] leading-[1.42]">{value}</span>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    // `flow-root`, so the heading and what is under it move past the floated
-    // picture together. As loose siblings, a heading whose line landed in the
-    // float's last few pixels sat beside the photograph while its chips, a
-    // block, dropped below it at full width — "Interests" in one column and
-    // Cycling · Volunteering in the other. One block is placed beside the
-    // float or below it, never both.
-    <div className="flow-root">
-      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-        {title}
-      </h2>
-      {children}
     </div>
   );
 }
@@ -308,27 +255,6 @@ function MemberOf({
         ) : null}
       </ul>
     </Section>
-  );
-}
-
-function Chips({ items, tone }: { items: string[]; tone: 'solid' | 'outline' | 'gold' }) {
-  const cls =
-    tone === 'gold'
-      ? 'bg-gold-lt text-gold-dp'
-      : tone === 'outline'
-        ? 'border border-line text-ink2'
-        : 'bg-tint text-emphasis';
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
-        <span
-          key={item}
-          className={`rounded-full px-2.5 py-[5px] font-semibold text-[0.7375rem] leading-[1.25] ${cls}`}
-        >
-          {item}
-        </span>
-      ))}
-    </div>
   );
 }
 
