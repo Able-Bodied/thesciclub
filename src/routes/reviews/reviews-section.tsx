@@ -106,11 +106,8 @@ function Item({
             <p className="font-bold text-[0.9375rem] text-ink">{name}</p>
           )}
           <p className="text-[0.78125rem] text-grey">
-            {new Date(review.createdAt).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+            {shortDate(review.ratedAt)}
+            {review.editedAt ? ' · Edited' : ''}
             {elsewhere ? ` · ${elsewhere}` : ''}
           </p>
         </div>
@@ -132,6 +129,8 @@ function Item({
         <EventGallery path={first.path} alt={first.alt} more={rest} className="mt-2.5" />
       ) : null}
 
+      {review.history.length > 0 ? <History versions={review.history} /> : null}
+
       {review.orgReply ? (
         <div className="mt-2.5 rounded-r-[11px] border-emphasis border-l-[3px] bg-tint px-3 py-2">
           <p className="font-bold text-[0.78125rem] text-ink">
@@ -148,6 +147,38 @@ function Item({
         {review.mine ? null : <ReportControl reviewId={review.id} />}
       </div>
     </li>
+  );
+}
+
+function shortDate(at: string): string {
+  return new Date(at).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/** What it said before, for anybody who reads it (the owner, 2026-11-16). */
+function History({ versions }: { versions: Review['history'] }) {
+  return (
+    <details className="mt-2">
+      <summary className={`${LINK} inline-flex cursor-pointer items-center`} data-target="small">
+        Edit history ({versions.length} earlier {versions.length === 1 ? 'version' : 'versions'})
+      </summary>
+      <ol className="mt-1.5 flex flex-col gap-2 border-line border-l-2 pl-3">
+        {versions.map((version) => (
+          <li key={version.writtenAt}>
+            <p className="text-[0.78125rem] text-grey">{shortDate(version.writtenAt)}</p>
+            <Stars value={version.rating} className="mt-0.5" />
+            {version.body ? (
+              <p className="mt-1 whitespace-pre-wrap text-[0.8125rem] text-ink2 leading-[1.45]">
+                {version.body}
+              </p>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
