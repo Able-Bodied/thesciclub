@@ -6,6 +6,7 @@ import {
   holdDestination,
   signInDestination,
   signInDoor,
+  signInDoorFor,
 } from '@/lib/sign-in-destination';
 
 describe('shared links through sign-in', () => {
@@ -27,6 +28,15 @@ describe('shared links through sign-in', () => {
   });
   it('defaults an ordinary sign-in to Home', () => {
     expect(signInDestination('')).toBe('/home');
+  });
+  // The owner, 2026-11-16: an administrator's shared topic lets people join
+  // for 24 hours, so its code has to reach the join page, which reads ?from=.
+  it('takes a shared link’s code to the join page, and leaves it off the way back', () => {
+    const door = signInDoorFor('/chat/rooms/r/topics/t', '?post=p&from=abc123', '#reply');
+    const params = new URLSearchParams(door.split('?')[1]);
+    expect(params.get('from')).toBe('abc123');
+    expect(signInDestination(`?${params.toString()}`)).toBe('/chat/rooms/r/topics/t?post=p#reply');
+    expect(signInDoorFor('/home', '', '')).toBe(signInDoor('/home'));
   });
 });
 

@@ -281,6 +281,7 @@ export default function HomePage() {
                       postId={item.topic.opening.id}
                       words={item.topic.title}
                       link={`/chat/rooms/${item.topic.roomId}/topics/${item.topic.id}`}
+                      topicId={item.topic.id}
                     />
                   }
                 />
@@ -311,6 +312,7 @@ export default function HomePage() {
                       postId={item.topic.opening.id}
                       words={item.topic.title}
                       link={`/chat/rooms/${item.topic.roomId}/topics/${item.topic.id}`}
+                      topicId={item.topic.id}
                     />
                   }
                 />

@@ -1,5 +1,5 @@
 import { Copy, Send, Share, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { GroupAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -12,6 +12,7 @@ import type { ChatThread } from '@/lib/chat/types';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { markdownToPlain } from '@/lib/markdown';
 import { useBrowseMembers } from '@/lib/members';
+import { linkWithCode, shareTopicCode } from '@/lib/qr-codes';
 import { matchesSearch } from '@/lib/search';
 import { canShareElsewhere, copyLink, shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site-origin';
@@ -38,13 +39,18 @@ export function SharePostButton({
   postId,
   words,
   link,
+  topicId,
 }: {
   postId: string;
   words: string;
   /** The post's own page, for a link to send outside the club. */
   link?: string;
+  /** The topic, when this is its opening post: an administrator can make its link an invite. */
+  topicId?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  const account = useAccount();
+  const invites = account.status === 'member' && account.isAdmin && topicId ? topicId : null;
   const what = `“${excerpt(markdownToPlain(words))}”`;
   return (
     <>
@@ -66,6 +72,7 @@ export function SharePostButton({
               heading="Share post"
               what={what}
               {...(link ? { link } : {})}
+              {...(invites ? { inviteTopic: invites } : {})}
               linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
               sendNote="Only members who can read the post will see it."
               send={(to, authorId, line) => sharePost(postId, to, authorId, line)}
@@ -99,10 +106,45 @@ function targetKey(target: ShareTarget): string {
  * (2026-11-03: "copy a link, or share elsewhere"): Copy link, and the phone's
  * share sheet where there is one.
  */
-function ShareOutside({ link, note }: { link: string; note: string }) {
+function ShareOutside({
+  link,
+  note,
+  inviteTopic,
+}: {
+  link: string;
+  note: string;
+  /** An administrator sharing a topic, who can make the link an invite. */
+  inviteTopic?: string | undefined;
+}) {
   const announce = useAnnounce();
   const [said, setSaid] = useState<string | null>(null);
-  const url = link.startsWith('/') ? `${siteOrigin()}${link}` : link;
+  const [invite, setInvite] = useState<{ code: string; until: Date } | null>(null);
+  const [making, setMaking] = useState(false);
+  const switchId = useId();
+  const plain = link.startsWith('/') ? `${siteOrigin()}${link}` : link;
+  const url = invite ? linkWithCode(plain, invite.code) : plain;
+
+  // The owner, 2026-11-16: "a toggle that enables the link to work as an
+  // invite link for 24 hours". Off by default, and off again each time the
+  // sheet opens: the plain link is the one that leaks nothing.
+  async function toggleInvite(on: boolean) {
+    setSaid(null);
+    if (!on) {
+      setInvite(null);
+      announce('The link no longer lets people join.');
+      return;
+    }
+    if (!inviteTopic) return;
+    setMaking(true);
+    const made = await shareTopicCode(inviteTopic);
+    setMaking(false);
+    if (!made.ok) {
+      setSaid(made.error);
+      return;
+    }
+    setInvite({ code: made.code, until: made.expiresAt });
+    announce(`Anyone with the link can join the club until ${untilWords(made.expiresAt)}.`);
+  }
 
   async function copy() {
     if (await copyLink(url)) {
@@ -155,7 +197,47 @@ function ShareOutside({ link, note }: { link: string; note: string }) {
           </button>
         ) : null}
       </div>
-      <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">{note}</p>
+      {inviteTopic ? (
+        <div className="mt-3 flex items-center gap-3 rounded-xl bg-paper p-3">
+          <div className="min-w-0 flex-1">
+            <p
+              id={`${switchId}-label`}
+              className="font-bold text-[0.875rem] text-ink leading-[1.35]"
+            >
+              Let people join through this link
+            </p>
+            <p id={`${switchId}-about`} className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.4]">
+              For 24 hours, anyone who opens it can join the club, without an invite.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={invite !== null}
+            aria-labelledby={`${switchId}-label`}
+            aria-describedby={`${switchId}-about`}
+            data-target="small"
+            disabled={making}
+            onClick={() => {
+              void toggleInvite(invite === null);
+            }}
+            className={`relative h-[30px] w-[52px] flex-none rounded-full transition-colors disabled:opacity-50 ${
+              invite ? 'bg-action hover:bg-action-hi' : 'bg-line hover:bg-grey'
+            }`}
+          >
+            <span
+              className={`absolute top-[3px] h-6 w-6 rounded-full bg-paper transition-[left] ${
+                invite ? 'left-[25px]' : 'left-[3px]'
+              }`}
+            />
+          </button>
+        </div>
+      ) : null}
+      <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
+        {invite
+          ? `Anyone who opens it before ${untilWords(invite.until)} can join the club, then sees it. After that, only members can.`
+          : note}
+      </p>
       {said ? (
         <p role="status" className="mt-1.5 break-all text-[0.8125rem] text-ink leading-[1.45]">
           {said}
@@ -163,6 +245,15 @@ function ShareOutside({ link, note }: { link: string; note: string }) {
       ) : null}
     </div>
   );
+}
+
+/** "Tuesday at 3:00 PM", for when an invite link stops letting people in. */
+function untilWords(when: Date): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(when);
 }
 
 /**
@@ -175,6 +266,7 @@ export function ShareSheet({
   what,
   link,
   linkNote,
+  inviteTopic,
   sendNote,
   send: deliver,
   onClose,
@@ -183,6 +275,8 @@ export function ShareSheet({
   what: string;
   /** A path in the club or a whole address, for Copy link and Share elsewhere. */
   link?: string;
+  /** The topic an administrator can make the link an invite to (ShareOutside). */
+  inviteTopic?: string | undefined;
   linkNote: string;
   sendNote: string;
   send: (to: ShareTarget, authorId: string, line: string) => Promise<ShareResult>;
@@ -294,7 +388,9 @@ export function ShareSheet({
           </button>
         </div>
 
-        {link && !sent ? <ShareOutside link={link} note={linkNote} /> : null}
+        {link && !sent ? (
+          <ShareOutside link={link} note={linkNote} inviteTopic={inviteTopic} />
+        ) : null}
 
         {sent ? (
           <div className="mt-4">
