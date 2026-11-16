@@ -12,7 +12,7 @@ import {
 } from '@/lib/event-audience';
 import { restoreDeviceNotifications } from '@/lib/push/notifications';
 import { forgetSharedReads } from '@/lib/shared-reads';
-import { signInDoor } from '@/lib/sign-in-destination';
+import { signInDoorFor } from '@/lib/sign-in-destination';
 import { LockedPost } from '@/routes/chat/locked-post';
 
 /**
@@ -88,7 +88,7 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
     return <div className="min-h-dvh bg-canvas" />;
   }
   if (status === 'signed-out' || status === 'signed-up') {
-    const door = signInDoor(`${location.pathname}${location.search}${location.hash}`);
+    const door = signInDoorFor(location.pathname, location.search, location.hash);
     // An event's own address, shared from the address bar: its public page
     // when it has one (20261022180000), the door otherwise.
     const eventId = EVENT_PATH.exec(location.pathname)?.[1];

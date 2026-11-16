@@ -424,6 +424,7 @@ export default function TopicPage() {
             ? `/chat/rooms/${topic.roomId}/topics/${topic.id}`
             : `/chat/rooms/${topic.roomId}/topics/${topic.id}?${new URLSearchParams({ post: post.id }).toString()}`
         }
+        topicId={post.id === openingId ? topic.id : undefined}
       />
     ),
     edits: edits.byPost.get(post.id) ?? [],

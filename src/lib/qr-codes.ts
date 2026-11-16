@@ -204,6 +204,38 @@ export async function createQrCode(
   }
 }
 
+/**
+ * An administrator's code for sharing a topic (20261116200000, the owner,
+ * 2026-11-16): anyone who comes through the link in the next 24 hours may
+ * join. Asked again within the hour, the same code.
+ */
+export async function shareTopicCode(
+  topicId: string,
+): Promise<{ ok: true; code: string; expiresAt: Date } | { ok: false; error: string }> {
+  const attempt = 'The invite link was not made.';
+  try {
+    const { data, error } = await getSupabase()
+      .rpc('share_topic_code', { p_topic: topicId })
+      .single();
+    if (error) return { ok: false, error: describeError(error, attempt) };
+    const row = data as { code?: unknown; expires_at?: unknown } | null;
+    if (typeof row?.code !== 'string' || typeof row.expires_at !== 'string') {
+      return { ok: false, error: `${attempt} Try again.` };
+    }
+    return { ok: true, code: row.code, expiresAt: new Date(row.expires_at) };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, attempt) };
+  }
+}
+
+/** A link in the club with a code on it, as `?from=<code>`. */
+export function linkWithCode(link: string, code: string): string {
+  const url = new URL(link, 'https://club.invalid');
+  url.searchParams.set(QR_PARAM, code);
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  return link.startsWith('/') ? path : `${url.origin}${path}`;
+}
+
 export async function turnOffQrCode(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {

@@ -16,6 +16,25 @@ export function signInDoor(destination: string): string {
   return `/join?${new URLSearchParams({ next: destination })}`;
 }
 
+/**
+ * The door for an address opened signed out. A code on it (`?from=`, a topic
+ * an administrator shared to let people in, 20261116200000) is lifted out to
+ * the door itself, where the join page reads it, and left off where they go
+ * after.
+ */
+export function signInDoorFor(pathname: string, search: string, hash = ''): string {
+  const params = new URLSearchParams(search);
+  const code = params.get(CODE_PARAM)?.trim();
+  if (!code) return signInDoor(`${pathname}${search}${hash}`);
+  params.delete(CODE_PARAM);
+  const rest = params.toString();
+  const door = signInDoor(`${pathname}${rest ? `?${rest}` : ''}${hash}`);
+  return `${door}&${new URLSearchParams({ [CODE_PARAM]: code }).toString()}`;
+}
+
+// QR_PARAM in qr-codes.ts, which this does not import: it is read before the club is.
+const CODE_PARAM = 'from';
+
 /*
  * Where a shared link was going, kept on this device (the owner, 2026-10-28):
  * the address carries it through sign-in, but asking for an invite can take
