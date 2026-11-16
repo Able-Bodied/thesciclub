@@ -1977,7 +1977,7 @@ function InviteRow({
   );
 }
 
-/** "Notifications on, 2 devices · Home Screen app, Oct 20" */
+/** "Notifications on, 2 devices · Home Screen app, Oct 20 · iPhone app, last opened Nov 14" */
 export function reachInWords(reach: MemberReach): string {
   const notifications =
     reach.pushDevices === 0
@@ -1991,5 +1991,15 @@ export function reachInWords(reach: MemberReach): string {
         day: 'numeric',
       })}`
     : 'No Home Screen app seen';
-  return `${notifications} · ${app}`;
+  const day = (at: string) =>
+    new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const iPhone =
+    reach.iPhoneApp === undefined
+      ? null
+      : reach.iPhoneApp === null
+        ? 'No iPhone app'
+        : reach.iPhoneApp.lastSeen
+          ? `iPhone app, last opened ${day(reach.iPhoneApp.lastSeen)}`
+          : 'iPhone app';
+  return [notifications, app, iPhone].filter(Boolean).join(' · ');
 }

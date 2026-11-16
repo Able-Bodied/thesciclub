@@ -160,19 +160,45 @@ export interface MemberReach {
   pushDevices: number;
   /** When a session last began in the Home Screen app; null if never seen. */
   homeScreenAt: string | null;
+  /**
+   * The iPhone app (the owner, 2026-11-16: "if the user has iOS installed"),
+   * as the club knows it (20261116210000): when last seen open, null when only
+   * its notification token says so. Null when not known to have it; undefined
+   * when that could not be read, and then nothing is said about it.
+   */
+  iPhoneApp?: { lastSeen: string | null } | null;
 }
 
 /** By member id. Null when it cannot be read, and then nothing is shown. */
 export async function fetchMemberReach(): Promise<Map<string, MemberReach> | null> {
-  const { data, error } = (await getSupabase().rpc('admin_member_reach')) as {
-    data: { member_id: string; push_devices: number; home_screen_at: string | null }[] | null;
-    error: unknown;
-  };
-  if (error || !data) return null;
+  const supabase = getSupabase();
+  const [reach, app] = (await Promise.all([
+    supabase.rpc('admin_member_reach'),
+    supabase.rpc('admin_members_with_the_app'),
+  ])) as [
+    {
+      data: { member_id: string; push_devices: number; home_screen_at: string | null }[] | null;
+      error: unknown;
+    },
+    { data: { member_id: string; last_seen: string | null }[] | null; error: unknown },
+  ];
+  if (reach.error || !reach.data) return null;
+  const apps =
+    app.error || !app.data ? null : new Map(app.data.map((row) => [row.member_id, row.last_seen]));
   return new Map(
-    data.map((row) => [
+    reach.data.map((row) => [
       row.member_id,
-      { pushDevices: row.push_devices, homeScreenAt: row.home_screen_at },
+      {
+        pushDevices: row.push_devices,
+        homeScreenAt: row.home_screen_at,
+        ...(apps
+          ? {
+              iPhoneApp: apps.has(row.member_id)
+                ? { lastSeen: apps.get(row.member_id) ?? null }
+                : null,
+            }
+          : {}),
+      },
     ]),
   );
 }
