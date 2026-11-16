@@ -211,18 +211,22 @@ export async function createQrCode(
  */
 export async function shareTopicCode(
   topicId: string,
-): Promise<{ ok: true; code: string; expiresAt: Date } | { ok: false; error: string }> {
+): Promise<{ ok: true; id: string; code: string; expiresAt: Date } | { ok: false; error: string }> {
   const attempt = 'The invite link was not made.';
   try {
     const { data, error } = await getSupabase()
       .rpc('share_topic_code', { p_topic: topicId })
       .single();
     if (error) return { ok: false, error: describeError(error, attempt) };
-    const row = data as { code?: unknown; expires_at?: unknown } | null;
-    if (typeof row?.code !== 'string' || typeof row.expires_at !== 'string') {
+    const row = data as { id?: unknown; code?: unknown; expires_at?: unknown } | null;
+    if (
+      typeof row?.id !== 'string' ||
+      typeof row.code !== 'string' ||
+      typeof row.expires_at !== 'string'
+    ) {
       return { ok: false, error: `${attempt} Try again.` };
     }
-    return { ok: true, code: row.code, expiresAt: new Date(row.expires_at) };
+    return { ok: true, id: row.id, code: row.code, expiresAt: new Date(row.expires_at) };
   } catch (e) {
     return { ok: false, error: describeThrown(e, attempt) };
   }
