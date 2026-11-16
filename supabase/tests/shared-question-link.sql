@@ -84,4 +84,18 @@ select public.signup_needs_an_invite(jsonb_build_object('user', jsonb_build_obje
   'email', 'probe-share@example.com', 'app_metadata', jsonb_build_object('provider', 'email'),
   'user_metadata', jsonb_build_object('qr_code', :'made')))) as maker_not_admin;
 
+\echo ''
+\echo '== 6. what a link preview, and the page before Join, may show signed out (expect the title, then nothing three times) =='
+update public.members set is_admin = true where id = 'aaaaaaaa-5a5a-0000-0000-00000000000a';
+update public.qr_codes set expires_at = now() + interval '1 hour' where code = :'made';
+set local role anon;
+select title from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000001');
+select count(*) as another_topic from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000002');
+select count(*) as a_wrong_code from public.shared_topic_preview('not-a-code', '5a5a0000-0000-0000-0000-000000000001');
+reset role;
+update public.qr_codes set expires_at = now() - interval '1 minute' where code = :'made';
+set local role anon;
+select count(*) as expired from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000001');
+reset role;
+
 rollback;
