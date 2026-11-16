@@ -9,6 +9,7 @@ import { APPLE_RETURN_PARAM } from '@/lib/apple-sign-in';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useIAmPartner, useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
+import { platformWords, surface } from '@/lib/device-check';
 import { isEventOver } from '@/lib/event-over';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
@@ -477,6 +478,7 @@ export default function MePage() {
                   minute: '2-digit',
                   timeZoneName: 'short',
                 })}
+                {` · ${platformWords(surface(), navigator.userAgent, navigator.maxTouchPoints)}`}
               </p>
             ) : null}
             {/* Display first: it is what somebody who finds the club hard to
