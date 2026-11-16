@@ -366,6 +366,7 @@ vi.mock('@/lib/supabase', () => ({
         const answered = (calls.addressGate ?? Promise.resolve()).then(() => result);
         return Object.assign(answered, { single: () => answered });
       }
+      if (name === 'invite_from_for_token') result = { data: 'Wojtek', error: null };
       if (name === 'suggest_usernames') result = { data: calls.suggestions, error: null };
       if (name === 'username_available') {
         const asked = String(args?.name);
@@ -400,6 +401,12 @@ const { default: OnboardingPage } = await import('@/routes/onboarding/page');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
 // of HANDOFF.md "What Home is". Until then it was Peers.
+/** An invite's link, on to the join form from the Welcome screen it opens on. */
+async function openInvite(path = '/join?invite=tok-123') {
+  renderJoin(path);
+  await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+}
+
 function renderJoin(path = '/join', state?: unknown) {
   return render(
     <MemoryRouter
@@ -454,12 +461,10 @@ async function typeBirthday(iso: string) {
   await userEvent.type(screen.getByLabelText('Year'), year);
 }
 
-/** Fills the sign-in or join form. The join form also asks for the password twice. */
+/** Fills the sign-in or join form. */
 async function fillDoor(email: string, password: string) {
   await userEvent.type(screen.getByLabelText('Email'), email);
   await userEvent.type(screen.getByLabelText('Password'), password);
-  const again = screen.queryByLabelText('Type it again');
-  if (again) await userEvent.type(again, password);
 }
 
 beforeEach(() => {
@@ -578,7 +583,7 @@ describe('while anybody can join', () => {
 
   it('still greets somebody with an invitation as invited', async () => {
     calls.joiningOpen = true;
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     expect(await screen.findByText(/^You have an invitation\./)).toBeInTheDocument();
   });
 });
@@ -772,51 +777,7 @@ describe('joining by email', () => {
     await fillDoor('dana@example.com', 'seven77');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Password'), '8');
-    // Typed once more: the second field still says the old, shorter one.
-    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Type it again'), '8');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
-  });
-
-  describe('typing the password twice', () => {
-    it('asks for it again on joining, with the right autocomplete', async () => {
-      await openJoin();
-      const again = screen.getByLabelText('Type it again');
-      expect(again).toHaveAttribute('type', 'password');
-      expect(again).toHaveAttribute('autocomplete', 'new-password');
-    });
-
-    it('says they do not match as an alert, and will not create the account', async () => {
-      await openJoin();
-      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
-      await userEvent.type(screen.getByLabelText('Password'), 'a long password');
-      await userEvent.type(screen.getByLabelText('Type it again'), 'a long passwor');
-      expect(await screen.findByRole('alert')).toHaveTextContent('The two passwords do not match.');
-      expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
-      expect(calls.order.filter((c) => c.startsWith('signUp'))).toEqual([]);
-    });
-
-    it('goes on once they match', async () => {
-      await openJoin();
-      await fillDoor('dana@example.com', 'a long password');
-      expect(screen.queryByText('The two passwords do not match.')).toBeNull();
-      expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
-    });
-
-    it('does not submit a mismatch with Enter either', async () => {
-      await openJoin();
-      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
-      await userEvent.type(screen.getByLabelText('Password'), 'a long password');
-      await userEvent.type(screen.getByLabelText('Type it again'), 'another long one{Enter}');
-      expect(calls.order.filter((c) => c.startsWith('signUp'))).toEqual([]);
-    });
-
-    it('keeps sign-in to one password field', async () => {
-      renderJoin('/join');
-      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
-      expect(screen.getByLabelText('Password')).toBeInTheDocument();
-      expect(screen.queryByLabelText('Type it again')).toBeNull();
-    });
   });
 
   it('never asks whether the address is invited before it is confirmed', async () => {
@@ -1072,7 +1033,7 @@ describe('the invite link', () => {
     act(() => {
       go('/join?invite=tok-late');
     });
-    expect(await screen.findByText(/You have an invitation/)).toBeInTheDocument();
+    expect(await screen.findByText('You have an invite from Wojtek.')).toBeInTheDocument();
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBe('tok-late');
   });
 
@@ -1092,9 +1053,8 @@ describe('the invite link', () => {
   });
 
   it('keeps it through the sign-up and the email, and claims it after', async () => {
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBe('tok-123');
-    // Straight to joining: the link is why they came, so no Welcome screen first.
     expect(screen.getByText(/You have an invitation/)).toBeInTheDocument();
     await fillDoor('hidden.relay@privaterelay.example', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
@@ -1139,17 +1099,22 @@ describe('the invite link', () => {
     expect(await screen.findByText('What is your name?')).toBeInTheDocument();
   });
 
-  it('opens at the join form, not the Welcome screen', () => {
+  // The owner, 2026-11-15: it opens on Welcome, which says whose invite it is.
+  it('opens on Welcome, saying who it is for and from, and goes on to join', async () => {
+    calls.inviteAddress = 'ana@example.com';
+    calls.inviteGuest = { name: 'Ana Lopez', phone: '', event_id: '' };
     renderJoin('/join?invite=tok-123');
+    expect(await screen.findByText('Ana, you have an invite from Wojtek.')).toBeInTheDocument();
+    expect(screen.queryByText(/No invite yet/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
     expect(screen.getByRole('heading', { name: 'Join the club' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Join the club' })).not.toBeInTheDocument();
     // A way back to the Welcome screen and to signing in is still there.
     expect(screen.getByRole('button', { name: 'Already a member? Sign in' })).toBeInTheDocument();
   });
 
   it('fills in the address the invitation was sent to, and says so', async () => {
     calls.inviteAddress = 'dana@example.com';
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await waitFor(() => {
       expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
     });
@@ -1162,7 +1127,7 @@ describe('the invite link', () => {
   it('keeps the name and phone the guest registered with, for the steps after', async () => {
     calls.inviteAddress = 'dana@example.com';
     calls.inviteGuest = { name: 'Dana Ruiz', phone: '4085550112', event_id: 'climb' };
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await waitFor(() => {
       expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
     });
@@ -1179,7 +1144,7 @@ describe('the invite link', () => {
 
   it('offers the invited address back when what is typed is close to it', async () => {
     calls.inviteAddress = 'dana@example.com';
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await waitFor(() => {
       expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
     });
@@ -1193,7 +1158,7 @@ describe('the invite link', () => {
 
   it('does not offer it for an address that is simply another one', async () => {
     calls.inviteAddress = 'dana@example.com';
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await waitFor(() => {
       expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
     });
@@ -1204,14 +1169,13 @@ describe('the invite link', () => {
 
   it('leaves the field theirs: another address is used as typed, and the note goes', async () => {
     calls.inviteAddress = 'dana@example.com';
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await waitFor(() => {
       expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
     });
     await userEvent.clear(screen.getByLabelText('Email'));
     await userEvent.type(screen.getByLabelText('Email'), 'dana.s@example.com');
     await userEvent.type(screen.getByLabelText('Password'), 'a long password');
-    await userEvent.type(screen.getByLabelText('Type it again'), 'a long password');
     expect(screen.queryByText(/the address your invitation was sent to/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     await screen.findByText('Check your email');
@@ -1224,7 +1188,7 @@ describe('the invite link', () => {
       release = resolve;
     });
     calls.inviteAddress = 'dana@example.com';
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await userEvent.type(screen.getByLabelText('Email'), 'mine@example.com');
     release();
     await waitFor(() => {
@@ -1239,7 +1203,7 @@ describe('the invite link', () => {
 
   it('leaves the field empty, and says nothing, when the club has no address for it', async () => {
     calls.inviteAddress = null;
-    renderJoin('/join?invite=used');
+    await openInvite('/join?invite=used');
     await waitFor(() => {
       expect(calls.addressAskedWith).toBe('used');
     });
@@ -1249,7 +1213,7 @@ describe('the invite link', () => {
 
   it('carries on without it when the lookup fails', async () => {
     calls.addressError = true;
-    renderJoin('/join?invite=tok-123');
+    await openInvite();
     await waitFor(() => {
       expect(calls.addressAskedWith).toBe('tok-123');
     });
@@ -2226,8 +2190,8 @@ describe('the phone for events', () => {
 // No screen of their own and no box to tick (the owner, 2026-10-15). The join
 // form says signing up is agreeing, with both documents linked (2026-10-25).
 describe('agreeing to the terms', () => {
-  it('says so on the join form, with both documents a tap away, and no box to tick', () => {
-    renderJoin('/join?invite=tok-123');
+  it('says so on the join form, with both documents a tap away, and no box to tick', async () => {
+    await openInvite();
     expect(screen.getByRole('heading', { name: 'Join the club' })).toBeInTheDocument();
     expect(screen.getByText(/By signing up, you agree to our/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(

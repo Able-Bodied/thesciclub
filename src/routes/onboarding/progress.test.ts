@@ -25,7 +25,6 @@ const DATA = {
   ...INITIAL_ONBOARDING_DATA,
   email: 'dana@example.com',
   password: 'correct horse',
-  passwordAgain: 'correct horse',
   zip: '95008',
   displayName: 'Dana',
   username: 'dana',
@@ -43,7 +42,7 @@ describe('what is kept', () => {
   it('never the password, the email, the ZIP or the photograph', () => {
     const kept = keptAnswers({ ...DATA, photoFile: new File(['x'], 'me.jpg') });
     expect(kept).toMatchObject({ displayName: 'Dana', exactLevel: 'T4' });
-    for (const key of ['email', 'password', 'passwordAgain', 'zip', 'photoFile', 'photoPreviewUrl'])
+    for (const key of ['email', 'password', 'zip', 'photoFile', 'photoPreviewUrl'])
       expect(kept).not.toHaveProperty(key);
   });
 

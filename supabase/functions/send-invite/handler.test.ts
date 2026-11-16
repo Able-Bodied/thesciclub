@@ -189,9 +189,7 @@ describe('the invite email', () => {
     expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(200);
     const text = log.sent[0]?.text ?? '';
     expect(text).toContain('Hi Suet Fei,');
-    expect(text).toContain(
-      'Maya invited you to join The SCI Club, an app built by people with SCI for people with SCI, as part of Able Bodied.',
-    );
+    expect(text).toContain('Maya invited you to join The SCI Club as part of Able Bodied.');
     expect(text).toContain('> Come join us!');
 
     const email = inviteEmail(
@@ -212,7 +210,7 @@ describe('the invite email', () => {
     const text = log.sent[0]?.text ?? '';
     expect(text).toContain(`https://thesciclub.com/e/${eventId}?invite=token-1`);
     expect(text).toContain(
-      'Maya invited you to Board dinner, Sunday, November 22 at 2:00 PM PST. To come, accept the invite and join The SCI Club, an app built by people with SCI for people with SCI.',
+      'Maya invited you to Board dinner, Sunday, November 22 at 2:00 PM PST. To come, accept the invite and join The SCI Club.',
     );
   });
 
