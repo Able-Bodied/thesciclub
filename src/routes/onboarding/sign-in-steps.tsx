@@ -472,7 +472,7 @@ function JoinFields({
         </p>
       ) : null}
       <label htmlFor="password" className="mt-4 block font-bold text-[0.8125rem] text-ink">
-        Password
+        Choose a password
       </label>
       <PasswordReveal what="password" className="mt-2.5">
         {(input) => (
