@@ -33,6 +33,11 @@ import {
  * Everything appears below the choice, never on another screen. Changing the
  * choice clears what no longer fits it: a T6 is not a quad's level, and a
  * condition's name is not a para's. Onboarding and Your details both use it.
+ *
+ * The list of levels ends with the two answers that have no level (the owner,
+ * 2026-11-16): relatives were choosing an injury above and "Do not know"
+ * here, not having read as far as their own answer. Choosing one there
+ * chooses it above.
  */
 
 export interface SpinalCordAnswer {
@@ -47,6 +52,12 @@ const HEADING =
   'mb-2 block font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
 const FIELD =
   'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] text-ink outline-none focus:border-emphasis';
+
+/** The answers with no level, as the list of levels words them. */
+const NOT_INJURED: { type: InjuryType; text: string }[] = [
+  { type: 'family', text: 'Relative / friend' },
+  { type: 'professional', text: 'I work with people with SCI' },
+];
 
 /** What changing the kind does to the rest of the answer. */
 export function withInjuryType(
@@ -101,6 +112,7 @@ export function SpinalCordFields({
               )}
             >
               <input
+                id={`${id}-type-${option}`}
                 type="radio"
                 name={`${id}-type`}
                 checked={type === option}
@@ -161,6 +173,13 @@ export function SpinalCordFields({
             id={`${id}-level`}
             value={level ?? ''}
             onChange={(e) => {
+              const notInjured = NOT_INJURED.find((o) => o.type === e.target.value);
+              if (notInjured) {
+                // This list is about to go: the answer above is where they are now.
+                document.getElementById(`${id}-type-${notInjured.type}`)?.focus();
+                onChange(withInjuryType(answer, notInjured.type));
+                return;
+              }
               onChange({ exactLevel: (e.target.value || null) as ExactLevel | null });
             }}
             className={FIELD}
@@ -169,6 +188,11 @@ export function SpinalCordFields({
             {levels.map((l) => (
               <option key={l} value={l}>
                 {l}
+              </option>
+            ))}
+            {NOT_INJURED.map((o) => (
+              <option key={o.type} value={o.type}>
+                {o.text}
               </option>
             ))}
           </select>
