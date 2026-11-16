@@ -215,7 +215,10 @@ describe('inviting by email', () => {
     await user.click(screen.getByRole('button', { name: 'Add and send the link' }));
 
     await waitFor(() => {
-      expect(api.created).toEqual([{ email: 'dana@example.com', note: 'Rugby' }]);
+      // An org admin of NorCal SCI alone: it is theirs, without asking.
+      expect(api.created).toEqual([
+        { email: 'dana@example.com', note: 'Rugby', organizationId: 'ncs' },
+      ]);
     });
     expect(screen.getByLabelText('Email address')).toHaveValue('');
     expect(await screen.findByText(/on its way to dana@example.com/)).toBeInTheDocument();

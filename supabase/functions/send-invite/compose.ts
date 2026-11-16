@@ -108,7 +108,11 @@ export function inviteEmail(
     ? `${who} invited you to ${event.title.trim()}`
     : `${who} invited you to The SCI Club`;
   const senderName = d.inviter.trim() ? `${headerSafe(who)} via The SCI Club` : 'The SCI Club';
-  const joining = organization ? `The SCI Club as part of ${organization}` : 'The SCI Club';
+  // What the club is, in the owner's words (2026-11-15).
+  const built = 'an app built by people with SCI for people with SCI';
+  const joining = organization
+    ? `The SCI Club, ${built}, as part of ${organization}`
+    : `The SCI Club, ${built}`;
   const invitedLine = event
     ? `${who} invited you to ${event.title.trim()}${event.when ? `, ${event.when}` : ''}. To come, accept the invite and join ${joining}.`
     : `${who} invited you to join ${joining}.`;
@@ -141,10 +145,10 @@ export function inviteEmail(
   const p = 'margin:0 0 20px;font-size:20px;line-height:1.5;color:#111111;';
   const preheader = event
     ? `${event.title.trim()}${event.when ? `, ${event.when}` : ''}`
-    : `Join ${joining}.`;
+    : `Join The SCI Club${organization ? ` as part of ${organization}` : ''}.`;
   const invitedHtml = event
-    ? `<strong>${escapeHtml(who)}</strong> invited you to <strong>${escapeHtml(event.title.trim())}</strong>${event.when ? `, ${escapeHtml(event.when)}` : ''}. To come, accept the invite and join The SCI Club${organization ? ` as part of <strong>${escapeHtml(organization)}</strong>` : ''}.`
-    : `<strong>${escapeHtml(who)}</strong> invited you to join The SCI Club${organization ? ` as part of <strong>${escapeHtml(organization)}</strong>` : ''}.`;
+    ? `<strong>${escapeHtml(who)}</strong> invited you to <strong>${escapeHtml(event.title.trim())}</strong>${event.when ? `, ${escapeHtml(event.when)}` : ''}. To come, accept the invite and join The SCI Club, ${built}${organization ? `, as part of <strong>${escapeHtml(organization)}</strong>` : ''}.`
+    : `<strong>${escapeHtml(who)}</strong> invited you to join The SCI Club, ${built}${organization ? `, as part of <strong>${escapeHtml(organization)}</strong>` : ''}.`;
   const html = `<!doctype html>
 <html lang="en">
   <head>
