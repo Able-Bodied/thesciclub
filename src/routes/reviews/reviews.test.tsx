@@ -128,8 +128,8 @@ describe('reviews on a page', () => {
     const names = () =>
       screen
         .getAllByRole('listitem')
-        .map((item) => item.querySelector('a, p')?.textContent)
-        .filter((name) => name?.includes('Stars') || name?.startsWith('Five'));
+        .map((item) => item.querySelector('a, p')?.textContent ?? '')
+        .filter((name) => name.includes('Stars') || name.startsWith('Five'));
     await screen.findByText('Five Words');
     expect(names()).toEqual(['Five Words', 'Five Quiet', 'Four Stars']);
     await userEvent.click(screen.getByRole('button', { name: 'Show all 5 reviews' }));
