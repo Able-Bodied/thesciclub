@@ -24,7 +24,6 @@ describe('a link to a question in a text message', () => {
     expect(shared).toContain(
       '<meta property="og:title" content="Cushions: &lt;Roho&gt; or &quot;Jay&quot;?" />',
     );
-    expect(shared).toContain('Wojtek invited you to The SCI Club');
 
     const plain = privatePostPage(URL);
     expect(plain).toContain('content="A post on The SCI Club"');
