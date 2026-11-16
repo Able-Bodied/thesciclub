@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
-import { fetchQrCodeDetails, QR_PARAM } from '@/lib/qr-codes';
+import { fetchQrCodeDetails, fetchSharedQuestion, QR_PARAM } from '@/lib/qr-codes';
+
+const TOPIC_PATH = /\/chat\/rooms\/[^/]+\/topics\/([0-9a-f-]{36})\/?$/i;
 
 /** Line widths of the made-up post. */
 const LINES = ['w-full', 'w-[92%]', 'w-full', 'w-[78%]', 'w-[86%]', 'w-[54%]'];
@@ -16,18 +18,29 @@ export function LockedPost({ door }: { door: string }) {
   // somebody who came by it knows they may join, and is asked to help answer
   // (the owner, 2026-11-16: "Help answer inside theSCIClub and contribute to
   // our knowledge base").
+  // The question itself, up top, when the link was made for it (the owner,
+  // 2026-11-16: "Maybe we have the question text up top, and then the button
+  // says Join to answer"): what the link's preview already showed.
+  const { pathname } = useLocation();
   const [inviter, setInviter] = useState<string | null>(null);
+  const [question, setQuestion] = useState<string | null>(null);
   useEffect(() => {
     const code = new URLSearchParams(door.split('?')[1] ?? '').get(QR_PARAM);
     if (!code) return;
+    const topic = TOPIC_PATH.exec(pathname)?.[1] ?? null;
     let live = true;
     void fetchQrCodeDetails(code).then((details) => {
       if (live && details?.admits) setInviter(details.inviterName);
     });
+    if (topic) {
+      void fetchSharedQuestion(code, topic).then((title) => {
+        if (live) setQuestion(title);
+      });
+    }
     return () => {
       live = false;
     };
-  }, [door]);
+  }, [door, pathname]);
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[560px] bg-canvas pb-[max(28px,env(safe-area-inset-bottom))]">
       <header className="flex items-center justify-between px-[18px] pt-[max(16px,env(safe-area-inset-top))] pb-3">
@@ -63,20 +76,24 @@ export function LockedPost({ door }: { door: string }) {
 
         <section className="z-10 mx-3 my-16 self-center rounded-[16px] border border-line bg-paper px-5 py-6 text-center shadow-lg [grid-area:1/1]">
           <h1 className="text-balance font-extrabold font-display text-[1.3125rem] text-ink leading-tight">
-            {inviter
-              ? 'Help answer inside The SCI Club'
-              : 'Please sign in or join to see this post'}
+            {inviter && question
+              ? question
+              : inviter
+                ? 'Help answer inside The SCI Club'
+                : 'Please sign in or join to see this post'}
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
-            {inviter
-              ? 'Join to see the question and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life with a spinal cord injury.'
-              : "It's in The SCI Club, a private community where we help each other navigate life with a spinal cord injury."}
+            {inviter && question
+              ? 'Help answer inside The SCI Club and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life with a spinal cord injury.'
+              : inviter
+                ? 'Join to see the question and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life with a spinal cord injury.'
+                : "It's in The SCI Club, a private community where we help each other navigate life with a spinal cord injury."}
           </p>
           <Link
             to={door}
             className="mt-5 flex min-h-[48px] items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
           >
-            Join the club
+            {inviter && question ? 'Join to answer' : 'Join the club'}
           </Link>
           <p className="mt-2 text-[0.8125rem] text-ink2">
             Already a member?{' '}

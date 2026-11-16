@@ -85,6 +85,25 @@ export async function fetchQrCodeDetails(code: string): Promise<QrCodeDetails | 
 }
 
 /**
+ * The question a link was shared to let people in to, for somebody signed
+ * out: its title while the code is live and was made for that very topic
+ * (shared_topic_preview, 20261116200000); null for anything else.
+ */
+export async function fetchSharedQuestion(code: string, topicId: string): Promise<string | null> {
+  try {
+    const { data, error } = await getSupabase()
+      .rpc('shared_topic_preview', { p_code: code, p_topic: topicId })
+      .maybeSingle();
+    const row: unknown = data;
+    if (error || !row || typeof row !== 'object') return null;
+    const title = (row as Record<string, unknown>).title;
+    return typeof title === 'string' && title.trim() ? title.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Records the held code against the signed-in account. Credit is a nicety:
  * nothing waits on it, and a failed call (offline) keeps the code for the next
  * sign-in. Only an answer lets it go.
