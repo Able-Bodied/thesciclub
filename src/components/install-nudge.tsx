@@ -56,9 +56,9 @@ import { getSupabase } from '@/lib/supabase';
  * people from the club), nor in the first moments after a screen opens. Never
  * in the store app, which is already installed.
  *
- * In an iPhone browser it also comes at the two moments the app clearly helps,
- * first visit or not: somebody wrote to the member, or they tapped Going on an
- * event (useAppMoment).
+ * In an iPhone browser it also comes at the moments the app clearly helps,
+ * first visit or not: somebody wrote to the member, they asked or answered
+ * something, or they tapped Going on an event (useAppMoment).
  */
 export function InstallNudge() {
   return isNative() ? null : <BrowserInstallNudge />;
@@ -200,7 +200,7 @@ function BrowserInstallNudge() {
 }
 
 /** A moment the app clearly helps with (the owner, 2026-11-16). */
-type AppMoment = { kind: 'wrote'; name: string | null } | { kind: 'going' };
+type AppMoment = { kind: 'wrote'; name: string | null } | { kind: 'sent' } | { kind: 'going' };
 
 // What somebody writing to the member is notified as.
 const WROTE = new Set(['direct', 'group', 'reply', 'reply_participant', 'mention']);
@@ -209,10 +209,12 @@ const ignore = () => undefined;
 
 /**
  * Somebody wrote to the member while the club was open ("Dana wrote to you.
- * Get the app so you know next time."), or they tapped Going on an event ("Get
- * a reminder before it starts"). Heard from their notifications as they
- * arrive, and from Going's SENT_EVENT. Only while `watching`: an iPhone
- * browser, with the card not hidden. The first moment stays.
+ * Get the app so you know next time."); they asked a question, answered one
+ * or sent a message ("Get notified when someone replies", the owner,
+ * 2026-11-16); or they tapped Going on an event ("Get a reminder before it
+ * starts"). Heard from their notifications as they arrive, and from
+ * SENT_EVENT, as AskAfterSending does in the app. Only while `watching`: an
+ * iPhone browser, with the card not hidden. The first moment stays.
  */
 function useAppMoment(watching: boolean): AppMoment | null {
   const account = useAccount();
@@ -223,8 +225,8 @@ function useAppMoment(watching: boolean): AppMoment | null {
   useEffect(() => {
     if (!watching) return;
     function sent(event: Event) {
-      if ((event as CustomEvent<unknown>).detail === 'going')
-        setMoment((now) => now ?? { kind: 'going' });
+      const kind = (event as CustomEvent<unknown>).detail === 'going' ? 'going' : 'sent';
+      setMoment((now) => now ?? { kind });
     }
     window.addEventListener(SENT_EVENT, sent);
     return () => {
@@ -328,22 +330,26 @@ function AppNudge({
           <p className="font-extrabold font-head text-[0.9375rem] text-ink leading-[1.3]">
             {moment?.kind === 'wrote'
               ? `${moment.name ?? 'Somebody'} wrote to you`
-              : moment?.kind === 'going'
-                ? 'Get a reminder before it starts'
-                : fromHomeScreen
-                  ? 'The club now has an iPhone app'
-                  : 'Get the club’s iPhone app'}
+              : moment?.kind === 'sent'
+                ? 'Get notified when someone replies'
+                : moment?.kind === 'going'
+                  ? 'Get a reminder before it starts'
+                  : fromHomeScreen
+                    ? 'The club now has an iPhone app'
+                    : 'Get the club’s iPhone app'}
           </p>
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
             {moment?.kind === 'wrote'
               ? hasApp
                 ? 'The app tells you next time, with a notification.'
                 : 'Get the app so you know next time.'
-              : moment?.kind === 'going'
-                ? 'The club’s iPhone app can send you one.'
-                : fromHomeScreen
-                  ? 'The same club, from the App Store, with notifications.'
-                  : 'The club in one tap, with notifications.'}
+              : moment?.kind === 'sent'
+                ? 'The club’s iPhone app tells you, with a notification.'
+                : moment?.kind === 'going'
+                  ? 'The club’s iPhone app can send you one.'
+                  : fromHomeScreen
+                    ? 'The same club, from the App Store, with notifications.'
+                    : 'The club in one tap, with notifications.'}
           </p>
           {hasApp ? (
             <>

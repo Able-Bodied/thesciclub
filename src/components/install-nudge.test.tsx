@@ -117,10 +117,18 @@ describe('the Home Screen nudge', () => {
   });
 
   // The owner, 2026-11-16: not on the first visit, as it kept people from
-  // the club, but when they tap Going, where the app's reminder helps.
-  it('waits for a later visit on an iPhone, unless they tap Going', async () => {
+  // the club, but when they ask or answer something, or tap Going, where the
+  // app's notifications help.
+  it('waits for a later visit on an iPhone, unless they send something or tap Going', async () => {
     browserIs(IPHONE_SAFARI);
     localStorage.removeItem('club:first-seen');
+    const asked = renderAfterWait();
+    expect(screen.queryByRole('complementary')).toBeNull();
+    act(() => {
+      noteSent();
+    });
+    expect(await screen.findByText('Get notified when someone replies')).toBeInTheDocument();
+    asked.unmount();
     const first = renderAfterWait();
     expect(screen.queryByRole('complementary')).toBeNull();
     act(() => {
