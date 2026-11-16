@@ -6,6 +6,7 @@ import { PRICED_ROOM, parsePrice, setListingPrice } from '@/lib/chat/listing-pri
 import { roomPrompt } from '@/lib/chat/room-prompts';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
+import { categoryName } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { noteSent } from '@/lib/push/notifications';
@@ -232,7 +233,7 @@ export default function NewTopicPage() {
                   (r) => r.id === room.id || (r.openedAt !== null && !appFeedbackRoom([r])),
                 ),
               ).map(([category, inCategory]) => (
-                <optgroup key={category} label={category}>
+                <optgroup key={category} label={categoryName(category)}>
                   {inCategory.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}

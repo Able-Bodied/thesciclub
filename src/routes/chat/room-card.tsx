@@ -1,5 +1,11 @@
 import { Link } from 'react-router-dom';
-import type { ChatAuthor, ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/types';
+import {
+  type ChatAuthor,
+  type ChatRoom,
+  categoryName,
+  type RoomCategory,
+  type RoomStats,
+} from '@/lib/chat/types';
 
 /**
  * One discussion room, in the list: the mock's `card cat`. The category colour is never the only
@@ -39,7 +45,7 @@ export function RoomCategoryLabel({ category }: { category: RoomCategory }) {
         aria-hidden="true"
         className={`h-[11px] w-[11px] flex-none rounded-[3px] ${CATEGORY_STYLE[category].label}`}
       />
-      {category}
+      {categoryName(category)}
     </h3>
   );
 }

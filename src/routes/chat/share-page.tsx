@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
+import { categoryName } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { type Shared, sharedBody, sharedTitle, takeShared } from '@/lib/share-target';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
@@ -200,7 +201,7 @@ export default function SharePage() {
               className="mt-1.5 min-h-[48px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3 text-[1rem] text-ink outline-none focus:border-emphasis"
             >
               {roomsByCategory(open).map(([category, inCategory]) => (
-                <optgroup key={category} label={category}>
+                <optgroup key={category} label={categoryName(category)}>
                   {inCategory.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}

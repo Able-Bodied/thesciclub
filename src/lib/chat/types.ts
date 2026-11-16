@@ -39,6 +39,15 @@ export const ROOM_CATEGORIES = [
 ] as const;
 export type RoomCategory = (typeof ROOM_CATEGORIES)[number];
 
+/**
+ * A category as members read it. Classifieds is called Marketplace (the owner,
+ * 2026-11-15); the stored value stays 'Classifieds', which the iPhone app
+ * already on phones checks for.
+ */
+export function categoryName(category: RoomCategory): string {
+  return category === 'Classifieds' ? 'Marketplace' : category;
+}
+
 /** The categories a member may start a room in: all but Classifieds. */
 export const MEMBER_ROOM_CATEGORIES = ROOM_CATEGORIES.filter(
   (category): category is Exclude<RoomCategory, 'Classifieds'> => category !== 'Classifieds',

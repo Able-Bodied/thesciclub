@@ -10,7 +10,7 @@ import {
   useChatRooms,
   useRoomStats,
 } from '@/lib/chat/rooms';
-import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
+import { type ChatRoom, categoryName, type RoomCategory } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 import { SmallButton } from '@/routes/admin/controls';
@@ -156,7 +156,7 @@ export function RoomsSection() {
                     </span>
                   </span>
                   <span className="mt-0.5 block text-[0.75rem] text-grey">
-                    {category} · {topicsIn(stats.get(room.id)?.topicCount)} ·{' '}
+                    {categoryName(category)} · {topicsIn(stats.get(room.id)?.topicCount)} ·{' '}
                     {room.openedAt
                       ? `open since ${new Date(room.openedAt).toLocaleDateString(undefined, {
                           day: 'numeric',

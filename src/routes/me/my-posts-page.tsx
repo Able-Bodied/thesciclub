@@ -6,7 +6,7 @@ import { useAccount } from '@/lib/account';
 import { filterMyTopics, type MyTopicKind, useMyTopics } from '@/lib/chat/my-topics';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { chatTime } from '@/lib/chat/time';
-import { ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
+import { categoryName, ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
 
 const KINDS = [
   ['all', 'All'],
@@ -29,7 +29,7 @@ export default function MyPostsPage() {
   );
   const categories = [
     ['all', 'All rooms'] as const,
-    ...ROOM_CATEGORIES.filter((c) => used.has(c)).map((c) => [c, c] as const),
+    ...ROOM_CATEGORIES.filter((c) => used.has(c)).map((c) => [c, categoryName(c)] as const),
   ];
   const shown = topics ? filterMyTopics(topics, rooms, kind, category) : [];
 

@@ -16,7 +16,12 @@ import {
   useChatRooms,
   useRoomStats,
 } from '@/lib/chat/rooms';
-import { type ChatRoom, MEMBER_ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
+import {
+  type ChatRoom,
+  categoryName,
+  MEMBER_ROOM_CATEGORIES,
+  type RoomCategory,
+} from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
@@ -183,7 +188,7 @@ export default function NewRoomPage() {
                   >
                     {room.name}
                   </Link>
-                  <span className="text-[0.75rem] text-grey"> · {room.category}</span>
+                  <span className="text-[0.75rem] text-grey"> · {categoryName(room.category)}</span>
                 </li>
               ))}
             </ul>

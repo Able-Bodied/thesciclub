@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { roomsByCategory } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
-import type { ChatRoom } from '@/lib/chat/types';
+import { type ChatRoom, categoryName } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { noteSent } from '@/lib/push/notifications';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
@@ -220,7 +220,7 @@ export function QuickAsk({
                 className="min-h-[44px] min-w-0 flex-1 rounded-[11px] border-[1.6px] border-line bg-paper px-2.5 text-[1rem] text-ink outline-none focus:border-emphasis"
               >
                 {roomsByCategory([...open]).map(([category, inCategory]) => (
-                  <optgroup key={category} label={category}>
+                  <optgroup key={category} label={categoryName(category)}>
                     {inCategory.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name}
