@@ -326,9 +326,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>About your injury or condition:</b> which describes you best (or that you are a
-            relative or spouse, or a professional who works with people with spinal cord injuries),
-            its level, whether it is complete, when it began and how, as far as you choose to say.
-            This is health information.
+            family or a friend of someone with SCI, or staff who work with people with spinal cord
+            injuries), its level, whether it is complete, when it began and how, as far as you
+            choose to say. This is health information.
           </li>
           <li>
             <b>What you choose to answer</b> in the profile questions, such as your languages,
@@ -563,6 +563,14 @@ export default function PrivacyPage() {
             hide yourself from Peers, on Me.
           </li>
           <li>
+            <b>The members building the club</b> are shown to anybody, without an account, on{' '}
+            <Link to="/about" className="font-semibold text-emphasis underline">
+              About us
+            </Link>
+            , with their agreement: their profile as members see it, but never their age, where they
+            live, or the month and day of their injury.
+          </li>
+          <li>
             <b>On the map</b>, other members see how many members live in each place, shown at the
             middle of your ZIP code if you gave one, or of your city, never your address or anything
             closer. A place with one member shows that member’s photograph and name, as Peers does,
@@ -601,11 +609,11 @@ export default function PrivacyPage() {
             notification.
           </li>
           <li>
-            <b>Family.</b> A member who joined as a relative or spouse can ask any member to link as
-            family, and any other member, except a professional, can ask a relative or spouse. They
-            say how: spouse or partner, parent, child, brother or sister, or other family. You are
-            told who asked and as what. Until you say yes, only the two of you see the request, and
-            if you say no they are not told. Once you say yes, members who can see both of your
+            <b>Family.</b> A member who joined as family or a friend of someone with SCI can ask any
+            member to link as family, and any other member, except staff, can ask them. They say
+            how: spouse or partner, parent, child, brother or sister, or other family. You are told
+            who asked and as what. Until you say yes, only the two of you see the request, and if
+            you say no they are not told. Once you say yes, members who can see both of your
             profiles see the link on each, with how you are related. Either of you can remove it at
             any time, and a block between you removes it.
           </li>

@@ -32,11 +32,11 @@ insert into private.about_us_team (member_id, position) values
 set local role anon;
 
 -- Expect: Al only, injury_year 2011.
-select display_name, injury_year, injury_date_precision
-  from public.about_us_team()
- where id::text like 'aaaaaaaa-1115-%';
+select t->>'display_name' as name, t->>'injury_year' as year, t->>'injury_date_precision' as precision
+  from public.about_us_team() t
+ where t->>'id' like 'aaaaaaaa-1115-%';
 
--- Expect: no column carrying the city, birth date or the injury's day.
+-- Expect: f, f, f: nothing carries the city, birth date or the injury's day.
 select string_agg(t::text, ' ') like '%Probeville%' as city_sent,
        string_agg(t::text, ' ') like '%1980%' as birth_sent,
        string_agg(t::text, ' ') like '%07-19%' as injury_day_sent

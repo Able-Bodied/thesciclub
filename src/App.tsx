@@ -18,7 +18,6 @@ import { noteScreen } from '@/lib/page-speed';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import { OpenedNotification } from '@/lib/push/opened-notification';
 import { countVisit } from '@/lib/web-analytics';
-import AboutPage from '@/routes/about/page';
 import DevLoginPage from '@/routes/dev-login/page';
 import HomePage from '@/routes/home/page';
 import DeleteAccountPage from '@/routes/legal/delete-account';
@@ -71,6 +70,8 @@ const SavedPage = lazy(() => import('@/routes/me/saved-page'));
 const MyPostsPage = lazy(() => import('@/routes/me/my-posts-page'));
 const NotificationsPage = lazy(() => import('@/routes/notifications/page'));
 const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
+const AboutPage = lazy(() => import('@/routes/about/page'));
+const AboutProfilePage = lazy(() => import('@/routes/about/profile'));
 const ProfileAnswersPage = lazy(() => import('@/routes/profile/answers'));
 const ProfileDetailsPage = lazy(() => import('@/routes/profile/details'));
 const ProfileSurveyPage = lazy(() => import('@/routes/profile/page'));
@@ -538,6 +539,14 @@ function AppRoutes() {
           element={
             <InLight>
               <AboutPage />
+            </InLight>
+          }
+        />
+        <Route
+          path="/about/:id"
+          element={
+            <InLight>
+              <AboutProfilePage />
             </InLight>
           }
         />

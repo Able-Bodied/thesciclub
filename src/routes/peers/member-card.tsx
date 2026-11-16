@@ -4,6 +4,7 @@ import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { usePhoto } from '@/lib/use-photo';
 import { cn } from '@/lib/utils';
+import { Blurred, STAND_IN_AGE, STAND_IN_PLACE } from '@/routes/about/blurred';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
 import { asksCompleteness, type BrowseMember, cityAndState, injuryLabel } from '@/types/domain';
@@ -52,14 +53,17 @@ export function initialsOf(displayName: string): string {
  * "C6 do not know" says nothing.
  */
 export function summaryLine(member: BrowseMember): string {
+  return [levelPart(member), member.age, cityAndState(member)].filter(Boolean).join(' · ');
+}
+
+/** The level and completeness, the first part of the summary line. */
+export function levelPart(member: BrowseMember): string {
   const level = injuryLabel(member);
   // A condition or central cord syndrome says what it is; complete or
   // incomplete belongs to an injury with a level.
-  const levelPart =
-    member.completeness === 'Do not know' || !asksCompleteness(member.injuryType)
-      ? level
-      : `${level} ${member.completeness.toLowerCase()}`;
-  return [levelPart, member.age, cityAndState(member)].filter(Boolean).join(' · ');
+  return member.completeness === 'Do not know' || !asksCompleteness(member.injuryType)
+    ? level
+    : `${level} ${member.completeness.toLowerCase()}`;
 }
 
 /**
@@ -86,6 +90,8 @@ export interface MemberCardProps {
   onOpen: () => void;
   /** The first cards on screen: the photo is fetched first, not lazily. */
   priority?: boolean;
+  /** About us, for anybody: the age and city blurred (routes/about/blurred.tsx). */
+  publicView?: boolean;
 }
 
 /**
@@ -95,11 +101,16 @@ export interface MemberCardProps {
  * club's mark: right while the only one was the club's account, wrong once
  * administrators were members running the club as themselves.
  */
-export function MemberCard({ member, onOpen, priority = false }: MemberCardProps) {
-  return <PersonCard member={member} onOpen={onOpen} priority={priority} />;
+export function MemberCard({
+  member,
+  onOpen,
+  priority = false,
+  publicView = false,
+}: MemberCardProps) {
+  return <PersonCard member={member} onOpen={onOpen} priority={priority} publicView={publicView} />;
 }
 
-function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
+function PersonCard({ member, onOpen, priority = false, publicView = false }: MemberCardProps) {
   const { organizations } = useOrganizations();
   // The small copy draws at once; the photograph covers it once it is in.
   const { url: small, onError: smallFailed } = usePhoto(member.photoPath, 'thumb');
@@ -210,9 +221,18 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
             @{member.username}
           </span>
         ) : null}
-        <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
+        {publicView ? null : (
+          <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
+        )}
         <span className="mt-[7px] block text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
-          {summaryLine(member)}
+          {publicView ? (
+            <>
+              {levelPart(member)} · <Blurred>{STAND_IN_AGE}</Blurred> ·{' '}
+              <Blurred>{STAND_IN_PLACE}</Blurred>
+            </>
+          ) : (
+            summaryLine(member)
+          )}
         </span>
       </span>
 
