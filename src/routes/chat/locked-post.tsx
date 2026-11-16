@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
+import { fetchQrCodeDetails, QR_PARAM } from '@/lib/qr-codes';
 
 /** Line widths of the made-up post. */
 const LINES = ['w-full', 'w-[92%]', 'w-full', 'w-[78%]', 'w-[86%]', 'w-[54%]'];
@@ -10,6 +12,20 @@ const LINES = ['w-full', 'w-[92%]', 'w-full', 'w-[78%]', 'w-[86%]', 'w-[54%]'];
  * sent to the browser could be read past any blur, and the club is private.
  */
 export function LockedPost({ door }: { door: string }) {
+  // A link an administrator shared to let people in (20261116200000): who it
+  // is from, so somebody who came by it knows they may join.
+  const [inviter, setInviter] = useState<string | null>(null);
+  useEffect(() => {
+    const code = new URLSearchParams(door.split('?')[1] ?? '').get(QR_PARAM);
+    if (!code) return;
+    let live = true;
+    void fetchQrCodeDetails(code).then((details) => {
+      if (live && details?.admits) setInviter(details.inviterName);
+    });
+    return () => {
+      live = false;
+    };
+  }, [door]);
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[560px] bg-canvas pb-[max(28px,env(safe-area-inset-bottom))]">
       <header className="flex items-center justify-between px-[18px] pt-[max(16px,env(safe-area-inset-top))] pb-3">
@@ -45,10 +61,14 @@ export function LockedPost({ door }: { door: string }) {
 
         <section className="z-10 mx-3 my-16 self-center rounded-[16px] border border-line bg-paper px-5 py-6 text-center shadow-lg [grid-area:1/1]">
           <h1 className="font-extrabold font-display text-[1.3125rem] text-ink leading-tight">
-            Please sign in or join to see this post
+            {inviter
+              ? `${inviter} invited you to The SCI Club`
+              : 'Please sign in or join to see this post'}
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
-            It's in The SCI Club, a private community for people with spinal cord injury.
+            {inviter
+              ? 'Join to see this post. The club is a private community for people with spinal cord injury.'
+              : "It's in The SCI Club, a private community for people with spinal cord injury."}
           </p>
           <Link
             to={door}

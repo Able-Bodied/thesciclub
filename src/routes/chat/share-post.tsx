@@ -183,7 +183,7 @@ function ShareOutside({
               Let people join through this link
             </p>
             <p id={`${switchId}-about`} className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.4]">
-              For 24 hours, anyone who opens it can join the club, without an invite.
+              For 24 hours, anyone who opens it can join the club.
             </p>
           </div>
           <button
@@ -235,7 +235,7 @@ function ShareOutside({
       </div>
       <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
         {invite
-          ? `Anyone who opens it before ${untilWords(invite.until)} can join the club, then sees it. After that, only members can.`
+          ? `It works as an invite until ${untilWords(invite.until)}. After that, only members can open it.`
           : note}
       </p>
       {said ? (
