@@ -144,8 +144,11 @@ export interface OpeningFacts {
  */
 export const SENT_EVENT = 'club:sent';
 
-export function noteSent(): void {
-  window.dispatchEvent(new Event(SENT_EVENT));
+/** Why the club asks: something sent, or Going on an event (the owner, 2026-11-15). */
+export type AskReason = 'sent' | 'going';
+
+export function noteSent(reason: AskReason = 'sent'): void {
+  window.dispatchEvent(new CustomEvent<AskReason>(SENT_EVENT, { detail: reason }));
 }
 
 /** Pure: whether the club may ask for notifications now. Tested as a table. */
