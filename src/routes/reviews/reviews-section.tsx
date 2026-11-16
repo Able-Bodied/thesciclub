@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
 import {
   averageRating,
@@ -22,9 +22,29 @@ const LINK = 'min-h-[36px] font-bold text-[0.8125rem] text-emphasis underline un
  * An event's include the other dates of its series, and an organization's
  * include its events, so each says what it was about when that is not this page.
  */
-export function ReviewsSection({ target }: { target: ReviewTarget }) {
+export function ReviewsSection({ target, pageName }: { target: ReviewTarget; pageName: string }) {
   const { reviews, options, loading, reload } = useReviews(target);
+  const location = useLocation();
+  const cameBackTo = (location.state as { showReview?: unknown } | null)?.showReview;
+  const shown = useRef(false);
+
+  // Back from a review's event: to that review, once (the owner, 2026-11-16).
+  useEffect(() => {
+    if (loading || shown.current || typeof cameBackTo !== 'string') return;
+    shown.current = true;
+    const card = document.getElementById(`review-${cameBackTo}`);
+    card?.scrollIntoView({ block: 'center' });
+    card?.querySelector<HTMLElement>('a[data-review-event]')?.focus({ preventScroll: true });
+  }, [loading, cameBackTo]);
+
   if (loading) return null;
+  // What a review's event link hands that event's Back.
+  const from = {
+    from: 'reviews',
+    path: location.pathname,
+    name: pageName,
+    state: location.state as unknown,
+  };
 
   const { average, count } = averageRating(reviews);
   const mine = reviews.find((review) => review.mine);
@@ -59,7 +79,13 @@ export function ReviewsSection({ target }: { target: ReviewTarget }) {
       {reviews.length > 0 ? (
         <ul className="flex flex-col gap-2.5">
           {reviews.map((review) => (
-            <Item key={review.id} review={review} target={target} onChanged={reload} />
+            <Item
+              key={review.id}
+              review={review}
+              target={target}
+              from={{ ...from, review: review.id }}
+              onChanged={reload}
+            />
           ))}
         </ul>
       ) : null}
@@ -70,10 +96,13 @@ export function ReviewsSection({ target }: { target: ReviewTarget }) {
 function Item({
   review,
   target,
+  from,
   onChanged,
 }: {
   review: Review;
   target: ReviewTarget;
+  /** Router state for the event link, so its Back comes here. */
+  from: object;
   onChanged: () => void;
 }) {
   const name = review.anonymous ? 'Anonymous member' : (review.authorName ?? 'Deleted member');
@@ -86,7 +115,10 @@ function Item({
   return (
     // A review of another event opens it from anywhere on the card (the owner,
     // 2026-11-16); its own links and buttons sit above that.
-    <li className="relative rounded-[14px] border border-line bg-paper p-3.5">
+    <li
+      id={`review-${review.id}`}
+      className="relative rounded-[14px] border border-line bg-paper p-3.5"
+    >
       <div className="flex items-center gap-2.5">
         {review.authorId ? (
           <MemberAvatar
@@ -115,6 +147,8 @@ function Item({
                 {' · '}
                 <Link
                   to={`/events/${review.eventId}`}
+                  state={from}
+                  data-review-event
                   className="font-semibold text-emphasis underline underline-offset-2 after:absolute after:inset-0 after:rounded-[14px]"
                 >
                   {elsewhere}

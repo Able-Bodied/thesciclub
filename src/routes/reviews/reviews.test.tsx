@@ -63,7 +63,7 @@ beforeEach(() => {
 function section() {
   render(
     <MemoryRouter>
-      <ReviewsSection target={{ kind: 'event', id: 'e1' }} />
+      <ReviewsSection target={{ kind: 'event', id: 'e1' }} pageName="Climbing" />
     </MemoryRouter>,
   );
 }

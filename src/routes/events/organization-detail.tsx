@@ -250,7 +250,10 @@ export default function OrganizationDetailPage() {
         />
 
         {memberId ? (
-          <ReviewsSection target={{ kind: 'organization', id: organization.id }} />
+          <ReviewsSection
+            target={{ kind: 'organization', id: organization.id }}
+            pageName={organization.name}
+          />
         ) : null}
 
         {upcoming.length > 0 ? (

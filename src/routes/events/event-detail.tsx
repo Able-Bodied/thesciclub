@@ -22,7 +22,7 @@ import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeList } from '@/routes/events/attendee-list';
-import { backLabel, backToEvents } from '@/routes/events/back';
+import { backLabel, backState, backToEvents } from '@/routes/events/back';
 import { CheckInCard, CheckInClosed, CheckInNotYet } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
 import { EventCohosts } from '@/routes/events/event-cohosts';
@@ -243,7 +243,7 @@ export default function EventDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  void navigate(back);
+                  void navigate(back, { state: backState(location) });
                 }}
                 className="block pb-3 text-[#B9CADF] text-[0.875rem]"
               >
@@ -515,7 +515,9 @@ export default function EventDetailPage() {
           {memberId ? (
             <EventGroupCard eventId={event.id} closed={isPrivateAudience(event.audience)} />
           ) : null}
-          {memberId ? <ReviewsSection target={{ kind: 'event', id: event.id }} /> : null}
+          {memberId ? (
+            <ReviewsSection target={{ kind: 'event', id: event.id }} pageName={event.title} />
+          ) : null}
 
           <AttendeeSection
             title="Going"
