@@ -1168,6 +1168,7 @@ export default function OnboardingPage() {
           set={set}
           ways={ways}
           invited={invited || heldInviteToken() !== null}
+          inviteFrom={inviteNames.from}
           goingFromInvite={goingFromInvite}
           joiningOpen={joiningOpen}
           fromCode={fromCode}

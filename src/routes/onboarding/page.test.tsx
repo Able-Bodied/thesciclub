@@ -584,7 +584,7 @@ describe('while anybody can join', () => {
   it('still greets somebody with an invitation as invited', async () => {
     calls.joiningOpen = true;
     await openInvite();
-    expect(await screen.findByText(/^You have an invitation\./)).toBeInTheDocument();
+    expect(await screen.findByText(/^Wojtek invited you\./)).toBeInTheDocument();
   });
 });
 
@@ -1055,7 +1055,7 @@ describe('the invite link', () => {
   it('keeps it through the sign-up and the email, and claims it after', async () => {
     await openInvite();
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBe('tok-123');
-    expect(screen.getByText(/You have an invitation/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Wojtek invited you\./)).toBeInTheDocument();
     await fillDoor('hidden.relay@privaterelay.example', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     await screen.findByText('Check your email');
