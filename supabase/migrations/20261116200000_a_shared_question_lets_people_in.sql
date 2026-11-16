@@ -211,3 +211,31 @@ comment on function public.share_topic_code(uuid) is
 
 revoke all on function public.share_topic_code(uuid) from public, anon;
 grant execute on function public.share_topic_code(uuid) to authenticated;
+
+-- What a text message's preview may show of a topic shared to let people in
+-- (the owner, 2026-11-16: "the question or the first bit of it in the preview
+-- text"): its title and who shared it, while the code is live and was made for
+-- that very topic. Nothing for any other code or topic: a plain link to a post
+-- previews as the club, as the club is private (netlify/edge-functions/
+-- topic-preview.ts).
+create or replace function public.shared_topic_preview(p_code text, p_topic uuid)
+returns table (title text, inviter_name text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select t.title, a.display_name
+    from public.qr_codes q
+    join public.chat_topics t on t.id = q.topic_id
+    join public.members a on a.id = q.admin_id
+   where q.id = private.live_qr_code(p_code)
+     and q.made_to_share
+     and q.topic_id = p_topic;
+$$;
+
+comment on function public.shared_topic_preview(text, uuid) is
+  'For a link preview: the title of a topic shared to let people in, and who shared it, while its code is live. See 20261116200000.';
+
+revoke all on function public.shared_topic_preview(text, uuid) from public;
+grant execute on function public.shared_topic_preview(text, uuid) to anon, authenticated;

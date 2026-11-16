@@ -54,6 +54,12 @@
   path = "/events"
   function = "event-preview"
 
+# And a link to a question: its words only when an administrator shared it to
+# let people in (topic-preview.ts); otherwise the club, and nothing of the post.
+[[edge_functions]]
+  path = "/chat/rooms/*"
+  function = "topic-preview"
+
 [[headers]]
   for = "/*"
   [headers.values]
