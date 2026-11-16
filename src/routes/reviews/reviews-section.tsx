@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
 import {
   averageRating,
+  canChangeReview,
   type Review,
   type ReviewTarget,
   replyToReview,
@@ -51,7 +52,7 @@ export function ReviewsSection({ target }: { target: ReviewTarget }) {
           to={write}
           className="mb-3 flex min-h-[46px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.875rem] text-emphasis"
         >
-          {mine ? 'Change your review' : 'Leave a review'}
+          {mine ? (canChangeReview(mine) ? 'Change your review' : 'Your review') : 'Leave a review'}
         </Link>
       ) : null}
 
