@@ -227,8 +227,10 @@ function PersonCard({ member, onOpen, priority = false, publicView = false }: Me
         <span className="mt-[7px] block text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
           {publicView ? (
             <>
-              {levelPart(member)} · <Blurred>{STAND_IN_AGE}</Blurred> ·{' '}
-              <Blurred>{STAND_IN_PLACE}</Blurred>
+              {levelPart(member)}{' '}
+              <span className="whitespace-nowrap">
+                · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
+              </span>
             </>
           ) : (
             summaryLine(member)

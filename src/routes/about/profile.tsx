@@ -135,8 +135,10 @@ export default function AboutProfilePage() {
                   </p>
                 ) : null}
                 <p className="mt-1 text-[0.875rem] text-white">
-                  {levelPart(member)} · <Blurred>{STAND_IN_AGE}</Blurred> ·{' '}
-                  <Blurred>{STAND_IN_PLACE}</Blurred>
+                  {levelPart(member)}{' '}
+                  <span className="whitespace-nowrap">
+                    · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
+                  </span>
                 </p>
                 {injuryYear ? (
                   <p className="mt-0.5 text-[0.78125rem] text-white/90">
@@ -250,7 +252,7 @@ export default function AboutProfilePage() {
             </Section>
 
             <div className="clear-both pb-2">
-              <JoinTheClub />
+              <JoinTheClub who={member.displayName.split(/\s+/)[0]} />
             </div>
           </div>
         </div>

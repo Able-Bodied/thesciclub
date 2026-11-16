@@ -35,7 +35,8 @@ export default function AboutPage() {
             injuries. These are the members working on the app.
           </p>
           <p className="mt-1.5 text-[0.8125rem] text-grey leading-[1.5]">
-            Ages, cities and injury dates are blurred here. Members see them inside the club.
+            Ages, cities and the month and day of each injury are blurred here. Members see them
+            inside the club.
           </p>
         </div>
       </header>
@@ -72,11 +73,11 @@ export default function AboutPage() {
 }
 
 /** "Join the club", to meet them and the rest (the owner, 2026-11-15). */
-export function JoinTheClub() {
+export function JoinTheClub({ who }: { who?: string | undefined }) {
   return (
     <div className="mx-auto mt-6 max-w-[480px] rounded-[18px] border border-line bg-paper p-4 text-center">
       <p className="font-bold text-[0.9375rem] text-emphasis leading-[1.45]">
-        Meet them and other people with SCI.
+        Meet {who ?? 'them'} and other people with SCI.
       </p>
       <Link
         to="/join"
