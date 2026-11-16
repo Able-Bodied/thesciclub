@@ -311,7 +311,7 @@ describe('a post’s link outside the club', () => {
     renderButton();
     await userEvent.click(screen.getByRole('button', { name: /^Share / }));
     expect(screen.queryByRole('button', { name: 'Share elsewhere' })).not.toBeInTheDocument();
-    expect(screen.getByText(/For a private message/)).toBeInTheDocument();
+    expect(screen.getByText(/only in a private message/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Copy link' }));
     expect(shared.links).toEqual([
       { url: `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`, text: '' },

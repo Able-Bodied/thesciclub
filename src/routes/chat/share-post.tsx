@@ -79,7 +79,8 @@ export function SharePostButton({
               what={what}
               {...(outside ? { link: outside } : {})}
               {...(invites ? { inviteTopic: invites } : {})}
-              linkNote="For a private message to someone, not for posting anywhere. Only members can open it."
+              linkHeading="Link, for administrators"
+              linkNote="Send it only in a private message, never post it anywhere. Only members can open it."
               sendNote="Only members who can read the post will see it."
               send={(to, authorId, line) => sharePost(postId, to, authorId, line)}
               onClose={() => {
@@ -115,11 +116,14 @@ function targetKey(target: ShareTarget): string {
  */
 function ShareOutside({
   link,
+  heading,
   note,
   elsewhere: offerElsewhere,
   inviteTopic,
 }: {
   link: string;
+  /** What the section is, where only some members see it. */
+  heading?: string | undefined;
   note: string;
   elsewhere: boolean;
   /** An administrator sharing a topic, who can make the link an invite. */
@@ -192,6 +196,9 @@ function ShareOutside({
     'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-[1.6px] border-emphasis bg-paper px-3 font-bold text-[0.9375rem] text-emphasis hover:bg-tint';
   return (
     <div className="mt-4 rounded-[14px] bg-tint p-3">
+      {heading ? (
+        <h3 className="mb-2 font-bold font-head text-[0.875rem] text-ink">{heading}</h3>
+      ) : null}
       {inviteTopic ? (
         <div className="mb-3 flex items-center gap-3 rounded-xl bg-paper p-3">
           <div className="min-w-0 flex-1">
@@ -288,6 +295,7 @@ export function ShareSheet({
   heading: title,
   what,
   link,
+  linkHeading,
   linkNote,
   elsewhere = false,
   inviteTopic,
@@ -303,6 +311,8 @@ export function ShareSheet({
   elsewhere?: boolean;
   /** The topic an administrator can make the link an invite to (ShareOutside). */
   inviteTopic?: string | undefined;
+  /** A heading over the link, where only some members see it. */
+  linkHeading?: string;
   linkNote: string;
   sendNote: string;
   send: (to: ShareTarget, authorId: string, line: string) => Promise<ShareResult>;
@@ -605,6 +615,7 @@ export function ShareSheet({
         {link && !sent ? (
           <ShareOutside
             link={link}
+            heading={linkHeading}
             note={linkNote}
             elsewhere={elsewhere}
             inviteTopic={inviteTopic}
