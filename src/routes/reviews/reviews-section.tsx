@@ -84,7 +84,9 @@ function Item({
   const [first, ...rest] = review.photos;
 
   return (
-    <li className="rounded-[14px] border border-line bg-paper p-3.5">
+    // A review of another event opens it from anywhere on the card (the owner,
+    // 2026-11-16); its own links and buttons sit above that.
+    <li className="relative rounded-[14px] border border-line bg-paper p-3.5">
       <div className="flex items-center gap-2.5">
         {review.authorId ? (
           <MemberAvatar
@@ -98,7 +100,7 @@ function Item({
           {review.authorHasProfile && review.authorId ? (
             <Link
               to={`/peers/${review.authorId}`}
-              className="font-bold text-[0.9375rem] text-ink underline-offset-2 hover:underline"
+              className="relative z-10 font-bold text-[0.9375rem] text-ink underline-offset-2 hover:underline"
             >
               {name}
             </Link>
@@ -108,7 +110,17 @@ function Item({
           <p className="text-[0.78125rem] text-grey">
             {shortDate(review.ratedAt)}
             {review.editedAt ? ' · Edited' : ''}
-            {elsewhere ? ` · ${elsewhere}` : ''}
+            {elsewhere && review.eventId ? (
+              <>
+                {' · '}
+                <Link
+                  to={`/events/${review.eventId}`}
+                  className="font-semibold text-emphasis underline underline-offset-2 after:absolute after:inset-0 after:rounded-[14px]"
+                >
+                  {elsewhere}
+                </Link>
+              </>
+            ) : null}
           </p>
         </div>
       </div>
@@ -126,10 +138,19 @@ function Item({
         </p>
       ) : null}
       {first ? (
-        <EventGallery path={first.path} alt={first.alt} more={rest} className="mt-2.5" />
+        <EventGallery
+          path={first.path}
+          alt={first.alt}
+          more={rest}
+          className="relative z-10 mt-2.5"
+        />
       ) : null}
 
-      {review.history.length > 0 ? <History versions={review.history} /> : null}
+      {review.history.length > 0 ? (
+        <div className="relative z-10">
+          <History versions={review.history} />
+        </div>
+      ) : null}
 
       {review.orgReply ? (
         <div className="mt-2.5 rounded-r-[11px] border-emphasis border-l-[3px] bg-tint px-3 py-2">
@@ -142,7 +163,7 @@ function Item({
         </div>
       ) : null}
 
-      <div className="mt-1.5 flex flex-wrap gap-x-4">
+      <div className="relative z-10 mt-1.5 flex flex-wrap gap-x-4">
         {review.canReply ? <ReplyControl review={review} onChanged={onChanged} /> : null}
         {review.mine ? null : <ReportControl reviewId={review.id} />}
       </div>
