@@ -77,7 +77,7 @@ export function sharedQuestionPage(
 export function privatePostPage(url: string): string {
   const title = 'A post on The SCI Club';
   const description =
-    'Members only. The SCI Club is a private community where we help each other navigate life with a spinal cord injury.';
+    'Members only. The SCI Club is a private community where we help each other navigate life after a spinal cord injury.';
   return `<!doctype html>
 <html lang="en">
 <head>
