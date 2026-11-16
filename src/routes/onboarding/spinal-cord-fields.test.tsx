@@ -62,8 +62,12 @@ describe('the spinal cord question', () => {
     await userEvent.click(screen.getByRole('radio', { name: /High para/ }));
     const levels = optionsOf('Level of injury');
     expect(levels[1]).toBe('T1');
-    expect(levels.at(-2)).toBe('T8');
-    expect(levels.at(-1)).toBe('Do not know');
+    expect(levels.slice(-4)).toEqual([
+      'T8',
+      'Do not know',
+      'Relative / friend',
+      'I work with people with SCI',
+    ]);
     expect(screen.getByRole('group', { name: 'Complete or incomplete?' })).toBeInTheDocument();
   });
 
@@ -96,7 +100,28 @@ describe('the spinal cord question', () => {
     expect(screen.getByLabelText('Level of injury')).toHaveValue('Do not know');
   });
 
-  // The owner, 2026-10-20: their own way, typed with suggestions.
+  // The owner, 2026-11-16: relatives chose an injury and "Do not know", not
+  // having read as far as their own answer, so the list of levels ends with it.
+  it('takes a relative who got as far as the levels back to their own answer', async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(<Harness seen={seen} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegic/ }));
+    await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'Do not know');
+    await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'Relative / friend');
+    expect(screen.getByRole('radio', { name: /Family/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Family/ })).toHaveFocus();
+    expect(seen.at(-1)).toMatchObject({ injuryType: 'family', exactLevel: null });
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
+
+    await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
+    await userEvent.selectOptions(
+      screen.getByLabelText('Level of injury'),
+      'I work with people with SCI',
+    );
+    expect(screen.getByRole('radio', { name: /Staff/ })).toBeChecked();
+    expect(seen.at(-1)).toMatchObject({ injuryType: 'professional', exactLevel: null });
+  });
+
   it('asks which condition in a box, suggesting the spinal cord conditions', async () => {
     const seen: SpinalCordAnswer[] = [];
     const { container } = render(<Harness seen={seen} />);
@@ -142,7 +167,8 @@ describe('the spinal cord question', () => {
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Central cord syndrome');
     const levels = optionsOf('Spinal cord level, if you have one');
     expect(levels[0]).toBe('Not applicable');
-    expect(levels.slice(1).every((l) => l.startsWith('C'))).toBe(true);
+    // Between "Not applicable" and the two answers with no level.
+    expect(levels.slice(1, -2).every((l) => l.startsWith('C'))).toBe(true);
     expect(seen.at(-1)?.completeness).toBe('Incomplete');
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });
