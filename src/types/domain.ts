@@ -112,8 +112,9 @@ export function rangeForExact(level: ExactLevel): LevelRange {
  *   quad, high_para, low_para   an injury with a level, cut to fit
  *   condition                   "Other spinal cord condition": typed, with
  *                               suggestions, and a level if it has one
- *   family                      a relative or spouse: a member with no level
- *   professional                works with people with SCI/D (20261029100000):
+ *   family                      family or a friend of someone with SCI: a
+ *                               member with no level
+ *   professional                staff, working with people with SCI/D (20261029100000):
  *                               no level either; it grants nothing
  *
  * 'para' and 'central_cord' are what the question offered before. Members who
@@ -148,8 +149,10 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
   high_para: { title: 'High para (T1–T8)' },
   low_para: { title: 'Low para (T9+)' },
   condition: { title: 'Spinal cord or nerve disorder' },
-  family: { title: 'Relative/Spouse' },
-  professional: { title: 'Professional / I work with people with SCI/D' },
+  // Wording the owner chose, 2026-11-15; the stored values stay 'family' and
+  // 'professional', which the iPhone app already on phones also sends.
+  family: { title: 'Family / friend of someone with SCI' },
+  professional: { title: 'Staff / I work with people with SCI/D' },
   para: { title: 'Paraplegia' },
   central_cord: { title: 'Central cord syndrome' },
 };
@@ -263,7 +266,7 @@ export function cityAndState(member: {
 
 /**
  * How somebody's disability reads in a line: "T6", "C5 central cord",
- * "Transverse myelitis", "High para", "Family member", "Professional". One function, so a
+ * "Transverse myelitis", "High para", "Family / friend", "Staff". One function, so a
  * card, a post and an event's list say the same thing about the same person.
  */
 export function injuryLabel(member: {
@@ -275,9 +278,9 @@ export function injuryLabel(member: {
   const level = member.exactLevel && member.exactLevel !== 'Do not know' ? member.exactLevel : null;
   switch (member.injuryType) {
     case 'family':
-      return 'Family member';
+      return 'Family / friend';
     case 'professional':
-      return 'Professional';
+      return 'Staff';
     case 'condition': {
       const name = member.conditionName ?? 'Other disability';
       return level ? `${name} · ${level}` : name;

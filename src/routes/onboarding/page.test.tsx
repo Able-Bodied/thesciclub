@@ -2881,7 +2881,7 @@ describe('the injury date boxes', () => {
       screen.getByText('An injury or a condition: members find each other by this.'),
     ).toBeInTheDocument();
     expect(screen.getByText(DATE_LINE)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('radio', { name: /Relative/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Family \/ friend/ }));
     expect(screen.queryByText(DATE_LINE)).toBeNull();
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -2893,7 +2893,7 @@ describe('the injury date boxes', () => {
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Your spinal cord');
-    await userEvent.click(screen.getByRole('radio', { name: /Professional/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Staff/ }));
     expect(screen.queryByText(DATE_LINE)).toBeNull();
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
