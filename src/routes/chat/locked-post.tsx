@@ -69,8 +69,8 @@ export function LockedPost({ door }: { door: string }) {
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
             {inviter
-              ? 'Join to see the question and contribute to our knowledge base. The club is a private community for people with spinal cord injury.'
-              : "It's in The SCI Club, a private community for people with spinal cord injury."}
+              ? 'Join to see the question and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life with a spinal cord injury.'
+              : "It's in The SCI Club, a private community where we help each other navigate life with a spinal cord injury."}
           </p>
           <Link
             to={door}
