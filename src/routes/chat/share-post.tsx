@@ -414,15 +414,6 @@ export function ShareSheet({
           </button>
         </div>
 
-        {link && !sent ? (
-          <ShareOutside
-            link={link}
-            note={linkNote}
-            elsewhere={elsewhere}
-            inviteTopic={inviteTopic}
-          />
-        ) : null}
-
         {sent ? (
           <div className="mt-4">
             <p
@@ -608,6 +599,17 @@ export function ShareSheet({
             </button>
           </form>
         )}
+
+        {/* Below Send (the owner, 2026-11-16: "The copy link button should
+            also be on the bottom"): sending inside the club comes first. */}
+        {link && !sent ? (
+          <ShareOutside
+            link={link}
+            note={linkNote}
+            elsewhere={elsewhere}
+            inviteTopic={inviteTopic}
+          />
+        ) : null}
       </div>
     </>
   );
