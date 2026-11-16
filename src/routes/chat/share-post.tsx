@@ -80,7 +80,7 @@ export function SharePostButton({
               {...(outside ? { link: outside } : {})}
               {...(invites ? { inviteTopic: invites } : {})}
               linkHeading="Link, for administrators"
-              linkNote="Send it only in a private message, never post it anywhere. Only members can open it."
+              linkNote="Send it only in a private message. Never post it anywhere. Only members can open it."
               sendNote="Only members who can read the post will see it."
               send={(to, authorId, line) => sharePost(postId, to, authorId, line)}
               onClose={() => {
@@ -261,7 +261,7 @@ function ShareOutside({
       </div>
       <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
         {invite
-          ? `It works as an invite until ${untilWords(invite.until)}, or until you turn this off. Then it is an ordinary link, for members only.`
+          ? `Send it only in a private message. Never post it anywhere. It works as an invite until ${untilWords(invite.until)}, or until you turn this off. Then it is an ordinary link, for members only.`
           : note}
       </p>
       {said ? (
