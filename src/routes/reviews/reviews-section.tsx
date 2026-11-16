@@ -5,11 +5,16 @@ import {
   averageRating,
   canChangeReview,
   type Review,
+  type ReviewsState,
   type ReviewTarget,
   replyToReview,
   reportReview,
+  reviewsInOrder,
+  type StarChoice,
+  starCounts,
   useReviews,
 } from '@/lib/reviews';
+import { cn } from '@/lib/utils';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { Stars } from '@/routes/reviews/stars';
 
@@ -17,16 +22,54 @@ const HEADING =
   'mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
 const LINK = 'min-h-[36px] font-bold text-[0.8125rem] text-emphasis underline underline-offset-2';
 
+/** Reviews shown before "Show all". */
+const FIRST_SHOWN = 3;
+
 /**
  * Reviews on an event's or an organization's page (the owner, 2026-10-31).
  * An event's include the other dates of its series, and an organization's
  * include its events, so each says what it was about when that is not this page.
  */
 export function ReviewsSection({ target, pageName }: { target: ReviewTarget; pageName: string }) {
-  const { reviews, options, loading, reload } = useReviews(target);
+  const state = useReviews(target);
+  const [stars, setStars] = useState<StarChoice>(null);
+  return (
+    <ReviewsList
+      target={target}
+      pageName={pageName}
+      state={state}
+      stars={stars}
+      onStars={setStars}
+    />
+  );
+}
+
+/**
+ * The list itself, for a page that also shows the rating elsewhere (an
+ * organization's, under its name) and so reads the reviews and the star choice
+ * itself.
+ */
+export function ReviewsList({
+  target,
+  pageName,
+  state,
+  stars,
+  onStars,
+  id,
+}: {
+  target: ReviewTarget;
+  pageName: string;
+  state: ReviewsState;
+  stars: StarChoice;
+  onStars: (stars: StarChoice) => void;
+  id?: string;
+}) {
+  const { reviews, options, loading, reload } = state;
   const location = useLocation();
   const cameBackTo = (location.state as { showReview?: unknown } | null)?.showReview;
   const shown = useRef(false);
+  // Back from a review's event shows them all, so that review is there.
+  const [all, setAll] = useState(typeof cameBackTo === 'string');
 
   // Back from a review's event: to that review, once (the owner, 2026-11-16).
   useEffect(() => {
@@ -55,8 +98,16 @@ export function ReviewsSection({ target, pageName }: { target: ReviewTarget; pag
   // Nothing to read and nothing to do: no heading over an empty space.
   if (reviews.length === 0 && !options?.canReview) return null;
 
+  const ordered = reviewsInOrder(reviews, stars);
+  const listed = all ? ordered : ordered.slice(0, FIRST_SHOWN);
+
   return (
-    <section aria-label="Reviews">
+    <section
+      aria-label="Reviews"
+      id={id}
+      tabIndex={id ? -1 : undefined}
+      className="scroll-mt-4 outline-none"
+    >
       <h2 className={HEADING}>Reviews</h2>
       {count > 0 ? (
         <p className="mb-2.5 flex items-center gap-2 text-[0.875rem] text-ink">
@@ -76,9 +127,13 @@ export function ReviewsSection({ target, pageName }: { target: ReviewTarget; pag
         </Link>
       ) : null}
 
-      {reviews.length > 0 ? (
+      {reviews.length > 1 ? (
+        <StarPickerMenu reviews={reviews} value={stars} onChange={onStars} className="mb-2.5" />
+      ) : null}
+
+      {listed.length > 0 ? (
         <ul className="flex flex-col gap-2.5">
-          {reviews.map((review) => (
+          {listed.map((review) => (
             <Item
               key={review.id}
               review={review}
@@ -88,8 +143,72 @@ export function ReviewsSection({ target, pageName }: { target: ReviewTarget; pag
             />
           ))}
         </ul>
+      ) : reviews.length > 0 ? (
+        <p className="py-3 text-[0.875rem] text-ink2">
+          No {stars}-star reviews.{' '}
+          <button
+            type="button"
+            onClick={() => {
+              onStars(null);
+            }}
+            className={LINK}
+          >
+            Show all reviews
+          </button>
+        </p>
+      ) : null}
+
+      {ordered.length > listed.length ? (
+        <button
+          type="button"
+          onClick={() => {
+            setAll(true);
+          }}
+          className="mt-2.5 min-h-[44px] w-full rounded-[14px] bg-tint px-3.5 font-bold text-[0.875rem] text-emphasis hover:bg-line"
+        >
+          Show all {ordered.length} {stars === null ? '' : `${stars}-star `}reviews
+        </button>
       ) : null}
     </section>
+  );
+}
+
+/** "All stars", then 5 to 1, each with how many (the owner, 2026-11-16). */
+export function StarPickerMenu({
+  reviews,
+  value,
+  onChange,
+  className,
+  onNavy = false,
+}: {
+  reviews: readonly Review[];
+  value: StarChoice;
+  onChange: (stars: StarChoice) => void;
+  className?: string;
+  onNavy?: boolean;
+}) {
+  const counts = starCounts(reviews);
+  return (
+    <select
+      aria-label="Show reviews with"
+      value={value ?? 'all'}
+      onChange={(e) => {
+        const v = e.target.value;
+        onChange(v === 'all' ? null : (Number(v) as StarChoice));
+      }}
+      className={cn(
+        'min-h-[40px] rounded-[11px] border-[1.6px] px-2.5 font-semibold text-[0.875rem]',
+        onNavy ? 'border-plate-chip bg-plate-chip text-white' : 'border-line bg-paper text-ink',
+        className,
+      )}
+    >
+      <option value="all">All stars ({reviews.length})</option>
+      {([5, 4, 3, 2, 1] as const).map((n) => (
+        <option key={n} value={n} disabled={counts[n] === 0}>
+          {n} {n === 1 ? 'star' : 'stars'} ({counts[n]})
+        </option>
+      ))}
+    </select>
   );
 }
 

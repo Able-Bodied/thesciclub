@@ -187,6 +187,36 @@ function toReview(row: ReviewRow): Review {
   };
 }
 
+/** One star level, or every review when null. */
+export type StarChoice = 1 | 2 | 3 | 4 | 5 | null;
+
+/**
+ * Best first, as Amazon and Yelp show them (the owner, 2026-11-16): most
+ * stars, then ones with words, then the newest. A star choice keeps only those.
+ */
+export function reviewsInOrder(reviews: readonly Review[], stars: StarChoice): Review[] {
+  return reviews
+    .filter((review) => stars === null || review.rating === stars)
+    .sort(
+      (a, b) =>
+        b.rating - a.rating ||
+        Number(Boolean(b.body)) - Number(Boolean(a.body)) ||
+        b.ratedAt.localeCompare(a.ratedAt),
+    );
+}
+
+/** How many reviews have each number of stars. */
+export function starCounts(reviews: readonly Review[]): Record<1 | 2 | 3 | 4 | 5, number> {
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const review of reviews) {
+    const n = Math.min(5, Math.max(1, Math.round(review.rating))) as 1 | 2 | 3 | 4 | 5;
+    counts[n] += 1;
+  }
+  return counts;
+}
+
+export type ReviewsState = ReturnType<typeof useReviews>;
+
 /** The average of the reviews everybody can read, to one place. */
 export function averageRating(reviews: readonly Review[]): { average: number; count: number } {
   const open = reviews.filter((review) => !review.onlyOrganization);

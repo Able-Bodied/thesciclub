@@ -16,6 +16,7 @@ import {
 } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
+import { averageRating, type StarChoice, useReviews } from '@/lib/reviews';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { isPastEvent } from '@/routes/events/filters';
 import { FollowButton } from '@/routes/events/follow-button';
@@ -33,7 +34,8 @@ import { OrganizationSummarySetting } from '@/routes/events/organization-summary
 import { PlaceContact } from '@/routes/events/place-contact';
 import { EventDescription } from '@/routes/events/rich-text';
 import { ShareOrganizationButton } from '@/routes/events/share-event';
-import { ReviewsSection } from '@/routes/reviews/reviews-section';
+import { ReviewsList, StarPickerMenu } from '@/routes/reviews/reviews-section';
+import { Stars } from '@/routes/reviews/stars';
 import type { ClubEvent } from '@/types/domain';
 
 const UPCOMING_SHOWN = 5;
@@ -64,6 +66,9 @@ export default function OrganizationDetailPage() {
   const [additions, setAdditions] = useState(0);
   const [allUpcoming, setAllUpcoming] = useState(false);
   const [pastShown, setPastShown] = useState(PAST_FIRST);
+  // Read here, as the rating shows under the name too (the owner, 2026-11-16).
+  const reviews = useReviews({ kind: 'organization', id: id ?? '' });
+  const [stars, setStars] = useState<StarChoice>(null);
   const [reviewsRead, setReviewsRead] = useState(0);
   const count = useOrganizationMemberCount(id, additions);
   const denial = useMyDenial(id, memberId);
@@ -136,6 +141,13 @@ export default function OrganizationDetailPage() {
     )
     .sort((a, b) => b.startTime.localeCompare(a.startTime));
   const hiddenPast = Math.max(0, past.length - pastShown);
+  const rated = averageRating(reviews.reviews);
+  const toReviews = () => {
+    const section = document.getElementById('org-reviews');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    section?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+    section?.focus({ preventScroll: true });
+  };
   const openEvent = (eventId: string) => {
     void navigate(`/events/${eventId}`);
   };
@@ -199,6 +211,30 @@ export default function OrganizationDetailPage() {
             </p>
           ) : null}
 
+          {memberId && rated.count > 0 ? (
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <button
+                type="button"
+                onClick={toReviews}
+                className="inline-flex min-h-[40px] items-center gap-2 text-[0.875rem] text-white underline-offset-2 hover:underline"
+              >
+                <Stars value={rated.average} />
+                <span>
+                  <b>{rated.average}</b> · {rated.count} {rated.count === 1 ? 'review' : 'reviews'}
+                </span>
+              </button>
+              <StarPickerMenu
+                reviews={reviews.reviews}
+                value={stars}
+                onChange={(choice) => {
+                  setStars(choice);
+                  toReviews();
+                }}
+                onNavy
+              />
+            </div>
+          ) : null}
+
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {organization.tags.map((tag) => (
               <span
@@ -249,13 +285,6 @@ export default function OrganizationDetailPage() {
           following={follows.following.has(organization.id)}
         />
 
-        {memberId ? (
-          <ReviewsSection
-            target={{ kind: 'organization', id: organization.id }}
-            pageName={organization.name}
-          />
-        ) : null}
-
         {upcoming.length > 0 ? (
           <>
             <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
@@ -305,6 +334,18 @@ export default function OrganizationDetailPage() {
               </button>
             ) : null}
           </section>
+        ) : null}
+
+        {/* Below the events (the owner, 2026-11-16). */}
+        {memberId ? (
+          <ReviewsList
+            id="org-reviews"
+            target={{ kind: 'organization', id: organization.id }}
+            pageName={organization.name}
+            state={reviews}
+            stars={stars}
+            onStars={setStars}
+          />
         ) : null}
 
         {denial !== null ? (
