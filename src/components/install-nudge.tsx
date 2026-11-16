@@ -210,7 +210,7 @@ const ignore = () => undefined;
 /**
  * Somebody wrote to the member while the club was open ("Dana wrote to you.
  * Get the app so you know next time."); they asked a question, answered one
- * or sent a message ("Get notified when someone replies", the owner,
+ * or sent a message ("Know when someone replies", the owner,
  * 2026-11-16); or they tapped Going on an event ("Get a reminder before it
  * starts"). Heard from their notifications as they arrive, and from
  * SENT_EVENT, as AskAfterSending does in the app. Only while `watching`: an
@@ -331,7 +331,7 @@ function AppNudge({
             {moment?.kind === 'wrote'
               ? `${moment.name ?? 'Somebody'} wrote to you`
               : moment?.kind === 'sent'
-                ? 'Get notified when someone replies'
+                ? 'Know when someone replies'
                 : moment?.kind === 'going'
                   ? 'Get a reminder before it starts'
                   : fromHomeScreen
@@ -344,7 +344,9 @@ function AppNudge({
                 ? 'The app tells you next time, with a notification.'
                 : 'Get the app so you know next time.'
               : moment?.kind === 'sent'
-                ? 'The club’s iPhone app tells you, with a notification.'
+                ? hasApp
+                  ? 'The app notifies you, with its notifications on.'
+                  : 'Get the club’s iPhone app, and it notifies you.'
                 : moment?.kind === 'going'
                   ? 'The club’s iPhone app can send you one.'
                   : fromHomeScreen

@@ -127,7 +127,7 @@ describe('the Home Screen nudge', () => {
     act(() => {
       noteSent();
     });
-    expect(await screen.findByText('Get notified when someone replies')).toBeInTheDocument();
+    expect(await screen.findByText('Know when someone replies')).toBeInTheDocument();
     asked.unmount();
     const first = renderAfterWait();
     expect(screen.queryByRole('complementary')).toBeNull();
