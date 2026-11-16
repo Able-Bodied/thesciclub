@@ -42,8 +42,19 @@ export interface Review {
   authorPhoto: string | null;
   orgReply: string | null;
   createdAt: string;
+  /** The date it shows: when it was posted, or when its stars last changed. */
+  ratedAt: string;
+  editedAt: string | null;
+  /** Earlier versions, newest first. */
+  history: ReviewVersion[];
   mine: boolean;
   canReply: boolean;
+}
+
+export interface ReviewVersion {
+  rating: number;
+  body: string;
+  writtenAt: string;
 }
 
 export interface ReviewOptions {
@@ -71,6 +82,10 @@ interface ReviewRow {
   created_at: string;
   mine: boolean;
   can_reply: boolean;
+  // Undefined until 20261116100000 is on the database.
+  rated_at?: string;
+  edited_at?: string | null;
+  history?: { rating: number; body: string; written_at: string }[];
 }
 
 interface OptionsRow {
@@ -160,6 +175,13 @@ function toReview(row: ReviewRow): Review {
     authorPhoto: row.author_photo,
     orgReply: row.org_reply,
     createdAt: row.created_at,
+    ratedAt: row.rated_at ?? row.created_at,
+    editedAt: row.edited_at ?? null,
+    history: (row.history ?? []).map((v) => ({
+      rating: v.rating,
+      body: v.body,
+      writtenAt: v.written_at,
+    })),
     mine: row.mine,
     canReply: row.can_reply,
   };
