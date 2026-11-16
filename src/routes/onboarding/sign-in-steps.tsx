@@ -358,9 +358,12 @@ export function JoinStep({
   closeTo = null,
   joiningOpen = false,
   fromCode = null,
+  inviteFrom = null,
 }: FieldsProps & {
   ways: WaysIn;
   invited: boolean;
+  /** Who the invite is from (20261115170000), once the club has said. */
+  inviteFrom?: string | null;
   /** They accepted an event invite on its page, so they are going (20261114020000). */
   goingFromInvite?: boolean;
   inviteAddress: string | null;
@@ -378,7 +381,7 @@ export function JoinStep({
         {invited && goingFromInvite ? (
           'Invite accepted: you’re going. Join with any email or account to finish. What you entered is saved for the next steps.'
         ) : invited ? (
-          'You have an invitation. Join with any email or account, and it will be waiting.'
+          `${inviteFrom ? `${inviteFrom} invited you.` : 'You have an invitation.'} Join with any email or account, and it will be waiting.`
         ) : fromCode && (fromCode.joiningOpen || fromCode.admits) ? (
           // An org admin's code lets them in while it is live (20261028960000).
           `${fromCode.inviterName}${fromCode.organizationName ? ` from ${fromCode.organizationName}` : ''} invited you to The SCI Club. Join with any email or account.`
@@ -423,7 +426,11 @@ function JoinFields({
   inviteAddress,
   closeTo,
 }: FieldsProps & { native: NativeWaysIn; inviteAddress: string | null; closeTo: string | null }) {
-  const emailRef = useAutoFocus();
+  // The invited address is already in: the password is what is left to type,
+  // and selecting the address would let the first key wipe it out.
+  const [addressIn] = useState(() => inviteAddress !== null && data.email.trim() !== '');
+  const emailRef = useAutoFocus<HTMLInputElement>(!addressIn);
+  const passwordRef = useAutoFocus<HTMLInputElement>(addressIn);
   return (
     <>
       <label
@@ -471,6 +478,7 @@ function JoinFields({
         {(input) => (
           <Field
             {...input}
+            ref={passwordRef}
             id="password"
             autoComplete="new-password"
             minLength={MIN_PASSWORD}
