@@ -51,6 +51,22 @@ export function surface(): Surface {
   return isStandalone() ? 'home_screen' : 'browser';
 }
 
+/**
+ * What this copy of the club is running in, in words, for the version line in
+ * Me → Settings (the owner, 2026-11-16: "add to the version line what platform
+ * we are on"): "iPhone app", "Home Screen app on iOS", "Chrome on macOS".
+ */
+export function platformWords(where: Surface, agent: string, touchPoints = 0): string {
+  const os = osOf(agent, touchPoints);
+  if (where === 'app') return os === 'iPadOS' ? 'iPad app' : 'iPhone app';
+  if (where === 'home_screen') {
+    if (os === 'iOS' || os === 'iPadOS' || os === 'Android') return `Home Screen app on ${os}`;
+    return os ? `Installed app on ${os}` : 'Installed app';
+  }
+  const browser = browserOf(agent).name ?? 'A browser';
+  return os ? `${browser} on ${os}` : browser;
+}
+
 /** Null where nothing can be asked: an iPhone's browser, or the store app. */
 export function notificationPermission(): 'allowed' | 'refused' | 'not_asked' | null {
   if (isNative() || !('Notification' in window) || !('PushManager' in window)) return null;
