@@ -73,6 +73,7 @@ describe('segments', () => {
       ...deck,
       makeMember({ displayName: 'Pat Pro', type: 'mentor', injuryType: 'professional' }),
       makeMember({ displayName: 'Fay Family', injuryType: 'family' }),
+      makeMember({ displayName: 'Una Unsure', region: 'Unknown' }),
       makeMember({
         displayName: 'Ada Admin',
         representedOrganizations: [{ id: 'o1', name: 'Club', shortCode: 'CLUB', logoPath: null }],
@@ -82,10 +83,14 @@ describe('segments', () => {
       filterMembers(wider, filters, segment).map((m) => m.displayName);
     expect(names(start)).not.toContain('Pat Pro');
     expect(names(start)).not.toContain('Fay Family');
+    // Unsure of their level too (2026-11-15), unless ticked, or the Unknown level is.
+    expect(names(start)).not.toContain('Una Unsure');
+    expect(names({ ...start, leaveOut: ['professionals', 'family'] })).toContain('Una Unsure');
+    expect(names({ ...start, regions: ['Unknown'] })).toEqual(['Una Unsure']);
     expect(names(start)).toContain('Ada Admin');
     expect(names(start, 'mentors')).toEqual(['Mentor']);
     expect(names({ ...start, leaveOut: ['orgAdmins'] })).toEqual(
-      expect.arrayContaining(['Pat Pro', 'Fay Family']),
+      expect.arrayContaining(['Pat Pro', 'Fay Family', 'Una Unsure']),
     );
     expect(names({ ...start, leaveOut: ['orgAdmins'] })).not.toContain('Ada Admin');
     // Mentors and non-mentors are chips of the same group.
@@ -94,7 +99,9 @@ describe('segments', () => {
     expect(names({ ...start, search: 'Pat' })).toEqual(['Pat Pro']);
     // Where Peers starts is no filter; a change from it is one each.
     expect(activeFilterCount(start)).toBe(0);
-    expect(activeFilterCount({ ...start, leaveOut: ['professionals', 'orgAdmins'] })).toBe(2);
+    expect(
+      activeFilterCount({ ...start, leaveOut: ['professionals', 'unsure', 'orgAdmins'] }),
+    ).toBe(2);
   });
 });
 

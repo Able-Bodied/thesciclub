@@ -654,12 +654,13 @@ export interface MemberFilters {
   search: string;
 }
 
-/** Who can be left out of Peers: mentors or not, those without SCI/D themselves, org admins. */
+/** Who can be left out of Peers: mentors or not, those without SCI/D themselves, those unsure of their level, org admins. */
 export const PEERS_LEFT_OUT = [
   'mentors',
   'nonMentors',
   'professionals',
   'family',
+  'unsure',
   'orgAdmins',
 ] as const;
 export type PeersLeftOut = (typeof PEERS_LEFT_OUT)[number];
@@ -678,11 +679,12 @@ export const EMPTY_MEMBER_FILTERS: MemberFilters = {
 
 /**
  * Where Peers starts, and what Clear goes back to (the owner, 2026-11-12):
- * professionals and family left out, so the deck is members with SCI/D.
+ * professionals and family left out, so the deck is members with SCI/D; and
+ * those unsure of their level (2026-11-15).
  */
 export const DEFAULT_MEMBER_FILTERS: MemberFilters = {
   ...EMPTY_MEMBER_FILTERS,
-  leaveOut: ['professionals', 'family'],
+  leaveOut: ['professionals', 'family', 'unsure'],
 };
 
 /* ------------------------------------------------------------------ events */

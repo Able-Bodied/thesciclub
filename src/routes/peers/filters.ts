@@ -35,6 +35,7 @@ export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
   { id: 'nonMentors', label: 'Non-mentors' },
   { id: 'professionals', label: 'Staff' },
   { id: 'family', label: 'Family & friends' },
+  { id: 'unsure', label: 'Unsure of level' },
   { id: 'orgAdmins', label: 'Org admins' },
 ];
 
@@ -51,6 +52,17 @@ function leftOut(member: BrowseMember, filters: MemberFilters): boolean {
   if (out.has('mentors') && member.type === 'mentor') return true;
   if (out.has('nonMentors') && member.type !== 'mentor') return true;
   if (out.has('family') && member.injuryType === 'family') return true;
+  // Level not sure (region Unknown); staff and family have their own chips, and
+  // ticking the Unknown level asks for these members.
+  if (
+    out.has('unsure') &&
+    member.region === 'Unknown' &&
+    member.injuryType !== 'family' &&
+    member.injuryType !== 'professional' &&
+    !filters.regions.includes('Unknown')
+  ) {
+    return true;
+  }
   return out.has('orgAdmins') && member.representedOrganizations.length > 0;
 }
 
