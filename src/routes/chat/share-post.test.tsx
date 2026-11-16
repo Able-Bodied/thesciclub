@@ -15,10 +15,11 @@ const db = vi.hoisted(() => ({
   members: [] as BrowseMember[],
   shared: [] as { postId: string; target: ShareTarget; authorId: string; line: string }[],
   failure: null as string | null,
+  isAdmin: false,
 }));
 
 vi.mock('@/lib/account', () => ({
-  useAccount: () => ({ status: 'member', userId: 'me', isAdmin: false, displayName: 'Me' }),
+  useAccount: () => ({ status: 'member', userId: 'me', isAdmin: db.isAdmin, displayName: 'Me' }),
 }));
 vi.mock('@/lib/chat/threads', async (importOriginal) => ({
   ...(await importOriginal<typeof Threads>()),
@@ -294,30 +295,28 @@ describe('sharing a post into a conversation', () => {
   });
 });
 
-// The owner, 2026-10-28: a link to send outside the club.
-describe('sharing a link outside the club', () => {
-  it('shares the post’s own page, with none of its words, and says only members can open it', async () => {
-    shared.links = [];
-    renderButton();
+// The owner, 2026-10-28: a link to send outside the club; 2026-11-16: "only
+// admins can share them and only in private discussions, not on any platforms".
+describe('a post’s link outside the club', () => {
+  it('is not offered to a member, and is only copied by an administrator, with none of its words', async () => {
+    db.isAdmin = false;
+    const { unmount } = renderButton();
     await userEvent.click(screen.getByRole('button', { name: /^Share / }));
-    expect(screen.getByText(/Only members can open it/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Share elsewhere' }));
-    expect(shared.links).toHaveLength(1);
-    expect(shared.links[0]?.url).toBe(
-      `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`,
-    );
-    expect(shared.links[0]?.text).not.toContain('cushion');
-    expect(await screen.findByText('Link copied.')).toBeInTheDocument();
-  });
+    expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Share elsewhere' })).not.toBeInTheDocument();
+    unmount();
 
-  it('copies the post’s link with Copy link', async () => {
+    db.isAdmin = true;
     shared.links = [];
     renderButton();
     await userEvent.click(screen.getByRole('button', { name: /^Share / }));
+    expect(screen.queryByRole('button', { name: 'Share elsewhere' })).not.toBeInTheDocument();
+    expect(screen.getByText(/For a private message/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Copy link' }));
-    expect(shared.links[0]?.url).toBe(
-      `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`,
-    );
+    expect(shared.links).toEqual([
+      { url: `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`, text: '' },
+    ]);
     expect(await screen.findByText('Link copied.')).toBeInTheDocument();
+    db.isAdmin = false;
   });
 });
