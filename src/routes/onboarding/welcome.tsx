@@ -64,7 +64,11 @@ export function WelcomeScreen({
           </h2>
 
           <p className="mt-4 [@media(max-height:740px)]:mt-2 text-center font-bold text-[0.9375rem] text-emphasis leading-[1.45]">
-            An app built by people with SCI for people with SCI.
+            An app built{' '}
+            <Link to="/about" className="underline decoration-[1.5px] underline-offset-2">
+              by people with SCI
+            </Link>{' '}
+            for people with SCI.
           </p>
 
           <p className="mt-3.5 [@media(max-height:740px)]:mt-2 text-center text-[0.8875rem] text-ink2 leading-[1.6]">
