@@ -49,6 +49,7 @@ function ShareButton({
               heading={heading}
               what={title}
               link={url}
+              elsewhere
               linkNote={linkNote}
               sendNote="It arrives as a message with its link."
               send={(to, authorId, line) =>

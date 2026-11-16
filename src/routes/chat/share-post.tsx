@@ -43,14 +43,20 @@ export function SharePostButton({
 }: {
   postId: string;
   words: string;
-  /** The post's own page, for a link to send outside the club. */
+  /** The post's own page, for an administrator's link to send outside the club. */
   link?: string;
   /** The topic, when this is its opening post: an administrator can make its link an invite. */
   topicId?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const account = useAccount();
-  const invites = account.status === 'member' && account.isAdmin && topicId ? topicId : null;
+  // The owner, 2026-11-16: "These questions are not meant to be shared, only
+  // admins can share them and only in private discussions, not on any
+  // platforms". A member shares a post inside the club only; an administrator
+  // also gets its link to copy into a private message, and no Share elsewhere.
+  const admin = account.status === 'member' && account.isAdmin;
+  const outside = admin ? link : undefined;
+  const invites = admin && topicId ? topicId : null;
   const what = `“${excerpt(markdownToPlain(words))}”`;
   return (
     <>
@@ -71,9 +77,9 @@ export function SharePostButton({
             <ShareSheet
               heading="Share post"
               what={what}
-              {...(link ? { link } : {})}
+              {...(outside ? { link: outside } : {})}
               {...(invites ? { inviteTopic: invites } : {})}
-              linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
+              linkNote="For a private message to someone, not for posting anywhere. Only members can open it."
               sendNote="Only members who can read the post will see it."
               send={(to, authorId, line) => sharePost(postId, to, authorId, line)}
               onClose={() => {
@@ -102,17 +108,20 @@ function targetKey(target: ShareTarget): string {
 }
 
 /**
- * The link, for outside the club (the owner, 2026-10-28), as two buttons
- * (2026-11-03: "copy a link, or share elsewhere"): Copy link, and the phone's
- * share sheet where there is one.
+ * The link, for outside the club (the owner, 2026-10-28): Copy link, and for
+ * what may go anywhere (an event, an organization) the phone's share sheet
+ * where there is one (2026-11-03: "copy a link, or share elsewhere"). A post's
+ * link is copied only (2026-11-16: "only in private discussions").
  */
 function ShareOutside({
   link,
   note,
+  elsewhere: offerElsewhere,
   inviteTopic,
 }: {
   link: string;
   note: string;
+  elsewhere: boolean;
   /** An administrator sharing a topic, who can make the link an invite. */
   inviteTopic?: string | undefined;
 }) {
@@ -230,7 +239,7 @@ function ShareOutside({
           <Copy aria-hidden="true" className="h-4 w-4" />
           Copy link
         </button>
-        {canShareElsewhere() ? (
+        {offerElsewhere && canShareElsewhere() ? (
           <button
             type="button"
             onClick={() => {
@@ -280,6 +289,7 @@ export function ShareSheet({
   what,
   link,
   linkNote,
+  elsewhere = false,
   inviteTopic,
   sendNote,
   send: deliver,
@@ -289,6 +299,8 @@ export function ShareSheet({
   what: string;
   /** A path in the club or a whole address, for Copy link and Share elsewhere. */
   link?: string;
+  /** Whether the phone's share sheet is offered for the link: not for a post. */
+  elsewhere?: boolean;
   /** The topic an administrator can make the link an invite to (ShareOutside). */
   inviteTopic?: string | undefined;
   linkNote: string;
@@ -403,7 +415,12 @@ export function ShareSheet({
         </div>
 
         {link && !sent ? (
-          <ShareOutside link={link} note={linkNote} inviteTopic={inviteTopic} />
+          <ShareOutside
+            link={link}
+            note={linkNote}
+            elsewhere={elsewhere}
+            inviteTopic={inviteTopic}
+          />
         ) : null}
 
         {sent ? (
