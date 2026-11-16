@@ -18,6 +18,7 @@ import { noteScreen } from '@/lib/page-speed';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import { OpenedNotification } from '@/lib/push/opened-notification';
 import { countVisit } from '@/lib/web-analytics';
+import AboutPage from '@/routes/about/page';
 import DevLoginPage from '@/routes/dev-login/page';
 import HomePage from '@/routes/home/page';
 import DeleteAccountPage from '@/routes/legal/delete-account';
@@ -534,6 +535,14 @@ function AppRoutes() {
           }
         />
         {/* Public, with no account: see src/routes/legal/legal-page.tsx. */}
+        <Route
+          path="/about"
+          element={
+            <InLight>
+              <AboutPage />
+            </InLight>
+          }
+        />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/delete-account" element={<DeleteAccountPage />} />
