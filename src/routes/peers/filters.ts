@@ -33,8 +33,8 @@ import {
 export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
   { id: 'mentors', label: 'Mentors' },
   { id: 'nonMentors', label: 'Non-mentors' },
-  { id: 'professionals', label: 'Professionals' },
-  { id: 'family', label: 'Family members' },
+  { id: 'professionals', label: 'Staff' },
+  { id: 'family', label: 'Family & friends' },
   { id: 'orgAdmins', label: 'Org admins' },
 ];
 
