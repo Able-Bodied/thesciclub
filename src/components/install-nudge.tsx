@@ -2,6 +2,7 @@ import { Download, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { OpenInAppButton } from '@/components/open-in-app';
+import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import {
   APP_STORE_PAGE,
@@ -10,6 +11,7 @@ import {
   markAppNoteSeen,
   onIphoneHomeScreen,
 } from '@/lib/app-handoff';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import {
   currentAppleDevice,
@@ -17,11 +19,14 @@ import {
   INSTALL_STEPS,
   type InstallPlatform,
   isHandheld,
-  NUDGE_SNOOZE_DAYS,
+  laterVisit,
   nudgeSnoozed,
+  snoozedFor,
   snoozeNudge,
   useInstallPrompt,
 } from '@/lib/install';
+import { loadNotifications } from '@/lib/notifications';
+import { SENT_EVENT } from '@/lib/push/notifications';
 import { isNative } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
@@ -37,17 +42,23 @@ import { getSupabase } from '@/lib/supabase';
  * (src/lib/home-screen-handoff.ts), and added before, it starts at the doors.
  *
  * A card above the tab bar rather than a box over the screen: it pushes the
- * page up instead of covering it, and it is closed with one press, which
- * snoozes it for three days (the owner, 2026-10-11; it was two weeks). Me,
- * then Settings, keeps the same steps for whenever somebody wants them. Where the browser offers its own install
+ * page up instead of covering it, and it is closed with one press, Not now,
+ * which hides it for a week, then a month, then for good (the owner,
+ * 2026-11-16; NUDGE_SNOOZES_DAYS). Me, then Settings, keeps the same steps for
+ * whenever somebody wants them. Where the browser offers its own install
  * prompt (Chrome and Samsung Internet on Android), the button is Install and
  * shows that prompt; everywhere else it shows the steps for this browser.
  *
  * Only on mobile browsers (the owner, 2026-10-10), regardless of viewport
  * width: narrowing a desktop window must not show it, and a wide phone
- * must still offer installation. Not in the installed app or the first moments
- * after a screen opens, so it is not the first thing anybody sees. Never in
- * the store app, which is already installed.
+ * must still offer installation. Not in the installed app, and not on the
+ * member's first visit (laterVisit; the owner, 2026-11-16: asking then kept
+ * people from the club), nor in the first moments after a screen opens. Never
+ * in the store app, which is already installed.
+ *
+ * In an iPhone browser it also comes at the two moments the app clearly helps,
+ * first visit or not: somebody wrote to the member, or they tapped Going on an
+ * event (useAppMoment).
  */
 export function InstallNudge() {
   return isNative() ? null : <BrowserInstallNudge />;
@@ -58,6 +69,9 @@ function BrowserInstallNudge() {
   const [platform] = useState<InstallPlatform>(() => currentInstallPlatform());
   const [ready, setReady] = useState(false);
   const [dismissed, setDismissed] = useState(() => nudgeSnoozed());
+  const [later] = useState(() => laterVisit());
+  const iphoneBrowser = appCouldOpen();
+  const moment = useAppMoment(iphoneBrowser && !dismissed);
   const [showing, setShowing] = useState(false);
   // The club on an iPhone's Home Screen: told of the app once (the owner,
   // 2026-11-15), and never again after Not now or Open in the app.
@@ -93,19 +107,20 @@ function BrowserInstallNudge() {
 
   // An iPhone browser: the club's own app, not the website on the Home Screen
   // (the owner, 2026-11-15). Me, then Settings, still has the Home Screen steps.
-  if (appCouldOpen()) {
-    return dismissed || !ready ? null : (
+  if (iphoneBrowser) {
+    return dismissed || (moment === null && !(ready && later)) ? null : (
       <AppNudge
+        moment={moment}
         onNotNow={() => {
-          snoozeNudge();
+          const days = snoozeNudge();
           setDismissed(true);
-          announce(`Hidden for ${NUDGE_SNOOZE_DAYS} days.`);
+          announce(snoozedFor(days));
         }}
       />
     );
   }
 
-  if (installed || dismissed || !ready) {
+  if (installed || dismissed || !ready || !later) {
     return showing ? (
       <InstallSheet
         platform={platform}
@@ -117,9 +132,9 @@ function BrowserInstallNudge() {
   }
 
   function notNow() {
-    snoozeNudge();
+    const days = snoozeNudge();
     setDismissed(true);
-    announce(`Hidden for ${NUDGE_SNOOZE_DAYS} days. The steps are on Me, under Settings.`);
+    announce(`${snoozedFor(days)} The steps are on Me, under Settings.`);
   }
 
   return (
@@ -184,6 +199,60 @@ function BrowserInstallNudge() {
   );
 }
 
+/** A moment the app clearly helps with (the owner, 2026-11-16). */
+type AppMoment = { kind: 'wrote'; name: string | null } | { kind: 'going' };
+
+// What somebody writing to the member is notified as.
+const WROTE = new Set(['direct', 'group', 'reply', 'reply_participant', 'mention']);
+
+const ignore = () => undefined;
+
+/**
+ * Somebody wrote to the member while the club was open ("Dana wrote to you.
+ * Get the app so you know next time."), or they tapped Going on an event ("Get
+ * a reminder before it starts"). Heard from their notifications as they
+ * arrive, and from Going's SENT_EVENT. Only while `watching`: an iPhone
+ * browser, with the card not hidden. The first moment stays.
+ */
+function useAppMoment(watching: boolean): AppMoment | null {
+  const account = useAccount();
+  const memberId = watching && account.status === 'member' ? account.userId : null;
+  const [moment, setMoment] = useState<AppMoment | null>(null);
+  const named = useRef(false);
+
+  useEffect(() => {
+    if (!watching) return;
+    function sent(event: Event) {
+      if ((event as CustomEvent<unknown>).detail === 'going')
+        setMoment((now) => now ?? { kind: 'going' });
+    }
+    window.addEventListener(SENT_EVENT, sent);
+    return () => {
+      window.removeEventListener(SENT_EVENT, sent);
+    };
+  }, [watching]);
+
+  useRealtimeRows({
+    table: 'notifications',
+    filter: memberId ? `member_id=eq.${memberId}` : undefined,
+    enabled: memberId !== null,
+    onChange: ignore,
+    onReturn: ignore,
+    onRow: (row, event) => {
+      if (event !== 'INSERT' || !WROTE.has(String(row.kind)) || named.current) return;
+      named.current = true;
+      // The row holds only ids; the list reads the name.
+      void loadNotifications().then((result) => {
+        const found = result.ok ? result.notifications.find((n) => n.id === row.id) : undefined;
+        const name = found?.actorName?.match(/\S+/)?.[0] ?? null;
+        setMoment((now) => now ?? { kind: 'wrote', name });
+      });
+    },
+  });
+
+  return moment;
+}
+
 /**
  * Whether the club knows this member has the iPhone app (the owner,
  * 2026-11-15: "If ... the app is not installed it should say install and not
@@ -225,9 +294,12 @@ function AppNudge({
   onNotNow,
   onOpen,
   fromHomeScreen = false,
+  moment = null,
 }: {
   onNotNow: () => void;
   onOpen?: () => void;
+  /** Said as what just happened, in place of the usual words. */
+  moment?: AppMoment | null;
   /** In the Home Screen copy, which is told once, as news. */
   fromHomeScreen?: boolean;
 }) {
@@ -254,12 +326,24 @@ function AppNudge({
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-extrabold font-head text-[0.9375rem] text-ink leading-[1.3]">
-            {fromHomeScreen ? 'The club now has an iPhone app' : 'Get the club’s iPhone app'}
+            {moment?.kind === 'wrote'
+              ? `${moment.name ?? 'Somebody'} wrote to you`
+              : moment?.kind === 'going'
+                ? 'Get a reminder before it starts'
+                : fromHomeScreen
+                  ? 'The club now has an iPhone app'
+                  : 'Get the club’s iPhone app'}
           </p>
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-            {fromHomeScreen
-              ? 'The same club, from the App Store, with notifications.'
-              : 'The club in one tap, with notifications.'}
+            {moment?.kind === 'wrote'
+              ? hasApp
+                ? 'The app tells you next time, with a notification.'
+                : 'Get the app so you know next time.'
+              : moment?.kind === 'going'
+                ? 'The club’s iPhone app can send you one.'
+                : fromHomeScreen
+                  ? 'The same club, from the App Store, with notifications.'
+                  : 'The club in one tap, with notifications.'}
           </p>
           {hasApp ? (
             <>

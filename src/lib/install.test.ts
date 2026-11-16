@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  appleDevice,
-  installPlatform,
-  NUDGE_SNOOZE_DAYS,
-  nudgeSnoozed,
-  snoozeNudge,
-} from '@/lib/install';
+import { appleDevice, installPlatform, nudgeSnoozed, snoozeNudge } from '@/lib/install';
 
 const UA = {
   safari:
@@ -54,12 +48,28 @@ describe('not now', () => {
     localStorage.clear();
   });
 
-  it(`lasts ${NUDGE_SNOOZE_DAYS} days, then asks again`, () => {
-    const now = Date.UTC(2026, 9, 10);
+  // The owner, 2026-11-16: each Not now longer than the last, then it stops.
+  it('lasts a week, then a month, then for good', () => {
+    const day = 86_400_000;
+    let now = Date.UTC(2026, 9, 10);
     expect(nudgeSnoozed(now)).toBe(false);
-    snoozeNudge(now);
-    expect(nudgeSnoozed(now + (NUDGE_SNOOZE_DAYS - 1) * 86_400_000)).toBe(true);
-    expect(nudgeSnoozed(now + (NUDGE_SNOOZE_DAYS + 1) * 86_400_000)).toBe(false);
+    expect(snoozeNudge(now)).toBe(7);
+    expect(nudgeSnoozed(now + 6 * day)).toBe(true);
+    now += 8 * day;
+    expect(nudgeSnoozed(now)).toBe(false);
+    expect(snoozeNudge(now)).toBe(30);
+    expect(nudgeSnoozed(now + 29 * day)).toBe(true);
+    now += 31 * day;
+    expect(nudgeSnoozed(now)).toBe(false);
+    expect(snoozeNudge(now)).toBeNull();
+    expect(nudgeSnoozed(now + 3650 * day)).toBe(true);
+  });
+
+  it('counts the old three-day snooze as the first Not now', () => {
+    const now = Date.UTC(2026, 10, 1);
+    localStorage.setItem('club:install-nudge-snoozed', String(now));
+    expect(nudgeSnoozed(now + 6 * 86_400_000)).toBe(true);
+    expect(snoozeNudge(now + 8 * 86_400_000)).toBe(30);
   });
 });
 
