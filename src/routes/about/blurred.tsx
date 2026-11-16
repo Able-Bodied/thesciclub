@@ -14,8 +14,15 @@ export const STAND_IN_MONTH = 'June';
 export function Blurred({ children }: { children: string }) {
   return (
     <>
-      <span aria-hidden="true" className="select-none blur-[5px]">
-        {children}
+      {/* A faint pill of the text's own colour behind it, so it reads as
+          hidden on a photograph as well as on paper: white text blurred on
+          a dark photo was all but gone. */}
+      <span
+        aria-hidden="true"
+        className="inline-block select-none rounded-[6px] px-1 align-baseline leading-tight [text-shadow:none]"
+        style={{ backgroundColor: 'color-mix(in srgb, currentColor 22%, transparent)' }}
+      >
+        <span className="inline-block blur-[4px]">{children}</span>
       </span>
       <span className="sr-only">hidden</span>
     </>
