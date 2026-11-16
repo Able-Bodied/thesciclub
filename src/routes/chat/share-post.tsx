@@ -173,32 +173,8 @@ function ShareOutside({
     'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-[1.6px] border-emphasis bg-paper px-3 font-bold text-[0.9375rem] text-emphasis hover:bg-tint';
   return (
     <div className="mt-4 rounded-[14px] bg-tint p-3">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            void copy();
-          }}
-          className={button}
-        >
-          <Copy aria-hidden="true" className="h-4 w-4" />
-          Copy link
-        </button>
-        {canShareElsewhere() ? (
-          <button
-            type="button"
-            onClick={() => {
-              void elsewhere();
-            }}
-            className={button}
-          >
-            <Share aria-hidden="true" className="h-4 w-4" />
-            Share elsewhere
-          </button>
-        ) : null}
-      </div>
       {inviteTopic ? (
-        <div className="mt-3 flex items-center gap-3 rounded-xl bg-paper p-3">
+        <div className="mb-3 flex items-center gap-3 rounded-xl bg-paper p-3">
           <div className="min-w-0 flex-1">
             <p
               id={`${switchId}-label`}
@@ -233,6 +209,30 @@ function ShareOutside({
           </button>
         </div>
       ) : null}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            void copy();
+          }}
+          className={button}
+        >
+          <Copy aria-hidden="true" className="h-4 w-4" />
+          Copy link
+        </button>
+        {canShareElsewhere() ? (
+          <button
+            type="button"
+            onClick={() => {
+              void elsewhere();
+            }}
+            className={button}
+          >
+            <Share aria-hidden="true" className="h-4 w-4" />
+            Share elsewhere
+          </button>
+        ) : null}
+      </div>
       <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
         {invite
           ? `Anyone who opens it before ${untilWords(invite.until)} can join the club, then sees it. After that, only members can.`
@@ -247,13 +247,17 @@ function ShareOutside({
   );
 }
 
-/** "Tuesday at 3:00 PM", for when an invite link stops letting people in. */
-function untilWords(when: Date): string {
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: 'long',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(when);
+/** "3:00 PM tomorrow", or "Tuesday at 3:00 PM", for when an invite link stops letting people in. */
+function untilWords(when: Date, now: Date = new Date()): string {
+  const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(
+    when,
+  );
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (when.toDateString() === now.toDateString()) return `${time} today`;
+  if (when.toDateString() === tomorrow.toDateString()) return `${time} tomorrow`;
+  const day = new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(when);
+  return `${day} at ${time}`;
 }
 
 /**
