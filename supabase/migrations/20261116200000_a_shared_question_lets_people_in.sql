@@ -158,11 +158,13 @@ comment on function public.signup_needs_an_invite(jsonb) is
 revoke execute on function public.signup_needs_an_invite(jsonb) from public, anon, authenticated;
 grant execute on function public.signup_needs_an_invite(jsonb) to supabase_auth_admin;
 
--- The code for an administrator's share of a question, or any topic: the one they made for it
--- within the hour, so turning the toggle off and on again is one code, or a new
--- one, live for 24 hours. Its note names the question in the codes list.
-create or replace function public.share_topic_code(p_topic uuid)
-returns table (code text, expires_at timestamptz)
+-- The code for an administrator's share of a question, or any topic: the live
+-- one they made for it within the hour, so sharing it twice is one code, or a
+-- new one, live for 24 hours. Its note names the question in the codes list.
+-- Its id is for turning it off (turn_off_qr_code) when the switch is turned off.
+drop function if exists public.share_topic_code(uuid);
+create function public.share_topic_code(p_topic uuid)
+returns table (id uuid, code text, expires_at timestamptz)
 language plpgsql
 security definer
 set search_path = ''
@@ -200,7 +202,7 @@ begin
     )
     returning * into made;
   end if;
-  return query select made.code, made.expires_at;
+  return query select made.id, made.code, made.expires_at;
 end;
 $$;
 

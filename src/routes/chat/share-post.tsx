@@ -12,7 +12,7 @@ import type { ChatThread } from '@/lib/chat/types';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { markdownToPlain } from '@/lib/markdown';
 import { useBrowseMembers } from '@/lib/members';
-import { linkWithCode, shareTopicCode } from '@/lib/qr-codes';
+import { linkWithCode, shareTopicCode, turnOffQrCode } from '@/lib/qr-codes';
 import { matchesSearch } from '@/lib/search';
 import { canShareElsewhere, copyLink, shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site-origin';
@@ -118,7 +118,7 @@ function ShareOutside({
 }) {
   const announce = useAnnounce();
   const [said, setSaid] = useState<string | null>(null);
-  const [invite, setInvite] = useState<{ code: string; until: Date } | null>(null);
+  const [invite, setInvite] = useState<{ id: string; code: string; until: Date } | null>(null);
   const [making, setMaking] = useState(false);
   const switchId = useId();
   const plain = link.startsWith('/') ? `${siteOrigin()}${link}` : link;
@@ -129,9 +129,19 @@ function ShareOutside({
   // sheet opens: the plain link is the one that leaks nothing.
   async function toggleInvite(on: boolean) {
     setSaid(null);
+    // Off turns the code off too, so a link already copied stops letting
+    // people in: what an administrator turning it off means.
     if (!on) {
+      if (!invite) return;
+      setMaking(true);
+      const off = await turnOffQrCode(invite.id);
+      setMaking(false);
+      if (!off.ok) {
+        setSaid(off.error);
+        return;
+      }
       setInvite(null);
-      announce('The link no longer lets people join.');
+      announce('The link no longer lets people join, wherever it was sent.');
       return;
     }
     if (!inviteTopic) return;
@@ -142,7 +152,7 @@ function ShareOutside({
       setSaid(made.error);
       return;
     }
-    setInvite({ code: made.code, until: made.expiresAt });
+    setInvite({ id: made.id, code: made.code, until: made.expiresAt });
     announce(`Anyone with the link can join the club until ${untilWords(made.expiresAt)}.`);
   }
 
@@ -235,7 +245,7 @@ function ShareOutside({
       </div>
       <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
         {invite
-          ? `It works as an invite until ${untilWords(invite.until)}. After that, only members can open it.`
+          ? `It works as an invite until ${untilWords(invite.until)}, or until you turn this off. Then it is an ordinary link, for members only.`
           : note}
       </p>
       {said ? (
