@@ -104,10 +104,14 @@ describe('reviews on a page', () => {
     expect(screen.queryByRole('link', { name: /Maya/ })).toBeNull();
   });
 
-  it('says which date a review from another of the series is of', async () => {
+  // The owner, 2026-11-16: and opens it.
+  it('says which date a review from another of the series is of, and links to it', async () => {
     api.rows = [row({ event_id: 'e0', event_title: 'Climbing, last month' })];
     section();
-    expect(await screen.findByText(/Climbing, last month/)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Climbing, last month' })).toHaveAttribute(
+      'href',
+      '/events/e0',
+    );
   });
 
   it('lets an org admin reply, and anybody report', async () => {
