@@ -381,7 +381,7 @@ export function JoinStep({
         {invited && goingFromInvite ? (
           'Invite accepted: you’re going. Join with any email or account to finish. What you entered is saved for the next steps.'
         ) : invited ? (
-          `${inviteFrom ? `${inviteFrom} invited you.` : 'You have an invitation.'} Join with any email or account, and it will be waiting.`
+          `${inviteFrom ? `${inviteFrom} invited you.` : 'You have an invite.'} Join with any email or account.`
         ) : fromCode && (fromCode.joiningOpen || fromCode.admits) ? (
           // An org admin's code lets them in while it is live (20261028960000).
           `${fromCode.inviterName}${fromCode.organizationName ? ` from ${fromCode.organizationName}` : ''} invited you to The SCI Club. Join with any email or account.`
