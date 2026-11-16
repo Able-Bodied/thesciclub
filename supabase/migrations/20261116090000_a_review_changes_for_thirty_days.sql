@@ -1,4 +1,4 @@
--- A review can be changed for 5 days after it is posted (the owner, 2026-11-16).
+-- A review can be changed for 30 days after it is posted (the owner, 2026-11-16).
 -- After that it can still be deleted. Probe: supabase/tests/review-edit-window.sql.
 
 create or replace function public.save_review(
@@ -68,9 +68,9 @@ begin
     end if;
   end loop;
 
-  -- Changes for 5 days after posting (the owner, 2026-11-16); deleting stays open.
-  if was.id is not null and was.created_at < now() - interval '5 days' then
-    raise exception 'A review can be changed for 5 days after it is posted.' using errcode = '42501';
+  -- Changes for 30 days after posting (the owner, 2026-11-16); deleting stays open.
+  if was.id is not null and was.created_at < now() - interval '30 days' then
+    raise exception 'A review can be changed for 30 days after it is posted.' using errcode = '42501';
   end if;
 
   if was.id is null then

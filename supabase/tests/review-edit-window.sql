@@ -1,5 +1,5 @@
 -- ============================================================================
--- A review changes for 5 days after it is posted (20261116090000)
+-- A review changes for 30 days after it is posted (20261116090000)
 -- ============================================================================
 -- Every check raises on failure. Rolls back.
 -- ============================================================================
@@ -19,7 +19,7 @@ insert into public.members (id, type, status, display_name, phone, birth_date, l
 values ('aaaaaaaa-1611-0000-0000-00000000000a', 'peer', 'active', 'Probe Reviewer', '15105551611', '1980-01-01', 'C5–C8', 'CA');
 insert into public.events (id, title, host_name, start_time) values
   ('eeeeeeee-1611-0000-0000-000000000001', 'Probe fresh', 'Probe', now() - interval '2 days'),
-  ('eeeeeeee-1611-0000-0000-000000000002', 'Probe old', 'Probe', now() - interval '9 days');
+  ('eeeeeeee-1611-0000-0000-000000000002', 'Probe old', 'Probe', now() - interval '40 days');
 insert into public.event_check_ins (event_id, member_id) values
   ('eeeeeeee-1611-0000-0000-000000000001', 'aaaaaaaa-1611-0000-0000-00000000000a'),
   ('eeeeeeee-1611-0000-0000-000000000002', 'aaaaaaaa-1611-0000-0000-00000000000a');
@@ -30,24 +30,26 @@ set local role authenticated;
 select public.save_review('eeeeeeee-1611-0000-0000-000000000001', null, 3, 'Fine', false, false, '[]');
 select public.save_review('eeeeeeee-1611-0000-0000-000000000002', null, 3, 'Fine', false, false, '[]');
 
--- The second one was posted 6 days ago.
+-- The first was posted 29 days ago, the second 31.
 reset role;
-update public.reviews set created_at = now() - interval '6 days'
+update public.reviews set created_at = now() - interval '29 days'
+ where event_id = 'eeeeeeee-1611-0000-0000-000000000001';
+update public.reviews set created_at = now() - interval '31 days'
  where event_id = 'eeeeeeee-1611-0000-0000-000000000002';
 set local role authenticated;
 
 select public.save_review('eeeeeeee-1611-0000-0000-000000000001', null, 5, 'Better', false, false, '[]');
 reset role;
 select pg_temp.check((select rating = 5 from public.reviews where event_id = 'eeeeeeee-1611-0000-0000-000000000001'),
-  'a review changes within 5 days');
+  'a review changes within 30 days');
 set local role authenticated;
 
 do $$
 begin
   perform public.save_review('eeeeeeee-1611-0000-0000-000000000002', null, 1, 'Changed', false, false, '[]');
-  raise exception 'FAIL: a review changed after 5 days';
+  raise exception 'FAIL: a review changed after 30 days';
 exception when insufficient_privilege then
-  raise notice 'ok: a review does not change after 5 days';
+  raise notice 'ok: a review does not change after 30 days';
 end $$;
 
 reset role;

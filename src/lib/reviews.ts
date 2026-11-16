@@ -19,7 +19,7 @@ export interface ReviewTarget {
 
 export const MAX_REVIEW_PHOTOS = 4;
 /** Days a review can be changed after posting; deleting has no limit (20261116090000). */
-export const CHANGE_DAYS = 5;
+export const CHANGE_DAYS = 30;
 
 export function canChangeReview(review: Pick<Review, 'createdAt'>, now = Date.now()): boolean {
   return now - new Date(review.createdAt).getTime() < CHANGE_DAYS * 86_400_000;

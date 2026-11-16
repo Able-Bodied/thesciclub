@@ -1,4 +1,4 @@
--- Undo for 20261116090000_a_review_changes_for_five_days.sql: no time limit again.
+-- Undo for 20261116090000_a_review_changes_for_thirty_days.sql: no time limit again.
 create or replace function public.save_review(
   p_event uuid,
   p_organization uuid,
