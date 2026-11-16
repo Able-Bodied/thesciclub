@@ -1,7 +1,11 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { currentAppleDevice } from '@/lib/install';
-import { markNotificationsAsked, useDeviceNotifications } from '@/lib/push/notifications';
+import {
+  type AskReason,
+  markNotificationsAsked,
+  useDeviceNotifications,
+} from '@/lib/push/notifications';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 
 /**
@@ -30,9 +34,12 @@ import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/on
  */
 export function NotificationsStep({
   userId,
+  reason = 'sent',
   onDone,
 }: {
   userId: string | null;
+  /** What was just done: sent something, or Going on an event. */
+  reason?: AskReason;
   onDone: () => void;
 }) {
   const { state, busy, error, turnOn } = useDeviceNotifications(userId);
@@ -83,12 +90,16 @@ export function NotificationsStep({
       <Question>
         {install
           ? `Get notifications on your ${currentAppleDevice()}`
-          : 'Get notified when they reply?'}
+          : reason === 'going'
+            ? 'Get a reminder before it starts?'
+            : 'Get notified when they reply?'}
       </Question>
       <Sub>
         {install
           ? 'Add the club to your Home Screen: tap Share, then Add to Home Screen, and open it from there. You will sign in once more inside the app.'
-          : 'Turn on notifications and you will know as soon as somebody responds to what you sent. You can change this any time on Me.'}
+          : reason === 'going'
+            ? 'Turn on notifications and the club will remind you before the event. You can change this any time on Me.'
+            : 'Turn on notifications and you will know as soon as somebody responds to what you sent. You can change this any time on Me.'}
       </Sub>
     </StepFrame>
   );

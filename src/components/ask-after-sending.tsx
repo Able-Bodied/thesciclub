@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useForceLight } from '@/lib/accessibility';
 import { useAccount } from '@/lib/account';
 import {
+  type AskReason,
   appOpeningFacts,
   isAppPush,
   mayAskForNotifications,
@@ -18,20 +19,25 @@ import { NotificationsStep } from '@/routes/onboarding/notifications-step';
  * it used to, the first time the installed app opened (2026-10-05), before
  * there was anything to be told about.
  *
+ * Going on an event asks too, as "Get a reminder before it starts?" (the
+ * owner, 2026-11-15): a member who only reads is asked there or never.
+ *
  * Asked where it can be answered (`mayAskForNotifications`): the installed app
  * or the iPhone app, while the phone has not said yes or no, and not within
  * five days of Not now. NotificationsStep remembers that this phone was asked.
  * Over the page, which is still there underneath once it is answered.
  */
 export function AskAfterSending({ children }: { children: React.ReactNode }) {
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState<AskReason | null>(null);
   useEffect(() => {
     let live = true;
-    function sent() {
+    function sent(event: Event) {
+      const reason: AskReason =
+        (event as CustomEvent<unknown>).detail === 'going' ? 'going' : 'sent';
       const facts = isAppPush() ? appOpeningFacts() : Promise.resolve(openingFacts());
       facts.then(
         (known) => {
-          if (live && mayAskForNotifications(known)) setAsking(true);
+          if (live && mayAskForNotifications(known)) setAsking(reason);
         },
         () => undefined,
       );
@@ -43,22 +49,22 @@ export function AskAfterSending({ children }: { children: React.ReactNode }) {
     };
   }, []);
   const done = useCallback(() => {
-    setAsking(false);
+    setAsking(null);
   }, []);
   return (
     <>
       {children}
-      {asking ? <Asking onDone={done} /> : null}
+      {asking ? <Asking reason={asking} onDone={done} /> : null}
     </>
   );
 }
 
-function Asking({ onDone }: { onDone: () => void }) {
+function Asking({ reason, onDone }: { reason: AskReason; onDone: () => void }) {
   useForceLight();
   const { userId } = useAccount();
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-canvas">
-      <NotificationsStep userId={userId} onDone={onDone} />
+      <NotificationsStep userId={userId} reason={reason} onDone={onDone} />
     </div>
   );
 }

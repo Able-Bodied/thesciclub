@@ -4,6 +4,7 @@ import type { EventWhen } from '@/lib/event-over';
 import { preparePhoto } from '@/lib/image';
 import { useKeptRead } from '@/lib/kept-reads';
 import { PHOTOS_BUCKET } from '@/lib/photos';
+import { noteSent } from '@/lib/push/notifications';
 import { readInBatches, readPages } from '@/lib/read-pages';
 import { calendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
@@ -600,7 +601,10 @@ export async function setRsvp(
         { event_id: eventId, member_id: memberId, status },
         { onConflict: 'event_id,member_id' },
       );
-    return error ? { ok: false, error: describeError(error, RSVP_REFUSAL) } : { ok: true };
+    if (error) return { ok: false, error: describeError(error, RSVP_REFUSAL) };
+    // Going: "Get a reminder before it starts?" (AskAfterSending).
+    if (status === 'going') noteSent('going');
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, RSVP_REFUSAL) };
   }

@@ -110,6 +110,16 @@ describe('after the first message, reply or topic', () => {
     expect(document.documentElement.dataset.forceLight).toBeUndefined();
   });
 
+  it('asks for a reminder when they tap Going on an event', async () => {
+    renderClub();
+    await act(async () => {
+      noteSent('going');
+      await Promise.resolve();
+    });
+    expect(await screen.findByText('Get a reminder before it starts?')).toBeInTheDocument();
+    expect(screen.queryByText(QUESTION)).toBeNull();
+  });
+
   it('asks in the iPhone app once iOS has answered', async () => {
     db.app = true;
     renderClub();
