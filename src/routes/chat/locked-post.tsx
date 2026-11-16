@@ -12,8 +12,10 @@ const LINES = ['w-full', 'w-[92%]', 'w-full', 'w-[78%]', 'w-[86%]', 'w-[54%]'];
  * sent to the browser could be read past any blur, and the club is private.
  */
 export function LockedPost({ door }: { door: string }) {
-  // A link an administrator shared to let people in (20261116200000): who it
-  // is from, so somebody who came by it knows they may join.
+  // A link an administrator shared to let people in (20261116200000), so
+  // somebody who came by it knows they may join, and is asked to help answer
+  // (the owner, 2026-11-16: "Help answer inside theSCIClub and contribute to
+  // our knowledge base").
   const [inviter, setInviter] = useState<string | null>(null);
   useEffect(() => {
     const code = new URLSearchParams(door.split('?')[1] ?? '').get(QR_PARAM);
@@ -62,12 +64,12 @@ export function LockedPost({ door }: { door: string }) {
         <section className="z-10 mx-3 my-16 self-center rounded-[16px] border border-line bg-paper px-5 py-6 text-center shadow-lg [grid-area:1/1]">
           <h1 className="font-extrabold font-display text-[1.3125rem] text-ink leading-tight">
             {inviter
-              ? `${inviter} invited you to The SCI Club`
+              ? 'Help answer inside The SCI Club'
               : 'Please sign in or join to see this post'}
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
             {inviter
-              ? 'Join to see this post. The club is a private community for people with spinal cord injury.'
+              ? 'Join to see it and contribute to our knowledge base. The club is a private community for people with spinal cord injury.'
               : "It's in The SCI Club, a private community for people with spinal cord injury."}
           </p>
           <Link

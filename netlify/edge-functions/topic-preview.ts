@@ -42,14 +42,18 @@ export function questionTitle(title: string): string {
   return `${(atWord > 60 ? cut.slice(0, atWord) : cut).replace(/[\s,.;:–-]+$/, '')}…`;
 }
 
-/** A question shared to let people in: its words, and who shared it. */
+/**
+ * A question shared to let people in: its words, and a call to answer it (the
+ * owner, 2026-11-16: "Help answer inside theSCIClub and contribute to our
+ * knowledge base", in place of who invited them).
+ */
 export function sharedQuestionPage(
   shared: { title: string; inviter_name: string },
   url: string,
 ): string {
   const title = escaped(questionTitle(shared.title));
   const description = escaped(
-    `${shared.inviter_name} invited you to The SCI Club, a private community for people with spinal cord injury. Open the link to join and see the answers.`,
+    'Help answer inside The SCI Club and contribute to our knowledge base.',
   );
   return `<!doctype html>
 <html lang="en">
