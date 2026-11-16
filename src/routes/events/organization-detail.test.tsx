@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -115,6 +115,29 @@ describe('its upcoming events', () => {
     await userEvent.click(screen.getByRole('button', { name: '3 more' }));
     expect(screen.getByText('Event 7')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /more$/ })).toBeNull();
+    calendar.events = [];
+  });
+
+  // The owner, 2026-11-16: the latest past one, then 10 more, then the rest.
+  it('shows the latest past event, then 10 more, then all of them', async () => {
+    const before = (i: number) =>
+      makeEvent({
+        id: `p${i}`,
+        title: `Past ${i}`,
+        organizationId: 'nt',
+        startTime: new Date(Date.now() - (i + 2) * 86_400_000).toISOString(),
+      });
+    calendar.events = Array.from({ length: 15 }, (_, i) => before(i));
+    renderOrganization();
+    const past = await screen.findByRole('region', { name: 'Past events' });
+    expect(within(past).getByText('Past 0')).toBeInTheDocument();
+    expect(within(past).queryByText('Past 1')).toBeNull();
+    await userEvent.click(within(past).getByRole('button', { name: 'Show 10 more' }));
+    expect(within(past).getByText('Past 10')).toBeInTheDocument();
+    expect(within(past).queryByText('Past 11')).toBeNull();
+    await userEvent.click(within(past).getByRole('button', { name: 'Show all 15 past events' }));
+    expect(within(past).getByText('Past 14')).toBeInTheDocument();
+    expect(within(past).queryByRole('button', { name: /^Show/ })).toBeNull();
     calendar.events = [];
   });
 

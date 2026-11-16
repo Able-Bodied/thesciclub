@@ -34,8 +34,12 @@ import { PlaceContact } from '@/routes/events/place-contact';
 import { EventDescription } from '@/routes/events/rich-text';
 import { ShareOrganizationButton } from '@/routes/events/share-event';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
+import type { ClubEvent } from '@/types/domain';
 
 const UPCOMING_SHOWN = 5;
+/** Past events: the latest, then 10 more, then all (the owner, 2026-11-16). */
+const PAST_FIRST = 1;
+const PAST_MORE = 10;
 
 /**
  * One organization, from `orgPage()` in the mock: who they are, the members who
@@ -59,6 +63,7 @@ export default function OrganizationDetailPage() {
   const memberId = account.status === 'member' ? account.userId : null;
   const [additions, setAdditions] = useState(0);
   const [allUpcoming, setAllUpcoming] = useState(false);
+  const [pastShown, setPastShown] = useState(PAST_FIRST);
   const [reviewsRead, setReviewsRead] = useState(0);
   const count = useOrganizationMemberCount(id, additions);
   const denial = useMyDenial(id, memberId);
@@ -123,6 +128,17 @@ export default function OrganizationDetailPage() {
     )
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
   const hiddenUpcoming = allUpcoming ? 0 : Math.max(0, upcoming.length - UPCOMING_SHOWN);
+  const past = events
+    .filter(
+      (event) =>
+        (event.organizationId === organization.id || event.cohostIds.includes(organization.id)) &&
+        isPastEvent(event),
+    )
+    .sort((a, b) => b.startTime.localeCompare(a.startTime));
+  const hiddenPast = Math.max(0, past.length - pastShown);
+  const openEvent = (eventId: string) => {
+    void navigate(`/events/${eventId}`);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -242,37 +258,9 @@ export default function OrganizationDetailPage() {
             <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
               Upcoming
             </h2>
-            {upcoming.slice(0, upcoming.length - hiddenUpcoming).map((event) => {
-              const tile = dateTileParts(event.startTime, event.timezone);
-              return (
-                <button
-                  key={event.id}
-                  type="button"
-                  onClick={() => {
-                    void navigate(`/events/${event.id}`);
-                  }}
-                  className="mb-[11px] flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
-                >
-                  <span className="block w-[46px] flex-none rounded-[12px] bg-tint py-1.5 text-center">
-                    <span className="block font-extrabold font-head text-[1.1875rem] text-emphasis leading-[1.15]">
-                      {tile.day}
-                    </span>
-                    <span className="block font-extrabold text-[0.625rem] text-ink2 tracking-[0.09em]">
-                      {tile.mon}
-                    </span>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold font-head text-[0.90625rem] text-ink leading-[1.25]">
-                      {event.title}
-                    </span>
-                    <span className="block text-[0.78125rem] text-grey">
-                      {[event.city, event.city ? event.state : null].filter(Boolean).join(', ')}
-                    </span>
-                  </span>
-                  <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
-                </button>
-              );
-            })}
+            {upcoming.slice(0, upcoming.length - hiddenUpcoming).map((event) => (
+              <EventRow key={event.id} event={event} onOpen={openEvent} />
+            ))}
             {hiddenUpcoming > 0 ? (
               <button
                 type="button"
@@ -285,6 +273,35 @@ export default function OrganizationDetailPage() {
               </button>
             ) : null}
           </>
+        ) : null}
+
+        {past.length > 0 ? (
+          <section aria-labelledby="org-past-heading">
+            <h2
+              id="org-past-heading"
+              className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+            >
+              Past events
+            </h2>
+            {past.slice(0, pastShown).map((event) => (
+              <EventRow key={event.id} event={event} onOpen={openEvent} withYear />
+            ))}
+            {hiddenPast > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setPastShown(
+                    pastShown === PAST_FIRST ? PAST_FIRST + PAST_MORE : Number.POSITIVE_INFINITY,
+                  );
+                }}
+                className="min-h-[44px] w-full rounded-[14px] bg-tint px-3.5 font-bold text-[0.875rem] text-emphasis hover:bg-line"
+              >
+                {pastShown === PAST_FIRST && hiddenPast > PAST_MORE
+                  ? `Show ${PAST_MORE} more`
+                  : `Show all ${past.length} past events`}
+              </button>
+            ) : null}
+          </section>
         ) : null}
 
         {denial !== null ? (
@@ -391,5 +408,48 @@ export default function OrganizationDetailPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function EventRow({
+  event,
+  onOpen,
+  withYear = false,
+}: {
+  event: ClubEvent;
+  onOpen: (id: string) => void;
+  /** A past one says its year, as the tile does not. */
+  withYear?: boolean;
+}) {
+  const tile = dateTileParts(event.startTime, event.timezone);
+  const year = withYear ? new Date(event.startTime).getFullYear().toString() : null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen(event.id);
+      }}
+      className="mb-[11px] flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
+    >
+      <span className="block w-[46px] flex-none rounded-[12px] bg-tint py-1.5 text-center">
+        <span className="block font-extrabold font-head text-[1.1875rem] text-emphasis leading-[1.15]">
+          {tile.day}
+        </span>
+        <span className="block font-extrabold text-[0.625rem] text-ink2 tracking-[0.09em]">
+          {tile.mon}
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-extrabold font-head text-[0.90625rem] text-ink leading-[1.25]">
+          {event.title}
+        </span>
+        <span className="block text-[0.78125rem] text-grey">
+          {[year, [event.city, event.city ? event.state : null].filter(Boolean).join(', ')]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+      </span>
+      <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
+    </button>
   );
 }
