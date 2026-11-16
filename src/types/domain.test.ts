@@ -165,8 +165,8 @@ describe('the spinal cord question', () => {
     expect(injuryLabel({ ...base, injuryType: 'high_para', exactLevel: 'T4' })).toBe('T4');
     expect(injuryLabel({ ...base, injuryType: 'high_para' })).toBe('High para');
     expect(injuryLabel({ ...base, injuryType: 'low_para' })).toBe('Low para');
-    expect(injuryLabel({ ...base, injuryType: 'family' })).toBe('Family member');
-    expect(injuryLabel({ ...base, injuryType: 'professional' })).toBe('Professional');
+    expect(injuryLabel({ ...base, injuryType: 'family' })).toBe('Family / friend');
+    expect(injuryLabel({ ...base, injuryType: 'professional' })).toBe('Staff');
   });
 
   it('reads a member from before the question exactly as before', () => {

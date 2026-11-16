@@ -43,8 +43,8 @@ describe('the spinal cord question', () => {
       'High para (T1–T8)',
       'Low para (T9+)',
       'Spinal cord or nerve disorder',
-      'Relative/Spouse',
-      'Professional / I work with people with SCI/D',
+      'Family / friend of someone with SCI',
+      'Staff / I work with people with SCI/D',
     ]);
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
@@ -52,7 +52,7 @@ describe('the spinal cord question', () => {
 
   it('asks a professional nothing more', async () => {
     render(<Harness seen={[]} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Professional/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Staff/ }));
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });
@@ -197,7 +197,7 @@ describe('the spinal cord question', () => {
   it('asks a relative nothing more', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} start={{ ...EMPTY, injuryType: 'high_para', exactLevel: 'T4' }} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Relative/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Family \/ friend/ }));
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
     expect(seen.at(-1)).toMatchObject({ injuryType: 'family', exactLevel: null });
