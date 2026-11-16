@@ -125,24 +125,85 @@ export function useInstallPrompt(): {
   };
 }
 
-/** How long "not now" lasts. */
-export const NUDGE_SNOOZE_DAYS = 3;
+/**
+ * How long each Not now lasts, in days: a week, then a month, and after the
+ * third it stays away (the owner, 2026-11-16; it was three days, every time).
+ * Me, then Settings, keeps the steps.
+ */
+export const NUDGE_SNOOZES_DAYS = [7, 30] as const;
+const DAY = 86_400_000;
+// When the last Not now was, and how many there have been. A time with no
+// count is from the old single snooze, and counts as the first.
 const SNOOZE_KEY = 'club:install-nudge-snoozed';
+const NOT_NOWS_KEY = 'club:install-nudge-not-nows';
+
+function notNows(): number {
+  const times = Number(localStorage.getItem(NOT_NOWS_KEY));
+  return Number.isInteger(times) && times > 0 ? times : 1;
+}
 
 export function nudgeSnoozed(now = Date.now()): boolean {
   try {
     const at = Number(localStorage.getItem(SNOOZE_KEY));
-    return Number.isFinite(at) && at > 0 && now - at < NUDGE_SNOOZE_DAYS * 86_400_000;
+    if (!Number.isFinite(at) || at <= 0) return false;
+    const days = NUDGE_SNOOZES_DAYS[notNows() - 1];
+    return days === undefined || now - at < days * DAY;
   } catch {
     return false;
   }
 }
 
-export function snoozeNudge(now = Date.now()): void {
+/**
+ * Not now: the days it is hidden for, or null once it is hidden for good.
+ * Said to a screen reader, as what the press did.
+ */
+export function snoozeNudge(now = Date.now()): number | null {
+  let times = 1;
   try {
+    times = localStorage.getItem(SNOOZE_KEY) ? notNows() + 1 : 1;
     localStorage.setItem(SNOOZE_KEY, String(now));
+    localStorage.setItem(NOT_NOWS_KEY, String(times));
   } catch {
     // Private browsing: it comes back next visit, which is no harm.
+  }
+  return NUDGE_SNOOZES_DAYS[times - 1] ?? null;
+}
+
+/** "Hidden for a week.", for what snoozeNudge returned. */
+export function snoozedFor(days: number | null): string {
+  if (days === null) return 'Hidden. It will not ask again.';
+  return days === 7
+    ? 'Hidden for a week.'
+    : days === 30
+      ? 'Hidden for a month.'
+      : `Hidden for ${days} days.`;
+}
+
+/**
+ * Whether this is a later visit than the member's first (the owner,
+ * 2026-11-16: the app is not offered on the first screen anybody sees, as it
+ * kept them from the club). A visit is a new browser session, or the same tab
+ * eight hours on. The first is remembered from the first time this is asked,
+ * in the club after joining. No on any storage failure: quiet is no harm.
+ */
+const FIRST_SEEN_KEY = 'club:first-seen';
+const FIRST_VISIT_KEY = 'club:first-visit';
+export const LATER_VISIT_HOURS = 8;
+
+export function laterVisit(now = Date.now()): boolean {
+  try {
+    const first = Number(localStorage.getItem(FIRST_SEEN_KEY));
+    if (!Number.isFinite(first) || first <= 0) {
+      localStorage.setItem(FIRST_SEEN_KEY, String(now));
+      sessionStorage.setItem(FIRST_VISIT_KEY, '1');
+      return false;
+    }
+    return (
+      sessionStorage.getItem(FIRST_VISIT_KEY) !== '1' ||
+      now - first >= LATER_VISIT_HOURS * 3_600_000
+    );
+  } catch {
+    return false;
   }
 }
 

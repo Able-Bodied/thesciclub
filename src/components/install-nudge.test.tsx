@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InstallNudge, InstallSettings } from '@/components/install-nudge';
+import { noteSent } from '@/lib/push/notifications';
+
+vi.mock('@/lib/account', () => ({
+  useAccount: () => ({ status: 'signed-out', userId: null }),
+}));
 
 // The app nudge keeps a code for Open in the app; no database here.
 const issued: string[] = [];
@@ -46,6 +51,9 @@ function renderAfterWait() {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
+  // Not the member's first visit, unless a test says so.
+  localStorage.setItem('club:first-seen', String(Date.UTC(2026, 9, 1)));
 });
 
 afterEach(() => {
@@ -108,7 +116,25 @@ describe('the Home Screen nudge', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('goes away for three days on Not now', async () => {
+  // The owner, 2026-11-16: not on the first visit, as it kept people from
+  // the club, but when they tap Going, where the app's reminder helps.
+  it('waits for a later visit on an iPhone, unless they tap Going', async () => {
+    browserIs(IPHONE_SAFARI);
+    localStorage.removeItem('club:first-seen');
+    const first = renderAfterWait();
+    expect(screen.queryByRole('complementary')).toBeNull();
+    act(() => {
+      noteSent('going');
+    });
+    expect(await screen.findByText('Get a reminder before it starts')).toBeInTheDocument();
+    first.unmount();
+    // The same tab, back the next day.
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 86_400_000);
+    renderAfterWait();
+    expect(await screen.findByText('Get the club’s iPhone app')).toBeInTheDocument();
+  });
+
+  it('goes away on Not now', async () => {
     browserIs(IPHONE_SAFARI);
     const view = renderAfterWait();
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Not now' }));
