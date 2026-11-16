@@ -75,14 +75,14 @@ export function LockedPost({ door }: { door: string }) {
         </div>
 
         <section className="z-10 mx-3 my-16 self-center rounded-[16px] border border-line bg-paper px-5 py-6 text-center shadow-lg [grid-area:1/1]">
-          <h1 className="text-balance font-extrabold font-display text-[1.3125rem] text-ink leading-tight">
+          <h1 className="line-clamp-5 text-balance font-extrabold font-display text-[1.3125rem] text-ink leading-tight">
             {inviter && question
               ? question
               : inviter
                 ? 'Help answer inside The SCI Club'
                 : 'Please sign in or join to see this post'}
           </h1>
-          <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
+          <p className="mt-2 text-pretty text-[0.875rem] text-ink2 leading-[1.5]">
             {inviter && question
               ? 'Help answer inside The SCI Club and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life with a spinal cord injury.'
               : inviter
