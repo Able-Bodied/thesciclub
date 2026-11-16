@@ -411,12 +411,17 @@ export async function createInvite(input: {
   /** Null when the administrator is vouching in their own name. */
   organizationId: string | null;
   note: string | null;
+  /** What to call them, optional: the email's "Hi Ana," and joining's name (20261115160000). */
+  name?: string | null;
 }): Promise<{ ok: boolean; error?: string; sendError?: string }> {
-  // Not destructured: the client types rpc data as `any`.
+  const name = input.name?.trim() ? input.name.trim() : null;
+  // Not destructured: the client types rpc data as `any`. With a name only:
+  // the version without one is the iPhone app's too.
   const result = await getSupabase().rpc('admin_create_invite', {
     raw_email: input.email,
     organization_id: input.organizationId,
     note: input.note,
+    ...(name ? { p_name: name } : {}),
   });
   if (result.error) return { ok: false, error: describeError(result.error, INVITE_REFUSAL) };
   const created: unknown = result.data;

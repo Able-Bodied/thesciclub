@@ -16,6 +16,9 @@ import {
  * still on the list, so the form says so and the row has Resend; it does not
  * report a failure the administrator would answer by adding it a second time.
  */
+/** The choice of no organization, as against none chosen yet (''). */
+const NO_ORGANIZATION = 'none';
+
 export function InviteForm({ onCreated }: { onCreated: () => void }) {
   const account = useAccount();
   const [inviting, setInviting] = useState<InvitingOrganization[]>([]);
@@ -24,11 +27,16 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
     account.status === 'member' ? (account.userId ?? undefined) : undefined,
   );
   const organizations = inviting.filter((o) => memberOf.includes(o.id));
+  // Only one: it is theirs (the owner, 2026-11-15: "If an admin has only one
+  // org then just assign it to that org").
+  const assigned = organizations.length === 1 ? organizations[0] : undefined;
   const [email, setEmail] = useState('');
   // '' is the club itself — the administrator vouching in their own name —
   // rather than "nothing chosen"; picking an organization is the deliberate act.
   const [organizationId, setOrganizationId] = useState('');
   const [note, setNote] = useState('');
+  // Optional (the owner, 2026-11-15): "Hi Ana," and joining's name.
+  const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -37,7 +45,9 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
     void fetchInvitingOrganizations().then(setInviting);
   }, []);
 
-  const ready = looksLikeEmail(email);
+  // Chosen, never left at a default (the owner, 2026-11-15: "better to have an
+  // explicit no org selection. To prevent people from being lazy").
+  const ready = looksLikeEmail(email) && (assigned !== undefined || organizationId !== '');
 
   function submit() {
     const address = email.trim();
@@ -46,8 +56,13 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
     setDone(null);
     createInvite({
       email: address,
-      organizationId: organizationId || null,
+      organizationId: assigned
+        ? assigned.id
+        : organizationId === NO_ORGANIZATION
+          ? null
+          : organizationId,
       note: note.trim() || null,
+      ...(name.trim() ? { name } : {}),
     })
       .then((result) => {
         if (!result.ok) {
@@ -55,6 +70,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
           return;
         }
         setEmail('');
+        setName('');
         setNote('');
         if (result.sendError) setError(result.sendError);
         else setDone(`The link is on its way to ${address}.`);
@@ -90,26 +106,57 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
           />
         </div>
 
-        <div className="min-w-[160px] flex-1">
-          <label htmlFor="invite-org" className="block font-bold text-[0.75rem] text-ink">
-            Vouched for by
-          </label>
-          <select
-            id="invite-org"
-            value={organizationId}
-            onChange={(e) => {
-              setOrganizationId(e.target.value);
-            }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
-          >
-            <option value="">The club — you are vouching</option>
-            {organizations.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
+        {assigned ? (
+          <p className="min-w-[160px] flex-1 pb-2 text-[0.8125rem] text-ink2 leading-[1.45]">
+            For <b className="font-bold text-ink">{assigned.name}</b>
+          </p>
+        ) : (
+          <div className="min-w-[160px] flex-1">
+            <label htmlFor="invite-org" className="block font-bold text-[0.75rem] text-ink">
+              Vouched for by
+            </label>
+            <select
+              id="invite-org"
+              value={organizationId}
+              onChange={(e) => {
+                setOrganizationId(e.target.value);
+              }}
+              className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
+            >
+              <option value="" disabled>
+                Choose an organization
               </option>
-            ))}
-          </select>
-        </div>
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+              <option value={NO_ORGANIZATION}>No organization — you are vouching</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2.5">
+        <label htmlFor="invite-name" className="block font-bold text-[0.75rem] text-ink">
+          Their name (optional)
+        </label>
+        <input
+          id="invite-name"
+          autoComplete="off"
+          autoCapitalize="words"
+          maxLength={80}
+          placeholder="Ana Lopez"
+          value={name}
+          aria-describedby="invite-name-hint"
+          onChange={(e) => {
+            setName(e.target.value);
+          }}
+          className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
+        />
+        <p id="invite-name-hint" className="mt-1 text-[0.75rem] text-grey leading-[1.4]">
+          Optional. The email says hello to them by it, and it is filled in when they join.
+        </p>
       </div>
 
       <div className="mt-2.5">
