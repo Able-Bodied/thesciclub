@@ -113,4 +113,35 @@ select display_name, acknowledged_at is not null as acknowledged
   from public.chat_important_people('16161616-1314-0000-0000-000000000001');
 reset role;
 
+-- 20261115140000: seeing it, or opening its notification, acknowledges it.
+\echo ''
+\echo '== 9. Di opens the group: Bo''s is acknowledged and its notification read; her own is not hers to (expect t, t, 0) =='
+select public.chat_mark_thread_read_through('15151515-1314-0000-0000-000000000001',
+  '16161616-1314-0000-0000-000000000002');
+select exists (select 1 from public.chat_important_acks
+ where message_id = '16161616-1314-0000-0000-000000000001'
+   and member_id = 'aaaaaaaa-1314-0000-0000-00000000000d') as acknowledged;
+select read_at is not null as read from public.notifications
+ where member_id = 'aaaaaaaa-1314-0000-0000-00000000000d'
+   and tag = 'important:16161616-1314-0000-0000-000000000001';
+select count(*) from public.chat_important_acks
+ where message_id = '16161616-1314-0000-0000-000000000002'
+   and member_id = 'aaaaaaaa-1314-0000-0000-00000000000d';
+
+\echo ''
+\echo '== 10. Cy opens Di''s notification in the bell: acknowledged (expect t) =='
+update public.notifications set read_at = now()
+ where member_id = 'aaaaaaaa-1314-0000-0000-00000000000c'
+   and tag = 'important:16161616-1314-0000-0000-000000000002';
+select exists (select 1 from public.chat_important_acks
+ where message_id = '16161616-1314-0000-0000-000000000002'
+   and member_id = 'aaaaaaaa-1314-0000-0000-00000000000c') as acknowledged;
+
+\echo ''
+\echo '== 11. Fy, outside, cannot read the group through to acknowledge (expect ERROR: There is no such conversation.) =='
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1314-0000-0000-00000000000f","role":"authenticated"}', true) is not null as ok;
+select public.chat_mark_thread_read_through('15151515-1314-0000-0000-000000000001',
+  '16161616-1314-0000-0000-000000000002');
+
 rollback;
