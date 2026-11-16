@@ -50,6 +50,9 @@ function displayPhone(e164: string): string {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
+/** The choice of no organization, as against none chosen yet (''). */
+const NO_ORGANIZATION = 'none';
+
 export default function InvitesPage() {
   const account = useAccount();
   const userId = account.status === 'member' ? account.userId : null;
@@ -58,6 +61,8 @@ export default function InvitesPage() {
   const [requests, setRequests] = useState<ReceivedInviteRequest[]>([]);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
+  // Optional (the owner, 2026-11-15): "Hi Ana," and joining's name.
+  const [name, setName] = useState('');
   // Asked only of an org admin of several (the owner, 2026-10-30); of one, the
   // database knows which.
   const [organizationId, setOrganizationId] = useState('');
@@ -75,11 +80,14 @@ export default function InvitesPage() {
       (organization) => isAdmin || mine.ids.has(organization.id) || !organization.joinsNeedApproval,
     )
     .sort((a, b) => a.name.localeCompare(b.name));
-  // An org admin of several must choose, as before (the owner, 2026-10-30); of
-  // one, the database knows which. Anybody else may leave it at the club.
-  const runsOne = mine.ids.size > 0;
-  const mustChoose = runsOne && myOrganizations.length > 1;
-  const choosesOrganization = mustChoose || (!runsOne && myOrganizations.length > 0);
+  // Optional for everybody (the owner, 2026-11-15: "make choosing an
+  // organization optional ... If it is not selected, then the user is not
+  // auto-associated with an organization"). It was required of an org admin
+  // of several (2026-10-30). An administrator or org admin with only one is
+  // given it ("If an admin has only one org then just assign it to that org").
+  const assigned =
+    (isAdmin || mine.ids.size > 0) && myOrganizations.length === 1 ? myOrganizations[0] : undefined;
+  const choosesOrganization = !assigned && myOrganizations.length > 0;
   // A club administrator answering a request picks who the invite is for, from
   // the organizations they belong to (the owner, 2026-11-01).
   const [invitingFor, setInvitingFor] = useState<Record<string, string>>({});
@@ -131,8 +139,13 @@ export default function InvitesPage() {
   if (!permissions.canInvite) return <Navigate to="/me" replace />;
 
   const left = permissions.unlimited ? Infinity : slotsLeft(invites);
+  // Chosen, never left blank (the owner, 2026-11-15: "better to have an
+  // explicit no org selection. To prevent people from being lazy").
   const ready =
-    looksLikeEmail(email) && left > 0 && userId !== null && (!mustChoose || organizationId !== '');
+    looksLikeEmail(email) &&
+    left > 0 &&
+    userId !== null &&
+    (!choosesOrganization || organizationId !== '');
 
   /**
    * Deliberately not async: these are handed to onClick, which expects void,
@@ -166,11 +179,20 @@ export default function InvitesPage() {
       const result = await createMyInvite({
         email: address,
         note: note.trim() || null,
+        ...(name.trim() ? { name } : {}),
         ...(permissions.unlimited ? { unlimited: true } : {}),
-        ...(choosesOrganization && organizationId !== '' ? { organizationId } : {}),
+        ...(assigned
+          ? { organizationId: assigned.id }
+          : organizationId === NO_ORGANIZATION
+            ? // Chosen: none, just the club (20261115160000).
+              { noOrganization: true }
+            : organizationId !== ''
+              ? { organizationId }
+              : {}),
       });
       if (result.ok) {
         setEmail('');
+        setName('');
         setNote('');
         setOrganizationId('');
         // On the list, but the email did not go: say so, and the row has Resend.
@@ -185,6 +207,7 @@ export default function InvitesPage() {
       const result = await createMyInvite({
         email: request.email,
         note: `${request.name} (asked for an invite)`,
+        name: request.name,
         ...(permissions.unlimited ? { unlimited: true } : {}),
         organizationId: invitingFor[request.id] ?? request.organizationId,
       });
@@ -333,6 +356,12 @@ export default function InvitesPage() {
               </p>
             ) : null}
 
+            {assigned ? (
+              <p className="mt-3 text-[0.78125rem] text-ink2 leading-[1.45]">
+                They join <b className="font-bold text-ink">{assigned.name}</b> with this invite.
+              </p>
+            ) : null}
+
             {choosesOrganization ? (
               <div className="mt-3">
                 <label
@@ -350,14 +379,15 @@ export default function InvitesPage() {
                   }}
                   className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
                 >
-                  <option value="">
-                    {mustChoose ? 'Choose an organization' : 'No organization, just the club'}
+                  <option value="" disabled>
+                    Choose an organization
                   </option>
                   {myOrganizations.map((organization) => (
                     <option key={organization.id} value={organization.id}>
                       {organization.name}
                     </option>
                   ))}
+                  <option value={NO_ORGANIZATION}>No organization, just the club</option>
                 </select>
               </div>
             ) : null}
@@ -383,6 +413,35 @@ export default function InvitesPage() {
                 }}
                 className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
               />
+            </div>
+
+            <div className="mt-2.5">
+              <label
+                htmlFor="mentor-invite-name"
+                className="block font-bold text-[0.75rem] text-ink"
+              >
+                Their name (optional)
+              </label>
+              <input
+                id="mentor-invite-name"
+                autoComplete="off"
+                autoCapitalize="words"
+                maxLength={80}
+                placeholder="Ana Lopez"
+                value={name}
+                disabled={left === 0}
+                aria-describedby="mentor-invite-name-hint"
+                onChange={(e) => {
+                  setName(e.target.value);
+                }}
+                className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
+              />
+              <p
+                id="mentor-invite-name-hint"
+                className="mt-1 text-[0.75rem] text-grey leading-[1.4]"
+              >
+                Optional. The email says hello to them by it, and it is filled in when they join.
+              </p>
             </div>
 
             <div className="mt-2.5">

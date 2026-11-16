@@ -1226,40 +1226,54 @@ describe('the invite list', () => {
     expect(screen.queryByLabelText('Phone number')).toBeNull();
   });
 
-  // An administrator adding an address by hand — somebody met at an event —
-  // should be able to say so rather than attributing it to an organization
-  // that had nothing to do with it.
-  it('vouches as the club by default, sending no organization', async () => {
+  // The owner, 2026-11-15: "If an admin has only one org then just assign it
+  // to that org." This administrator belongs to NorCal SCI alone.
+  it('invites for their only organization, without asking', async () => {
     await openInvites();
+    expect(
+      await screen.findByText(
+        (_, el) => el?.tagName === 'P' && el.textContent === 'For NorCal SCI',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Vouched for by/)).toBeNull();
     await userEvent.type(screen.getByLabelText('Email address'), '  Dana@Example.com ');
     await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
     await waitFor(() => {
       // Trimmed here; lowercased by the database (normalize_email).
       expect(api.created).toEqual([
-        { email: 'Dana@Example.com', organizationId: null, note: null },
+        { email: 'Dana@Example.com', organizationId: 'org1', note: null },
       ]);
     });
     expect(await screen.findByText(/on its way to Dana@Example.com/)).toBeInTheDocument();
   });
 
-  it('sends the organization and the note when they are chosen', async () => {
+  it('sends the note and the name when they are given', async () => {
     await openInvites();
+    await screen.findByText((_, el) => el?.tagName === 'P' && el.textContent === 'For NorCal SCI');
     await userEvent.type(screen.getByLabelText('Email address'), 'dana@example.com');
-    await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
+    await userEvent.type(screen.getByLabelText(/Their name/), 'Dana Lee');
     await userEvent.type(screen.getByLabelText(/Note/), 'Met at rugby');
     await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
     await waitFor(() => {
       expect(api.created).toEqual([
-        { email: 'dana@example.com', organizationId: 'org1', note: 'Met at rugby' },
+        {
+          email: 'dana@example.com',
+          organizationId: 'org1',
+          note: 'Met at rugby',
+          name: 'Dana Lee',
+        },
       ]);
     });
   });
 
   it('offers only the organizations they belong to', async () => {
     await openInvites();
-    const picker = screen.getByLabelText(/Vouched for by/);
-    expect(await within(picker).findByRole('option', { name: 'NorCal SCI' })).toBeInTheDocument();
-    expect(within(picker).queryByRole('option', { name: 'Elsewhere Rugby' })).toBeNull();
+    expect(
+      await screen.findByText(
+        (_, el) => el?.tagName === 'P' && el.textContent === 'For NorCal SCI',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Elsewhere Rugby')).toBeNull();
   });
 
   it('shows the database’s refusal and keeps what was typed', async () => {
