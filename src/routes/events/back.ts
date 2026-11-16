@@ -18,6 +18,8 @@ import { EVENTS_SEGMENTS, type EventsSegment } from '@/types/domain';
  * browser's back when there is history.
  */
 export function backToEvents(location: Location): string {
+  const reviews = backToReviews(location.state);
+  if (reviews) return reviews.path;
   // Opened from a card on Home, which is where back should go.
   const home = backToHome(location.state);
   if (home) return home;
@@ -38,7 +40,39 @@ export function backToEvents(location: Location): string {
 
 /** What the arrow should say, given where it will land. */
 export function backLabel(location: Location): string {
+  const reviews = backToReviews(location.state);
+  if (reviews) return reviews.name;
   if (backToHome(location.state)) return 'Home';
   if ((location.state as { from?: unknown } | null)?.from === 'peers-map') return 'Peers';
   return backToEvents(location).includes('segment=orgs') ? 'Organizations' : 'Events';
+}
+
+/**
+ * Opened from a review on another page (the owner, 2026-11-16): back returns
+ * there, to that review, with the state that page was opened with.
+ */
+export interface FromReviews {
+  from: 'reviews';
+  path: string;
+  name: string;
+  state: unknown;
+  review: string;
+}
+
+export function backToReviews(state: unknown): FromReviews | null {
+  const s = (state ?? {}) as Partial<Record<keyof FromReviews, unknown>>;
+  if (s.from !== 'reviews') return null;
+  // Router state is not trusted: only an event or organization page.
+  if (typeof s.path !== 'string' || !/^\/events\/(organizations\/)?[\w-]+$/.test(s.path))
+    return null;
+  if (typeof s.name !== 'string' || typeof s.review !== 'string') return null;
+  return { from: 'reviews', path: s.path, name: s.name, state: s.state, review: s.review };
+}
+
+/** The router state to go back with: the page's own, and which review to show. */
+export function backState(location: Location): unknown {
+  const reviews = backToReviews(location.state);
+  if (!reviews) return undefined;
+  const own = typeof reviews.state === 'object' && reviews.state !== null ? reviews.state : {};
+  return { ...own, showReview: reviews.review };
 }

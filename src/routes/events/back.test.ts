@@ -1,6 +1,6 @@
 import type { Location } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import { backLabel, backToEvents } from '@/routes/events/back';
+import { backLabel, backState, backToEvents } from '@/routes/events/back';
 
 function location(state: unknown): Location {
   return { pathname: '/events/x', search: '', hash: '', state, key: 'k' } as Location;
@@ -78,5 +78,28 @@ describe('a detail page opened from the map', () => {
     const fromPeers = location({ from: 'peers-map' });
     expect(backToEvents(fromPeers)).toBe('/peers?view=map');
     expect(backLabel(fromPeers)).toBe('Peers');
+  });
+});
+
+// The owner, 2026-11-16: back from a review's event to the page and the review.
+describe('opened from a review', () => {
+  const fromOrg = {
+    from: 'reviews',
+    path: '/events/organizations/o1',
+    name: 'NorCal SCI',
+    state: { segment: 'orgs' },
+    review: 'r1',
+  };
+
+  it('goes back to that page, named, with its own state and the review', () => {
+    expect(backToEvents(location(fromOrg))).toBe('/events/organizations/o1');
+    expect(backLabel(location(fromOrg))).toBe('NorCal SCI');
+    expect(backState(location(fromOrg))).toEqual({ segment: 'orgs', showReview: 'r1' });
+  });
+
+  it('does not follow a path that is not an event or organization page', () => {
+    const elsewhere = location({ ...fromOrg, path: 'https://example.com' });
+    expect(backToEvents(elsewhere)).toBe('/events');
+    expect(backState(elsewhere)).toBeUndefined();
   });
 });
