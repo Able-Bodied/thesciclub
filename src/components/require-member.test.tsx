@@ -19,7 +19,10 @@ vi.mock('@/lib/account', () => ({
 }));
 const forgotten = vi.hoisted(() => ({ urls: vi.fn(), reads: vi.fn() }));
 vi.mock('@/lib/chat/attachments', () => ({ resetAttachmentUrls: forgotten.urls }));
-vi.mock('@/lib/shared-reads', () => ({ forgetSharedReads: forgotten.reads }));
+vi.mock('@/lib/shared-reads', () => ({
+  forgetSharedReads: forgotten.reads,
+  onForgetSharedReads: () => undefined,
+}));
 vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({ member: null, invitedBy: 'NorCal SCI', loading: false, error: null }),
 }));
