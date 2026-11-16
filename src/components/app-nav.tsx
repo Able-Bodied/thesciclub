@@ -1,7 +1,6 @@
 import { Bell } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { touchScreen, useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useBadgeRealtime } from '@/lib/badges';
@@ -78,16 +77,9 @@ export function AppNav() {
   useEffect(() => {
     if (lit) rememberTabPlace(lit, `${location.pathname}${location.search}`, location.state);
   }, [lit, location.pathname, location.search, location.state]);
-  // On a phone only: a desktop's bar is at the top, out of the way already, and
-  // a narrow desktop window keeps its bottom bar still. And on Home's feed only:
-  // elsewhere it gained little and going in odd places confused (the owner,
-  // 2026-11-09).
-  const bar = useRef<HTMLElement | null>(null);
-  const { hidden, show } = useHideOnScroll(
-    wide === false && touchScreen() && location.pathname === '/home',
-    location.pathname,
-    bar,
-  );
+  // The bar stays still on every screen, Home's feed included, while people
+  // get used to the app (the owner, 2026-11-15). It slid away on a scroll
+  // from 2026-11-01, on Home's feed only from 2026-11-09.
 
   // The bar is on every screen, so somebody writing to you while you read an
   // event is heard here: each unmuted message writes this member a
@@ -107,14 +99,9 @@ export function AppNav() {
   // widths, and only its painted position moves.
   return (
     <nav
-      ref={bar}
       aria-label="Main"
-      // Reached by keyboard or switch control, it comes back to be used.
-      onFocus={show}
-      // A margin, not a transform, so the page below takes the room.
-      style={hidden ? { marginBottom: -(bar.current?.offsetHeight ?? 0) } : undefined}
       className={cn(
-        'z-40 order-last flex-none bg-paper px-2 transition-[margin-bottom] duration-300 ease-out',
+        'z-40 order-last flex-none bg-paper px-2',
         'border-line border-t pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]',
         'md:order-first md:border-t-0 md:border-b md:px-4 md:pt-1.5 md:pb-1.5',
       )}
