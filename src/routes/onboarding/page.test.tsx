@@ -461,10 +461,10 @@ async function typeBirthday(iso: string) {
   await userEvent.type(screen.getByLabelText('Year'), year);
 }
 
-/** Fills the sign-in or join form. */
+/** Fills the sign-in or join form: Password, or Choose a password on joining. */
 async function fillDoor(email: string, password: string) {
   await userEvent.type(screen.getByLabelText('Email'), email);
-  await userEvent.type(screen.getByLabelText('Password'), password);
+  await userEvent.type(screen.getByLabelText(/^(Password|Choose a password)$/), password);
 }
 
 beforeEach(() => {
@@ -776,7 +776,7 @@ describe('joining by email', () => {
     await openJoin();
     await fillDoor('dana@example.com', 'seven77');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Password'), '8');
+    await userEvent.type(screen.getByLabelText('Choose a password'), '8');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
   });
 
@@ -1173,7 +1173,7 @@ describe('the invite link', () => {
     });
     await userEvent.clear(screen.getByLabelText('Email'));
     await userEvent.type(screen.getByLabelText('Email'), 'dana.s@example.com');
-    await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+    await userEvent.type(screen.getByLabelText('Choose a password'), 'a long password');
     expect(screen.queryByText(/the address your invitation was sent to/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     await screen.findByText('Check your email');
