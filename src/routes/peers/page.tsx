@@ -19,6 +19,7 @@ import {
   ageBandsIn,
   filterMembers,
   hasConditions,
+  memberMiles,
   memberPlaces,
   membersBeyond,
   milesForEnough,
@@ -28,7 +29,7 @@ import {
   topicsIn,
 } from '@/routes/peers/filters';
 import { MemberCard } from '@/routes/peers/member-card';
-import { rankMembers } from '@/routes/peers/ranking';
+import { PEER_SORTS, type PeerSort, rankMembers, sortMembers } from '@/routes/peers/ranking';
 import {
   inEdgeGuard,
   nextSegment,
@@ -64,6 +65,7 @@ export default function PeersPage() {
   const memberId = session.status === 'signed-in' ? session.userId : null;
   const [segment, setSegment] = useState<PeersSegment>('everyone');
   const [filters, setFilters] = useState<MemberFilters>(DEFAULT_MEMBER_FILTERS);
+  const [sort, setSort] = useState<PeerSort>('name');
   const [sheetOpen, setSheetOpen] = useState(false);
   // The map, once opened, stays mounted and is hidden for the list.
   const [view, setView] = useListOrMap('/peers');
@@ -113,9 +115,20 @@ export default function PeersPage() {
             ? 'ready'
             : 'unplaced';
 
+  // Measured from the same place as the distance filter.
+  const miles = useMemo(
+    () => memberMiles(place ? { ...mapData.contents, home: place } : mapData.contents),
+    [mapData.contents, place],
+  );
+  const canSortByDistance = miles.size > 0;
   const visible = useMemo(
-    () => rankMembers(filterMembers(others, filters, segment, far), viewer),
-    [others, filters, segment, far],
+    () =>
+      sortMembers(
+        rankMembers(filterMembers(others, filters, segment, far), viewer),
+        sort === 'nearest' && !canSortByDistance ? 'name' : sort,
+        miles,
+      ),
+    [others, filters, segment, far, sort, miles, canSortByDistance],
   );
   // Distance is the list's (the owner, 2026-11-03): the map shows everybody.
   const onMap = useMemo(
@@ -228,9 +241,34 @@ export default function PeersPage() {
             {/* Timed for page speed, in the deck only (the owner, 2026-11-04). */}
             {showingMap ? null : <CardsShown />}
             <div className="mx-auto w-full max-w-[1100px]">
-              <p className="mb-3 text-[0.78125rem] text-grey">
-                {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
-              </p>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                <p className="text-[0.78125rem] text-grey">
+                  {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
+                </p>
+                {/* The owner, 2026-11-16. Nearest needs a home or a chosen place. */}
+                <label className="flex items-center gap-1.5 text-[0.78125rem] text-grey">
+                  Sort
+                  <select
+                    value={sort}
+                    onChange={(e) => {
+                      setSort(e.target.value as PeerSort);
+                    }}
+                    className="min-h-[36px] rounded-full border border-line bg-paper px-3 font-semibold text-[0.8125rem] text-ink"
+                  >
+                    {PEER_SORTS.map(([value, words]) => (
+                      <option
+                        key={value}
+                        value={value}
+                        disabled={value === 'nearest' && !canSortByDistance}
+                      >
+                        {value === 'nearest' && !canSortByDistance
+                          ? `${words} (add your city on Me)`
+                          : words}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               {/* One column on a phone, more as the shell widens. The gap
                   replaces the card's own bottom margin so rows and columns are
                   spaced the same. */}

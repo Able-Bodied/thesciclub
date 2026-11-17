@@ -78,6 +78,67 @@ export function relevanceScore(viewer: BrowseMember, candidate: BrowseMember): n
 }
 
 /**
+ * The orders a member can choose for Peers (the owner, 2026-11-16: "date
+ * created, age, distance, and time since injury"). 'name' is the deck's
+ * own order, by name (members.ts).
+ */
+export const PEER_SORTS = [
+  ['name', 'Name'],
+  ['newest', 'Newest members'],
+  ['youngest', 'Youngest first'],
+  ['oldest', 'Oldest first'],
+  ['nearest', 'Nearest first'],
+  ['recently-injured', 'Most recently injured'],
+  ['longest-injured', 'Longest since injury'],
+] as const;
+
+export type PeerSort = (typeof PEER_SORTS)[number][0];
+
+/**
+ * Returns a new array. A member with nothing to sort by (no age, no injury
+ * date, no place on the map) goes after everybody who has one, in their
+ * incoming order, so a missing answer never reads as an extreme one.
+ *
+ * `miles` is how far each member is from the reader, for 'nearest'.
+ */
+export function sortMembers<T extends BrowseMember>(
+  members: T[],
+  sort: PeerSort,
+  miles: ReadonlyMap<string, number> = new Map(),
+  now: Date = new Date(),
+): T[] {
+  const key = (member: T): number | null => {
+    switch (sort) {
+      case 'name':
+        return 0;
+      case 'newest':
+        return -Date.parse(member.createdAt);
+      case 'youngest':
+        return member.age;
+      case 'oldest':
+        return member.age === null ? null : -member.age;
+      case 'nearest':
+        return miles.get(member.id) ?? null;
+      case 'recently-injured':
+        return yearsSinceInjury(member, now);
+      case 'longest-injured': {
+        const years = yearsSinceInjury(member, now);
+        return years === null ? null : -years;
+      }
+    }
+  };
+  return members
+    .map((member, index) => ({ member, index, key: key(member) }))
+    .sort((a, b) => {
+      if (a.key === null || b.key === null) {
+        return a.key === b.key ? a.index - b.index : a.key === null ? 1 : -1;
+      }
+      return a.key - b.key || a.index - b.index;
+    })
+    .map((entry) => entry.member);
+}
+
+/**
  * Returns a new array; does not mutate. Ties keep their incoming order, so the
  * deck does not reshuffle under somebody as they scroll.
  */
