@@ -420,9 +420,7 @@ export default function EventDetailPage() {
                     aria-describedby={reachesHost ? undefined : goingNote}
                     className={cn(
                       'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
-                      going
-                        ? 'bg-tint text-emphasis hover:bg-line'
-                        : 'bg-action text-white hover:bg-action-hi',
+                      going ? CHOSEN : 'bg-action text-white hover:bg-action-hi',
                     )}
                   >
                     {going ? 'Going ✓' : reachesHost ? 'RSVP' : 'Going'}
@@ -437,7 +435,7 @@ export default function EventDetailPage() {
                   className={cn(
                     'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
                     interested
-                      ? 'bg-tint text-emphasis hover:bg-line'
+                      ? CHOSEN
                       : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
                   )}
                 >
@@ -452,7 +450,7 @@ export default function EventDetailPage() {
                   className={cn(
                     'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
                     declined
-                      ? 'bg-tint text-emphasis hover:bg-line'
+                      ? CHOSEN
                       : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
                   )}
                 >
@@ -623,6 +621,13 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+/**
+ * Going, Interested or Can't go once chosen: gold-filled with a gold edge and
+ * a check, so the answer is the boldest of the three (the owner, 2026-11-17:
+ * "make the chosen buttons stand out more"; grey read as switched off).
+ */
+const CHOSEN = 'border-2 border-gold-dp bg-gold-lt text-gold-ink hover:brightness-95';
 
 /** "norcalsci.org" from its address, for "More details at". */
 export function siteName(href: string): string {
