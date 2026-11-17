@@ -249,6 +249,20 @@ export function organizationsWithin(
  * list (the owner, 2026-11-10: a new member vanished until the nightly import).
  * Null with no distance asked, or no home to measure from.
  */
+/** How far each member on the map is from home, in miles, for sorting by distance. */
+export function memberMiles(
+  contents: Pick<MapContents, 'home' | 'peerCities'>,
+): Map<string, number> {
+  const miles = new Map<string, number>();
+  const { home } = contents;
+  if (!home) return miles;
+  for (const city of contents.peerCities) {
+    const away = milesBetween(home, city);
+    for (const id of city.memberIds) miles.set(id, away);
+  }
+  return miles;
+}
+
 export function membersBeyond(
   contents: Pick<MapContents, 'home' | 'peerCities'>,
   miles: number | null,

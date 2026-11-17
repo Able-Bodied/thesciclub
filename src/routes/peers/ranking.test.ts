@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { rankMembers, relevanceScore, sharedInterests, stageScore } from '@/routes/peers/ranking';
+import {
+  rankMembers,
+  relevanceScore,
+  sharedInterests,
+  sortMembers,
+  stageScore,
+} from '@/routes/peers/ranking';
 import { makeMember } from '@/test/factory';
 
 /** Roughly N years before today, so tests do not rot. */
@@ -115,5 +121,31 @@ describe('rankMembers', () => {
     ];
     const viewer = makeMember({ state: 'CA', region: 'Thoracic' });
     expect(rankMembers(deck, viewer).map((m) => m.displayName)).toEqual(['A', 'B', 'C']);
+  });
+});
+
+// The owner, 2026-11-16: sort Peers by date joined, age, distance and time
+// since injury. A member with nothing to sort by goes last, in either direction.
+describe('sortMembers', () => {
+  const a = makeMember({ id: 'a', age: 30, createdAt: '2026-11-01T00:00:00Z', ...injured(2) });
+  const b = makeMember({ id: 'b', age: 50, createdAt: '2026-11-10T00:00:00Z', ...injured(10) });
+  const unknown = makeMember({ id: 'u', age: null, createdAt: '2026-10-01T00:00:00Z' });
+  const ids = (members: { id: string }[]) => members.map((m) => m.id);
+
+  it('puts members with no answer last, whichever way it sorts', () => {
+    expect(ids(sortMembers([unknown, b, a], 'youngest'))).toEqual(['a', 'b', 'u']);
+    expect(ids(sortMembers([unknown, a, b], 'oldest'))).toEqual(['b', 'a', 'u']);
+    expect(ids(sortMembers([unknown, b, a], 'recently-injured'))).toEqual(['a', 'b', 'u']);
+    expect(ids(sortMembers([unknown, a, b], 'longest-injured'))).toEqual(['b', 'a', 'u']);
+  });
+
+  it('sorts by joining, newest first, and by distance where it is known', () => {
+    expect(ids(sortMembers([a, unknown, b], 'newest'))).toEqual(['b', 'a', 'u']);
+    const miles = new Map([
+      ['a', 40],
+      ['b', 5],
+    ]);
+    expect(ids(sortMembers([unknown, a, b], 'nearest', miles))).toEqual(['b', 'a', 'u']);
+    expect(ids(sortMembers([b, unknown, a], 'name'))).toEqual(['b', 'u', 'a']);
   });
 });
