@@ -27,6 +27,7 @@ import { CheckInCard, CheckInClosed, CheckInNotYet } from '@/routes/events/check
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
 import { EventCohosts } from '@/routes/events/event-cohosts';
 import { mayChangeEvent } from '@/routes/events/event-draft';
+import { EventFiles } from '@/routes/events/event-files';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
@@ -345,6 +346,7 @@ export default function EventDetailPage() {
               ) : null}
             </section>
           ) : null}
+          {account.status === 'member' ? <EventFiles eventId={event.id} /> : null}
 
           {/* Below the details, so they are read first (the owner,
             2026-10-27), two halves of the width, Join online under them. What Going shares

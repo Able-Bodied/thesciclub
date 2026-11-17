@@ -222,6 +222,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     four seconds so the other is taken first. Probe:
     `calendar-invite-following.sql`, run on the test project in a rolled-back
     transaction (no local stack on the owner's Mac).
+  - **Guests and notes** (the owner, 2026-11-17, `20261117130000`): guests
+    who said yes or maybe and are active members are RSVPd (Going,
+    Interested) on the event and each coming date; only member ids are kept
+    (`payload.guestMembers`), every other address is dropped before anything
+    is stored. A member's own answer is never changed, and a later "no" in
+    the calendar takes nothing back. Attached files (Google's meeting notes)
+    are links in `events.attachments`, read by signed-in members only, under
+    "Notes and files" on the event's page. Probe: `calendar-invite-guests.sql`.
+    Not yet seen on a real invitation: whether Google's emailed file carries
+    the attachment and each guest's answer.
   - `invites@` tested end to end 2026-10-24 (function deployed). The
     website still shows `events@` until the branch reaches `main`.
 
