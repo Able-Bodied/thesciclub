@@ -267,15 +267,18 @@ export default function EventDetailPage() {
         </div>
 
         <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
+          {/* In a warm box of its own, a size up, so it is read (the owner,
+              2026-11-17: "make the details section on the event page pop out
+              more ... a different color bubble ... up the font one size"). */}
           {hasDetails ? (
-            <>
-              <h2 className="mt-5 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+            <section className="mt-5 rounded-[18px] border border-gold/40 bg-gold-lt px-4 pt-3.5 pb-4">
+              <h2 className="mb-2 font-extrabold font-head text-[0.75rem] text-gold-ink uppercase tracking-[0.13em]">
                 Details
               </h2>
               <EventDescription
                 html={event.descriptionHtml}
                 text={event.description}
-                className="text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
+                className="text-[1rem] text-ink leading-[1.55] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1.125rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
               />
               {/* The host's own page, as the details' last line (the owner,
                 2026-10-27): text, not one more button. */}
@@ -290,7 +293,7 @@ export default function EventDetailPage() {
                   <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
                 </a>
               ) : null}
-            </>
+            </section>
           ) : null}
 
           {/* Below the details, so they are read first (the owner,
