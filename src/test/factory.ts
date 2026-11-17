@@ -160,3 +160,13 @@ export function makeHomeTopic(overrides: Partial<HomeTopic> = {}): HomeTopic {
     ...overrides,
   };
 }
+
+/**
+ * Finds the element whose whole text is `text`, though it is split across
+ * parts (a summary line whose level is in its own bubble).
+ */
+export function wholeText(text: string) {
+  return (_: string, element: Element | null): boolean =>
+    element?.textContent === text &&
+    ![...element.children].some((child) => child.textContent === text);
+}
