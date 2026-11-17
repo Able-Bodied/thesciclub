@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
 import type { MorePhotoChange } from '@/lib/events';
 import {
+  CHANGE_DAYS,
+  canChangeReview,
   deleteMyReview,
   MAX_REVIEW_PHOTOS,
   type Review,
@@ -117,6 +119,42 @@ function Form({
       if (done.ok) finish('Your review is deleted.');
       else setFailure(done.error);
     });
+  }
+
+  // Past the window it can only be deleted (the owner, 2026-11-16).
+  if (mine && !canChangeReview(mine)) {
+    return (
+      <>
+        <p className="font-bold text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+          Your review
+        </p>
+        <h1 className="mt-1 mb-4 font-extrabold font-display text-[1.5rem] text-ink leading-tight">
+          {title}
+        </h1>
+        <p className="text-[0.875rem] text-ink2 leading-[1.5]">
+          A review can be changed for {CHANGE_DAYS} days after it’s posted. You posted this one on{' '}
+          {new Date(mine.createdAt).toLocaleDateString(undefined, {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+          . You can still delete it.
+        </p>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={remove}
+          className="mt-4 min-h-[44px] w-full font-semibold text-[0.875rem] text-destructive"
+        >
+          {saving ? 'Deleting…' : 'Delete your review'}
+        </button>
+        {failure ? (
+          <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+            {failure}
+          </p>
+        ) : null}
+      </>
+    );
   }
 
   return (
