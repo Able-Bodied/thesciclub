@@ -34,6 +34,7 @@ import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { EventViewsLine } from '@/routes/events/event-views';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, rsvpReachesHost, timeRange } from '@/routes/events/format';
+import { InvitationEmails } from '@/routes/events/invitation-emails';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { organizationTown } from '@/routes/events/organization-places';
@@ -592,6 +593,8 @@ export default function EventDetailPage() {
             adminOf={adminOf}
             onChanged={() => reload?.()}
           />
+
+          {canChange ? <InvitationEmails eventId={event.id} /> : null}
 
           {canChange && !event.handAdded ? (
             <ChangeImportedEvent

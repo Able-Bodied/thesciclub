@@ -29,6 +29,7 @@ vi.mock('@/lib/events', async (importOriginal) => ({
   useEvents: () => ({ events: state.events, loading: false, error: null, reload: state.reload }),
   fetchSeriesStarts: () => Promise.resolve([]),
   fetchEventAttachments: () => Promise.resolve([]),
+  fetchInvitationEmails: () => Promise.resolve([]),
   useAttendeesByEvent: () => ({
     byEvent: new Map(),
     loading: false,

@@ -730,6 +730,79 @@ export async function fetchEventAttachments(eventId: string): Promise<EventAttac
   }
 }
 
+/** One email that added or changed the calendar invitation an event came from. */
+export interface InvitationEmail {
+  id: string;
+  receivedAt: string;
+  outcome: 'added' | 'updated' | 'held' | 'cancelled' | 'refused' | 'approved' | 'discarded';
+  reason: string | null;
+  senderEmail: string;
+  verified: boolean;
+  /** What the email said the event is. */
+  title: string | null;
+  starts: string | null;
+  allDay: boolean;
+  timezone: string;
+  place: string | null;
+  link: string | null;
+  description: string | null;
+  repeats: boolean;
+  /** Who approved or discarded it, for those two. */
+  decidedByName: string | null;
+}
+
+interface InvitationEmailRow {
+  id: string;
+  received_at: string;
+  outcome: InvitationEmail['outcome'];
+  reason: string | null;
+  sender_email: string;
+  verified: boolean;
+  title: string | null;
+  starts: string | null;
+  all_day: boolean;
+  timezone: string;
+  place: string | null;
+  link: string | null;
+  description: string | null;
+  repeats: boolean;
+  decided_by_name: string | null;
+}
+
+/**
+ * The emails behind an event that came from a calendar invitation, newest
+ * first (the owner, 2026-11-17; 20261117150000). The database gives them only
+ * to somebody who may change the event; empty for everybody else, for an
+ * event added by hand, and if the read fails.
+ */
+export async function fetchInvitationEmails(eventId: string): Promise<InvitationEmail[]> {
+  try {
+    const { data, error } = (await getSupabase().rpc('event_invitation_emails', {
+      p_event: eventId,
+    })) as { data: InvitationEmailRow[] | null; error: Failure | null };
+    if (error || !Array.isArray(data)) return [];
+    return data.map((row) => ({
+      id: row.id,
+      receivedAt: row.received_at,
+      outcome: row.outcome,
+      reason: row.reason,
+      senderEmail: row.sender_email,
+      verified: row.verified,
+      title: row.title,
+      starts: row.starts,
+      allDay: row.all_day,
+      timezone: row.timezone,
+      place: row.place,
+      link: row.link,
+      description: row.description,
+      repeats: row.repeats,
+      decidedByName: row.decided_by_name,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Gives an event its video call link, or none (20261106070000): after the
  * event is saved, as its cover is, and on a date of a repeating event to that
