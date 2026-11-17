@@ -22,7 +22,8 @@ export interface RepeatRule {
 /** A guest who answered yes or maybe. Only members among them are kept (20261117130000). */
 export interface InviteGuest {
   email: string;
-  answer: 'yes' | 'maybe';
+  /** `none`: has not answered yet. Somebody who said no is not listed. */
+  answer: 'yes' | 'maybe' | 'none';
 }
 
 /** A file attached to the invitation, as a link: a meeting's notes document. */
@@ -358,12 +359,22 @@ export function cleanDescription(raw: string): string {
     .slice(0, 4000);
 }
 
-const ANSWERS: Record<string, InviteGuest['answer']> = { ACCEPTED: 'yes', TENTATIVE: 'maybe' };
+const ANSWERS: Record<string, InviteGuest['answer']> = {
+  ACCEPTED: 'yes',
+  TENTATIVE: 'maybe',
+  // No PARTSTAT at all means the same (RFC 5545).
+  'NEEDS-ACTION': 'none',
+  '': 'none',
+};
+/** Yes is kept over maybe, and either over no answer, when an address is listed twice. */
+const WEIGHT: Record<InviteGuest['answer'], number> = { yes: 2, maybe: 1, none: 0 };
 
 /**
- * The guests who said yes or maybe, each once (the owner, 2026-11-17: the
- * ones who are members are RSVPd in the club). Rooms and resources are not
- * guests, and nobody who has not answered, or said no, is listed.
+ * The guests who said yes or maybe, and those who have not answered, each
+ * once (the owner, 2026-11-17: the ones who are members are RSVPd in the
+ * club, or sent the event in a chat if they have not answered;
+ * 20261117150000). Rooms and resources are not guests, and nobody who said
+ * no is listed.
  */
 function readGuests(event: Component): InviteGuest[] {
   const guests = new Map<string, InviteGuest['answer']>();
@@ -377,7 +388,10 @@ function readGuests(event: Component): InviteGuest[] {
       .replace(/^mailto:/i, '')
       .toLowerCase();
     if (!answer || !/^[^\s@]+@[^\s@]+$/.test(email)) continue;
-    if (guests.get(email) !== 'yes') guests.set(email, answer);
+    // The club's own address is on every invitation, and is nobody.
+    if (/[@.]thesciclub\.com$/.test(email)) continue;
+    const had = guests.get(email);
+    if (had === undefined || WEIGHT[answer] > WEIGHT[had]) guests.set(email, answer);
   }
   return [...guests].slice(0, 200).map(([email, answer]) => ({ email, answer }));
 }

@@ -232,6 +232,17 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     "Notes and files" on the event's page. Probe: `calendar-invite-guests.sql`.
     Not yet seen on a real invitation: whether Google's emailed file carries
     the attachment and each guest's answer.
+  - **Asking, and the emails** (the owner, 2026-11-17, `20261117150000`): a
+    guest who is a member and has not answered gets one message from the
+    invitation's sender in their own conversation (name, when, link), once
+    for each invitation however it changes (`calendar_invite_asks`); not
+    somebody who cannot see the event, has answered in the club, or cannot
+    be messaged (`chat_open_direct` decides). Each email that added,
+    changed, held, cancelled or refused an invitation is one line in
+    `calendar_invite_emails` (a trigger on `calendar_invites`), shown under
+    "Invitation emails" on the event's page to whoever may change it
+    (`event_invitation_emails`). Emails before it left only the last one.
+    Probe: `calendar-invite-asks-and-emails.sql`.
   - `invites@` tested end to end 2026-10-24 (function deployed). The
     website still shows `events@` until the branch reaches `main`.
 
