@@ -1842,6 +1842,11 @@ function ChooseOrganizationPanel({
 }) {
   const { organizations, loading } = useOrganizations();
   const [chosen, setChosen] = useState(current);
+  // The club first, and a search for the rest: the directory is too long to
+  // scroll (OrganizationPicker, the owner, 2026-11-05).
+  const club = organizations.filter((organization) =>
+    /^the sci club$/i.test(organization.name.trim()),
+  );
   return (
     <Panel
       title={title}
@@ -1863,7 +1868,8 @@ function ChooseOrganizationPanel({
         id={`choose-organization-${memberId}`}
         label="Organization"
         labelClassName="mt-1 block font-semibold text-[0.75rem] text-ink"
-        yours={organizations}
+        yours={club}
+        others={organizations}
         value={chosen}
         onChange={setChosen}
         placeholder={loading ? 'Loading organizations…' : 'Choose an organization'}
