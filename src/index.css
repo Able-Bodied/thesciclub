@@ -181,18 +181,19 @@
   --stage-og: #6b3fa8;
   --stage-oog: #a3275e;
   /* The same stages as words (the owner, 2026-11-17: the words in the colour, no
-     band). On a light page, each past 4.5:1 on --paper and --canvas; --stage-*-light
+     band; brighter, same hues, 2026-11-17). On a light page, each past 4.5:1 on
+     --paper and --canvas (theme-contrast.test.ts); --stage-*-light
      is for a dark page and over photographs (past 4.5:1 on #3a4a5e and darker). */
-  --stage-new-text: #1d7a3e;
-  --stage-recent-text: #b45309;
-  --stage-years-text: #0e7490;
-  --stage-og-text: #6b3fa8;
-  --stage-oog-text: #a3275e;
-  --stage-new-light: #6fdc95;
-  --stage-recent-light: #ffb067;
-  --stage-years-light: #5ccfe6;
-  --stage-og-light: #d4bcff;
-  --stage-oog-light: #ffa3c8;
+  --stage-new-text: #02813c;
+  --stage-recent-text: #b65201;
+  --stage-years-text: #047997;
+  --stage-og-text: #8749d8;
+  --stage-oog-text: #d01e74;
+  --stage-new-light: #56e48e;
+  --stage-recent-light: #ffa44b;
+  --stage-years-light: #34d5f2;
+  --stage-og-light: #ccafff;
+  --stage-oog-light: #ff9ac4;
 
   /* --------------------------------------------------------- measures */
   /*
