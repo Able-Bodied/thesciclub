@@ -4,21 +4,16 @@ import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { looksLikeEmail } from '@/lib/auth-email';
-import { chatTime } from '@/lib/chat/time';
 import { describeThrown } from '@/lib/describe-error';
 import { useInvitePermissions } from '@/lib/invite-permissions';
 import {
-  type AnsweredInviteRequest,
-  answeredWords,
   answerInviteRequest,
-  fetchAnsweredInviteRequests,
   fetchMyInviteRequests,
   type ReceivedInviteRequest,
 } from '@/lib/invite-requests';
 import { useMemberOrganizations } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
-import { cn } from '@/lib/utils';
 import {
   canWithdraw,
   createMyInvite,
@@ -64,8 +59,6 @@ export default function InvitesPage() {
   const permissions = useInvitePermissions(userId);
   const [invites, setInvites] = useState<MentorInvite[]>([]);
   const [requests, setRequests] = useState<ReceivedInviteRequest[]>([]);
-  // Another org admin may have answered first (the owner, 2026-11-16).
-  const [answered, setAnswered] = useState<AnsweredInviteRequest[]>([]);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   // Optional (the owner, 2026-11-15): "Hi Ana," and joining's name.
@@ -109,16 +102,11 @@ export default function InvitesPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [result, asked, done] = await Promise.all([
-      fetchMyInvites(),
-      fetchMyInviteRequests(),
-      fetchAnsweredInviteRequests(),
-    ]);
+    const [result, asked] = await Promise.all([fetchMyInvites(), fetchMyInviteRequests()]);
     if (result.ok) setInvites(result.invites);
     else setError(result.error);
     // A failure here leaves the list empty: the invites are what this page is for.
     if (asked.ok) setRequests(asked.value);
-    if (done.ok) setAnswered(done.value);
     setLoading(false);
   }, []);
 
@@ -271,22 +259,12 @@ export default function InvitesPage() {
             </p>
           ) : null}
 
-          {requests.length > 0 || answered.length > 0 ? (
+          {requests.length > 0 ? (
             <section id="requests" className="mb-5">
               <h2 className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
                 Asking for an invite
               </h2>
-              {requests.length === 0 ? (
-                <p className="mb-2.5 text-[0.8125rem] text-ink2">
-                  Nobody is waiting. Requests answered lately are below.
-                </p>
-              ) : null}
-              <ul
-                className={cn(
-                  'overflow-hidden rounded-[14px] border border-line bg-paper',
-                  requests.length === 0 && 'hidden',
-                )}
-              >
+              <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
                 {requests.map((request) => (
                   <li key={request.id} className="border-line border-b p-3.5 last:border-b-0">
                     <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
@@ -353,29 +331,6 @@ export default function InvitesPage() {
                   </li>
                 ))}
               </ul>
-              {answered.length > 0 ? (
-                <>
-                  <h3 className="mt-3.5 mb-2 font-bold text-[0.75rem] text-grey">
-                    Answered lately
-                  </h3>
-                  <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
-                    {answered.map((request) => (
-                      <li
-                        key={request.id}
-                        className="border-line border-b px-3.5 py-2.5 last:border-b-0"
-                      >
-                        <span className="block font-bold text-[0.875rem] text-ink">
-                          {request.name}
-                        </span>
-                        <span className="mt-0.5 block text-[0.75rem] text-grey">
-                          {answeredWords(request)} · {request.organizationName} ·{' '}
-                          {chatTime(request.answeredAt)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
             </section>
           ) : null}
 

@@ -148,58 +148,6 @@ export async function fetchMyInviteRequests(): Promise<Result<ReceivedInviteRequ
   };
 }
 
-/**
- * Answered in the last 14 days, by anyone on the desk (20261117010000): the
- * first to answer takes a request, so the others are shown who did.
- */
-export interface AnsweredInviteRequest {
-  id: string;
-  organizationName: string;
-  name: string;
-  status: 'invited' | 'dismissed';
-  /** First name of whoever answered, or null if they left. */
-  answeredBy: string | null;
-  answeredByMe: boolean;
-  answeredAt: string;
-}
-
-interface AnsweredRow {
-  id: string;
-  organization_name: string;
-  name: string;
-  status: 'invited' | 'dismissed';
-  answered_by: string | null;
-  answered_by_me: boolean;
-  answered_at: string;
-}
-
-export async function fetchAnsweredInviteRequests(): Promise<Result<AnsweredInviteRequest[]>> {
-  const result = await call<AnsweredRow[] | null>(
-    'my_answered_invite_requests',
-    {},
-    'Could not load answered requests.',
-  );
-  if (!result.ok) return result;
-  return {
-    ok: true,
-    value: (result.value ?? []).map((row) => ({
-      id: row.id,
-      organizationName: row.organization_name,
-      name: row.name,
-      status: row.status,
-      answeredBy: row.answered_by,
-      answeredByMe: row.answered_by_me,
-      answeredAt: row.answered_at,
-    })),
-  };
-}
-
-/** "Alfred sent an invite", "You dismissed it". */
-export function answeredWords(request: AnsweredInviteRequest): string {
-  const who = request.answeredByMe ? 'You' : (request.answeredBy ?? 'Someone');
-  return request.status === 'invited' ? `${who} sent an invite` : `${who} dismissed it`;
-}
-
 export function answerInviteRequest(
   requestId: string,
   answer: 'invited' | 'dismissed',
