@@ -701,6 +701,35 @@ export async function fetchSeriesStarts(seriesId: string): Promise<string[]> {
   }
 }
 
+/** A file attached to the calendar invitation an event came from, as a link. */
+export interface EventAttachment {
+  title: string;
+  url: string;
+}
+
+/**
+ * The files attached to the invitation an event came from, a meeting's notes
+ * document for one (the owner, 2026-11-17; 20261117130000). Only a signed-in
+ * member may read them, and only on an event they can see; empty if there
+ * are none or the read fails.
+ */
+export async function fetchEventAttachments(eventId: string): Promise<EventAttachment[]> {
+  try {
+    const { data, error } = (await getSupabase()
+      .from('events')
+      .select('attachments')
+      .eq('id', eventId)
+      .maybeSingle()) as { data: { attachments: unknown } | null; error: Failure | null };
+    if (error || !Array.isArray(data?.attachments)) return [];
+    return data.attachments.flatMap((entry: unknown) => {
+      const { title, url } = (entry ?? {}) as { title?: unknown; url?: unknown };
+      return typeof url === 'string' && typeof title === 'string' ? [{ title, url }] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Gives an event its video call link, or none (20261106070000): after the
  * event is saved, as its cover is, and on a date of a repeating event to that

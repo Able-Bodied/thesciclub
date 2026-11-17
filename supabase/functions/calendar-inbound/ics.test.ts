@@ -101,6 +101,38 @@ describe('reading an invitation', () => {
   });
 });
 
+// The owner, 2026-11-17: members on the invitation are RSVPd, and a meeting's
+// notes are linked from its page.
+describe('who is coming, and what is attached', () => {
+  it('lists the guests who said yes or maybe, and files attached as https links', () => {
+    const invite = readInvite(
+      GOOGLE.replace(
+        'SEQUENCE:0',
+        [
+          'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Rep:mailto:Rep@NorCalSCI.org',
+          'ATTENDEE;CUTYPE=INDIVIDUAL;PARTSTAT=TENTATIVE;CN=Maybe:mailto:maybe@example.org',
+          'ATTENDEE;CUTYPE=INDIVIDUAL;PARTSTAT=DECLINED;CN=No:mailto:no@example.org',
+          'ATTENDEE;CUTYPE=ROOM;PARTSTAT=ACCEPTED;CN=Patio:mailto:patio@resource.calendar.google.com',
+          'ATTACH;FILENAME=Notes - Friday Happy Hour;FMTTYPE=application/vnd.google-apps.document:https://docs.google.com/document/d/1AbC/edit?usp=drive_web',
+          'ATTACH;FMTTYPE=image/png;ENCODING=BASE64;VALUE=BINARY:iVBORw0KGgo=',
+          'SEQUENCE:0',
+        ].join('\r\n'),
+      ),
+    );
+    // Not the club's own address, which has not answered, nor the one who said no.
+    expect(invite?.guests).toEqual([
+      { email: 'rep@norcalsci.org', answer: 'yes' },
+      { email: 'maybe@example.org', answer: 'maybe' },
+    ]);
+    expect(invite?.attachments).toEqual([
+      {
+        title: 'Notes - Friday Happy Hour',
+        url: 'https://docs.google.com/document/d/1AbC/edit?usp=drive_web',
+      },
+    ]);
+  });
+});
+
 describe('repeating invitations', () => {
   const withRule = (rule: string) => GOOGLE.replace('SEQUENCE:0', `RRULE:${rule}\r\nSEQUENCE:0`);
 

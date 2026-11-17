@@ -19,6 +19,18 @@ export interface RepeatRule {
   endsAfter: number | null;
 }
 
+/** A guest who answered yes or maybe. Only members among them are kept (20261117130000). */
+export interface InviteGuest {
+  email: string;
+  answer: 'yes' | 'maybe';
+}
+
+/** A file attached to the invitation, as a link: a meeting's notes document. */
+export interface InviteAttachment {
+  title: string;
+  url: string;
+}
+
 export interface InviteEvent {
   uid: string;
   sequence: number;
@@ -46,6 +58,8 @@ export interface InviteEvent {
   repeat: RepeatRule | null;
   /** Set when the invite repeats in a way the club cannot: only its first date is added. */
   repeatNote: string | null;
+  guests: InviteGuest[];
+  attachments: InviteAttachment[];
 }
 
 /** The club's own zone, for an invite that names none it can read. */
@@ -344,6 +358,50 @@ export function cleanDescription(raw: string): string {
     .slice(0, 4000);
 }
 
+const ANSWERS: Record<string, InviteGuest['answer']> = { ACCEPTED: 'yes', TENTATIVE: 'maybe' };
+
+/**
+ * The guests who said yes or maybe, each once (the owner, 2026-11-17: the
+ * ones who are members are RSVPd in the club). Rooms and resources are not
+ * guests, and nobody who has not answered, or said no, is listed.
+ */
+function readGuests(event: Component): InviteGuest[] {
+  const guests = new Map<string, InviteGuest['answer']>();
+  for (const property of event.properties) {
+    if (property.name !== 'ATTENDEE') continue;
+    const kind = (property.params.CUTYPE ?? 'INDIVIDUAL').toUpperCase();
+    if (kind === 'ROOM' || kind === 'RESOURCE') continue;
+    const answer = ANSWERS[(property.params.PARTSTAT ?? '').toUpperCase()];
+    const email = property.value
+      .trim()
+      .replace(/^mailto:/i, '')
+      .toLowerCase();
+    if (!answer || !/^[^\s@]+@[^\s@]+$/.test(email)) continue;
+    if (guests.get(email) !== 'yes') guests.set(email, answer);
+  }
+  return [...guests].slice(0, 200).map(([email, answer]) => ({ email, answer }));
+}
+
+/**
+ * Files attached as links, ten at most (the owner, 2026-11-17: a meeting's
+ * notes). Google Calendar writes a Drive file as ATTACH with its name in
+ * FILENAME; a file sent inside the invitation itself has no address to keep.
+ */
+function readAttachments(event: Component): InviteAttachment[] {
+  const attachments: InviteAttachment[] = [];
+  for (const property of event.properties) {
+    if (property.name !== 'ATTACH') continue;
+    const url = property.value.trim();
+    if (!/^https:\/\/\S+$/i.test(url) || url.length > 2000) continue;
+    if (attachments.some((attachment) => attachment.url === url)) continue;
+    const title = unescapeText(property.params.FILENAME ?? '')
+      .trim()
+      .slice(0, 140);
+    attachments.push({ title: title || 'Attachment', url });
+  }
+  return attachments.slice(0, 10);
+}
+
 /**
  * The invite's event. With several, the one that is the whole event (no
  * RECURRENCE-ID) wins; a file about one date of a repeating event gives that
@@ -418,5 +476,7 @@ export function readInvite(text: string): InviteEvent | null {
     timezone: start.zone,
     repeat,
     repeatNote: note,
+    guests: readGuests(event),
+    attachments: readAttachments(event),
   };
 }
