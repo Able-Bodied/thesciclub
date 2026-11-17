@@ -3,6 +3,7 @@ import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-s
 import type { NearHomeStatus } from '@/lib/near-home';
 import { DistanceFilter } from '@/routes/events/distance-filter';
 import { AGE_BANDS, LEAVE_OUT, toggleFilter } from '@/routes/peers/filters';
+import { PEER_SORTS, type PeerSort } from '@/routes/peers/ranking';
 import type { InjuryRegion, MemberFilters } from '@/types/domain';
 
 /**
@@ -47,6 +48,11 @@ export interface FilterSheetProps {
   /** Every topic, most common first. The sheet decides how many to draw. */
   topics: string[];
   filters: MemberFilters;
+  /**
+   * The list's order (the owner, 2026-11-16: in Filter, not beside the count).
+   * Left out on the map, which has no order.
+   */
+  sorting?: { sort: PeerSort; byDistance: boolean; onSort: (sort: PeerSort) => void } | undefined;
   /** How many members the current selection matches, computed by the caller. */
   matchCount: number;
   activeCount: number;
@@ -64,6 +70,7 @@ export function FilterSheet({
   ages,
   topics,
   filters,
+  sorting,
   matchCount,
   activeCount,
   onChange,
@@ -96,6 +103,23 @@ export function FilterSheet({
       clearCount={activeCount}
       applyLabel={`Show ${matchCount}`}
     >
+      {sorting ? (
+        <FilterGroup title="Sort by">
+          {PEER_SORTS.filter(([value]) => value !== 'nearest' || sorting.byDistance).map(
+            ([value, words]) => (
+              <FilterChip
+                key={value}
+                label={words}
+                on={sorting.sort === value}
+                onClick={() => {
+                  sorting.onSort(value);
+                }}
+              />
+            ),
+          )}
+        </FilterGroup>
+      ) : null}
+
       {distance ? (
         <DistanceFilter
           miles={filters.withinMiles}
