@@ -69,7 +69,7 @@ export function ProfessionField() {
         Your profession
       </label>
       <p id={`${id}-hint`} className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-        {saved === '' ? 'You are a verified professional. Write your profession for members. ' : ''}
+        {saved === '' ? 'You are staff. Write your profession for members. ' : ''}
         Shown beside your name as “{PARTNER_ROLE_NAME} · {clean || 'your profession'}”.
       </p>
       {saved !== null ? (

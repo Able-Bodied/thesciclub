@@ -118,7 +118,7 @@ function Introduction({
   said: RefObject<HTMLParagraphElement | null>;
   onAnswer: (yes: boolean) => void;
 }) {
-  const partnerName = i.partner?.name ?? `A ${PARTNER_ROLE_NAME.toLowerCase()}`;
+  const partnerName = i.partner?.name ?? `A ${PARTNER_ROLE_NAME.toLowerCase()} member`;
   return (
     <div className="space-y-4">
       <section aria-label="Who introduced you" className="flex items-center gap-3">

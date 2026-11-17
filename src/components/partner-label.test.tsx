@@ -12,19 +12,17 @@ vi.mock('@/lib/club-partners', async (importOriginal) => ({
     ]),
 }));
 
-describe('the verified professional label', () => {
+describe('the staff label', () => {
   it('names the role and their profession, with the mark', () => {
     const { container } = render(<PartnerLabel memberId="p1" />);
-    expect(
-      screen.getByText('Verified professional · Physical therapist, SCI-FIT'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Staff · Physical therapist, SCI-FIT')).toBeInTheDocument();
     expect(container.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
   // The owner, 2026-11-04: they write it on Me once made one.
   it('names the role alone until they write their profession', () => {
     const { container } = render(<PartnerLabel memberId="p2" />);
-    expect(screen.getByText('Verified professional')).toBeInTheDocument();
+    expect(screen.getByText('Staff')).toBeInTheDocument();
     expect(container.querySelector('svg')).not.toBeNull();
   });
 

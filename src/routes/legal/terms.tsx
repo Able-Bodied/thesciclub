@@ -45,13 +45,13 @@ export default function TermsPage() {
             else’s name, and tell you why.
           </li>
           <li>
-            <b>Verified professionals.</b> We may make a member who works with people with spinal
-            cord injuries a verified professional, shown with a verified mark and the profession
-            they write. A verified professional can invite without a limit, make QR codes and links
+            <b>Staff.</b> We may make a member who works with people with spinal cord injuries at an
+            organization staff of that organization, shown with a verified mark, the organization
+            and the profession they write. Staff can invite without a limit, make QR codes and links
             that let people in until they expire, and connect members, as an org admin can.
             Connecting adds them to a group conversation without asking them first, and anyone can
-            leave it at any time. A verified professional’s word is not medical advice either, and
-            we may end the role at any time.
+            leave it at any time. Staff’s word is not medical advice either, and we may end the role
+            at any time.
           </li>
         </List>
       </Section>

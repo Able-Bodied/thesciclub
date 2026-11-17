@@ -2,6 +2,7 @@ import { ChevronDown, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { OrganizationPicker } from '@/components/organization-picker';
 import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
@@ -9,12 +10,16 @@ import { looksLikeEmail } from '@/lib/auth-email';
 import { useAdminReports } from '@/lib/chat/reports';
 import {
   fetchPartnerTitles,
+  fetchStaffOrganizations,
   forgetPartnerTitles,
   PARTNER_ROLE_NAME,
   type PartnerTitles,
+  type StaffOrganization,
+  type StaffOrganizations,
 } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { useJoiningSetting } from '@/lib/joining';
+import { useOrganizations } from '@/lib/organizations';
 import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { EventContactsSection } from '@/routes/admin/event-contacts-section';
@@ -47,6 +52,7 @@ import {
   inviteState,
   isOldPhoneInvite,
   type MemberReach,
+  makeMentorOf,
   ROSTER_PAGE,
   type RosterCounts,
   reinviteByEmail,
@@ -58,6 +64,7 @@ import {
   setMemberStatus,
   setMemberType,
   setPartner,
+  setStaff,
   type TallyRow,
   unblockEmail,
   vouchedBy as vouchedBy_,
@@ -174,6 +181,7 @@ export default function AdminPage() {
   const [deciding, setDeciding] = useState<string | null>(null);
   const [reach, setReach] = useState<Map<string, MemberReach> | null>(null);
   const [partners, setPartners] = useState<PartnerTitles>(new Map());
+  const [staffOrganizations, setStaffOrganizations] = useState<StaffOrganizations>(new Map());
 
   // The roster's question now, and how many rows are drawn, so a reload after
   // an action reads the same rows and an answer to an older question is
@@ -232,6 +240,7 @@ export default function AdminPage() {
       strikeResult,
       reachResult,
       partnerTitles,
+      staffOrganizationsRead,
     ] = await Promise.all([
       readRoster(Math.max(shown.current, ROSTER_PAGE)),
       fetchMemberCounts(),
@@ -243,10 +252,12 @@ export default function AdminPage() {
       fetchStrikes(),
       fetchMemberReach(),
       fetchPartnerTitles(),
+      fetchStaffOrganizations(),
     ]);
     if (countResult.ok) setCounts(countResult.counts);
     setReach(reachResult);
     setPartners(partnerTitles);
+    setStaffOrganizations(staffOrganizationsRead);
     if (pendingResult.ok) setPendingCount(pendingResult.pending);
     if (tallyResult.ok) setTally(tallyResult.rows);
     if (strikeResult.ok) setStrikes(strikeResult.strikes);
@@ -833,10 +844,17 @@ export default function AdminPage() {
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
+                  onMakeMentor={(organizationId) => {
+                    act(m.id, () => makeMentorOf(m.id, organizationId));
+                  }}
                   isPartner={partners.has(m.id)}
                   partnerTitle={partners.get(m.id) ?? null}
+                  staffOrganization={staffOrganizations.get(m.id) ?? null}
                   onSetPartner={(title) => {
                     act(m.id, () => setPartner(m.id, title));
+                  }}
+                  onSetStaff={(organizationId) => {
+                    act(m.id, () => setStaff(m.id, organizationId));
                   }}
                   onRemovePartner={() => {
                     act(m.id, () => removePartner(m.id));
@@ -1045,10 +1063,13 @@ function Row({
   onResume,
   onRemove,
   onToggleMentor,
+  onMakeMentor,
   onMakeOrganization,
   isPartner,
   partnerTitle,
+  staffOrganization = null,
   onSetPartner,
+  onSetStaff,
   onRemovePartner,
   onStrike,
   strikes,
@@ -1067,12 +1088,23 @@ function Row({
   /** One call either way: blocking deletes the member as part of blocking. */
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
+  /**
+   * A mentor of the organization chosen (the owner, 2026-11-16: "if we are
+   * marking somebody as either staff or mentor in the admin panel, we should
+   * have selection for which organization"). Left out for a seeded row, which
+   * grant_mentor refuses: Make mentor there stays the club's.
+   */
+  onMakeMentor?: (organizationId: string) => void;
   onMakeOrganization: () => void;
   isPartner?: boolean;
-  /** Their profession as a verified professional, null until they write it on Me. */
+  /** Their profession as staff, null until they write it on Me. */
   partnerTitle?: string | null;
-  /** Null makes them one without a title. Left out where nobody can be one: a seeded row. */
+  /** Who they are staff of; null for staff made before it was asked. */
+  staffOrganization?: StaffOrganization | null;
+  /** Their profession. Left out where nobody can be staff: a seeded row. */
   onSetPartner?: (title: string | null) => void;
+  /** Staff of the organization chosen, or a change of which. */
+  onSetStaff?: (organizationId: string) => void;
   onRemovePartner?: () => void;
   onStrike: (reason: string) => void;
   /** This member's strikes that still count. Withdrawn and expired ones are not here. */
@@ -1100,7 +1132,8 @@ function Row({
   const [listingStrikes, setListingStrikes] = useState(false);
   // The title being written, while that panel is open.
   const [partnering, setPartnering] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState(false);
+  // Which role an organization is being chosen for, in the row's panel.
+  const [choosing, setChoosing] = useState<'mentor' | 'staff' | null>(null);
   const [unpartnering, setUnpartnering] = useState(false);
   // The database refuses a fourth (20260917000000), so the button that would
   // ask for one is not offered. The count beside the name is already saying
@@ -1230,7 +1263,12 @@ function Row({
           <fieldset className="min-w-0">
             <legend className="mb-2 font-bold text-[0.75rem] text-grey">Account type</legend>
             <div className="flex flex-wrap gap-2">
-              <SmallButton onClick={onToggleMentor}>
+              <SmallButton
+                onClick={() => {
+                  if (member.type === 'peer' && onMakeMentor) setChoosing('mentor');
+                  else onToggleMentor();
+                }}
+              >
                 {member.type === 'peer' ? 'Make mentor' : 'Make peer'}
               </SmallButton>
               {member.type !== 'organization' && !member.isSeed ? (
@@ -1245,22 +1283,35 @@ function Row({
               </legend>
               {isPartner ? (
                 <p className="mb-2 text-[0.8125rem] text-ink">
+                  {staffOrganization
+                    ? `Staff of ${staffOrganization.name}`
+                    : 'No organization yet. Choose one.'}
+                  {' · '}
                   {partnerTitle ?? 'No profession yet. They write it on Me.'}
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-2">
                 {isPartner ? (
-                  <SmallButton
-                    onClick={() => {
-                      setPartnering(partnerTitle ?? '');
-                    }}
-                  >
-                    Change profession
-                  </SmallButton>
+                  <>
+                    <SmallButton
+                      onClick={() => {
+                        setChoosing('staff');
+                      }}
+                    >
+                      {staffOrganization ? 'Change organization' : 'Choose organization'}
+                    </SmallButton>
+                    <SmallButton
+                      onClick={() => {
+                        setPartnering(partnerTitle ?? '');
+                      }}
+                    >
+                      Change profession
+                    </SmallButton>
+                  </>
                 ) : (
                   <SmallButton
                     onClick={() => {
-                      setVerifying(true);
+                      setChoosing('staff');
                     }}
                   >
                     Make {PARTNER_ROLE_NAME.toLowerCase()}
@@ -1444,7 +1495,7 @@ function Row({
 
       {unpartnering ? (
         <ConfirmPanel
-          title={`Remove ${member.displayName} as a ${PARTNER_ROLE_NAME.toLowerCase()}?`}
+          title={`Remove ${member.displayName} as ${PARTNER_ROLE_NAME.toLowerCase()}?`}
           confirmLabel="Remove the role"
           onCancel={() => {
             setUnpartnering(false);
@@ -1459,36 +1510,42 @@ function Row({
             can no longer introduce members. Introductions already made stay.
           </p>
         </ConfirmPanel>
-      ) : verifying ? (
-        <Panel
-          title={`Make ${member.displayName} a ${PARTNER_ROLE_NAME.toLowerCase()}?`}
-          buttons={
-            <>
-              <PanelButton
-                onClick={() => {
-                  setVerifying(false);
-                }}
-              >
-                Cancel
-              </PanelButton>
-              <PanelButton
-                onClick={() => {
-                  setVerifying(false);
-                  onSetPartner?.(null);
-                }}
-              >
-                Make {PARTNER_ROLE_NAME.toLowerCase()}
-              </PanelButton>
-            </>
+      ) : choosing ? (
+        <ChooseOrganizationPanel
+          memberId={member.id}
+          title={
+            choosing === 'mentor'
+              ? `Make ${member.displayName} a mentor of…`
+              : isPartner
+                ? `${member.displayName} is staff of…`
+                : `Make ${member.displayName} staff of…`
           }
+          current={choosing === 'staff' ? (staffOrganization?.id ?? '') : ''}
+          confirmLabel={choosing === 'mentor' ? 'Make mentor' : isPartner ? 'Save' : 'Make staff'}
+          onCancel={() => {
+            setChoosing(null);
+          }}
+          onChoose={(organizationId) => {
+            const role = choosing;
+            setChoosing(null);
+            if (role === 'mentor') onMakeMentor?.(organizationId);
+            else onSetStaff?.(organizationId);
+          }}
         >
-          <p>
-            For professionals who work with people with SCI/D. A verified mark shows beside their
-            name. They can invite without a limit, make codes of their own, introduce members to
-            each other, and see who they invited or introduced. They see nobody’s messages or
-            contact details. They write their profession themselves, on Me.
-          </p>
-        </Panel>
+          {choosing === 'mentor' ? (
+            <p>
+              Their mentor badge carries this organization’s logo. They can invite more people than
+              a peer. Its org admins can change its mentors too.
+            </p>
+          ) : (
+            <p>
+              For staff who work with people with SCI/D. A verified mark shows beside their name,
+              with this organization. They can invite without a limit, make codes of their own,
+              introduce members to each other, and see who they invited or introduced. They see
+              nobody’s messages or contact details. They write their profession themselves, on Me.
+            </p>
+          )}
+        </ChooseOrganizationPanel>
       ) : partnering !== null ? (
         <Panel
           title={`${member.displayName}’s profession`}
@@ -1714,6 +1771,64 @@ function ConfirmPanel({
  * stay identical: same width, same tint, same place in the row, so a panel that
  * opens under a name always looks like the same kind of thing.
  */
+/**
+ * Which organization a mentor or staff member is of, chosen in the row (the
+ * owner, 2026-11-16: "we should have selection for which organization maybe
+ * through a pop-up or something"). Nothing is made until one is chosen.
+ */
+function ChooseOrganizationPanel({
+  memberId,
+  title,
+  current,
+  confirmLabel,
+  onCancel,
+  onChoose,
+  children,
+}: {
+  memberId: string;
+  title: string;
+  /** The organization already chosen, or ''. */
+  current: string;
+  confirmLabel: string;
+  onCancel: () => void;
+  onChoose: (organizationId: string) => void;
+  children: React.ReactNode;
+}) {
+  const { organizations, loading } = useOrganizations();
+  const [chosen, setChosen] = useState(current);
+  return (
+    <Panel
+      title={title}
+      buttons={
+        <>
+          <PanelButton onClick={onCancel}>Cancel</PanelButton>
+          <PanelButton
+            disabled={!chosen || chosen === current}
+            onClick={() => {
+              onChoose(chosen);
+            }}
+          >
+            {confirmLabel}
+          </PanelButton>
+        </>
+      }
+    >
+      <OrganizationPicker
+        id={`choose-organization-${memberId}`}
+        label="Organization"
+        labelClassName="mt-1 block font-semibold text-[0.75rem] text-ink"
+        yours={organizations}
+        value={chosen}
+        onChange={setChosen}
+        placeholder={loading ? 'Loading organizations…' : 'Choose an organization'}
+        disabled={loading}
+        className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
+      />
+      <div className="mt-2">{children}</div>
+    </Panel>
+  );
+}
+
 function Panel({
   title,
   children,

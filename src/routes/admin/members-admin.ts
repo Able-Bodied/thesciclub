@@ -525,8 +525,8 @@ export async function setMemberType(
 }
 
 /**
- * Make them a verified professional, with no title: they write it on Me
- * (20261104160000). Or change the title beside their name.
+ * Change the profession beside a staff member's name (20261104160000). Making
+ * someone staff is setStaff, which asks for their organization.
  */
 export async function setPartner(
   target: string,
@@ -538,16 +538,47 @@ export async function setPartner(
   });
   forgetPartnerTitles();
   return error
-    ? { ok: false, error: describeError(error, 'They were not made a verified professional.') }
+    ? { ok: false, error: describeError(error, 'Their profession was not changed.') }
+    : { ok: true };
+}
+
+/**
+ * Make them staff of an organization, or change which (20261117000000; the
+ * owner, 2026-11-16: "if we are marking somebody as either staff or mentor in
+ * the admin panel, we should have selection for which organization").
+ */
+export async function setStaff(
+  target: string,
+  organizationId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_set_staff', {
+    p_member: target,
+    p_organization: organizationId,
+  });
+  forgetPartnerTitles();
+  return error
+    ? { ok: false, error: describeError(error, 'They were not made staff.') }
+    : { ok: true };
+}
+
+/** Make them a mentor of an organization (grant_mentor, 20261028950000). */
+export async function makeMentorOf(
+  target: string,
+  organizationId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('grant_mentor', {
+    organization: organizationId,
+    member: target,
+  });
+  return error
+    ? { ok: false, error: describeError(error, 'They were not made a mentor.') }
     : { ok: true };
 }
 
 export async function removePartner(target: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_remove_partner', { p_member: target });
   forgetPartnerTitles();
-  return error
-    ? { ok: false, error: describeError(error, 'They are still a verified professional.') }
-    : { ok: true };
+  return error ? { ok: false, error: describeError(error, 'They are still staff.') } : { ok: true };
 }
 
 /**

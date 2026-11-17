@@ -23,6 +23,14 @@ import {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <Note title="What changed on November 16, 2026">
+        <List>
+          <li>
+            <b>Changed:</b> verified professionals are now called staff, and each is staff of an
+            organization an administrator chose, shown beside their name (see Who can see what).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 14, 2026">
         <List>
           <li>
@@ -592,14 +600,14 @@ export default function PrivacyPage() {
             event they manage, and only if you RSVP (see Event hosts, below).
           </li>
           <li>
-            <b>Verified professionals</b> work with people with spinal cord injuries, such as a
-            hospital’s peer support lead or a physical therapist, and an administrator chose them. A
-            verified mark and the profession they write are shown beside their name. They see the
-            same profiles as anybody. For the people they invited or connected, they also see
-            whether each joined, finished their profile and was introduced to a mentor, and how many
-            of them posted in a room or RSVP to an event, as a count. They cannot read conversations
-            they are not in. Verified professionals see no email address or phone number, except an
-            address they sent an invite to themselves.
+            <b>Staff</b> work with people with spinal cord injuries at an organization, such as a
+            hospital’s peer support lead or a physical therapist, and an administrator chose them
+            and their organization. A verified mark, their organization and the profession they
+            write are shown beside their name. They see the same profiles as anybody. For the people
+            they invited or connected, they also see whether each joined, finished their profile and
+            was introduced to a mentor, and how many of them posted in a room or RSVP to an event,
+            as a count. They cannot read conversations they are not in. Staff see no email address
+            or phone number, except an address they sent an invite to themselves.
           </li>
           <li>
             <b>Org admins</b> see the same about the people they invited or connected, and counts
@@ -618,12 +626,12 @@ export default function PrivacyPage() {
             any time, and a block between you removes it.
           </li>
           <li>
-            <b>Being connected.</b> An org admin or a verified professional can connect two or more
-            members. You are not asked first: you are added to a group conversation, a new one or
-            one that already exists, with a line saying who connected you and their note, and you
-            are told. Whoever connected you is in it only if they chose to be, and can read it only
-            then. If they started the group, they can add more people to it later. You can leave it,
-            block or report anyone in it, at any time.
+            <b>Being connected.</b> An org admin or a staff member can connect two or more members.
+            You are not asked first: you are added to a group conversation, a new one or one that
+            already exists, with a line saying who connected you and their note, and you are told.
+            Whoever connected you is in it only if they chose to be, and can read it only then. If
+            they started the group, they can add more people to it later. You can leave it, block or
+            report anyone in it, at any time.
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it. If
