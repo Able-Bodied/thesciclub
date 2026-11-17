@@ -34,7 +34,7 @@ import { OrganizationSummarySetting } from '@/routes/events/organization-summary
 import { PlaceContact } from '@/routes/events/place-contact';
 import { EventDescription } from '@/routes/events/rich-text';
 import { ShareOrganizationButton } from '@/routes/events/share-event';
-import { ReviewsList, StarPickerMenu } from '@/routes/reviews/reviews-section';
+import { ReviewsList } from '@/routes/reviews/reviews-section';
 import { Stars } from '@/routes/reviews/stars';
 import type { ClubEvent } from '@/types/domain';
 
@@ -212,7 +212,7 @@ export default function OrganizationDetailPage() {
           ) : null}
 
           {memberId && rated.count > 0 ? (
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="mt-2.5">
               <button
                 type="button"
                 onClick={toReviews}
@@ -223,15 +223,6 @@ export default function OrganizationDetailPage() {
                   <b>{rated.average}</b> · {rated.count} {rated.count === 1 ? 'review' : 'reviews'}
                 </span>
               </button>
-              <StarPickerMenu
-                reviews={reviews.reviews}
-                value={stars}
-                onChange={(choice) => {
-                  setStars(choice);
-                  toReviews();
-                }}
-                onNavy
-              />
             </div>
           ) : null}
 

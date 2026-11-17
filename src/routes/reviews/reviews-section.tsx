@@ -174,18 +174,16 @@ export function ReviewsList({
 }
 
 /** "All stars", then 5 to 1, each with how many (the owner, 2026-11-16). */
-export function StarPickerMenu({
+function StarPickerMenu({
   reviews,
   value,
   onChange,
   className,
-  onNavy = false,
 }: {
   reviews: readonly Review[];
   value: StarChoice;
   onChange: (stars: StarChoice) => void;
   className?: string;
-  onNavy?: boolean;
 }) {
   const counts = starCounts(reviews);
   return (
@@ -197,8 +195,7 @@ export function StarPickerMenu({
         onChange(v === 'all' ? null : (Number(v) as StarChoice));
       }}
       className={cn(
-        'min-h-[40px] rounded-[11px] border-[1.6px] px-2.5 font-semibold text-[0.875rem]',
-        onNavy ? 'border-plate-chip bg-plate-chip text-white' : 'border-line bg-paper text-ink',
+        'min-h-[40px] rounded-[11px] border-[1.6px] border-line bg-paper px-2.5 font-semibold text-[0.875rem] text-ink',
         className,
       )}
     >
