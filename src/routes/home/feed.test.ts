@@ -55,6 +55,45 @@ describe('pickEvents', () => {
     );
     expect(picked.map((event) => event.id)).toEqual(['near', 'online']);
   });
+
+  // The owner, 2026-11-17: closest first, then soonest; unknown distances last.
+  it('puts the closest first, then the soonest', () => {
+    const picked = pickEvents(
+      [
+        makeEvent({ id: 'soon-far', startTime: '2026-09-30T17:00:00Z' }),
+        makeEvent({ id: 'later-near', startTime: '2026-10-08T17:00:00Z' }),
+        makeEvent({ id: 'unknown', startTime: '2026-09-30T18:00:00Z' }),
+        makeEvent({ id: 'soon-near', startTime: '2026-10-01T17:00:00Z' }),
+      ],
+      NOW,
+      null,
+      new Map([
+        ['soon-far', 80],
+        ['later-near', 5],
+        ['soon-near', 5],
+      ]),
+    );
+    expect(picked.map((event) => event.id)).toEqual([
+      'soon-near',
+      'later-near',
+      'soon-far',
+      'unknown',
+    ]);
+  });
+
+  it('shows the same thing from the same host once, with no series either', () => {
+    const sail = (id: string, day: string) =>
+      makeEvent({ id, title: 'Martin 16 Sailing', organizationId: 'cssd', startTime: day });
+    const picked = pickEvents(
+      [
+        sail('sail-2', '2026-10-03T17:00:00Z'),
+        sail('sail-1', '2026-10-02T17:00:00Z'),
+        makeEvent({ id: 'talk', startTime: '2026-10-05T17:00:00Z' }),
+      ],
+      NOW,
+    );
+    expect(picked.map((event) => event.id)).toEqual(['sail-1', 'talk']);
+  });
 });
 
 describe('suggestPeople', () => {

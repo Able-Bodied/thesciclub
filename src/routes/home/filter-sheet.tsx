@@ -70,7 +70,7 @@ export function HomeFilterSheet({
         city={home.city}
         status={home.status}
         things="events and peers"
-        note="For events and peers. Questions and topics come from everywhere."
+        note="For events and peers. Events start within 100 miles, closest first. Questions and topics come from everywhere."
         onChange={(withinMiles) => {
           onChange({ ...filters, withinMiles });
         }}

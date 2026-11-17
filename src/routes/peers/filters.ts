@@ -172,7 +172,7 @@ export function organizationsIn(members: BrowseMember[]): string[] {
 const EARTH_MILES = 3958.8;
 
 /** As the crow flies, from city middle to city middle. */
-function milesBetween(a: MapPoint, b: MapPoint): number {
+export function milesBetween(a: MapPoint, b: MapPoint): number {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const up = radians(b.latitude - a.latitude);
   const across = radians(b.longitude - a.longitude);
