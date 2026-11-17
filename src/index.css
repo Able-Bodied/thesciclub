@@ -173,14 +173,13 @@
   /* How long ago somebody was injured (src/components/injury-stage-pill.tsx), the
      owner's colours, 2026-11-17: green for under six months, orange for under two
      years; then a colour for each later stage too, as the owner expected one there.
-     White words on each but the orange and gold, navy on those, light or dark (all past 5.5:1). */
+     White words on each but the orange, navy on that, light or dark (all past 5.5:1). */
   --stage-new: #1d7a3e;
   --stage-recent: #f28c28;
   /* Teal, not the buttons' blue, so a stage is not read as a control. */
   --stage-years: #0e7490;
   --stage-og: #6b3fa8;
-  /* Gold for forty years and more (the owner, 2026-11-17), navy words on it. */
-  --stage-oog: #d4a83a;
+  --stage-oog: #a3275e;
 
   /* --------------------------------------------------------- measures */
   /*
