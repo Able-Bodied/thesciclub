@@ -12,6 +12,14 @@ vi.mock('@/lib/members', () => ({
   useBrowseMembers: () => state.current,
 }));
 
+// Signed out unless a test says who is reading.
+const reader = vi.hoisted(() => ({ id: null as string | null }));
+vi.mock('@/lib/session', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useSession: () =>
+    reader.id ? { status: 'signed-in', userId: reader.id } : { status: 'signed-out' },
+}));
+
 const map = vi.hoisted(() => ({ props: null as ClubMapProps | null }));
 vi.mock('@/lib/map', () => ({ loadMapCanvas: () => Promise.resolve({ default: () => null }) }));
 const mapContents = vi.hoisted(() => {
@@ -381,5 +389,28 @@ describe('the age filter in the deck', () => {
     expect(screen.queryByText('Nicole')).toBeNull();
     expect(screen.getByText('Todd')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-11-16: a family member or friend starts with family and
+// friends shown. It first shipped to the test site still leaving them out:
+// the reader's own row changed the start, but not the filters already set.
+describe('where the deck starts for the reader', () => {
+  it('shows a family member or friend the other families and friends', () => {
+    reader.id = 'me';
+    state.current = {
+      members: [
+        makeMember({ id: 'me', displayName: 'Reader', injuryType: 'family' }),
+        makeMember({ id: 'f', displayName: 'Another parent', injuryType: 'family' }),
+        makeMember({ id: 'p', displayName: 'Peer' }),
+      ],
+      loading: false,
+      error: null,
+      signedOut: false,
+    };
+    renderPage();
+    expect(screen.getByText('Another parent')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
+    reader.id = null;
   });
 });

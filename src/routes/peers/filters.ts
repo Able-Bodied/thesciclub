@@ -44,6 +44,8 @@ export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
  * or family, do not filter friends and family by default, same for staff").
  */
 export function startingFilters(own: BrowseMember['injuryType'] | undefined): MemberFilters {
+  // The same object for everybody else, so Peers can tell it was never changed.
+  if (own !== 'family' && own !== 'professional') return DEFAULT_MEMBER_FILTERS;
   return {
     ...DEFAULT_MEMBER_FILTERS,
     leaveOut: DEFAULT_MEMBER_FILTERS.leaveOut.filter(
