@@ -39,9 +39,25 @@ export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
   { id: 'orgAdmins', label: 'Org admins' },
 ];
 
+/**
+ * Where Peers starts for this reader: staff and family & friends are left out,
+ * except the reader's own kind (the owner, 2026-11-16: "If someone is a friend
+ * or family, do not filter friends and family by default, same for staff").
+ */
+export function startingFilters(own: BrowseMember['injuryType'] | undefined): MemberFilters {
+  return {
+    ...DEFAULT_MEMBER_FILTERS,
+    leaveOut: DEFAULT_MEMBER_FILTERS.leaveOut.filter(
+      (id) =>
+        !(id === 'family' && own === 'family') &&
+        !(id === 'professionals' && own === 'professional'),
+    ),
+  };
+}
+
 /** Changes from where Peers starts, each counted once. */
-function leaveOutChanges(filters: MemberFilters): number {
-  const start = DEFAULT_MEMBER_FILTERS.leaveOut;
+function leaveOutChanges(filters: MemberFilters, starting: MemberFilters): number {
+  const start = starting.leaveOut;
   return LEAVE_OUT.filter(({ id }) => filters.leaveOut.includes(id) !== start.includes(id)).length;
 }
 
@@ -69,6 +85,7 @@ function leftOut(member: BrowseMember, filters: MemberFilters): boolean {
 export function activeFilterCount(
   filters: MemberFilters,
   startingMiles: number | null = null,
+  starting: MemberFilters = DEFAULT_MEMBER_FILTERS,
 ): number {
   return (
     filters.regions.length +
@@ -78,7 +95,7 @@ export function activeFilterCount(
     (filters.withinMiles === startingMiles ? 0 : 1) +
     filters.topics.length +
     filters.ages.length +
-    leaveOutChanges(filters)
+    leaveOutChanges(filters, starting)
   );
 }
 

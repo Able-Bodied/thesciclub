@@ -26,6 +26,7 @@ import {
   organizationsIn,
   othersOnly,
   regionsIn,
+  startingFilters,
   topicsIn,
 } from '@/routes/peers/filters';
 import { MemberCard } from '@/routes/peers/member-card';
@@ -90,6 +91,17 @@ export default function PeersPage() {
   // Filtered once, before both the deck and the count below it, so the two
   // cannot disagree about who is in it.
   const others = useMemo(() => othersOnly(members, memberId), [members, memberId]);
+
+  // Staff and family & friends see their own kind from the start (the owner,
+  // 2026-11-16). The reader's row is in the list; until it is, the club's
+  // usual start, replaced once it lands if nothing was changed meanwhile.
+  const ownKind = members.find((member) => member.id === memberId)?.injuryType;
+  const starting = useMemo(() => startingFilters(ownKind), [ownKind]);
+  const [startedFrom, setStartedFrom] = useState(starting);
+  if (startedFrom !== starting) {
+    setStartedFrom(starting);
+    if (filters === startedFrom) setFilters(starting);
+  }
 
   // The map's own data: distances, and where the map first zooms to. The
   // list starts at any distance (the owner, 2026-11-10: a friend 30 minutes
@@ -172,7 +184,7 @@ export default function PeersPage() {
 
   // A chosen order counts in the list, where it applies (it is in Filter).
   const filterCount =
-    activeFilterCount(showingMap ? { ...filters, withinMiles: null } : filters) +
+    activeFilterCount(showingMap ? { ...filters, withinMiles: null } : filters, null, starting) +
     (!showingMap && shownSort !== 'name' ? 1 : 0);
   const totalInSegment = filterMembers(others, EMPTY_MEMBER_FILTERS, segment).length;
 
@@ -322,7 +334,7 @@ export default function PeersPage() {
           activeCount={filterCount}
           onChange={setFilters}
           onClear={() => {
-            setFilters(DEFAULT_MEMBER_FILTERS);
+            setFilters(starting);
             setSort('name');
           }}
           onClose={() => {
