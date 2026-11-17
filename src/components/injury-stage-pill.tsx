@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import type { BrowseMember, InjuryStage } from '@/types/domain';
 
 /**
- * Each stage's colour (the owner, 2026-11-17): green, orange, then blue,
+ * Each stage's colour (the owner, 2026-11-17): green, orange, then teal,
  * purple and magenta for 2–10 years, OG and OOG.
  */
 const STAGE_COLOUR: Record<InjuryStage, string> = {
@@ -35,7 +35,8 @@ export function LevelBubble({ member, level }: { member: Staged; level: string }
       className={cn(
         // One piece that moves to the next line whole; it wraps inside only when
         // wider than the line (a long condition's name).
-        'inline-block max-w-full whitespace-normal rounded-[0.8em] px-2 py-[1px] font-semibold [text-shadow:none]',
+        // A thin light edge, so a bubble shows on a card of its own colour.
+        'inline-block max-w-full whitespace-normal rounded-[0.8em] px-2 py-[1px] font-semibold ring-1 ring-white/70 [text-shadow:none]',
         STAGE_COLOUR[stage],
       )}
     >
