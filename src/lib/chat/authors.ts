@@ -9,7 +9,7 @@ import {
   onPhotoBroke,
 } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
-import { type InjuryType, injuryLabel } from '@/types/domain';
+import { INJURY_STAGES, type InjuryType, injuryLabel } from '@/types/domain';
 
 /**
  * Putting a name to somebody who wrote something.
@@ -70,7 +70,7 @@ onFacesStale(readAuthorsAgain);
 
 /** What a face and a byline need, read alone or embedded in another read. */
 export const AUTHOR_COLUMNS =
-  'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, is_admin, has_profile';
+  'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, injury_stage, is_admin, has_profile';
 
 export interface ChatAuthorRow {
   id: string;
@@ -85,6 +85,8 @@ export interface ChatAuthorRow {
   /** Optional: absent from a database before 20261015000000. */
   injury_type?: string | null;
   condition_name?: string | null;
+  /** Optional: absent from a database before 20261117040000. */
+  injury_stage?: string | null;
   is_admin: boolean;
   has_profile: boolean;
 }
@@ -105,6 +107,8 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
       exactLevel: row.exact_level,
       levelRange: row.level_range,
     }),
+    stage: INJURY_STAGES.find((stage) => stage === row.injury_stage) ?? null,
+    injuryType: row.injury_type ?? null,
     isAdmin: row.is_admin,
     hasProfile: row.has_profile,
   };

@@ -81,6 +81,15 @@ export const INJURY_STAGE_TEXT: Record<InjuryStage, string> = {
   oog: 'OOG · 40+ years',
 };
 
+/** The stage in words; a condition is diagnosed rather than injured. */
+export function injuryStageText(stage: InjuryStage, injuryType?: string | null): string {
+  if (injuryType !== 'condition') return INJURY_STAGE_TEXT[stage];
+  if (stage === 'new') return 'Newly diagnosed';
+  if (stage === 'recent') return 'Recently diagnosed';
+  if (stage === 'years') return 'Diagnosed 2–10 years ago';
+  return INJURY_STAGE_TEXT[stage];
+}
+
 /** A year inside each stage, for ordering and matching where the date is hidden. */
 const STAGE_YEARS: Record<InjuryStage, number> = {
   new: 0.25,

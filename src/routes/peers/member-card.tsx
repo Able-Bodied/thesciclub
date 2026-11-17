@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { InjuryStagePill } from '@/components/injury-stage-pill';
+import { InjuryStageNote, LevelBubble } from '@/components/injury-stage-pill';
 import { PartnerLabel } from '@/components/partner-label';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
@@ -55,6 +55,17 @@ export function initialsOf(displayName: string): string {
  */
 export function summaryLine(member: BrowseMember): string {
   return [levelPart(member), member.age, cityAndState(member)].filter(Boolean).join(' · ');
+}
+
+/** The summary line on a photograph, the level in its stage's bubble. */
+export function SummaryLine({ member }: { member: BrowseMember }) {
+  const rest = [member.age, cityAndState(member)].filter(Boolean).join(' · ');
+  return (
+    <>
+      <LevelBubble member={member} level={levelPart(member)} />
+      {rest ? ` · ${rest}` : null}
+    </>
+  );
 }
 
 /** The level and completeness, the first part of the summary line. */
@@ -245,16 +256,16 @@ function PersonCard({
         <span className="mt-[7px] block text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
           {publicView ? (
             <>
-              {levelPart(member)}{' '}
+              <LevelBubble member={member} level={levelPart(member)} />{' '}
               <span className="whitespace-nowrap">
                 · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
               </span>
             </>
           ) : (
-            summaryLine(member)
+            <SummaryLine member={member} />
           )}
         </span>
-        <InjuryStagePill member={member} className="mt-1.5" />
+        <InjuryStageNote member={member} className="mt-1" />
         {sortNote ? (
           <span className="mt-0.5 block font-semibold text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
             {sortNote}

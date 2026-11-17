@@ -1,5 +1,6 @@
 import { cloneElement, type ReactElement, type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { PartnerLabel } from '@/components/partner-label';
 import { firstClubLink } from '@/lib/chat/club-links';
@@ -283,7 +284,11 @@ export function Post({
               )}
               {author?.level ? (
                 <span className="ml-[7px] font-semibold text-[0.78125rem] text-grey">
-                  {author.level}
+                  <LevelHighlight
+                    level={author.level}
+                    stage={author.stage}
+                    injuryType={author.injuryType}
+                  />
                 </span>
               ) : null}
             </span>

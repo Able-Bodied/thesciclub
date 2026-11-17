@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { noticeText, threadTitle } from '@/lib/chat/threads';
 import { chatTime } from '@/lib/chat/time';
@@ -113,11 +114,21 @@ export function ThreadRow({
           ) : null}
         </span>
         <span className="block text-[0.71875rem] text-grey">
-          {thread.kind === 'group'
-            ? `${thread.memberCount} ${thread.memberCount === 1 ? 'member' : 'members'}`
-            : [other?.username ? `@${other.username}` : null, other?.level]
-                .filter(Boolean)
-                .join(' · ')}
+          {thread.kind === 'group' ? (
+            `${thread.memberCount} ${thread.memberCount === 1 ? 'member' : 'members'}`
+          ) : (
+            <>
+              {other?.username ? `@${other.username}` : null}
+              {other?.username && other.level ? ' · ' : null}
+              {other?.level ? (
+                <LevelHighlight
+                  level={other.level}
+                  stage={other.stage}
+                  injuryType={other.injuryType}
+                />
+              ) : null}
+            </>
+          )}
         </span>
         <span className="mt-[5px] block truncate text-[0.7875rem] text-ink2 leading-[1.4]">
           {last}

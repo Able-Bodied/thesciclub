@@ -1,3 +1,5 @@
+import type { InjuryStage } from '@/types/domain';
+
 /**
  * The shapes Chat passes around.
  *
@@ -119,6 +121,9 @@ export interface ChatAuthor {
   avatarColor: string | null;
   /** Exact level where they gave one, the range otherwise. May be absent. */
   level: string | null;
+  /** How long ago, to colour the level (20261117040000). Absent before it. */
+  stage?: InjuryStage | null;
+  injuryType?: string | null;
   isAdmin: boolean;
   /** Whether /peers/:id will show them, and therefore whether to link. */
   hasProfile: boolean;

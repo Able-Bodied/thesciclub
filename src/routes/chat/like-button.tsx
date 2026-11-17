@@ -1,6 +1,7 @@
 import { ThumbsUp } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { MemberAvatar } from '@/components/member-avatar';
 import { SheetGrip } from '@/components/sheet-grip';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -257,7 +258,13 @@ export function LikesSheet({
                       )}
                     </span>
                     {author.level ? (
-                      <span className="block text-[0.78125rem] text-grey">{author.level}</span>
+                      <span className="block text-[0.78125rem] text-grey">
+                        <LevelHighlight
+                          level={author.level}
+                          stage={author.stage}
+                          injuryType={author.injuryType}
+                        />
+                      </span>
                     ) : null}
                   </span>
                 </li>
