@@ -35,7 +35,7 @@ describe('your profession', () => {
     const field = await screen.findByLabelText('Your profession');
     expect(field).toHaveValue('Physical therapist');
     expect(
-      screen.getByText('Shown beside your name as “Verified professional · Physical therapist”.'),
+      screen.getByText('Shown beside your name as “Staff · Physical therapist”.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
     await userEvent.clear(field);
@@ -49,12 +49,12 @@ describe('your profession', () => {
   });
 
   // The owner, 2026-11-04: made one with no title, they write it here.
-  it('asks a new verified professional to write theirs', async () => {
+  it('asks new staff to write theirs', async () => {
     state.card = { ok: true, value: { title: null, heading: null, body: null } };
     render(<ProfessionField />);
     const field = await screen.findByLabelText('Your profession');
     expect(field).toHaveValue('');
-    expect(screen.getByText(/You are a verified professional/)).toBeInTheDocument();
+    expect(screen.getByText(/You are staff/)).toBeInTheDocument();
     await userEvent.type(field, 'Physical therapist');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(state.save).toHaveBeenCalledWith('Physical therapist');

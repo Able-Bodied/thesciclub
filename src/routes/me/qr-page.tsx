@@ -287,7 +287,7 @@ export default function QrCodePage() {
                 isAdmin
                   ? 'No organization (credit only)'
                   : ownCode
-                    ? `Just you, as a ${PARTNER_ROLE_NAME.toLowerCase()}`
+                    ? `Just you, as ${PARTNER_ROLE_NAME.toLowerCase()}`
                     : undefined
               }
               className={FIELD}
@@ -298,7 +298,7 @@ export default function QrCodePage() {
             </p>
           ) : ownCode ? (
             <p className="text-[0.875rem] text-ink">
-              Your own code, as a {PARTNER_ROLE_NAME.toLowerCase()}
+              Your own code, as {PARTNER_ROLE_NAME.toLowerCase()}
             </p>
           ) : null}
 

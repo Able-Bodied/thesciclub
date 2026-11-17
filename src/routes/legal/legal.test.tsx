@@ -52,32 +52,34 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
+    // 2026-11-16: verified professionals are now staff, of an organization.
+    expect(notes[0]).toMatch(/Changed: verified professionals are now called staff/);
     // 2026-11-14: organization events open by link, invite lists, and invite emails tracked.
-    expect(notes[0]).toMatch(/Changed: an event for the members of chosen organizations can again/);
-    expect(notes[0]).toMatch(/Added: administrators and event organizers can invite a list/);
-    expect(notes[0]).toMatch(/Added: an invite email carries a tiny picture/);
-    expect(notes[1]).toMatch(
+    expect(notes[1]).toMatch(/Changed: an event for the members of chosen organizations can again/);
+    expect(notes[1]).toMatch(/Added: administrators and event organizers can invite a list/);
+    expect(notes[1]).toMatch(/Added: an invite email carries a tiny picture/);
+    expect(notes[2]).toMatch(
       /Added: a member who joined as a relative or spouse and another member can link/,
     );
-    expect(notes[1]).toMatch(/Changed: Cloudflare now counts visits to every page of the website/);
-    expect(notes[1]).toMatch(/Added: everyone invited to an invite-only event sees who else/);
-    expect(notes[2]).toMatch(
+    expect(notes[2]).toMatch(/Changed: Cloudflare now counts visits to every page of the website/);
+    expect(notes[2]).toMatch(/Added: everyone invited to an invite-only event sees who else/);
+    expect(notes[3]).toMatch(
       /Changed: an org admin or a verified professional can connect two or more/,
     );
-    expect(notes[2]).toMatch(/Added: an event can be private/);
-    expect(notes[2]).toMatch(/Added: Cloudflare counts visits to the website’s public pages/);
-    expect(notes[3]).toMatch(/Changed: a notification of a group message now names the group/);
-    expect(notes[3]).toMatch(/Changed: a busy conversation notifies you at most once every two/);
-    expect(notes[4]).toMatch(/Added: the app measures how long it takes to load/);
-    expect(notes[4]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
-    expect(notes[4]).toMatch(/Changed: trusted partners are now called verified professionals/);
-    expect(notes[5]).toMatch(/Added: you can measure distances in Filters from another city/);
-    expect(notes[6]).toMatch(/Added: once a day, on each way you use the club/);
-    expect(notes[7]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
-    expect(notes[8]).toMatch(/Changed: Join replaces Follow/);
-    expect(notes[9]).toMatch(/Added: when you agreed/);
-    expect(notes[10]).toMatch(/Added: address suggestions/);
-    expect(notes[11]).toMatch(/Added: the map/);
+    expect(notes[3]).toMatch(/Added: an event can be private/);
+    expect(notes[3]).toMatch(/Added: Cloudflare counts visits to the website’s public pages/);
+    expect(notes[4]).toMatch(/Changed: a notification of a group message now names the group/);
+    expect(notes[4]).toMatch(/Changed: a busy conversation notifies you at most once every two/);
+    expect(notes[5]).toMatch(/Added: the app measures how long it takes to load/);
+    expect(notes[5]).toMatch(/Added: an event’s organizers can invite somebody who registered/);
+    expect(notes[5]).toMatch(/Changed: trusted partners are now called verified professionals/);
+    expect(notes[6]).toMatch(/Added: you can measure distances in Filters from another city/);
+    expect(notes[7]).toMatch(/Added: once a day, on each way you use the club/);
+    expect(notes[8]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
+    expect(notes[9]).toMatch(/Changed: Join replaces Follow/);
+    expect(notes[10]).toMatch(/Added: when you agreed/);
+    expect(notes[11]).toMatch(/Added: address suggestions/);
+    expect(notes[12]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });
@@ -548,12 +550,12 @@ describe('the Privacy Policy, on HIPAA, safety and rights', () => {
 });
 
 // 20261029100000.
-describe('professionals', () => {
+describe('staff', () => {
   it('says who they are, what they see, and that nobody is asked first', () => {
     open('/privacy');
     const who = screen.getByRole('heading', { name: 'Who can see what' }).parentElement;
     expect(who).toHaveTextContent(
-      /Verified professionals work with people with spinal cord injuries/,
+      /Staff work with people with spinal cord injuries at an organization/,
     );
     expect(who).toHaveTextContent(/cannot read conversations they are not in/);
     expect(who).toHaveTextContent(/You\s+are not asked first/);
@@ -567,7 +569,7 @@ describe('professionals', () => {
     open('/terms');
     expect(document.body.textContent).toMatch(/We may make a member who works with people/);
     expect(document.body.textContent).toMatch(
-      /shown with a verified mark and the profession\s+they write/,
+      /shown with a verified mark, the organization\s+and the profession they write/,
     );
     expect(document.body.textContent).toMatch(
       /Connecting adds them to a group conversation without\s+asking them first, and anyone can\s+leave it/,

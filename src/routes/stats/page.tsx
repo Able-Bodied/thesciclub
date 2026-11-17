@@ -102,10 +102,10 @@ export default function StatsPage() {
       ) : (
         <div className={COLUMN}>
           <div className="rounded-[14px] border border-line bg-paper p-4 text-[0.9375rem] text-ink leading-[1.5]">
-            <p className="font-bold">This page is for org admins and verified professionals.</p>
+            <p className="font-bold">This page is for org admins and staff.</p>
             <p className="mt-1 text-ink2">
-              Verified professionals work with people with SCI/D, such as peer support leads and
-              therapists. An administrator makes someone a verified professional or an org admin.
+              Staff work with people with SCI/D at an organization, such as peer support leads and
+              therapists. An administrator makes someone staff or an org admin.
             </p>
             <Link
               to="/me"

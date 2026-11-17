@@ -210,9 +210,7 @@ describe('Stats & controls', () => {
   it('tells anybody else what it is for', async () => {
     state.partner = false;
     renderPage();
-    expect(
-      await screen.findByText('This page is for org admins and verified professionals.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('This page is for org admins and staff.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your numbers' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Connect members' })).toBeNull();
   });

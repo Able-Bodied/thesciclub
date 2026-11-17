@@ -57,6 +57,9 @@ const api = vi.hoisted(() => ({
   /** member id → professional title (20261029100000). */
   partners: new Map<string, string | null>(),
   partnerCalls: [] as [string, string | null][],
+  /** [member, organization] for Make staff and Make mentor (20261117000000). */
+  staffCalls: [] as [string, string][],
+  mentorCalls: [] as [string, string][],
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
@@ -249,6 +252,15 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
     api.partners.set(id, title ?? api.partners.get(id) ?? null);
     return Promise.resolve({ ok: true });
   },
+  setStaff: (id: string, organizationId: string) => {
+    api.staffCalls.push([id, organizationId]);
+    api.partners.set(id, api.partners.get(id) ?? null);
+    return Promise.resolve({ ok: true });
+  },
+  makeMentorOf: (id: string, organizationId: string) => {
+    api.mentorCalls.push([id, organizationId]);
+    return Promise.resolve({ ok: true });
+  },
   removePartner: (id: string) => {
     api.partnerCalls.push([id, 'removed']);
     api.partners.delete(id);
@@ -295,7 +307,20 @@ vi.mock('@/lib/organization-members', async (importOriginal) => ({
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchPartnerTitles: () => Promise.resolve(new Map(api.partners)),
+  fetchStaffOrganizations: () => Promise.resolve(new Map()),
   forgetPartnerTitles: () => undefined,
+}));
+
+// The directory the Make staff and Make mentor panels choose from.
+vi.mock('@/lib/organizations', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useOrganizations: () => ({
+    organizations: [{ id: 'o1', name: 'Craig Hospital', shortCode: 'CH', city: 'Englewood' }],
+    byId: new Map(),
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
 }));
 
 // Read on every render for the Invites tab; what the switch itself does is
@@ -392,6 +417,8 @@ beforeEach(() => {
   api.openReports = 0;
   api.partners = new Map();
   api.partnerCalls = [];
+  api.staffCalls = [];
+  api.mentorCalls = [];
   joining.open = false;
   renewals.list = [];
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -403,23 +430,23 @@ beforeEach(() => {
   confirmSpy.mockClear();
 });
 
-// 20261029100000; verified, with no title asked for, 20261104160000.
-describe('verified professionals', () => {
-  it('makes a member one without asking for their profession', async () => {
+// 20261029100000; no title asked for, 20261104160000; staff of an
+// organization, which Make staff asks for first (the owner, 2026-11-16).
+describe('staff', () => {
+  it('makes a member staff only of an organization chosen, without asking for their profession', async () => {
     renderAdmin();
     await manage();
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Make verified professional' }),
-    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Make staff' }));
     expect(screen.queryByLabelText('Profession shown beside their name')).toBeNull();
-    expect(screen.getByText(/They write their profession themselves, on Me/)).toBeInTheDocument();
-    const make = screen.getAllByRole('button', { name: 'Make verified professional' }).at(-1);
+    const make = screen.getAllByRole('button', { name: 'Make staff' }).at(-1);
     if (!make) throw new Error('no button');
+    expect(make).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText('Organization'), 'o1');
     await userEvent.click(make);
     await waitFor(() => {
-      expect(api.partnerCalls).toEqual([['m1', null]]);
+      expect(api.staffCalls).toEqual([['m1', 'o1']]);
     });
-    expect(await screen.findByText('No profession yet. They write it on Me.')).toBeInTheDocument();
+    expect(api.partnerCalls).toEqual([]);
   });
 
   it('can still change the profession they wrote', async () => {
@@ -440,8 +467,8 @@ describe('verified professionals', () => {
     api.partners = new Map([['m1', 'Peer support, SCVMC']]);
     renderAdmin();
     await manage();
-    expect(await screen.findByText('Peer support, SCVMC')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove as verified professional' }));
+    expect(await screen.findByText(/Peer support, SCVMC/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as staff' }));
     expect(api.partnerCalls).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove the role' }));
     await waitFor(() => {
@@ -453,7 +480,7 @@ describe('verified professionals', () => {
     api.members = [member({ isSeed: true })];
     renderAdmin();
     await manage();
-    expect(screen.queryByRole('button', { name: 'Make verified professional' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make staff' })).toBeNull();
   });
 });
 
@@ -1325,13 +1352,18 @@ describe('who vouched, on the list', () => {
 });
 
 describe('mentor status', () => {
-  it('promotes a peer', async () => {
+  it('makes a peer a mentor of the organization chosen', async () => {
     renderAdmin();
     await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Make mentor' }));
+    await userEvent.selectOptions(screen.getByLabelText('Organization'), 'o1');
+    const make = screen.getAllByRole('button', { name: 'Make mentor' }).at(-1);
+    if (!make) throw new Error('no button');
+    await userEvent.click(make);
     await waitFor(() => {
-      expect(api.typeCalls).toEqual([['m1', 'mentor']]);
+      expect(api.mentorCalls).toEqual([['m1', 'o1']]);
     });
+    expect(api.typeCalls).toEqual([]);
   });
 
   it('demotes a mentor', async () => {

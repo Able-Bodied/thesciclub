@@ -1,12 +1,13 @@
 import { BadgeCheck } from 'lucide-react';
-import { PARTNER_ROLE_NAME, usePartnerTitles } from '@/lib/club-partners';
+import { PARTNER_ROLE_NAME, usePartnerTitles, useStaffOrganizations } from '@/lib/club-partners';
 import { cn } from '@/lib/utils';
 
 /**
- * "✓ Verified professional · Physical therapist, SCI-FIT" beside a verified
- * professional's name (20261029100000, 20261104160000), so members can tell a
- * professional is reading. The profession only once they have written it.
- * Nothing for anybody else, nor while the titles are being read.
+ * "✓ Staff, Craig Hospital · Physical therapist" beside a staff member's name
+ * (20261029100000, 20261104160000, 20261117000000), so members can tell staff
+ * are reading. The organization once an administrator has chosen it, the
+ * profession once they have written it. Nothing for anybody else, nor while
+ * the titles are being read.
  *
  * `line` sits in text on paper; `pill` sits on a photograph.
  */
@@ -20,8 +21,10 @@ export function PartnerLabel({
   className?: string;
 }) {
   const titles = usePartnerTitles();
+  const organizations = useStaffOrganizations();
   if (!memberId || !titles?.has(memberId)) return null;
   const title = titles.get(memberId);
+  const organization = organizations?.get(memberId) ?? null;
   return (
     <span
       className={cn(
@@ -34,6 +37,7 @@ export function PartnerLabel({
       <BadgeCheck className="h-[1.1em] w-[1.1em] flex-none" aria-hidden="true" />
       <span className="min-w-0">
         {PARTNER_ROLE_NAME}
+        {organization ? `, ${organization.name}` : ''}
         {title ? ` · ${title}` : ''}
       </span>
     </span>
