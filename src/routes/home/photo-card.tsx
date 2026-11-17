@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useSeenOnHome } from '@/lib/chat/home-views';
@@ -85,7 +86,17 @@ export function PhotoCard({
             )}
           </span>
           <span className="block text-[0.78125rem] text-grey">
-            {[author?.level, chatTime(topic.createdAt)].filter(Boolean).join(' · ')}
+            {author?.level ? (
+              <>
+                <LevelHighlight
+                  level={author.level}
+                  stage={author.stage}
+                  injuryType={author.injuryType}
+                />
+                {' · '}
+              </>
+            ) : null}
+            {chatTime(topic.createdAt)}
           </span>
         </span>
       </div>

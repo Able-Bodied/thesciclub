@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useSeenOnHome } from '@/lib/chat/home-views';
@@ -107,7 +108,17 @@ export function TopicCard({
         </AvatarLink>
         <span className="min-w-0">
           <BylineName authorId={topic.authorId} author={starter} linkState={linkState} />
-          {starter?.level ? ` · ${starter.level}` : ''} · {chatTime(topic.createdAt)}
+          {starter?.level ? (
+            <>
+              {' · '}
+              <LevelHighlight
+                level={starter.level}
+                stage={starter.stage}
+                injuryType={starter.injuryType}
+              />
+            </>
+          ) : null}{' '}
+          · {chatTime(topic.createdAt)}
         </span>
       </p>
 
@@ -140,7 +151,16 @@ export function TopicCard({
             </AvatarLink>
             <span className="font-semibold text-[0.78125rem] text-ink2">
               <BylineName authorId={reply.authorId} author={replier} linkState={linkState} />
-              {replier?.level ? ` · ${replier.level}` : ''}
+              {replier?.level ? (
+                <>
+                  {' · '}
+                  <LevelHighlight
+                    level={replier.level}
+                    stage={replier.stage}
+                    injuryType={replier.injuryType}
+                  />
+                </>
+              ) : null}
             </span>
           </p>
           <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52] [&_a]:relative [&_a]:z-[1]">

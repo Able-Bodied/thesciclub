@@ -2,6 +2,18 @@ import { injuryStageOf, injuryStageText } from '@/lib/injury';
 import { cn } from '@/lib/utils';
 import type { BrowseMember, InjuryStage } from '@/types/domain';
 
+/**
+ * Each stage's colour (the owner, 2026-11-17): green, orange, then blue,
+ * purple and magenta for 2–10 years, OG and OOG.
+ */
+const STAGE_COLOUR: Record<InjuryStage, string> = {
+  new: 'bg-stage-new text-white',
+  recent: 'bg-stage-recent text-navy',
+  years: 'bg-stage-years text-white',
+  og: 'bg-stage-og text-white',
+  oog: 'bg-stage-oog text-white',
+};
+
 type Staged = Pick<
   BrowseMember,
   'injuryDate' | 'injuryDatePrecision' | 'injuryStage' | 'injuryType'
@@ -11,7 +23,7 @@ type Staged = Pick<
  * The injury level on a photograph, in a bubble coloured by how long ago
  * (the owner, 2026-11-17: "have the color coding on the injury LEVEL ... a
  * little bubble around their injury level"). Green under six months, orange
- * under two years, a light glass after; plain words where there is no date
+ * under two years, its own colour for each stage after; plain words where there is no date
  * (family, staff, "rather not say"). The date itself is hidden unless its
  * member shows it (20261117030000), so the stage is what is drawn.
  */
@@ -24,11 +36,7 @@ export function LevelBubble({ member, level }: { member: Staged; level: string }
         // One piece that moves to the next line whole; it wraps inside only when
         // wider than the line (a long condition's name).
         'inline-block max-w-full whitespace-normal rounded-[0.8em] px-2 py-[1px] font-semibold [text-shadow:none]',
-        stage === 'new'
-          ? 'bg-stage-new text-white'
-          : stage === 'recent'
-            ? 'bg-stage-recent text-navy'
-            : 'bg-white/25 text-white',
+        STAGE_COLOUR[stage],
       )}
     >
       {level}
@@ -58,8 +66,8 @@ export function InjuryStageNote({ member, className }: { member: Staged; classNa
 /**
  * The level in a chat byline, highlighted green or orange as on the cards
  * (the owner, 2026-11-17: "keep the color coding in the chats and messages?
- * Just a highlight around the level"). Only the two early stages are
- * coloured; a later one reads as plain words, as before. The stage is said
+ * Just a highlight around the level"), on Home too. Every stage has its
+ * colour; no date, no highlight. The stage is said
  * aloud too, so the colour is not the only way to know it.
  */
 export function LevelHighlight({
@@ -71,15 +79,12 @@ export function LevelHighlight({
   stage?: InjuryStage | null | undefined;
   injuryType?: string | null | undefined;
 }) {
-  if (stage !== 'new' && stage !== 'recent') return <>{level}</>;
+  if (!stage) return <>{level}</>;
   // The words on hover or a long press too, so the colour can be asked about.
   return (
     <span
       title={injuryStageText(stage, injuryType)}
-      className={cn(
-        'box-decoration-clone rounded-full px-1.5 font-semibold',
-        stage === 'new' ? 'bg-stage-new text-white' : 'bg-stage-recent text-navy',
-      )}
+      className={cn('box-decoration-clone rounded-full px-1.5 font-semibold', STAGE_COLOUR[stage])}
     >
       {level}
       <span className="sr-only">, {injuryStageText(stage, injuryType).toLowerCase()}</span>
