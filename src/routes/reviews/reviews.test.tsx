@@ -114,6 +114,30 @@ describe('reviews on a page', () => {
     );
   });
 
+  // The owner, 2026-11-16: best first like Amazon and Yelp, three, then the
+  // rest; a star choice keeps only those.
+  it('shows the best three first, then all, and picks by stars', async () => {
+    api.rows = [
+      row({ id: 'a', rating: 2, body: 'Two', author_name: 'Two Stars' }),
+      row({ id: 'b', rating: 5, body: '', author_name: 'Five Quiet' }),
+      row({ id: 'c', rating: 4, body: 'Four', author_name: 'Four Stars' }),
+      row({ id: 'd', rating: 5, body: 'Five', author_name: 'Five Words' }),
+      row({ id: 'e', rating: 3, body: 'Three', author_name: 'Three Stars' }),
+    ];
+    section();
+    const names = () =>
+      screen
+        .getAllByRole('listitem')
+        .map((item) => item.querySelector('a, p')?.textContent ?? '')
+        .filter((name) => name.includes('Stars') || name.startsWith('Five'));
+    await screen.findByText('Five Words');
+    expect(names()).toEqual(['Five Words', 'Five Quiet', 'Four Stars']);
+    await userEvent.click(screen.getByRole('button', { name: 'Show all 5 reviews' }));
+    expect(names()).toEqual(['Five Words', 'Five Quiet', 'Four Stars', 'Three Stars', 'Two Stars']);
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Show reviews with' }), '2');
+    expect(names()).toEqual(['Two Stars']);
+  });
+
   it('lets an org admin reply, and anybody report', async () => {
     api.rows = [row({ can_reply: true })];
     section();
