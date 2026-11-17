@@ -418,7 +418,11 @@ export default function EventDetailPage() {
                     aria-describedby={reachesHost ? undefined : goingNote}
                     className={cn(
                       'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
-                      going ? CHOSEN : 'bg-action text-white hover:bg-action-hi',
+                      going
+                        ? CHOSEN
+                        : interested || declined
+                          ? UNCHOSEN
+                          : 'bg-action text-white hover:bg-action-hi',
                     )}
                   >
                     {going ? 'Going ✓' : reachesHost ? 'RSVP' : 'Going'}
@@ -432,9 +436,7 @@ export default function EventDetailPage() {
                   aria-pressed={interested}
                   className={cn(
                     'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
-                    interested
-                      ? CHOSEN
-                      : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
+                    interested ? CHOSEN : UNCHOSEN,
                   )}
                 >
                   {interested ? 'Interested ✓' : 'Interested'}
@@ -447,9 +449,7 @@ export default function EventDetailPage() {
                   aria-pressed={declined}
                   className={cn(
                     'flex min-h-11 items-center justify-center rounded-[13px] px-2 font-bold font-head text-[0.875rem] transition-colors',
-                    declined
-                      ? CHOSEN
-                      : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
+                    declined ? CHOSEN : UNCHOSEN,
                   )}
                 >
                   {declined ? 'Can’t go ✓' : 'Can’t go'}
@@ -621,11 +621,13 @@ export default function EventDetailPage() {
 }
 
 /**
- * Going, Interested or Can't go once chosen: gold-filled with a gold edge and
- * a check, so the answer is the boldest of the three (the owner, 2026-11-17:
- * "make the chosen buttons stand out more"; grey read as switched off).
+ * Going, Interested or Can't go once chosen: solid gold with a check, as the
+ * invite page's chosen answer, so it is the one filled button of the three
+ * and RSVP's navy steps back to an outline (the owner, 2026-11-17: "make the
+ * chosen buttons stand out more"; grey read as switched off).
  */
-const CHOSEN = 'border-2 border-gold-dp bg-gold-lt text-gold-ink hover:brightness-95';
+const CHOSEN = 'bg-gold text-on-gold hover:bg-gold-hi';
+const UNCHOSEN = 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint';
 
 /** "norcalsci.org" from its address, for "More details at". */
 export function siteName(href: string): string {
