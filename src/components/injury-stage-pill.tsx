@@ -20,34 +20,13 @@ type Staged = Pick<
 >;
 
 /**
- * The injury level on a photograph, in a bubble coloured by how long ago
- * (the owner, 2026-11-17: "have the color coding on the injury LEVEL ... a
- * little bubble around their injury level"). Green under six months, orange
- * under two years, its own colour for each stage after; plain words where there is no date
- * (family, staff, "rather not say"). The date itself is hidden unless its
- * member shows it (20261117030000), so the stage is what is drawn.
- */
-export function LevelBubble({ member, level }: { member: Staged; level: string }) {
-  const stage = injuryStageOf(member);
-  if (!stage) return <>{level}</>;
-  return (
-    <span
-      className={cn(
-        // One piece that moves to the next line whole; it wraps inside only when
-        // wider than the line (a long condition's name).
-        // A thin light edge, so a bubble shows on a card of its own colour.
-        'inline-block max-w-full whitespace-normal rounded-[0.8em] px-2 py-[1px] font-semibold ring-1 ring-white/70 [text-shadow:none]',
-        STAGE_COLOUR[stage],
-      )}
-    >
-      {level}
-    </span>
-  );
-}
-
-/**
- * The stage in words, under the bubble, so the colour is never the only
- * thing that says it: "Newly injured", "OG · 10+ years".
+ * How long ago, as a pill in its stage's colour, under the level on Peers'
+ * cards and profiles (the owner, 2026-11-17: the colour on "the age of the
+ * injury ... not the level. This makes it more clear where the color is
+ * coming from"). Its words say the stage, so the colour is never alone:
+ * "Newly injured", "OG · 10+ years". Nothing where there is no date (family,
+ * staff, "rather not say"). The date itself is hidden unless its member shows
+ * it (20261117030000), so the stage is what is drawn.
  */
 export function InjuryStageNote({ member, className }: { member: Staged; className?: string }) {
   const stage = injuryStageOf(member);
@@ -55,7 +34,9 @@ export function InjuryStageNote({ member, className }: { member: Staged; classNa
   return (
     <span
       className={cn(
-        'block font-semibold text-[0.78125rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]',
+        // A thin light edge, so a pill shows on a card of its own colour.
+        'inline-flex max-w-full items-center rounded-full px-2.5 py-[3px] font-semibold text-[0.78125rem] leading-snug ring-1 ring-white/70',
+        STAGE_COLOUR[stage],
         className,
       )}
     >
@@ -65,7 +46,7 @@ export function InjuryStageNote({ member, className }: { member: Staged; classNa
 }
 
 /**
- * The level in a chat byline, highlighted green or orange as on the cards
+ * The level in a chat byline, highlighted in its stage's colour as the cards' pill
  * (the owner, 2026-11-17: "keep the color coding in the chats and messages?
  * Just a highlight around the level"), on Home too. Every stage has its
  * colour; no date, no highlight. The stage is said

@@ -811,10 +811,10 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   </p>
                 ) : null}
                 <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
-                <p className="mt-1 text-[0.875rem] text-white leading-[1.6]">
+                <p className="mt-1 text-[0.875rem] text-white">
                   <SummaryLine member={member} />
                 </p>
-                <InjuryStageNote member={member} className="mt-0.5" />
+                <InjuryStageNote member={member} className="mt-1.5" />
                 {injury ? <p className="mt-1 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>

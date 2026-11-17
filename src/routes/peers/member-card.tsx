@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { InjuryStageNote, LevelBubble } from '@/components/injury-stage-pill';
+import { InjuryStageNote } from '@/components/injury-stage-pill';
 import { PartnerLabel } from '@/components/partner-label';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
@@ -57,7 +57,7 @@ export function summaryLine(member: BrowseMember): string {
   return [levelPart(member), member.age, cityAndState(member)].filter(Boolean).join(' · ');
 }
 
-/** The summary line on a photograph, the level in its stage's bubble. */
+/** The summary line on a photograph. */
 export function SummaryLine({ member }: { member: BrowseMember }) {
   // Each part kept whole with the dot after it, so a line breaks between
   // parts, never inside a city ("San / Francisco"), and never starts on a dot.
@@ -65,7 +65,7 @@ export function SummaryLine({ member }: { member: BrowseMember }) {
   return (
     <>
       <span className="whitespace-nowrap">
-        <LevelBubble member={member} level={levelPart(member)} />
+        {levelPart(member)}
         {rest.length > 0 ? ' ·' : null}
       </span>
       {rest.map((part, index) => (
@@ -275,7 +275,7 @@ function PersonCard({
         <span className="mt-[7px] block text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
           {publicView ? (
             <>
-              <LevelBubble member={member} level={levelPart(member)} />{' '}
+              {levelPart(member)}{' '}
               <span className="whitespace-nowrap">
                 · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
               </span>
@@ -284,7 +284,7 @@ function PersonCard({
             <SummaryLine member={member} />
           )}
         </span>
-        <InjuryStageNote member={member} className="mt-1" />
+        <InjuryStageNote member={member} className="mt-1.5" />
         {sortNote ? (
           <span className="mt-0.5 block font-semibold text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
             {sortNote}

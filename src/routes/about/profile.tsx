@@ -1,7 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { InjuryStageNote, LevelBubble } from '@/components/injury-stage-pill';
+import { InjuryStageNote } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { usePhoto } from '@/lib/use-photo';
@@ -136,12 +136,12 @@ export default function AboutProfilePage() {
                   </p>
                 ) : null}
                 <p className="mt-1 text-[0.875rem] text-white">
-                  <LevelBubble member={member} level={levelPart(member)} />{' '}
+                  {levelPart(member)}{' '}
                   <span className="whitespace-nowrap">
                     · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
                   </span>
                 </p>
-                <InjuryStageNote member={member} className="mt-0.5" />
+                <InjuryStageNote member={member} className="mt-1.5" />
                 {injuryYear ? (
                   <p className="mt-1 text-[0.78125rem] text-white/90">
                     <InjuredIn year={injuryYear} precision={member.injuryDatePrecision} />
