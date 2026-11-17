@@ -53,12 +53,15 @@ const ICS = [
 function fakeDeps(o: {
   email?: ReceivedEmail;
   result?: ReceiveResult;
-}): Deps & { sent: Mail[]; received: unknown[] } {
+  ics?: string;
+}): Deps & { sent: Mail[]; received: unknown[]; waited: number[] } {
   const sent: Mail[] = [];
   const received: unknown[] = [];
+  const waited: number[] = [];
   return {
     sent,
     received,
+    waited,
     secret: SECRET,
     site: 'https://thesciclub.com',
     fetchEmail: () =>
@@ -70,7 +73,7 @@ function fakeDeps(o: {
           attachments: [{ id: 'att1', filename: 'invite.ics', content_type: 'text/calendar' }],
         },
       ),
-    fetchAttachment: () => Promise.resolve(ICS),
+    fetchAttachment: () => Promise.resolve(o.ics ?? ICS),
     fetchText: () => Promise.resolve(null),
     receive: (sender: string, verified: boolean, tag: string | null, invite: InviteEvent) => {
       received.push({ sender, verified, tag, title: invite.title });
@@ -83,6 +86,10 @@ function fakeDeps(o: {
       return Promise.resolve();
     },
     now: () => NOW,
+    wait: (ms) => {
+      waited.push(ms);
+      return Promise.resolve();
+    },
   };
 }
 
@@ -234,6 +241,25 @@ describe('an invitation arriving', () => {
     // The sender, and the other representative; not the sender twice.
     expect(deps.sent.map((m) => m.to)).toEqual(['rep@norcalsci.org', 'two@x.org']);
     expect(deps.sent[1]?.text).toContain('https://thesciclub.com/events/invites');
+  });
+
+  // The owner, 2026-11-17: "The SCI Club Weekly", changed for this and
+  // following events. Its ending arrived with the new part, and taken first
+  // would have deleted the dates the new part carries on.
+  it('the part that now ends waits, so the part that carries on is taken first', async () => {
+    const weekly = (uid: string, rule: string) =>
+      ICS.replace('UID:abc@google.com', `UID:${uid}\r\nRRULE:${rule}`);
+    const ending = fakeDeps({
+      ics: weekly('abc@google.com', 'FREQ=WEEKLY;UNTIL=20261119T075959Z'),
+    });
+    await handle(ending, webhook, await sign(webhook));
+    expect(ending.waited).toHaveLength(1);
+    expect(ending.received).toHaveLength(1);
+
+    const later = fakeDeps({ ics: weekly('abc_R20261120T230000@google.com', 'FREQ=WEEKLY') });
+    await handle(later, webhook, await sign(webhook));
+    expect(later.waited).toEqual([]);
+    expect(later.received).toHaveLength(1);
   });
 
   it('says nothing to a stranger', async () => {

@@ -87,6 +87,7 @@ const deps: Deps = {
     if (!response.ok) console.error('send', response.status, await response.text());
   },
   now: () => Date.now(),
+  wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
 
 Deno.serve(async (request) => {
