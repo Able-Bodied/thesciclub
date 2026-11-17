@@ -247,13 +247,13 @@ describe('the filter sheet', () => {
   const open = async () => {
     renderPage();
     await userEvent.click(screen.getByRole('button', { name: /Filters/ }));
-    return screen.getByRole('dialog', { name: 'Filter peers' });
+    return screen.getByRole('dialog', { name: 'Filter and sort peers' });
   };
 
   it('opens, and closes on Escape', async () => {
     await open();
     await userEvent.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog', { name: 'Filter peers' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Filter and sort peers' })).not.toBeInTheDocument();
   });
 
   it('gives the backdrop an accessible name instead of being a dead div', async () => {

@@ -83,7 +83,7 @@ export function relevanceScore(viewer: BrowseMember, candidate: BrowseMember): n
  * own order, by name (members.ts).
  */
 export const PEER_SORTS = [
-  ['name', 'Name'],
+  ['name', 'Name (A–Z)'],
   ['newest', 'Newest members'],
   ['youngest', 'Youngest first'],
   ['oldest', 'Oldest first'],

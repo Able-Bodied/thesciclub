@@ -29,7 +29,13 @@ import {
   topicsIn,
 } from '@/routes/peers/filters';
 import { MemberCard } from '@/routes/peers/member-card';
-import { type PeerSort, rankMembers, sortMembers, sortNote } from '@/routes/peers/ranking';
+import {
+  PEER_SORTS,
+  type PeerSort,
+  rankMembers,
+  sortMembers,
+  sortNote,
+} from '@/routes/peers/ranking';
 import {
   inEdgeGuard,
   nextSegment,
@@ -247,6 +253,10 @@ export default function PeersPage() {
             <div className="mx-auto w-full max-w-[1100px]">
               <p className="mb-3 text-[0.78125rem] text-grey">
                 {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
+                {/* The order chosen in Filter, said where the list is (Fable review). */}
+                {shownSort === 'name'
+                  ? ''
+                  : ` · ${PEER_SORTS.find(([value]) => value === shownSort)?.[1].toLowerCase() ?? ''}`}
               </p>
               {/* One column on a phone, more as the shell widens. The gap
                   replaces the card's own bottom margin so rows and columns are
