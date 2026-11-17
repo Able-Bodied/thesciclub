@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
+import { POST_MAX_WORDS } from '@/lib/chat/post-length';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { flushTopicRead, markTopicRead } from '@/lib/chat/topic-read-mark';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
@@ -580,8 +581,7 @@ export async function createTopic(
         attempt: 'The topic was not created.',
         constraints: {
           chat_topics_title_check: 'A title is up to 140 characters.',
-          chat_posts_check:
-            'A topic needs some words or a photograph, and at most 4,000 characters.',
+          chat_posts_check: `A topic needs some words or a photograph, and at most ${POST_MAX_WORDS} characters.`,
           chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
         },
       }),
@@ -602,7 +602,7 @@ const POST_REFUSALS = {
   // The topic was deleted by an administrator while this was being written.
   missing: 'This topic has been deleted.',
   constraints: {
-    chat_posts_check: 'A reply needs some words or a photograph, and at most 4,000 characters.',
+    chat_posts_check: `A reply needs some words or a photograph, and at most ${POST_MAX_WORDS} characters.`,
     chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
   },
 };
