@@ -4,14 +4,14 @@ import type { BrowseMember, InjuryStage } from '@/types/domain';
 
 /**
  * Each stage's colour (the owner, 2026-11-17): green, orange, then teal,
- * purple and magenta for 2–10 years, OG and OOG.
+ * purple and gold for 2–10 years, OG and OOG.
  */
 const STAGE_COLOUR: Record<InjuryStage, string> = {
   new: 'bg-stage-new text-white',
   recent: 'bg-stage-recent text-navy',
   years: 'bg-stage-years text-white',
   og: 'bg-stage-og text-white',
-  oog: 'bg-stage-oog text-white',
+  oog: 'bg-stage-oog text-navy',
 };
 
 type Staged = Pick<
