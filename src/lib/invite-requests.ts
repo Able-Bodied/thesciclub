@@ -194,10 +194,10 @@ export async function fetchAnsweredInviteRequests(): Promise<Result<AnsweredInvi
   };
 }
 
-/** "Alfred sent them an invite", "You dismissed it". */
+/** "Alfred sent an invite", "You dismissed it". */
 export function answeredWords(request: AnsweredInviteRequest): string {
   const who = request.answeredByMe ? 'You' : (request.answeredBy ?? 'Someone');
-  return request.status === 'invited' ? `${who} sent them an invite` : `${who} dismissed it`;
+  return request.status === 'invited' ? `${who} sent an invite` : `${who} dismissed it`;
 }
 
 export function answerInviteRequest(

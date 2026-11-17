@@ -278,7 +278,7 @@ export default function InvitesPage() {
               </h2>
               {requests.length === 0 ? (
                 <p className="mb-2.5 text-[0.8125rem] text-ink2">
-                  Nobody is waiting. Recently answered requests are below.
+                  Nobody is waiting. Requests answered lately are below.
                 </p>
               ) : null}
               <ul
@@ -356,7 +356,7 @@ export default function InvitesPage() {
               {answered.length > 0 ? (
                 <>
                   <h3 className="mt-3.5 mb-2 font-bold text-[0.75rem] text-grey">
-                    Recently answered
+                    Answered lately
                   </h3>
                   <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
                     {answered.map((request) => (
@@ -368,7 +368,7 @@ export default function InvitesPage() {
                           {request.name}
                         </span>
                         <span className="mt-0.5 block text-[0.75rem] text-grey">
-                          Asked through {request.organizationName} · {answeredWords(request)} ·{' '}
+                          {answeredWords(request)} · {request.organizationName} ·{' '}
                           {chatTime(request.answeredAt)}
                         </span>
                       </li>
@@ -379,12 +379,6 @@ export default function InvitesPage() {
             </section>
           ) : null}
 
-          {/* Its own heading once requests are above it (Fable review, 2026-11-16). */}
-          {requests.length > 0 || answered.length > 0 ? (
-            <h2 className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-              Invite someone
-            </h2>
-          ) : null}
           {/* Stated before the form, not after a refusal. */}
           <div className="rounded-[14px] border border-line bg-paper p-3.5">
             <div className="flex items-start gap-2.5">
