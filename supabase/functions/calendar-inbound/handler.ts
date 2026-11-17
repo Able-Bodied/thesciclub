@@ -74,6 +74,7 @@ export interface Deps {
   ): Promise<ReceiveResult>;
   send(mail: Mail): Promise<void>;
   now(): number;
+  wait(ms: number): Promise<void>;
 }
 
 /* ---------------------------------------------------------------- webhook */
@@ -349,6 +350,19 @@ export function repliesFor(
   }
 }
 
+/**
+ * "This and following events" (the owner, 2026-11-17): Google sends the event
+ * as it was, now ending the day before, and the rest as a new one whose UID
+ * is the old one's with `_R<date>` before the @, both at once. The later part
+ * carries the same dates on (20261117120000), so it goes first: taken second,
+ * the ending would already have deleted them, with their RSVPs.
+ */
+const ENDING_WAITS_MS = 4000;
+
+export function waitsForItsLaterPart(invite: InviteEvent): boolean {
+  return Boolean(invite.repeat?.endsOn) && !invite.cancelled && !/_R\d{8}/.test(invite.uid);
+}
+
 /* ---------------------------------------------------------------- handler */
 
 export async function handle(
@@ -380,6 +394,7 @@ export async function handle(
   if (!invite) return { status: 200, outcome: 'no invitation in it' };
 
   const sender = from.address;
+  if (waitsForItsLaterPart(invite)) await deps.wait(ENDING_WAITS_MS);
   const result = await deps.receive(sender, from.verified, to.tag, invite);
   for (const mail of repliesFor(result, invite, sender, deps.site)) {
     await deps.send(mail);

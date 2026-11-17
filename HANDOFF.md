@@ -211,6 +211,17 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     reply names the link the club holds; no reply means it never arrived.
     Google asks whom to tell, so an update can skip `invites@`. Probe:
     `calendar-invite-updates.sql`.
+  - **A change is just applied** (the owner, 2026-11-17, `20261117120000`):
+    one to an event already on the calendar keeps that event's host and is
+    never held for an organization again; only an unverified one waits.
+    Google's "this and following events" sends the old invitation, ending the
+    day before, and a new one whose UID is the old one's with `_R<date>`: the
+    new one carries the same series on from that day (same ids, RSVPs, who
+    can see it), and the old one keeps only the dates before
+    (`calendar_invites.continues`). The function makes the ending one wait
+    four seconds so the other is taken first. Probe:
+    `calendar-invite-following.sql`, run on the test project in a rolled-back
+    transaction (no local stack on the owner's Mac).
   - `invites@` tested end to end 2026-10-24 (function deployed). The
     website still shows `events@` until the branch reaches `main`.
 
