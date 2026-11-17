@@ -97,14 +97,15 @@ export function ReactionBar({
         <ReactionChip
           key={emoji}
           emoji={emoji}
-          label={`${name}: ${count} ${count === 1 ? 'reaction' : 'reactions'} on ${what}${mouse ? '. Show who reacted' : `${mine === emoji ? '. Remove your reaction' : '. React'}. Hold to see who reacted`}`}
+          label={`${name}: ${count} ${count === 1 ? 'reaction' : 'reactions'} on ${what}${mouse || mine === emoji ? '. Show who reacted' : '. React. Hold to see who reacted'}`}
           count={count}
           mine={mine === emoji}
           attached={attached}
           disabled={disabled}
           onTap={(rect) => {
-            // With a mouse, a click shows who reacted, as WhatsApp's does.
-            if (mouse) {
+            // With a mouse, a click shows who reacted, as WhatsApp's does; so
+            // does a tap on your own, where you take it back (the owner, 2026-11-17).
+            if (mouse || mine === emoji) {
               setAnchor(rect);
               setNamesFor(emoji);
             } else void choose(emoji);
@@ -185,7 +186,9 @@ export function ReactionBar({
                 setOpen(true);
               }}
               onRemove={() => {
-                void state.choose(target, null);
+                void state.choose(target, null).then((saved) => {
+                  if (saved) setNamesFor(null);
+                });
               }}
               onClose={() => {
                 setNamesFor(null);

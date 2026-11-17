@@ -193,13 +193,20 @@ describe('reaction controls', () => {
     click('👨‍👩‍👧');
     expect(data.choose).toHaveBeenCalledWith('m1', '👨‍👩‍👧');
   });
-  it('removes your reaction from its count chip', async () => {
+  // The owner, 2026-11-17: a tap on your own shows who reacted, and takes it
+  // back only from there.
+  it('shows who reacted from your own count chip, and removes it from there', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'me', emoji: '👍' }] });
     render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
     const chip = screen.getByRole('button', { name: /Thumbs up: 1 reaction/ });
     expect(chip).toHaveAttribute('aria-pressed', 'true');
-    await userEvent.setup().click(chip);
+    const user = userEvent.setup();
+    await user.click(chip);
+    expect(data.choose).not.toHaveBeenCalled();
+    const sheet = screen.getByRole('dialog', { name: 'Who reacted to “the message”' });
+    await user.click(within(sheet).getByRole('button', { name: /Tap to remove/ }));
     expect(data.choose).toHaveBeenCalledWith('m1', null);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
   it('keeps the picker open if saving fails and closes with Escape', async () => {
     const data = state({ choose: vi.fn(() => Promise.resolve(false)) });
