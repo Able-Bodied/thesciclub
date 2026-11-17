@@ -72,11 +72,11 @@ export function injuryStageOf(
   return 'oog';
 }
 
-/** The owner's words, 2026-11-17. */
+/** The owner's words, 2026-11-17 (OG and OOG kept, on second thoughts). */
 export const INJURY_STAGE_TEXT: Record<InjuryStage, string> = {
   new: 'Newly injured',
   recent: 'Recently injured',
-  years: 'Injured 2–10 years ago',
+  years: '2–10 years since injury',
   og: 'OG · 10+ years',
   oog: 'OOG · 40+ years',
 };
@@ -86,8 +86,7 @@ export function injuryStageText(stage: InjuryStage, injuryType?: string | null):
   if (injuryType !== 'condition') return INJURY_STAGE_TEXT[stage];
   if (stage === 'new') return 'Newly diagnosed';
   if (stage === 'recent') return 'Recently diagnosed';
-  if (stage === 'years') return 'Diagnosed 2–10 years ago';
-  return INJURY_STAGE_TEXT[stage];
+  return INJURY_STAGE_TEXT[stage].replace('since injury', 'since diagnosis');
 }
 
 /** A year inside each stage, for ordering and matching where the date is hidden. */

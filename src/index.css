@@ -180,6 +180,19 @@
   --stage-years: #0e7490;
   --stage-og: #6b3fa8;
   --stage-oog: #a3275e;
+  /* The same stages as words (the owner, 2026-11-17: the words in the colour, no
+     band). On a light page, each past 4.5:1 on --paper and --canvas; --stage-*-light
+     is for a dark page and over photographs (past 4.5:1 on #3a4a5e and darker). */
+  --stage-new-text: #1d7a3e;
+  --stage-recent-text: #b45309;
+  --stage-years-text: #0e7490;
+  --stage-og-text: #6b3fa8;
+  --stage-oog-text: #a3275e;
+  --stage-new-light: #6fdc95;
+  --stage-recent-light: #ffb067;
+  --stage-years-light: #5ccfe6;
+  --stage-og-light: #d4bcff;
+  --stage-oog-light: #ffa3c8;
 
   /* --------------------------------------------------------- measures */
   /*
@@ -267,6 +280,16 @@
   --color-stage-years: var(--stage-years);
   --color-stage-og: var(--stage-og);
   --color-stage-oog: var(--stage-oog);
+  --color-stage-new-text: var(--stage-new-text);
+  --color-stage-new-light: var(--stage-new-light);
+  --color-stage-recent-text: var(--stage-recent-text);
+  --color-stage-recent-light: var(--stage-recent-light);
+  --color-stage-years-text: var(--stage-years-text);
+  --color-stage-years-light: var(--stage-years-light);
+  --color-stage-og-text: var(--stage-og-text);
+  --color-stage-og-light: var(--stage-og-light);
+  --color-stage-oog-text: var(--stage-oog-text);
+  --color-stage-oog-light: var(--stage-oog-light);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -586,6 +609,11 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
  */
 :root[data-appearance="dark"]:not([data-force-light]) {
   color-scheme: dark;
+  --stage-new-text: var(--stage-new-light);
+  --stage-recent-text: var(--stage-recent-light);
+  --stage-years-text: var(--stage-years-light);
+  --stage-og-text: var(--stage-og-light);
+  --stage-oog-text: var(--stage-oog-light);
   --plate: #1e2126;
   --plate-chip: #33383f;
   --plate-edge: #707884;
@@ -620,6 +648,11 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
 @media (prefers-color-scheme: dark) {
   :root:not([data-appearance="light"]):not([data-force-light]) {
     color-scheme: dark;
+    --stage-new-text: var(--stage-new-light);
+    --stage-recent-text: var(--stage-recent-light);
+    --stage-years-text: var(--stage-years-light);
+    --stage-og-text: var(--stage-og-light);
+    --stage-oog-text: var(--stage-oog-light);
     --plate: #1e2126;
     --plate-chip: #33383f;
     --plate-edge: #707884;

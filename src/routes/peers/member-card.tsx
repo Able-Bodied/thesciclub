@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { InjuryStageNote } from '@/components/injury-stage-pill';
+import { InjuryStagePart } from '@/components/injury-stage-pill';
 import { PartnerLabel } from '@/components/partner-label';
+import { injuryStageOf } from '@/lib/injury';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { usePhoto } from '@/lib/use-photo';
@@ -61,22 +62,30 @@ export function summaryLine(member: BrowseMember): string {
 export function SummaryLine({ member }: { member: BrowseMember }) {
   // Each part kept whole with the dot after it, so a line breaks between
   // parts, never inside a city ("San / Francisco"), and never starts on a dot.
+  // How long ago comes last, with its stage's dot (InjuryStagePart).
   const rest = [member.age, cityAndState(member)].filter(Boolean);
+  const staged = injuryStageOf(member) !== null;
   return (
     <>
       <span className="whitespace-nowrap">
         {levelPart(member)}
-        {rest.length > 0 ? ' ·' : null}
+        {rest.length > 0 || staged ? ' ·' : null}
       </span>
       {rest.map((part, index) => (
         <span key={String(part)}>
           {' '}
           <span className="whitespace-nowrap">
             {part}
-            {index < rest.length - 1 ? ' ·' : null}
+            {index < rest.length - 1 || staged ? ' ·' : null}
           </span>
         </span>
       ))}
+      {staged ? (
+        <>
+          {' '}
+          <InjuryStagePart member={member} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -279,12 +288,17 @@ function PersonCard({
               <span className="whitespace-nowrap">
                 · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
               </span>
+              {injuryStageOf(member) ? (
+                <>
+                  {' · '}
+                  <InjuryStagePart member={member} />
+                </>
+              ) : null}
             </>
           ) : (
             <SummaryLine member={member} />
           )}
         </span>
-        <InjuryStageNote member={member} className="mt-1.5" />
         {sortNote ? (
           <span className="mt-0.5 block font-semibold text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
             {sortNote}
