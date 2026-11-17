@@ -133,6 +133,26 @@ describe('palette contrast', () => {
 });
 
 /*
+ * Time since injury in its stage's colour (the owner, 2026-11-17): the words on
+ * a light page, and the light set on a dark page and over a photograph's shade,
+ * #3a4a5e at its lightest. Brightened to just past AA, so this is the guard.
+ */
+const STAGES = ['new', 'recent', 'years', 'og', 'oog'] as const;
+const PHOTO_SHADE = '#3a4a5e';
+describe('injury stage colours', () => {
+  it.each(STAGES)('--stage-%s-text clears AA on --paper and --canvas', (stage) => {
+    for (const ground of ['paper', 'canvas']) {
+      expect(contrast(token(`stage-${stage}-text`), token(ground))).toBeGreaterThanOrEqual(AA);
+    }
+  });
+  it.each(STAGES)('--stage-%s-light clears AA dark and over a photograph', (stage) => {
+    for (const ground of [darkToken('paper'), darkToken('canvas'), PHOTO_SHADE]) {
+      expect(contrast(token(`stage-${stage}-light`), ground)).toBeGreaterThanOrEqual(AA);
+    }
+  });
+});
+
+/*
  * The dark theme (Me → Display → Appearance): charcoal with gold accents. The pairs
  * are the light ones in their dark roles: links, outlines and eyebrows are
  * --emphasis, filled buttons are --action, and words on a pale note are
