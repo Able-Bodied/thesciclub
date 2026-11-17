@@ -70,11 +70,14 @@ vi.mock('@/routes/invites/mentor-invites', async (importOriginal) => ({
 
 const requests = vi.hoisted(() => ({
   received: [] as unknown[],
+  answered: [] as unknown[],
   memberOf: [] as string[],
 }));
 
-vi.mock('@/lib/invite-requests', () => ({
+vi.mock('@/lib/invite-requests', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   fetchMyInviteRequests: () => Promise.resolve({ ok: true, value: requests.received }),
+  fetchAnsweredInviteRequests: () => Promise.resolve({ ok: true, value: requests.answered }),
   answerInviteRequest: () => Promise.resolve({ ok: true }),
 }));
 vi.mock('@/lib/organization-members', () => ({
@@ -130,6 +133,7 @@ beforeEach(() => {
   api.sendError = null;
   api.failWith = null;
   requests.received = [];
+  requests.answered = [];
   requests.memberOf = [];
 });
 
@@ -308,6 +312,28 @@ describe('a request for an invite', () => {
     renderInvites();
     await screen.findByRole('button', { name: 'Send invite' });
     expect(document.getElementById('request-organization-r1')).toBeNull();
+  });
+
+  // The owner, 2026-11-16: told of a request another org admin had already
+  // answered, the notification led to nothing (20261117010000).
+  it('says who answered a request another org admin took first', async () => {
+    requests.received = [];
+    requests.answered = [
+      {
+        id: 'r2',
+        organizationName: 'The SCI Club',
+        name: 'Randall Collins',
+        status: 'invited',
+        answeredBy: 'Alfred',
+        answeredByMe: false,
+        answeredAt: '2026-11-17T00:59:04Z',
+      },
+    ];
+    renderInvites();
+    expect(await screen.findByText('Randall Collins')).toBeInTheDocument();
+    expect(screen.getByText(/Alfred sent an invite · The SCI Club/)).toBeInTheDocument();
+    expect(screen.getByText(/Nobody is waiting/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send invite' })).toBeNull();
   });
 });
 
