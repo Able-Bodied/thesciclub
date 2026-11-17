@@ -88,8 +88,8 @@ export const PEER_SORTS = [
   ['youngest', 'Youngest first'],
   ['oldest', 'Oldest first'],
   ['nearest', 'Nearest first'],
-  ['recently-injured', 'Most recently injured'],
-  ['longest-injured', 'Longest since injury'],
+  ['recently-injured', 'Shortest time since injury'],
+  ['longest-injured', 'Longest time since injury'],
 ] as const;
 
 export type PeerSort = (typeof PEER_SORTS)[number][0];
@@ -136,6 +136,44 @@ export function sortMembers<T extends BrowseMember>(
       return a.key - b.key || a.index - b.index;
     })
     .map((entry) => entry.member);
+}
+
+/**
+ * What a card says of the order it is in, so the order can be read: "12 mi
+ * away", "Joined Nov 3", "4 years since injury". Null where the card already
+ * shows it (age) or there is nothing to say.
+ */
+export function sortNote(
+  member: BrowseMember,
+  sort: PeerSort,
+  miles: ReadonlyMap<string, number> = new Map(),
+  now: Date = new Date(),
+): string | null {
+  switch (sort) {
+    case 'nearest': {
+      const away = miles.get(member.id);
+      if (away === undefined) return null;
+      return away < 1 ? 'In your city' : `${Math.round(away)} mi away`;
+    }
+    case 'newest': {
+      const joined = new Date(member.createdAt);
+      return `Joined ${joined.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        ...(joined.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+      })}`;
+    }
+    case 'recently-injured':
+    case 'longest-injured': {
+      const years = yearsSinceInjury(member, now);
+      if (years === null) return null;
+      const whole = Math.floor(years);
+      if (whole < 1) return 'Under a year since injury';
+      return `${whole} year${whole === 1 ? '' : 's'} since injury`;
+    }
+    default:
+      return null;
+  }
 }
 
 /**

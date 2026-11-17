@@ -92,6 +92,8 @@ export interface MemberCardProps {
   priority?: boolean;
   /** About us, for anybody: the age and city blurred (routes/about/blurred.tsx). */
   publicView?: boolean;
+  /** What the deck is sorted by, for this member ("12 mi away"). */
+  sortNote?: string | null;
 }
 
 /**
@@ -106,11 +108,26 @@ export function MemberCard({
   onOpen,
   priority = false,
   publicView = false,
+  sortNote = null,
 }: MemberCardProps) {
-  return <PersonCard member={member} onOpen={onOpen} priority={priority} publicView={publicView} />;
+  return (
+    <PersonCard
+      member={member}
+      onOpen={onOpen}
+      priority={priority}
+      publicView={publicView}
+      sortNote={sortNote}
+    />
+  );
 }
 
-function PersonCard({ member, onOpen, priority = false, publicView = false }: MemberCardProps) {
+function PersonCard({
+  member,
+  onOpen,
+  priority = false,
+  publicView = false,
+  sortNote = null,
+}: MemberCardProps) {
   const { organizations } = useOrganizations();
   // The small copy draws at once; the photograph covers it once it is in.
   const { url: small, onError: smallFailed } = usePhoto(member.photoPath, 'thumb');
@@ -236,6 +253,11 @@ function PersonCard({ member, onOpen, priority = false, publicView = false }: Me
             summaryLine(member)
           )}
         </span>
+        {sortNote ? (
+          <span className="mt-0.5 block font-semibold text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
+            {sortNote}
+          </span>
+        ) : null}
       </span>
 
       <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-5">
