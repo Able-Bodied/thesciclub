@@ -23,7 +23,7 @@ export function LevelBubble({ member, level }: { member: Staged; level: string }
       className={cn(
         // One piece that moves to the next line whole; it wraps inside only when
         // wider than the line (a long condition's name).
-        'inline-block max-w-full rounded-[0.8em] px-2 py-[1px] font-semibold [text-shadow:none]',
+        'inline-block max-w-full whitespace-normal rounded-[0.8em] px-2 py-[1px] font-semibold [text-shadow:none]',
         stage === 'new'
           ? 'bg-stage-new text-white'
           : stage === 'recent'

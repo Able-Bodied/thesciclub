@@ -59,16 +59,22 @@ export function summaryLine(member: BrowseMember): string {
 
 /** The summary line on a photograph, the level in its stage's bubble. */
 export function SummaryLine({ member }: { member: BrowseMember }) {
-  // Each part kept whole, so a line breaks between them and never inside a
-  // city ("San / Francisco") beside the bubble.
+  // Each part kept whole with the dot after it, so a line breaks between
+  // parts, never inside a city ("San / Francisco"), and never starts on a dot.
   const rest = [member.age, cityAndState(member)].filter(Boolean);
   return (
     <>
-      <LevelBubble member={member} level={levelPart(member)} />
-      {rest.map((part) => (
-        <span key={String(part)} className="whitespace-nowrap">
+      <span className="whitespace-nowrap">
+        <LevelBubble member={member} level={levelPart(member)} />
+        {rest.length > 0 ? ' ·' : null}
+      </span>
+      {rest.map((part, index) => (
+        <span key={String(part)}>
           {' '}
-          · {part}
+          <span className="whitespace-nowrap">
+            {part}
+            {index < rest.length - 1 ? ' ·' : null}
+          </span>
         </span>
       ))}
     </>
@@ -248,7 +254,13 @@ function PersonCard({
         </span>
       ) : null}
 
-      <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px] pr-[104px]">
+      {/* Room on the right only for the flags drawn there. */}
+      <span
+        className={cn(
+          'absolute inset-x-0 top-0 block px-[18px] pt-[18px]',
+          mentor || admin || member.type === 'organization' ? 'pr-[104px]' : '',
+        )}
+      >
         <span className="block font-extrabold font-display text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(0,0,0,.75)]">
           {member.displayName}
         </span>
