@@ -1886,7 +1886,7 @@ function ChooseOrganizationPanel({
         others={organizations}
         value={chosen}
         onChange={setChosen}
-        placeholder={loading ? 'Loading organizations…' : 'The SCI Club, or find one below'}
+        placeholder={loading ? 'Loading organizations…' : 'Choose an organization'}
         disabled={loading}
         className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
       />
