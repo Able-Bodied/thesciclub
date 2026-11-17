@@ -16,6 +16,12 @@ import type { BrowseMember, ClubEvent } from '@/types/domain';
 /** How far ahead an event can be and still be worth putting in front of somebody. */
 export const EVENT_HORIZON_DAYS = 30;
 
+/**
+ * Home's events stay within this many miles unless Filter says otherwise (the
+ * owner, 2026-11-17): an archery day in Georgia is no suggestion for San Diego.
+ */
+export const HOME_EVENT_MILES = 100;
+
 /** How many of the best-ranked members the day's suggestions rotate through. */
 const PEOPLE_POOL = 12;
 
@@ -29,7 +35,8 @@ const SEGMENT_EVENTS = 8;
 export const SEGMENT_PEOPLE = 6;
 
 /**
- * Upcoming events in the next thirty days, soonest first, one card per series.
+ * Upcoming events in the next thirty days, one card per series: the closest
+ * first when `milesAway` knows them (the owner, 2026-11-17), then soonest.
  *
  * One per series because NorCal SCI's calendar is mostly the same fifteen
  * things weekly. Four Friday swims in a row would push everything else off
@@ -43,13 +50,34 @@ export function pickEvents(
   events: readonly ClubEvent[],
   now: Date = new Date(),
   nearby: ReadonlySet<string> | null = null,
+  milesAway: ReadonlyMap<string, number> = new Map(),
 ): ClubEvent[] {
+  // Not known (no place, or the member has none): after the ones that are.
+  const away = (event: ClubEvent) => milesAway.get(event.id) ?? Number.POSITIVE_INFINITY;
   const horizon = now.getTime() + EVENT_HORIZON_DAYS * 86_400_000;
   const upcoming = events
     .filter((event) => !isPastEvent(event, now) && Date.parse(event.startTime) <= horizon)
     .filter((event) => !nearby || nearby.has(event.id))
-    .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id));
-  return groupBySeries(upcoming).map((group) => group.lead);
+    .sort(
+      (a, b) =>
+        away(a) - away(b) || a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id),
+    );
+  // A calendar's weekly sail is often separate events with no series: one card
+  // for it too, or closest-first fills Home with the same thing.
+  const seen = new Set<string>();
+  return groupBySeries(upcoming)
+    .map((group) => group.lead)
+    .filter((event) => {
+      const same =
+        event.seriesId ??
+        (event.organizationId
+          ? `${event.organizationId}|${event.title.trim().toLowerCase()}`
+          : null);
+      if (same === null) return true;
+      if (seen.has(same)) return false;
+      seen.add(same);
+      return true;
+    });
 }
 
 /** Days since 1970 on the viewer's own calendar, so the day turns at their midnight. */

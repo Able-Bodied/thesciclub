@@ -724,10 +724,13 @@ describe('filtering the feed', () => {
     expect(cards()).toHaveLength(7);
   });
 
-  it('starts at any distance, so Worth meeting reaches the whole club', () => {
+  // The owner, 2026-11-17: events start within 100 miles; Filter still has
+  // nothing chosen, so Worth meeting reaches the whole club.
+  it('starts events at 100 miles, with no distance chosen', () => {
     db.nearAskedFor = [];
     renderPage();
-    expect(db.nearAskedFor).toContain(null);
+    expect(db.nearAskedFor).toContain(100);
+    expect(db.nearAskedFor).not.toContain(null);
     expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
   });
 });

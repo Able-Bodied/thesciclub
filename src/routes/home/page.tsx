@@ -13,6 +13,7 @@ import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
 import { usePostViews } from '@/lib/chat/views';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
+import { useFilterPlace } from '@/lib/filter-place';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
 import { useHome } from '@/lib/home-state';
@@ -29,6 +30,7 @@ import { dateWindowRange } from '@/routes/events/filters';
 import { ComposeCard } from '@/routes/home/compose-card';
 import {
   EVENT_HORIZON_DAYS,
+  HOME_EVENT_MILES,
   inSegment,
   pickEvents,
   SEGMENT_PEOPLE,
@@ -50,7 +52,7 @@ import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { ProfileCard, useProfileAsk } from '@/routes/home/profile-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
-import { membersBeyond } from '@/routes/peers/filters';
+import { membersBeyond, milesBetween, organizationMiles } from '@/routes/peers/filters';
 import type { ClubEvent, RsvpStatus } from '@/types/domain';
 
 /**
@@ -120,20 +122,35 @@ export default function HomePage() {
     return from ? { from, to } : { to };
   });
   const eventsRead = useEvents(eventWindow);
-  // Within the same distance Events starts on, so Home does not suggest what
-  // Events would leave out.
   const [filters, setFilters] = useState<FeedFilters>(EMPTY_FEED_FILTERS);
-  const near = useNearHome(filters.withinMiles);
-  // Peers measured as the Peers tab does, from what the map holds.
+  // Events within 100 miles unless Filter chose a distance (the owner, 2026-11-17);
+  // peers, at any distance until then, as on Peers.
+  const near = useNearHome(filters.withinMiles ?? HOME_EVENT_MILES);
+  // Peers measured as the Peers tab does, from what the map holds; and how far
+  // each event is, closest first.
   const home = useHome();
-  const mapData = useMapData(filters.withinMiles !== null);
+  const mapData = useMapData(true);
+  const place = useFilterPlace();
   const peersFar = useMemo(
     () => membersBeyond(mapData.contents, filters.withinMiles),
     [mapData.contents, filters.withinMiles],
   );
+  const eventMiles = useMemo(() => {
+    const from = place ?? mapData.contents.home;
+    const miles = new Map<string, number>();
+    if (!from) return miles;
+    for (const spot of mapData.contents.events) miles.set(spot.id, milesBetween(from, spot));
+    // An online event counts from its host, as the 100 miles does.
+    const hosts = organizationMiles({ ...mapData.contents, home: from });
+    for (const event of eventsRead.events) {
+      const host = event.organizationId ? hosts.get(event.organizationId) : undefined;
+      if (!miles.has(event.id) && host !== undefined) miles.set(event.id, host);
+    }
+    return miles;
+  }, [place, mapData.contents, eventsRead.events]);
   const events = useMemo(
-    () => pickEvents(eventsRead.events, undefined, near.ids),
-    [eventsRead.events, near.ids],
+    () => pickEvents(eventsRead.events, undefined, near.ids, eventMiles),
+    [eventsRead.events, near.ids, eventMiles],
   );
   const { organizations: everyOrganization, byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
@@ -186,7 +203,8 @@ export default function HomePage() {
 
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
-    events: eventsRead.loading || near.status === 'loading',
+    // The map too, for the distances, so the order does not jump when it lands.
+    events: eventsRead.loading || near.status === 'loading' || mapData.status === 'loading',
     // A failed conversations read is not waited on: a redundant suggestion beats none.
     people:
       membersRead.loading ||
