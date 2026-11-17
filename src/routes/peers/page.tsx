@@ -97,7 +97,7 @@ export default function PeersPage() {
   // usual start, replaced once it lands if nothing was changed meanwhile.
   const ownKind = members.find((member) => member.id === memberId)?.injuryType;
   const starting = useMemo(() => startingFilters(ownKind), [ownKind]);
-  const [startedFrom, setStartedFrom] = useState(starting);
+  const [startedFrom, setStartedFrom] = useState(DEFAULT_MEMBER_FILTERS);
   if (startedFrom !== starting) {
     setStartedFrom(starting);
     if (filters === startedFrom) setFilters(starting);
