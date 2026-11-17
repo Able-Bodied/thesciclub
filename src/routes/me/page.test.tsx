@@ -41,6 +41,7 @@ const completeDetails: MemberDetails = {
   zip: '',
   photoPath: 'u1/profile.jpg',
   photoAlt: null,
+  showInjuryDate: false,
   showInBrowse: true,
   showOnMap: true,
   declined: [],

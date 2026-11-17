@@ -10,7 +10,14 @@ import { type DateParts, EMPTY_DATE_PARTS, partsFromIso, readDate } from '@/lib/
 import { describeThrown } from '@/lib/describe-error';
 import { geocodeZip } from '@/lib/geocode';
 import { googlePhotoUrl, useGooglePhoto } from '@/lib/google-photo';
-import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
+import {
+  ageFrom,
+  dateLabel,
+  INJURY_STAGE_TEXT,
+  injuryStageOf,
+  isAdult,
+  MINIMUM_AGE,
+} from '@/lib/injury';
 import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { usePhotoUrl } from '@/lib/photos';
 import { signInDoor } from '@/lib/sign-in-destination';
@@ -461,6 +468,12 @@ export default function ProfileDetailsPage() {
                         {dateLabel(injuryReading.iso, injuryReading.precision)}
                       </p>
                     ) : null}
+                    <InjuryDateShown
+                      details={details}
+                      onChange={(showInjuryDate) => {
+                        set({ showInjuryDate });
+                      }}
+                    />
                   </Field>
                 )}
               </DetailsSection>
@@ -677,5 +690,41 @@ function Select({
     >
       {children}
     </select>
+  );
+}
+
+/**
+ * Whether members see the injury date or only how long ago (the owner,
+ * 2026-11-17: "Have a selector in details for showing the injury date").
+ * How long ago unless the member chooses the date; each option says what
+ * members would read.
+ */
+function InjuryDateShown({
+  details,
+  onChange,
+}: {
+  details: MemberDetails;
+  onChange: (showInjuryDate: boolean) => void;
+}) {
+  const stage = injuryStageOf(details);
+  const date =
+    details.injuryDate && details.injuryDatePrecision
+      ? dateLabel(details.injuryDate, details.injuryDatePrecision)
+      : null;
+  if (!stage || !date) return null;
+  return (
+    <label className="mt-3 block">
+      <span className="mb-1.5 block font-semibold text-[0.8125rem] text-ink">Members see</span>
+      <select
+        value={details.showInjuryDate ? 'date' : 'stage'}
+        onChange={(event) => {
+          onChange(event.target.value === 'date');
+        }}
+        className="min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+      >
+        <option value="stage">Only “{INJURY_STAGE_TEXT[stage]}”</option>
+        <option value="date">The date, {date}</option>
+      </select>
+    </label>
   );
 }

@@ -1,6 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { InjuryStagePill } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { usePhoto } from '@/lib/use-photo';
@@ -140,8 +141,9 @@ export default function AboutProfilePage() {
                     · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
                   </span>
                 </p>
+                <InjuryStagePill member={member} className="mt-1.5" />
                 {injuryYear ? (
-                  <p className="mt-0.5 text-[0.78125rem] text-white/90">
+                  <p className="mt-1 text-[0.78125rem] text-white/90">
                     <InjuredIn year={injuryYear} precision={member.injuryDatePrecision} />
                   </p>
                 ) : null}
