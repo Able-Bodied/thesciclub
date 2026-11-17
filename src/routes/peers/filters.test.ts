@@ -11,6 +11,7 @@ import {
   organizationsWithin,
   othersOnly,
   regionsIn,
+  startingFilters,
   toggleFilter,
   topicsIn,
 } from '@/routes/peers/filters';
@@ -379,5 +380,19 @@ describe('organizationsWithin', () => {
       ({ id, latitude, longitude: -121.9 }) as MapContents['organizations'][number];
     const organizations = [place('near', 37.31), place('far', 45)];
     expect([...organizationsWithin({ home, organizations }, 50)]).toEqual(['near']);
+  });
+});
+
+// The owner, 2026-11-16: a family member or friend, or staff, starts with
+// their own kind shown; everybody else starts with both left out.
+describe('startingFilters', () => {
+  it('shows the reader their own kind from the start, and counts from there', () => {
+    expect(startingFilters('family').leaveOut).not.toContain('family');
+    expect(startingFilters('family').leaveOut).toContain('professionals');
+    expect(startingFilters('professional').leaveOut).not.toContain('professionals');
+    expect(startingFilters('professional').leaveOut).toContain('family');
+    expect(startingFilters(null).leaveOut).toEqual(DEFAULT_MEMBER_FILTERS.leaveOut);
+    const family = startingFilters('family');
+    expect(activeFilterCount(family, null, family)).toBe(0);
   });
 });
