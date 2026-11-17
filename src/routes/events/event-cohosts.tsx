@@ -133,7 +133,7 @@ export function EventCohosts({
             onChange={(e) => {
               setFind(e.target.value);
             }}
-            placeholder="Name, short code or town"
+            placeholder="Name, abbreviation or town"
             className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.875rem] text-ink outline-none focus:border-emphasis"
           />
           {find.trim() === '' ? null : found.length === 0 ? (
