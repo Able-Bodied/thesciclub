@@ -331,7 +331,9 @@ describe('a request for an invite', () => {
     ];
     renderInvites();
     expect(await screen.findByText('Randall Collins')).toBeInTheDocument();
-    expect(screen.getByText(/Alfred sent an invite · The SCI Club/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Asked through The SCI Club · Alfred sent them an invite/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Nobody is waiting/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Send invite' })).toBeNull();
   });
