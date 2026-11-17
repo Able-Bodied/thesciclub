@@ -96,7 +96,7 @@ export function FilterSheet({
 
   return (
     <FilterSheetShell
-      title="Filter peers"
+      title={sorting ? 'Filter and sort peers' : 'Filter peers'}
       summary={`${matchCount} member${matchCount === 1 ? '' : 's'} match right now`}
       onClose={onClose}
       onClear={onClear}
