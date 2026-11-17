@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ageFrom,
   injuryDateLabel,
+  injuryStageOf,
   isAdult,
   isNewlyInjured,
   timeSinceLabel,
@@ -114,5 +115,28 @@ describe('the age gate', () => {
   it('refuses a missing date rather than letting it through', () => {
     expect(isAdult(null, NOW)).toBe(false);
     expect(isAdult('', NOW)).toBe(false);
+  });
+});
+
+// The owner, 2026-11-17: the date hidden, how long ago shown in its place.
+// The edges match public.injury_stage (20261117030000); a hidden date falls
+// back to the stage the database sent.
+describe('injuryStageOf', () => {
+  const now = new Date('2026-11-17T12:00:00Z');
+  const at = (injuryDate: string) => injuryStageOf({ injuryDate, injuryDatePrecision: 'day' }, now);
+  it('puts each edge in the later stage', () => {
+    expect(at('2026-05-18')).toBe('new');
+    expect(at('2026-05-17')).toBe('recent');
+    expect(at('2024-11-18')).toBe('recent');
+    expect(at('2024-11-17')).toBe('years');
+    expect(at('2016-11-17')).toBe('og');
+    expect(at('1986-11-18')).toBe('og');
+    expect(at('1986-11-17')).toBe('oog');
+  });
+  it('uses the sent stage where the date is hidden, and nothing where there is neither', () => {
+    expect(
+      injuryStageOf({ injuryDate: null, injuryDatePrecision: null, injuryStage: 'og' }, now),
+    ).toBe('og');
+    expect(injuryStageOf({ injuryDate: null, injuryDatePrecision: null }, now)).toBeNull();
   });
 });

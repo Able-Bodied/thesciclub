@@ -1,6 +1,7 @@
 import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, type Location, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { InjuryStagePill } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PartnerLabel } from '@/components/partner-label';
 import { PhotoViewer } from '@/components/photo-viewer';
@@ -261,7 +262,8 @@ function MemberOf({
 /**
  * How long ago the injury was, at the precision that was given. Says nothing
  * at all when no date was recorded, which is the case for everybody who came
- * from the NorCal SCI directory.
+ * from the NorCal SCI directory, or where its member does not show it
+ * (20261117030000): the stage pill above it says how long ago instead.
  */
 function injuryLine(member: BrowseMember): string | null {
   const since = timeSinceLabel(member);
@@ -810,7 +812,8 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 ) : null}
                 <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
                 <p className="mt-1 text-[0.875rem] text-white">{summaryLine(member)}</p>
-                {injury ? <p className="mt-0.5 text-[0.78125rem] text-white/90">{injury}</p> : null}
+                <InjuryStagePill member={member} className="mt-1.5" />
+                {injury ? <p className="mt-1 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>
 

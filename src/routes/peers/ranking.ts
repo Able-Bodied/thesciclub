@@ -29,7 +29,7 @@
  * people who joined first.
  */
 
-import { isNewlyInjured, yearsSinceInjury } from '@/lib/injury';
+import { isNewlyInjured, roughYearsSinceInjury, yearsSinceInjury } from '@/lib/injury';
 import type { BrowseMember } from '@/types/domain';
 
 /** How many interests two people share. */
@@ -43,8 +43,8 @@ export function sharedInterests(a: BrowseMember, b: BrowseMember): string[] {
  * side has no injury date.
  */
 export function stageScore(viewer: BrowseMember, candidate: BrowseMember): number | null {
-  const viewerYears = yearsSinceInjury(viewer);
-  const candidateYears = yearsSinceInjury(candidate);
+  const viewerYears = roughYearsSinceInjury(viewer);
+  const candidateYears = roughYearsSinceInjury(candidate);
   if (viewerYears === null || candidateYears === null) return null;
 
   if (isNewlyInjured(viewer)) {
@@ -120,9 +120,9 @@ export function sortMembers<T extends BrowseMember>(
       case 'nearest':
         return miles.get(member.id) ?? null;
       case 'recently-injured':
-        return yearsSinceInjury(member, now);
+        return roughYearsSinceInjury(member, now);
       case 'longest-injured': {
-        const years = yearsSinceInjury(member, now);
+        const years = roughYearsSinceInjury(member, now);
         return years === null ? null : -years;
       }
     }

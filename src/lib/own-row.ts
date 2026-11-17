@@ -32,6 +32,7 @@ export const OWN_ROW_COLUMNS = [
   'completeness',
   'injury_date',
   'injury_date_precision',
+  'show_injury_date',
   'birth_date',
   'created_at',
   'show_in_browse',

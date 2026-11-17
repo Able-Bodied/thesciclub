@@ -37,6 +37,8 @@ export interface MemberDetails {
   completeness: Completeness;
   injuryDate: string | null;
   injuryDatePrecision: DatePrecision | null;
+  /** Members see the date, not only how long ago (20261117030000). Off unless chosen. */
+  showInjuryDate: boolean;
   city: string | null;
   state: string;
   /** Five digits or ''; kept so the map can count them at its middle (20261029040000). */
@@ -98,7 +100,7 @@ export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean 
 }
 
 const COLUMNS =
-  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, city, state, zip, photo_path, photo_alt, show_in_browse, show_on_map, declined';
+  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, show_injury_date, city, state, zip, photo_path, photo_alt, show_in_browse, show_on_map, declined';
 
 /* The client types individually selected columns as `any`, so each one is
  * narrowed on the way out rather than cast wholesale. A column that comes back
@@ -195,6 +197,7 @@ export function detailsFrom(row: Record<string, unknown>): MemberDetails {
     completeness: (asNullableText(row.completeness) ?? 'Do not know') as Completeness,
     injuryDate: asNullableText(row.injury_date),
     injuryDatePrecision: asNullableText(row.injury_date_precision) as DatePrecision | null,
+    showInjuryDate: row.show_injury_date === true,
     city: asNullableText(row.city),
     state: asText(row.state),
     zip: asNullableText(row.zip) ?? '',
@@ -257,6 +260,7 @@ export async function saveDetails(
       completeness: details.completeness,
       injury_date: details.injuryDate,
       injury_date_precision: details.injuryDatePrecision,
+      show_injury_date: details.showInjuryDate,
       // An emptied city becomes null, not an empty string: "somewhere else" is
       // a real answer and should look the same in the database as never having
       // said. Spelled out rather than leaning on `||`, which reads as a typo.

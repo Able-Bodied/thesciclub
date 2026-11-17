@@ -10,7 +10,7 @@
  * given. Somebody who said "2013" is shown "2013", never a fabricated day.
  */
 
-import type { DatePrecision } from '@/types/domain';
+import type { DatePrecision, InjuryStage } from '@/types/domain';
 
 export interface InjuryDated {
   injuryDate: string | null;
@@ -52,6 +52,55 @@ export function yearsSinceInjury(member: InjuryDated, now?: Date): number | null
 export function isNewlyInjured(member: InjuryDated, now?: Date): boolean | null {
   const months = monthsSinceInjury(member, now);
   return months === null ? null : months < 12;
+}
+
+/**
+ * How long ago, from the date where there is one (the reader's own, or one its
+ * member shows), and otherwise the stage the database sent in its place.
+ * The same edges as public.injury_stage (20261117030000).
+ */
+export function injuryStageOf(
+  member: InjuryDated & { injuryStage?: InjuryStage | null },
+  now?: Date,
+): InjuryStage | null {
+  const months = monthsSinceInjury(member, now);
+  if (months === null) return member.injuryStage ?? null;
+  if (months < 6) return 'new';
+  if (months < 24) return 'recent';
+  if (months < 120) return 'years';
+  if (months < 480) return 'og';
+  return 'oog';
+}
+
+/** The owner's words, 2026-11-17. */
+export const INJURY_STAGE_TEXT: Record<InjuryStage, string> = {
+  new: 'Newly injured',
+  recent: 'Recently injured',
+  years: 'Injured 2–10 years ago',
+  og: 'OG · 10+ years',
+  oog: 'OOG · 40+ years',
+};
+
+/** A year inside each stage, for ordering and matching where the date is hidden. */
+const STAGE_YEARS: Record<InjuryStage, number> = {
+  new: 0.25,
+  recent: 1.25,
+  years: 6,
+  og: 25,
+  oog: 45,
+};
+
+/**
+ * Years since injury from the date, or from the stage where the date is
+ * hidden. For ordering and matching only; never shown as a number.
+ */
+export function roughYearsSinceInjury(
+  member: InjuryDated & { injuryStage?: InjuryStage | null },
+  now?: Date,
+): number | null {
+  const years = yearsSinceInjury(member, now);
+  if (years !== null) return years;
+  return member.injuryStage ? STAGE_YEARS[member.injuryStage] : null;
 }
 
 export const MONTHS = [

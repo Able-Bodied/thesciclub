@@ -71,6 +71,14 @@ export type ExactLevel = (typeof EXACT_LEVELS)[number];
 export const INJURY_REGIONS = ['Cervical', 'Thoracic', 'Lumbar & sacral', 'Unknown'] as const;
 export type InjuryRegion = (typeof INJURY_REGIONS)[number];
 
+/**
+ * How long ago somebody was injured, shown in place of the date, which is
+ * hidden unless its member shows it (20261117030000, the owner, 2026-11-17).
+ * Under six months, under two years, under ten, under forty, forty and more.
+ */
+export const INJURY_STAGES = ['new', 'recent', 'years', 'og', 'oog'] as const;
+export type InjuryStage = (typeof INJURY_STAGES)[number];
+
 export function regionForRange(range: LevelRange): InjuryRegion {
   switch (range) {
     case 'C1–C4':
@@ -498,8 +506,11 @@ export interface BrowseMember {
   /** Only with injuryType 'condition': in the member's words. */
   conditionName: string | null;
   completeness: Completeness;
+  /** Null where its member does not show it (20261117030000), but to themselves. */
   injuryDate: string | null;
   injuryDatePrecision: DatePrecision | null;
+  /** How long ago, sent whether or not the date is (src/lib/injury.ts). */
+  injuryStage: InjuryStage | null;
   region: InjuryRegion;
   /** Derived on read, never stored — a stored age is wrong within a year. */
   age: number | null;

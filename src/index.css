@@ -170,6 +170,12 @@
   --room-kit: #2f6b57;
   --room-places: #1f6b82;
 
+  /* How long ago somebody was injured (src/components/injury-stage-pill.tsx), the
+     owner's colours, 2026-11-17: green for under six months, orange for under two
+     years. White text on each, on a photograph or a page, light or dark (5.6:1, 5.2:1). */
+  --stage-new: #1d7a3e;
+  --stage-recent: #c2410c;
+
   /* --------------------------------------------------------- measures */
   /*
    * The reading column for a date-ordered list: wider than the phone shell, narrow enough that a
@@ -251,6 +257,8 @@
   --color-room-family: var(--room-family);
   --color-room-kit: var(--room-kit);
   --color-room-places: var(--room-places);
+  --color-stage-new: var(--stage-new);
+  --color-stage-recent: var(--stage-recent);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
