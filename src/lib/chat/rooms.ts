@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { POST_MAX_WORDS } from '@/lib/chat/post-length';
 import type { ChatWriteResult } from '@/lib/chat/threads';
 import {
   type ChatRoom,
@@ -363,7 +364,7 @@ export async function createRoom(
         duplicate: 'There is already a room with that name.',
         constraints: {
           chat_topics_title_check: 'The first topic needs a title of up to 140 characters.',
-          chat_posts_check: 'The first post needs some words, and at most 4,000 characters.',
+          chat_posts_check: `The first post needs some words, and at most ${POST_MAX_WORDS} characters.`,
         },
       }),
     };

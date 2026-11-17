@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { PRICED_ROOM, parsePrice, setListingPrice } from '@/lib/chat/listing-prices';
+import { POST_COUNT_FROM, POST_MAX } from '@/lib/chat/post-length';
 import { roomPrompt } from '@/lib/chat/room-prompts';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
@@ -339,7 +340,8 @@ export default function NewTopicPage() {
         <DescriptionEditor
           id="topic-body"
           value={body}
-          maxLength={4000}
+          maxLength={POST_MAX}
+          countFrom={POST_COUNT_FROM}
           onChange={setBody}
           mentions
           placeholder={prompt.body}

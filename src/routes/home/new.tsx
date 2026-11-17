@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
+import { POST_MAX } from '@/lib/chat/post-length';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import type { ChatRoom } from '@/lib/chat/types';
@@ -231,7 +232,7 @@ export default function HomeNewPage() {
               id="ask-details"
               ref={detailsBox}
               rows={4}
-              maxLength={4000}
+              maxLength={POST_MAX}
               value={details}
               onChange={(event) => {
                 setDetails(event.target.value);

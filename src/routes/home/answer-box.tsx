@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { POST_MAX } from '@/lib/chat/post-length';
 import { sendPost } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
@@ -97,7 +98,7 @@ export function AnswerBox({
         id={id}
         ref={box}
         rows={3}
-        maxLength={4000}
+        maxLength={POST_MAX}
         value={text}
         onChange={(event) => {
           setText(event.target.value);

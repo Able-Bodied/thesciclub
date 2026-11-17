@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
+import { POST_MAX } from '@/lib/chat/post-length';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
@@ -175,7 +176,7 @@ export default function SharePage() {
             <textarea
               id="share-body"
               rows={4}
-              maxLength={4000}
+              maxLength={POST_MAX}
               value={body}
               onChange={(event) => {
                 setBody(event.target.value);

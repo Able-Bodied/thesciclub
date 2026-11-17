@@ -132,6 +132,22 @@ describe('asking, from a room', () => {
     });
   });
 
+  // The owner, 2026-11-17: a life story stopped at 4,000 characters.
+  it('takes a first post far longer than a chat message, every word of it', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const story = 'Twenty years of pushing. '.repeat(400).trim();
+    await user.type(screen.getByLabelText('What is it about?'), 'My story');
+    await user.click(screen.getByLabelText(/The first post/));
+    await user.paste(story);
+    // Nothing counts down at the start of a long story.
+    expect(screen.queryByText(/characters left/, { selector: '#topic-body-hint' })).toBeNull();
+    await user.click(post());
+    await waitFor(() => {
+      expect(db.created).toEqual([['equip', 'My story', story, []]]);
+    });
+  });
+
   it('starts from the words carried over from the quick box', () => {
     renderPage({ draft: 'Which side guards last?', question: true });
     expect(screen.getByLabelText('What is it about?')).toHaveValue('Which side guards last?');

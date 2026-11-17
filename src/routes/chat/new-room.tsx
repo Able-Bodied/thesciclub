@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
+import { POST_MAX } from '@/lib/chat/post-length';
 import {
   addFirstPostPhotographs,
   createRoom,
@@ -259,7 +260,7 @@ export default function NewRoomPage() {
           id="room-topic-body"
           value={body}
           rows={6}
-          maxLength={4000}
+          maxLength={POST_MAX}
           onChange={(event) => {
             setBody(event.target.value);
           }}

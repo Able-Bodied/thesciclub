@@ -17,6 +17,7 @@ import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
 import { usePostLikes } from '@/lib/chat/likes';
 import { PRICED_ROOM } from '@/lib/chat/listing-prices';
+import { POST_MAX } from '@/lib/chat/post-length';
 import { useReactions } from '@/lib/chat/reactions';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
@@ -653,6 +654,7 @@ export default function TopicPage() {
           key={topicId}
           draftKey={topicId ? `topic:${topicId}` : undefined}
           placeholder="Reply to this topic"
+          maxLength={POST_MAX}
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.
           sendOnEnter={false}

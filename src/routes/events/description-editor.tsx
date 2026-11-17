@@ -37,6 +37,7 @@ export function DescriptionEditor({
   onChange,
   onPaste,
   mentions = false,
+  countFrom,
 }: {
   id: string;
   value: string;
@@ -48,6 +49,8 @@ export function DescriptionEditor({
   onPaste?: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
   /** Suggest members after an "@" (20261029070000). */
   mentions?: boolean;
+  /** Say how many characters are left only once it is this few. Always, without it. */
+  countFrom?: number;
 }) {
   const box = useRef<HTMLTextAreaElement | null>(null);
   const linkField = useRef<HTMLInputElement | null>(null);
@@ -249,7 +252,10 @@ export function DescriptionEditor({
       />
       {mentions ? mention.list : null}
       <p id={`${id}-hint`} className={hintClassName}>
-        Select words, then a button to format them. {maxLength - value.length} characters left.
+        Select words, then a button to format them.
+        {countFrom === undefined || maxLength - value.length <= countFrom
+          ? ` ${maxLength - value.length} characters left.`
+          : null}
       </p>
 
       {preview ? (
