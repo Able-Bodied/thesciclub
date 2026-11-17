@@ -29,7 +29,13 @@ import {
   topicsIn,
 } from '@/routes/peers/filters';
 import { MemberCard } from '@/routes/peers/member-card';
-import { PEER_SORTS, type PeerSort, rankMembers, sortMembers } from '@/routes/peers/ranking';
+import {
+  PEER_SORTS,
+  type PeerSort,
+  rankMembers,
+  sortMembers,
+  sortNote,
+} from '@/routes/peers/ranking';
 import {
   inEdgeGuard,
   nextSegment,
@@ -121,14 +127,15 @@ export default function PeersPage() {
     [mapData.contents, place],
   );
   const canSortByDistance = miles.size > 0;
+  const shownSort: PeerSort = sort === 'nearest' && !canSortByDistance ? 'name' : sort;
   const visible = useMemo(
     () =>
       sortMembers(
         rankMembers(filterMembers(others, filters, segment, far), viewer),
-        sort === 'nearest' && !canSortByDistance ? 'name' : sort,
+        shownSort,
         miles,
       ),
-    [others, filters, segment, far, sort, miles, canSortByDistance],
+    [others, filters, segment, far, shownSort, miles],
   );
   // Distance is the list's (the owner, 2026-11-03): the map shows everybody.
   const onMap = useMemo(
@@ -253,7 +260,7 @@ export default function PeersPage() {
                     onChange={(e) => {
                       setSort(e.target.value as PeerSort);
                     }}
-                    className="min-h-[36px] rounded-full border border-line bg-paper px-3 font-semibold text-[0.8125rem] text-ink"
+                    className="min-h-[36px] max-w-full rounded-full border-0 bg-tint px-3 font-semibold text-[0.8125rem] text-emphasis"
                   >
                     {PEER_SORTS.map(([value, words]) => (
                       <option
@@ -285,6 +292,7 @@ export default function PeersPage() {
                     key={member.id}
                     member={member}
                     priority={index < 2}
+                    sortNote={sortNote(member, shownSort, miles)}
                     onOpen={() => {
                       void navigate(`/peers/${member.id}`);
                     }}

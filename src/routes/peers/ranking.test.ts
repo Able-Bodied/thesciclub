@@ -4,6 +4,7 @@ import {
   relevanceScore,
   sharedInterests,
   sortMembers,
+  sortNote,
   stageScore,
 } from '@/routes/peers/ranking';
 import { makeMember } from '@/test/factory';
@@ -147,5 +148,16 @@ describe('sortMembers', () => {
     ]);
     expect(ids(sortMembers([unknown, a, b], 'nearest', miles))).toEqual(['b', 'a', 'u']);
     expect(ids(sortMembers([b, unknown, a], 'name'))).toEqual(['b', 'u', 'a']);
+  });
+});
+
+describe('sortNote', () => {
+  const now = new Date('2026-11-16T12:00:00Z');
+  it('says what the deck is sorted by, and nothing it cannot know', () => {
+    const member = makeMember({ id: 'a', createdAt: '2026-11-03T18:00:00Z', ...injured(4) });
+    expect(sortNote(member, 'nearest', new Map([['a', 12.4]]), now)).toBe('12 mi away');
+    expect(sortNote(member, 'nearest', new Map(), now)).toBeNull();
+    expect(sortNote(member, 'newest', new Map(), now)).toBe('Joined Nov 3');
+    expect(sortNote(member, 'youngest', new Map(), now)).toBeNull();
   });
 });
