@@ -194,7 +194,7 @@ describe("an administrator's code", () => {
     await screen.findByLabelText("Who it's for");
     expect(screen.queryByRole('option', { name: 'NorCal SCI' })).toBeNull();
     await userEvent.type(screen.getByLabelText('Or find another organization'), 'norcal');
-    await userEvent.click(screen.getByRole('button', { name: 'NorCal SCI' }));
+    await userEvent.click(screen.getByRole('button', { name: /^NorCal SCI/ }));
     expect(screen.getByLabelText("Who it's for")).toHaveValue('ncs');
     await userEvent.click(screen.getByRole('button', { name: 'Make a link' }));
     await waitFor(() => {

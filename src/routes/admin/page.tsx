@@ -5,6 +5,7 @@ import { BackLink } from '@/components/back-link';
 import { OrganizationPicker } from '@/components/organization-picker';
 import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { SegmentPills } from '@/components/segment-pills';
+import { motionReduced } from '@/lib/accessibility';
 import { useAccount } from '@/lib/account';
 import { looksLikeEmail } from '@/lib/auth-email';
 import { useAdminReports } from '@/lib/chat/reports';
@@ -1534,13 +1535,13 @@ function Row({
         >
           {choosing === 'mentor' ? (
             <p>
-              Their mentor badge carries this organization’s logo. They can invite more people than
-              a peer. Its org admins can change its mentors too.
+              Their mentor badge carries the organization’s logo, and they can invite more people
+              than a peer. The organization’s own admins can also add or remove its mentors.
             </p>
           ) : (
             <p>
               For staff who work with people with SCI/D. A verified mark shows beside their name,
-              with this organization. They can invite without a limit, make codes of their own,
+              with the organization. They can invite without a limit, make codes of their own,
               introduce members to each other, and see who they invited or introduced. They see
               nobody’s messages or contact details. They write their profession themselves, on Me.
             </p>
@@ -1796,6 +1797,15 @@ function ChooseOrganizationPanel({
 }) {
   const { organizations, loading } = useOrganizations();
   const [chosen, setChosen] = useState(current);
+  const shown = useRef<HTMLDivElement>(null);
+  // Opened below the Membership row, it can start under the bottom bar.
+  useEffect(() => {
+    const panel = shown.current;
+    // jsdom has no scrollIntoView.
+    if (panel && 'scrollIntoView' in panel) {
+      panel.scrollIntoView({ block: 'center', behavior: motionReduced() ? 'auto' : 'smooth' });
+    }
+  }, []);
   // The club first, and a search for the rest: the directory is too long to
   // scroll (OrganizationPicker, the owner, 2026-11-05).
   const club = organizations.filter((organization) =>
@@ -1803,11 +1813,14 @@ function ChooseOrganizationPanel({
   );
   return (
     <Panel
+      ref={shown}
+      tone="neutral"
       title={title}
       buttons={
         <>
           <PanelButton onClick={onCancel}>Cancel</PanelButton>
           <PanelButton
+            primary
             disabled={!chosen || chosen === current}
             onClick={() => {
               onChoose(chosen);
@@ -1823,10 +1836,11 @@ function ChooseOrganizationPanel({
         label="Organization"
         labelClassName="mt-1 block font-semibold text-[0.75rem] text-ink"
         yours={club}
+        yoursLabel="The club"
         others={organizations}
         value={chosen}
         onChange={setChosen}
-        placeholder={loading ? 'Loading organizations…' : 'Choose an organization'}
+        placeholder={loading ? 'Loading organizations…' : 'The SCI Club, or find one below'}
         disabled={loading}
         className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
       />
@@ -1836,16 +1850,27 @@ function ChooseOrganizationPanel({
 }
 
 function Panel({
+  ref,
+  tone = 'danger',
   title,
   children,
   buttons,
 }: {
+  ref?: React.Ref<HTMLDivElement>;
+  /** Neutral for a choice, not a warning (Fable review, 2026-11-16). */
+  tone?: 'danger' | 'neutral';
   title: string;
   children: React.ReactNode;
   buttons: React.ReactNode;
 }) {
   return (
-    <div className="mt-2 w-full rounded-[12px] border border-destructive/30 bg-destructive/5 p-3">
+    <div
+      ref={ref}
+      className={cn(
+        'mt-2 w-full scroll-mb-24 rounded-[12px] border p-3',
+        tone === 'danger' ? 'border-destructive/30 bg-destructive/5' : 'border-line bg-tint/40',
+      )}
+    >
       <p className="font-extrabold font-head text-[0.84375rem] text-ink">{title}</p>
       <div className="mt-1.5 text-[0.78125rem] text-ink2 leading-[1.5]">{children}</div>
       <div className="mt-3 flex flex-wrap gap-2">{buttons}</div>
@@ -1856,11 +1881,13 @@ function Panel({
 function PanelButton({
   children,
   destructive = false,
+  primary = false,
   disabled = false,
   onClick,
 }: {
   children: React.ReactNode;
   destructive?: boolean;
+  primary?: boolean;
   disabled?: boolean;
   onClick: () => void;
 }) {
@@ -1873,7 +1900,9 @@ function PanelButton({
         'min-h-[44px] rounded-full px-3.5 text-[0.78125rem] transition-colors',
         destructive
           ? 'bg-destructive-fill font-bold font-head text-white hover:bg-destructive-fill/85 disabled:opacity-40 disabled:hover:bg-destructive-fill'
-          : 'bg-tint font-semibold text-emphasis hover:bg-line disabled:opacity-40 disabled:hover:bg-tint',
+          : primary
+            ? 'bg-action font-bold font-head text-white hover:bg-action/85 disabled:bg-tint disabled:text-emphasis disabled:opacity-40'
+            : 'bg-tint font-semibold text-emphasis hover:bg-line disabled:opacity-40 disabled:hover:bg-tint',
       )}
     >
       {children}

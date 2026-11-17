@@ -98,7 +98,7 @@ describe("an event's state on its form", () => {
     const host = await screen.findByLabelText('Who is hosting it?');
     expect(screen.queryByRole('option', { name: 'Faraway Rugby' })).toBeNull();
     await userEvent.type(screen.getByLabelText('Or find another organization'), 'bend');
-    await userEvent.click(screen.getByRole('button', { name: 'Faraway Rugby' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Faraway Rugby/ }));
     expect(host).toHaveValue('far');
     expect(screen.getByLabelText('State')).toHaveValue('OR');
   });
