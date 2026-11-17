@@ -145,6 +145,16 @@ function prefetchTabs(): () => void {
   };
 }
 
+/**
+ * A member's screens: the shell and the profile pages with its tab bar. The
+ * tabs' scripts come once one of them is up, so the first tab tapped on Your
+ * answers does not wait for its script either.
+ */
+function MemberScreens() {
+  useEffect(prefetchTabs, []);
+  return <Outlet />;
+}
+
 const TABS = [
   ['/home', HomePage],
   ['/peers', PeersPage],
@@ -187,7 +197,6 @@ export function KeptTabs() {
  * rather than children of it.
  */
 function AppShell() {
-  useEffect(prefetchTabs, []);
   // Phone-width by default, because that is the design and the PWA target.
   // Widened beyond that rather than left as a 480px ribbon on a big screen —
   // the deck grids into the extra width.
@@ -557,7 +566,7 @@ function AppRoutes() {
         <Route
           element={
             <RequireMember>
-              <Outlet />
+              <MemberScreens />
             </RequireMember>
           }
         >
