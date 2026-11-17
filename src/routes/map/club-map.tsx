@@ -1,4 +1,13 @@
-import { ChevronDown, House, Layers, LocateFixed, MapPin, SlidersHorizontal } from 'lucide-react';
+import {
+  ChevronDown,
+  House,
+  Layers,
+  LocateFixed,
+  MapPin,
+  Maximize2,
+  Minimize2,
+  SlidersHorizontal,
+} from 'lucide-react';
 import {
   lazy,
   type ReactNode,
@@ -248,6 +257,24 @@ export default function ClubMap({
   const [here, setHere] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Over the whole page, tab bar included (the owner, 2026-11-16).
+  const [full, setFull] = useState(false);
+  const [lastHidden, setLastHidden] = useState(hidden);
+  if (hidden !== lastHidden) {
+    setLastHidden(hidden);
+    if (hidden) setFull(false);
+  }
+  // Escape leaves it, once nothing on top of the map is open to close first.
+  useEffect(() => {
+    if (!full || sheet || panelOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFull(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [full, sheet, panelOpen]);
   const scale = useTextScale();
   const frame = useRef<HTMLDivElement>(null);
 
@@ -718,7 +745,11 @@ export default function ClubMap({
   const eventsQuiet = eventsNote && layers.has('events') ? eventsNote : null;
 
   return (
-    <div ref={frame} className="absolute inset-0" data-pins={drawn ? 'shown' : 'none'}>
+    <div
+      ref={frame}
+      className={full ? 'fixed inset-0 z-50 bg-canvas' : 'absolute inset-0'}
+      data-pins={drawn ? 'shown' : 'none'}
+    >
       {layers.has('events') && !events ? <OwnEvents onRead={setOwnEvents} /> : null}
       {layers.has('peers') && !members ? <OwnMembers onRead={setOwnMembers} /> : null}
 
@@ -733,21 +764,44 @@ export default function ClubMap({
           onUnsupported={onUnsupported}
           markers={markers}
           controls={
-            <button
-              type="button"
-              onClick={locate}
-              disabled={locating}
-              aria-label="Use my location"
-              aria-busy={locating}
-              className="grid h-11 w-11 place-items-center rounded-xl border border-line bg-paper text-ink shadow-sm hover:bg-tint disabled:opacity-60"
-            >
-              <LocateFixed aria-hidden="true" className="h-5 w-5" />
-            </button>
+            <>
+              <button
+                type="button"
+                aria-label={full ? 'Exit full screen' : 'Full screen map'}
+                aria-pressed={full}
+                onClick={() => {
+                  setFull(!full);
+                }}
+                className="grid h-11 w-11 place-items-center rounded-xl border border-line bg-paper text-ink shadow-sm hover:bg-tint"
+              >
+                {full ? (
+                  <Minimize2 aria-hidden="true" className="h-5 w-5" />
+                ) : (
+                  <Maximize2 aria-hidden="true" className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={locate}
+                disabled={locating}
+                aria-label="Use my location"
+                aria-busy={locating}
+                className="grid h-11 w-11 place-items-center rounded-xl border border-line bg-paper text-ink shadow-sm hover:bg-tint disabled:opacity-60"
+              >
+                <LocateFixed aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </>
           }
         />
       </Suspense>
 
-      <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-3 flex flex-wrap items-start gap-2',
+          // Clear of the notch with the page's own header gone.
+          full ? 'top-[max(0.75rem,env(safe-area-inset-top))]' : 'top-3',
+        )}
+      >
         {filters ? (
           <button
             type="button"
