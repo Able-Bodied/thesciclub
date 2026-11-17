@@ -103,21 +103,28 @@ export function FilterSheet({
       clearCount={activeCount}
       applyLabel={`Show ${matchCount}`}
     >
+      {/* A dropdown, as Member of (the owner, 2026-11-16). */}
       {sorting ? (
-        <FilterGroup title="Sort by">
-          {PEER_SORTS.filter(([value]) => value !== 'nearest' || sorting.byDistance).map(
-            ([value, words]) => (
-              <FilterChip
-                key={value}
-                label={words}
-                on={sorting.sort === value}
-                onClick={() => {
-                  sorting.onSort(value);
-                }}
-              />
-            ),
-          )}
-        </FilterGroup>
+        <label className="mb-4 block">
+          <span className="mb-2 block font-extrabold font-head text-[0.71875rem] text-grey uppercase tracking-[0.13em]">
+            Sort by
+          </span>
+          <select
+            value={sorting.sort}
+            onChange={(event) => {
+              sorting.onSort(event.target.value as PeerSort);
+            }}
+            className="min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+          >
+            {PEER_SORTS.filter(([value]) => value !== 'nearest' || sorting.byDistance).map(
+              ([value, words]) => (
+                <option key={value} value={value}>
+                  {words}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
       ) : null}
 
       {distance ? (
