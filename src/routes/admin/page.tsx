@@ -1540,10 +1540,11 @@ function Row({
             </p>
           ) : (
             <p>
-              For staff who work with people with SCI/D. A verified mark shows beside their name,
-              with the organization. They can invite without a limit, make codes of their own,
-              introduce members to each other, and see who they invited or introduced. They see
-              nobody’s messages or contact details. They write their profession themselves, on Me.
+              For people who work with people with SCI/D at this organization. A verified mark and
+              the organization’s name show beside their name. They can invite without a limit, make
+              their own invite codes, introduce members to each other, and see who they invited or
+              introduced. They can’t see anyone’s messages or contact details. They write their
+              profession themselves, on Me.
             </p>
           )}
         </ChooseOrganizationPanel>
