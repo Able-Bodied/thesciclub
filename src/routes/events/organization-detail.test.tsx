@@ -118,8 +118,8 @@ describe('its upcoming events', () => {
     calendar.events = [];
   });
 
-  // The owner, 2026-11-16: the latest past one, then 10 more, then the rest.
-  it('shows the latest past event, then 10 more, then all of them', async () => {
+  // The owner: the latest 3 past (2026-11-17), then 10 more, then the rest.
+  it('shows the latest 3 past events, then 10 more, then all of them', async () => {
     const before = (i: number) =>
       makeEvent({
         id: `p${i}`,
@@ -130,11 +130,11 @@ describe('its upcoming events', () => {
     calendar.events = Array.from({ length: 15 }, (_, i) => before(i));
     renderOrganization();
     const past = await screen.findByRole('region', { name: 'Past events' });
-    expect(within(past).getByText('Past 0')).toBeInTheDocument();
-    expect(within(past).queryByText('Past 1')).toBeNull();
+    expect(within(past).getByText('Past 2')).toBeInTheDocument();
+    expect(within(past).queryByText('Past 3')).toBeNull();
     await userEvent.click(within(past).getByRole('button', { name: 'Show 10 more' }));
-    expect(within(past).getByText('Past 10')).toBeInTheDocument();
-    expect(within(past).queryByText('Past 11')).toBeNull();
+    expect(within(past).getByText('Past 12')).toBeInTheDocument();
+    expect(within(past).queryByText('Past 13')).toBeNull();
     await userEvent.click(within(past).getByRole('button', { name: 'Show all 15 past events' }));
     expect(within(past).getByText('Past 14')).toBeInTheDocument();
     expect(within(past).queryByRole('button', { name: /^Show/ })).toBeNull();

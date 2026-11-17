@@ -39,8 +39,8 @@ import { Stars } from '@/routes/reviews/stars';
 import type { ClubEvent } from '@/types/domain';
 
 const UPCOMING_SHOWN = 5;
-/** Past events: the latest, then 10 more, then all (the owner, 2026-11-16). */
-const PAST_FIRST = 1;
+/** Past events: the latest 3 (the owner, 2026-11-17), then 10 more, then all. */
+const PAST_FIRST = 3;
 const PAST_MORE = 10;
 
 /**
