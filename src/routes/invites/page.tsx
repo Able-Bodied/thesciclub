@@ -364,12 +364,14 @@ export default function InvitesPage() {
                         key={request.id}
                         className="border-line border-b px-3.5 py-2.5 last:border-b-0"
                       >
-                        <span className="block font-bold text-[0.875rem] text-ink">
-                          {request.name}
+                        <span className="flex items-baseline justify-between gap-3">
+                          <span className="font-bold text-[0.875rem] text-ink">{request.name}</span>
+                          <span className="flex-none text-[0.75rem] text-grey">
+                            {chatTime(request.answeredAt)}
+                          </span>
                         </span>
                         <span className="mt-0.5 block text-[0.75rem] text-grey">
-                          Asked through {request.organizationName} · {answeredWords(request)} ·{' '}
-                          {chatTime(request.answeredAt)}
+                          Asked through {request.organizationName} · {answeredWords(request)}
                         </span>
                       </li>
                     ))}
