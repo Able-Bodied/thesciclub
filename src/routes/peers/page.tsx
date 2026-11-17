@@ -29,13 +29,7 @@ import {
   topicsIn,
 } from '@/routes/peers/filters';
 import { MemberCard } from '@/routes/peers/member-card';
-import {
-  PEER_SORTS,
-  type PeerSort,
-  rankMembers,
-  sortMembers,
-  sortNote,
-} from '@/routes/peers/ranking';
+import { type PeerSort, rankMembers, sortMembers, sortNote } from '@/routes/peers/ranking';
 import {
   inEdgeGuard,
   nextSegment,
@@ -170,7 +164,10 @@ export default function PeersPage() {
     setSegment((current) => nextSegment(current, direction));
   }, []);
 
-  const filterCount = activeFilterCount(showingMap ? { ...filters, withinMiles: null } : filters);
+  // A chosen order counts in the list, where it applies (it is in Filter).
+  const filterCount =
+    activeFilterCount(showingMap ? { ...filters, withinMiles: null } : filters) +
+    (!showingMap && shownSort !== 'name' ? 1 : 0);
   const totalInSegment = filterMembers(others, EMPTY_MEMBER_FILTERS, segment).length;
 
   return (
@@ -248,34 +245,9 @@ export default function PeersPage() {
             {/* Timed for page speed, in the deck only (the owner, 2026-11-04). */}
             {showingMap ? null : <CardsShown />}
             <div className="mx-auto w-full max-w-[1100px]">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                <p className="text-[0.78125rem] text-grey">
-                  {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
-                </p>
-                {/* The owner, 2026-11-16. Nearest needs a home or a chosen place. */}
-                <label className="flex items-center gap-1.5 text-[0.78125rem] text-grey">
-                  Sort
-                  <select
-                    value={sort}
-                    onChange={(e) => {
-                      setSort(e.target.value as PeerSort);
-                    }}
-                    className="min-h-[36px] max-w-full rounded-full border-0 bg-tint px-3 font-semibold text-[0.8125rem] text-emphasis"
-                  >
-                    {PEER_SORTS.map(([value, words]) => (
-                      <option
-                        key={value}
-                        value={value}
-                        disabled={value === 'nearest' && !canSortByDistance}
-                      >
-                        {value === 'nearest' && !canSortByDistance
-                          ? `${words} (add your city on Me)`
-                          : words}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <p className="mb-3 text-[0.78125rem] text-grey">
+                {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
+              </p>
               {/* One column on a phone, more as the shell widens. The gap
                   replaces the card's own bottom margin so rows and columns are
                   spaced the same. */}
@@ -331,11 +303,17 @@ export default function PeersPage() {
           // bury the ones that narrow a deck and is still reachable.
           topics={topicsIn(members)}
           filters={filters}
+          sorting={
+            showingMap
+              ? undefined
+              : { sort: shownSort, byDistance: canSortByDistance, onSort: setSort }
+          }
           matchCount={showingMap ? onMap.length : visible.length}
           activeCount={filterCount}
           onChange={setFilters}
           onClear={() => {
             setFilters(DEFAULT_MEMBER_FILTERS);
+            setSort('name');
           }}
           onClose={() => {
             setSheetOpen(false);
