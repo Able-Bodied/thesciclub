@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useAttachmentUrls } from '@/lib/chat/attachments';
@@ -206,9 +207,15 @@ export default function GroupMembersPage() {
                     ) : null}
                   </span>
                   <span className="block text-[0.71875rem] text-grey">
-                    {[author?.username ? `@${author.username}` : null, author?.level]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {author?.username ? `@${author.username}` : null}
+                    {author?.username && author.level ? ' · ' : null}
+                    {author?.level ? (
+                      <LevelHighlight
+                        level={author.level}
+                        stage={author.stage}
+                        injuryType={author.injuryType}
+                      />
+                    ) : null}
                   </span>
                 </span>
               </div>

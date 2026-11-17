@@ -1,7 +1,7 @@
 import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, type Location, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { InjuryStagePill } from '@/components/injury-stage-pill';
+import { InjuryStageNote } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PartnerLabel } from '@/components/partner-label';
 import { PhotoViewer } from '@/components/photo-viewer';
@@ -29,7 +29,7 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { FamilySection } from '@/routes/peers/family-section';
 import { FamilySheet } from '@/routes/peers/family-sheet';
 import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
-import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
+import { gradientFor, initialsOf, SummaryLine } from '@/routes/peers/member-card';
 import { MentorSheet, mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
 import { Chips, childrenLabel, DetailRow, Section } from '@/routes/peers/profile-parts';
 
@@ -811,8 +811,10 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   </p>
                 ) : null}
                 <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
-                <p className="mt-1 text-[0.875rem] text-white">{summaryLine(member)}</p>
-                <InjuryStagePill member={member} className="mt-1.5" />
+                <p className="mt-1 text-[0.875rem] text-white leading-[1.6]">
+                  <SummaryLine member={member} />
+                </p>
+                <InjuryStageNote member={member} className="mt-0.5" />
                 {injury ? <p className="mt-1 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>

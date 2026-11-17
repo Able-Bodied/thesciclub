@@ -1,6 +1,7 @@
 import { Megaphone } from 'lucide-react';
 import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { firstClubLink } from '@/lib/chat/club-links';
@@ -356,7 +357,16 @@ export function MessageBubble({
           ) : (
             'Deleted member'
           )}
-          {author?.level ? ` · ${author.level}` : ''}
+          {author?.level ? (
+            <>
+              {' · '}
+              <LevelHighlight
+                level={author.level}
+                stage={author.stage}
+                injuryType={author.injuryType}
+              />
+            </>
+          ) : null}
         </p>
         {content}
         {acknowledgedLine}

@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { motionReduced } from '@/lib/accessibility';
 import { useAccount } from '@/lib/account';
@@ -488,7 +489,15 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                   {thread.memberCount} {thread.memberCount === 1 ? 'member' : 'members'}
                 </Link>
               ) : (
-                <p className="truncate text-[0.78125rem] text-grey">{other?.level ?? ''}</p>
+                <p className="truncate text-[0.78125rem] text-grey">
+                  {other?.level ? (
+                    <LevelHighlight
+                      level={other.level}
+                      stage={other.stage}
+                      injuryType={other.injuryType}
+                    />
+                  ) : null}
+                </p>
               )}
             </div>
             {other?.hasProfile ? (

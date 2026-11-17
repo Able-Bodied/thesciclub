@@ -1,6 +1,7 @@
 import { Plus, SmilePlus, X } from 'lucide-react';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { LevelHighlight } from '@/components/injury-stage-pill';
 import { MemberAvatar } from '@/components/member-avatar';
 import { SheetGrip } from '@/components/sheet-grip';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -543,7 +544,11 @@ function WhoReactedSheet({
                       </span>
                       {!yours && author?.level ? (
                         <span className="block truncate text-[0.8125rem] text-grey">
-                          {author.level}
+                          <LevelHighlight
+                            level={author.level}
+                            stage={author.stage}
+                            injuryType={author.injuryType}
+                          />
                         </span>
                       ) : null}
                     </span>
