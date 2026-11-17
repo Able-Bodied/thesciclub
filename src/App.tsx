@@ -1,5 +1,5 @@
 import { Activity, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskAfterSending } from '@/components/ask-after-sending';
 import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
@@ -509,8 +509,6 @@ function AppRoutes() {
         />
         {/* Outside the shell: its own footer, no tab bar. */}
         <Route path="/profile" element={<ProfileSurveyPage />} />
-        <Route path="/profile/answers" element={<ProfileAnswersPage />} />
-        <Route path="/profile/details" element={<ProfileDetailsPage />} />
         {/* Development only: signs in the accounts the local seed makes. In a
           build the condition is false, so the route and the page itself are
           dropped from the bundle. See the page's file header. */}
@@ -553,17 +551,28 @@ function AppRoutes() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/delete-account" element={<DeleteAccountPage />} />
+        {/* One membership check for the shell and the two profile pages with
+            its tab bar: a tab tapped there keeps it, rather than a blank
+            screen while a new one reads (Android check, 2026-11-17). */}
         <Route
-          path="/*"
           element={
             <RequireMember>
-              {/* After the first thing a member sends: see AskAfterSending. */}
+              <Outlet />
+            </RequireMember>
+          }
+        >
+          <Route path="/profile/answers" element={<ProfileAnswersPage />} />
+          <Route path="/profile/details" element={<ProfileDetailsPage />} />
+          <Route
+            path="/*"
+            element={
+              /* After the first thing a member sends: see AskAfterSending. */
               <AskAfterSending>
                 <AppShell />
               </AskAfterSending>
-            </RequireMember>
-          }
-        />
+            }
+          />
+        </Route>
       </Routes>
     </Suspense>
   );
