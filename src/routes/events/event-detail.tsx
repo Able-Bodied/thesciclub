@@ -321,7 +321,7 @@ export default function EventDetailPage() {
               2026-11-17: "make the details section on the event page pop out
               more ... a different color bubble ... up the font one size"). */}
           {hasDetails ? (
-            <section className="mt-5 rounded-[18px] border border-gold/40 bg-gold-lt px-4 pt-3.5 pb-4">
+            <section className="mt-5 rounded-[18px] border border-gold-dp/60 bg-gold-lt px-4 pt-3.5 pb-4">
               <h2 className="mb-2 font-extrabold font-head text-[0.75rem] text-gold-ink uppercase tracking-[0.13em]">
                 Details
               </h2>
@@ -331,13 +331,14 @@ export default function EventDetailPage() {
                 className="text-[1rem] text-ink leading-[1.55] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1.125rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
               />
               {/* The host's own page, as the details' last line (the owner,
-                2026-10-27): text, not one more button. */}
+                2026-10-27): text, not one more button. Its tap height hangs into
+                the box's bottom padding, so the box is as deep below as above. */}
               {moreHref && moreHref !== registerHref ? (
                 <a
                   href={moreHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 inline-flex min-h-11 items-center gap-1.5 font-extrabold font-head text-[0.9375rem] text-emphasis underline underline-offset-[3px]"
+                  className="mt-3 -mb-2.5 inline-flex min-h-11 items-center gap-1.5 font-extrabold font-head text-[0.9375rem] text-emphasis underline underline-offset-[3px]"
                 >
                   More details at {siteName(moreHref)}
                   <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
