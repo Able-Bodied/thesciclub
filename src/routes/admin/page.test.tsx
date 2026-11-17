@@ -315,7 +315,10 @@ vi.mock('@/lib/club-partners', async (importOriginal) => ({
 vi.mock('@/lib/organizations', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useOrganizations: () => ({
-    organizations: [{ id: 'o1', name: 'Craig Hospital', shortCode: 'CH', city: 'Englewood' }],
+    organizations: [
+      { id: 'o1', name: 'The SCI Club', shortCode: 'TSC', city: '' },
+      { id: 'o2', name: 'Craig Hospital', shortCode: 'CH', city: 'Englewood' },
+    ],
     byId: new Map(),
     loading: false,
     error: null,
