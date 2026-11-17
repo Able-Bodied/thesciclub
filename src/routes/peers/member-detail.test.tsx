@@ -7,7 +7,7 @@ import type * as Reports from '@/lib/chat/reports';
 import type * as ClubPartners from '@/lib/club-partners';
 import type * as Family from '@/lib/family';
 import type { MemberState } from '@/lib/members';
-import { makeMember } from '@/test/factory';
+import { makeMember, wholeText } from '@/test/factory';
 
 const state = vi.hoisted(() => ({
   current: null as MemberState | null,
@@ -583,7 +583,7 @@ describe('MemberDetailPage', () => {
     );
     renderDetail();
     expect(screen.getByRole('heading', { name: 'Nicole' })).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
+    expect(screen.getByText(wholeText('C6 incomplete · 28 · Santa Clara, CA'))).toBeInTheDocument();
   });
 
   // The owner, 2026-10-28: badged by the organization that made them one.
@@ -800,7 +800,7 @@ describe('an administrator’s profile', () => {
     );
     renderDetail();
     expect(screen.getByRole('heading', { name: 'Dana' })).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
+    expect(screen.getByText(wholeText('C6 incomplete · 28 · Santa Clara, CA'))).toBeInTheDocument();
     expect(screen.queryByText('Official account')).not.toBeInTheDocument();
     expect(screen.queryByText('What this account is')).not.toBeInTheDocument();
   });

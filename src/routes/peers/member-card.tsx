@@ -59,11 +59,18 @@ export function summaryLine(member: BrowseMember): string {
 
 /** The summary line on a photograph, the level in its stage's bubble. */
 export function SummaryLine({ member }: { member: BrowseMember }) {
-  const rest = [member.age, cityAndState(member)].filter(Boolean).join(' · ');
+  // Each part kept whole, so a line breaks between them and never inside a
+  // city ("San / Francisco") beside the bubble.
+  const rest = [member.age, cityAndState(member)].filter(Boolean);
   return (
     <>
       <LevelBubble member={member} level={levelPart(member)} />
-      {rest ? ` · ${rest}` : null}
+      {rest.map((part) => (
+        <span key={String(part)} className="whitespace-nowrap">
+          {' '}
+          · {part}
+        </span>
+      ))}
     </>
   );
 }

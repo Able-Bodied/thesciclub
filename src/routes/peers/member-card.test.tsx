@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as Organizations from '@/lib/organizations';
+import { wholeText } from '@/test/factory';
 import type { Organization } from '@/types/domain';
 
 const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
@@ -125,7 +126,7 @@ describe('MemberCard', () => {
       />,
     );
     expect(screen.getByText('Nicole')).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
+    expect(screen.getByText(wholeText('C6 incomplete · 28 · Santa Clara, CA'))).toBeInTheDocument();
   });
 
   it('shows the @username under the name, and nothing for a member who has none', () => {
@@ -263,7 +264,7 @@ describe('an administrator', () => {
       />,
     );
     expect(screen.getByText('Dana')).toBeInTheDocument();
-    expect(screen.getByText('T4 complete · 30 · Fresno, CA')).toBeInTheDocument();
+    expect(screen.getByText(wholeText('T4 complete · 30 · Fresno, CA'))).toBeInTheDocument();
     expect(screen.queryByText('Official')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'The SCI Club' })).not.toBeInTheDocument();
   });

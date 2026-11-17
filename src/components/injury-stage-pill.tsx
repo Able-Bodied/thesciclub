@@ -70,8 +70,10 @@ export function LevelHighlight({
   injuryType?: string | null | undefined;
 }) {
   if (stage !== 'new' && stage !== 'recent') return <>{level}</>;
+  // The words on hover or a long press too, so the colour can be asked about.
   return (
     <span
+      title={injuryStageText(stage, injuryType)}
       className={cn(
         'box-decoration-clone rounded-full px-1.5 font-semibold',
         stage === 'new' ? 'bg-stage-new text-white' : 'bg-stage-recent text-navy',
