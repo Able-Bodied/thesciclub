@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DebugPanel } from '@/components/debug-panel';
 import {
-  debugCards,
+  debugChain,
+  debugMark,
   debugRequest,
   debugScreen,
   debugState,
+  markParts,
   resetDebugLog,
   summarize,
 } from '@/lib/debug-log';
@@ -14,18 +16,29 @@ import {
 const account = vi.hoisted(() => ({ isAdmin: true }));
 vi.mock('@/lib/account', () => ({ useAccount: () => ({ isAdmin: account.isAdmin }) }));
 
-/** Home, reached by a tap: the ranking, then the posts once it has answered. */
+/**
+ * Home, reached by a tap at 1000 on the page's clock: the ranking, then the
+ * posts once it has answered, the events beside them, and much later a post
+ * marked seen. As the owner's first list went (2026-11-18), in small.
+ */
 function aVisit() {
   debugScreen('/home', 1000, false);
   debugRequest('rpc:home_topics_ranked', '', 1040, 600, true, 2100);
   debugRequest('table:chat_topics', 'select=id,title', 1650, 300, true, null);
   debugRequest('table:events', 'select=*', 1045, 250, false, null);
-  debugCards('/home', 1000);
+  debugRequest('rpc:chat_mark_posts_seen', '', 5000, 100, true, null);
 }
+
+const visit = () => {
+  const [only] = debugState().screens;
+  if (!only) throw new Error('no screen');
+  return only;
+};
 
 beforeEach(() => {
   account.isAdmin = true;
   resetDebugLog(true);
+  vi.restoreAllMocks();
 });
 
 describe('debug mode', () => {
@@ -34,32 +47,57 @@ describe('debug mode', () => {
     aVisit();
     render(<DebugPanel />);
     await userEvent.click(screen.getByRole('button', { name: /^Debug/ }));
-    const [waited, list] = screen.getAllByRole('list');
-    if (!waited || !list) throw new Error('no lists');
-    // In the order they were asked, each timed from reaching the screen.
+    const lists = screen.getAllByRole('list');
+    const list = lists[lists.length - 1];
+    if (!list) throw new Error('no list');
+    // In the order they were asked, each timed from reaching the screen; one
+    // asked long after the screen had loaded is said to be later.
     expect([...list.querySelectorAll('li')].map((row) => row.textContent)).toEqual([
       expect.stringMatching(/^rpc:home_topics_ranked\+40 ms600 ms/),
       expect.stringMatching(/^✕ table:events\+45 ms250 ms/),
       expect.stringMatching(/^table:chat_topics\+650 ms300 ms/),
+      expect.stringMatching(/^rpc:chat_mark_posts_seenlater, \+4\.00 s100 ms/),
     ]);
-    expect(screen.getByText('1.00 s')).toBeInTheDocument();
-    // Why it took that long: the posts were asked for only once the ranking
-    // had answered, and the events' read ran beside them.
-    expect([...waited.querySelectorAll('li')].map((row) => row.textContent)).toEqual([
-      '1. rpc:home_topics_ranked600 ms',
-      '2. table:chat_topics300 ms',
-      'then, until the cards were drawn50 ms',
-    ]);
+  });
 
-    const [visit] = debugState().screens;
-    if (!visit) throw new Error('no screen');
-    // The last reply is the posts': asked only once the ranking had answered.
-    expect(summarize(visit)).toMatchObject({
-      count: 3,
+  // The owner's first list said "last reply after 16.66 s" of a Home that had
+  // loaded in under two: a badge count much later was taken for its loading,
+  // and a request still out was named as one the posts had waited for.
+  it('counts as loading only what was asked before a quiet second, and as waited for only what had answered', () => {
+    aVisit();
+    expect(summarize(visit())).toMatchObject({
+      count: 4,
+      loadingCount: 3,
       failed: 1,
       lastReplyMs: 950,
       addedMs: 1150,
     });
+    // The posts were asked for when the ranking answered; the events' read
+    // answered before that too, but earlier, and ran beside it.
+    expect(debugChain(visit()).map((request) => request.endpoint)).toEqual([
+      'rpc:home_topics_ranked',
+      'table:chat_topics',
+    ]);
+  });
+
+  // The owner, 2026-11-18: "how long it takes for the posts to render and
+  // what are the constituent parts".
+  it('says when a screen’s posts were on the glass, in parts that add up to it', () => {
+    aVisit();
+    vi.spyOn(performance, 'now').mockReturnValue(2010);
+    debugMark('/home', 'Fresh posts on screen', ['rpc:home_topics_ranked', 'table:chat_topics']);
+    const [mark] = visit().marks;
+    if (!mark) throw new Error('no mark');
+    expect(mark).toMatchObject({ label: 'Fresh posts on screen', ms: 1010 });
+    const parts = markParts(visit(), mark);
+    expect(parts).toEqual([
+      { label: 'before the first request', ms: 40 },
+      { label: 'rpc:home_topics_ranked', ms: 600 },
+      { label: 'between requests', ms: 10 },
+      { label: 'table:chat_topics', ms: 300 },
+      { label: 'rendering, after the last reply', ms: 60 },
+    ]);
+    expect(parts.reduce((sum, part) => sum + part.ms, 0)).toBe(mark.ms);
   });
 
   it('keeps nothing while it is off', () => {
