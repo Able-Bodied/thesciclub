@@ -97,9 +97,7 @@ function DidCard({ did }: { did: NonNullable<MemberStory['did']> }) {
             className="flex justify-between gap-3 border-line border-b py-2.5 last:border-b-0"
           >
             <dt className="text-[0.78125rem] text-grey">{label}</dt>
-            <dd className="font-semibold text-[0.85rem] tabular-nums">
-              {n.toLocaleString('en-US')}
-            </dd>
+            <dd className="font-semibold text-[0.85rem]">{n.toLocaleString('en-US')}</dd>
           </div>
         ))}
       </dl>
