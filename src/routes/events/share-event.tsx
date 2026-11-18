@@ -137,7 +137,7 @@ export function ShareRoomButton({ id, name }: { id: string; name: string }) {
       heading="Share room"
       title={name}
       url={`${siteOrigin()}/chat/rooms/${id}`}
-      linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
+      linkNote="Only members of the club can open it. Anyone else is asked to sign in, or to ask for an invite, first."
       className="inline-flex items-center gap-1 rounded-full border border-line px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-emphasis leading-[1.3] transition-colors hover:bg-tint"
     />
   );
