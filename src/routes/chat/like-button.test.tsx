@@ -147,7 +147,7 @@ describe('PostLikes', () => {
       await userEvent.click(screen.getByRole('button', { name: /^Score/ }));
       // A boost is 10 at most (20261118190000).
       expect(screen.getByRole('button', { name: 'Add 10' })).toBeDisabled();
-      await userEvent.click(screen.getByRole('button', { name: 'Take it back' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Remove boost' }));
       expect(onBoost.mock.calls).toEqual([[false]]);
     });
   });

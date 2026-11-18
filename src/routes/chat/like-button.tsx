@@ -396,7 +396,7 @@ export function LikesSheet({
                 }}
                 className="min-h-[44px] flex-1 rounded-xl bg-tint px-4 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-line disabled:opacity-40"
               >
-                Take it back
+                Remove boost
               </button>
             </div>
           </div>
