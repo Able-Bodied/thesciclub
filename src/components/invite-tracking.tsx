@@ -63,11 +63,14 @@ export function InvitePerson({
           </Step>
         ) : null}
         <Step on={started}>{step ? `Stopped at ${step}` : 'Started'}</Step>
-        <Step on={joined}>
-          {joined && invite.memberName && invite.memberName !== invite.name
-            ? `Joined as ${invite.memberName}`
-            : 'Joined'}
-        </Step>
+        {/* "Stopped at" already says they have not joined; one line, not two. */}
+        {step ? null : (
+          <Step on={joined}>
+            {joined && invite.memberName && invite.memberName !== invite.name
+              ? `Joined as ${invite.memberName}`
+              : 'Joined'}
+          </Step>
+        )}
       </span>
     </li>
   );
