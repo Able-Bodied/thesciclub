@@ -670,12 +670,7 @@ export interface MemberFilters {
  * (staff, family & friends), org admins. Mentors have their own tab, so no
  * chip (the owner, 2026-11-18).
  */
-export const PEERS_LEFT_OUT = [
-  'sciPeers',
-  'professionals',
-  'family',
-  'orgAdmins',
-] as const;
+export const PEERS_LEFT_OUT = ['sciPeers', 'professionals', 'family', 'orgAdmins'] as const;
 export type PeersLeftOut = (typeof PEERS_LEFT_OUT)[number];
 
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
