@@ -16,6 +16,17 @@ const STAGE_PILL: Record<InjuryStage, string> = {
   og: 'bg-stage-og/50',
   oog: 'bg-stage-oog/50',
 };
+/**
+ * Fainter in a byline, on Home and in chats (the owner, 2026-11-17: "more
+ * transparent on home and in chat"); the cards' pills stay at half.
+ */
+const BYLINE_PILL: Record<InjuryStage, string> = {
+  new: 'bg-stage-new/30',
+  recent: 'bg-stage-recent/30',
+  years: 'bg-stage-years/30',
+  og: 'bg-stage-og/30',
+  oog: 'bg-stage-oog/30',
+};
 
 type Staged = Pick<
   BrowseMember,
@@ -65,7 +76,7 @@ export function LevelHighlight({
       title={injuryStageText(stage, injuryType)}
       className={cn(
         'box-decoration-clone rounded-full px-1.5 font-normal text-ink',
-        STAGE_PILL[stage],
+        BYLINE_PILL[stage],
       )}
     >
       {level}
