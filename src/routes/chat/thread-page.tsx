@@ -520,6 +520,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
                     <LevelHighlight
                       level={other.level}
                       stage={other.stage}
+                      band={other.band}
                       injuryType={other.injuryType}
                     />
                   ) : null}

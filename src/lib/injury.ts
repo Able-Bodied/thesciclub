@@ -10,7 +10,12 @@
  * given. Somebody who said "2013" is shown "2013", never a fabricated day.
  */
 
-import type { DatePrecision, InjuryStage } from '@/types/domain';
+import {
+  type DatePrecision,
+  INJURY_BANDS,
+  type InjuryBand,
+  type InjuryStage,
+} from '@/types/domain';
 
 export interface InjuryDated {
   injuryDate: string | null;
@@ -70,6 +75,45 @@ export function injuryStageOf(
   if (months < 120) return 'years';
   if (months < 480) return 'og';
   return 'oog';
+}
+
+/** A band as the database sent it, or null. */
+export function toInjuryBand(value: unknown): InjuryBand | null {
+  return INJURY_BANDS.find((band) => band === value) ?? null;
+}
+
+/** Each band's upper edge in months; the last band has none. */
+const BAND_EDGES = [6, 12, 24, 60, 120, 240, 360, 480, 600] as const;
+/** A band inside each stage, for a database before 20261118226000. */
+const STAGE_BAND: Record<InjuryStage, InjuryBand> = {
+  new: 0,
+  recent: 2,
+  years: 4,
+  og: 6,
+  oog: 9,
+};
+
+/** A band inside the stage, where the database sent no band. */
+export function stageBand(stage: InjuryStage): InjuryBand {
+  return STAGE_BAND[stage];
+}
+
+/**
+ * Which of the ten bands, for the colour: from the date where there is one,
+ * else the band the database sent, else the stage's. The same edges as
+ * public.injury_band (20261118226000).
+ */
+export function injuryBandOf(
+  member: InjuryDated & { injuryBand?: InjuryBand | null; injuryStage?: InjuryStage | null },
+  now?: Date,
+): InjuryBand | null {
+  const months = monthsSinceInjury(member, now);
+  if (months === null) {
+    if (member.injuryBand != null) return member.injuryBand;
+    return member.injuryStage ? stageBand(member.injuryStage) : null;
+  }
+  const band = BAND_EDGES.findIndex((edge) => months < edge);
+  return toInjuryBand(band === -1 ? 9 : band);
 }
 
 /** The owner's words, 2026-11-17 (no OG or OOG: "just say injured 10+ years"). */

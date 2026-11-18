@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { toInjuryBand } from '@/lib/injury';
 import { useKeptRead } from '@/lib/kept-reads';
 import { columnsOf, readOwnRow } from '@/lib/own-row';
 import { readPages } from '@/lib/read-pages';
@@ -54,6 +55,8 @@ export interface BrowseMemberRow {
   injury_date_precision: string | null;
   /** Optional: absent from a database before 20261117030000. */
   injury_stage?: string | null;
+  /** Optional: absent from a database before 20261118226000. */
+  injury_band?: number | null;
   region: string;
   age: number | null;
   /** This and the other optional answers: not in a list's read (DECK_COLUMNS). */
@@ -113,7 +116,7 @@ export function toOrganizationMark(row: OrganizationRow): RepresentedOrganizatio
  * these columns and no others are used there.
  */
 const DECK_COLUMNS =
-  'id, type, display_name, username, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, injury_stage, region, age, field_of_work, interests, topics, affiliations, is_admin, created_at, represented_organizations, mentor_organizations';
+  'id, type, display_name, username, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, injury_stage, injury_band, region, age, field_of_work, interests, topics, affiliations, is_admin, created_at, represented_organizations, mentor_organizations';
 
 /** A picker (new message, groups, share) draws a face, a name and a line. */
 const NAMES_COLUMNS =
@@ -139,6 +142,7 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     injuryDate: row.injury_date,
     injuryDatePrecision: row.injury_date_precision as BrowseMember['injuryDatePrecision'],
     injuryStage: INJURY_STAGES.find((stage) => stage === row.injury_stage) ?? null,
+    injuryBand: toInjuryBand(row.injury_band),
     region: row.region as BrowseMember['region'],
     age: row.age,
     howInjured: row.how_injured ?? null,

@@ -1,0 +1,7 @@
+-- Undo 20261118226000. A view cannot lose a column by create or replace, so
+-- run by hand, after checking nothing newer depends on these:
+--   drop view public.browse_members;  then 20261117030000's browse_members
+--   drop view public.chat_authors;    then 20261117040000's chat_authors
+--   (and the grants each view had)
+--   20261117030000's about_us_team (create or replace)
+--   drop function public.injury_band(date);

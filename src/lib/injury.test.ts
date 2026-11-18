@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ageFrom,
+  injuryBandOf,
   injuryDateLabel,
   injuryStageOf,
   isAdult,
@@ -138,5 +139,34 @@ describe('injuryStageOf', () => {
       injuryStageOf({ injuryDate: null, injuryDatePrecision: null, injuryStage: 'og' }, now),
     ).toBe('og');
     expect(injuryStageOf({ injuryDate: null, injuryDatePrecision: null }, now)).toBeNull();
+  });
+});
+
+describe('injuryBandOf', () => {
+  const now = new Date('2026-11-17T12:00:00Z');
+  it('puts each edge in the later band, as public.injury_band does', () => {
+    const at = (injuryDate: string) =>
+      injuryBandOf({ injuryDate, injuryDatePrecision: 'day' }, now);
+    expect(
+      [
+        '2026-05-18',
+        '2026-05-17',
+        '2025-11-17',
+        '2024-11-17',
+        '2021-11-17',
+        '2016-11-17',
+        '2006-11-17',
+        '1996-11-17',
+        '1986-11-17',
+        '1976-11-17',
+        '1976-11-18',
+      ].map(at),
+    ).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8]);
+  });
+  it('uses the sent band where the date is hidden, else the stage, else nothing', () => {
+    const hidden = { injuryDate: null, injuryDatePrecision: null };
+    expect(injuryBandOf({ ...hidden, injuryBand: 3, injuryStage: 'years' }, now)).toBe(3);
+    expect(injuryBandOf({ ...hidden, injuryStage: 'og' }, now)).toBe(6);
+    expect(injuryBandOf(hidden, now)).toBeNull();
   });
 });

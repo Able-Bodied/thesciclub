@@ -138,6 +138,7 @@ describe('palette contrast', () => {
  * #3a4a5e at its lightest. Brightened to just past AA, so this is the guard.
  */
 const STAGES = ['new', 'recent', 'years', 'og', 'oog'] as const;
+const BANDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const PHOTO_SHADE = '#3a4a5e';
 describe('injury stage colours', () => {
   it.each(STAGES)('--stage-%s-text clears AA on --paper and --canvas', (stage) => {
@@ -152,10 +153,11 @@ describe('injury stage colours', () => {
   });
   // The pills (the owner, 2026-11-17): the stage partly over the
   // ground, white words over a photograph, --ink on the page, light and dark.
-  it.each(STAGES)('words on a --stage-%s pill clear AA', (stage) => {
-    // The stage at `share` over the ground: half on the cards, 30% in a byline.
+  // Ten bands since 2026-11-18 (the owner: green to red at ten years to dark purple).
+  it.each(BANDS)('words on a --band-%s pill clear AA', (band) => {
+    // The band at `share` over the ground: half on the cards, 30% in a byline.
     const over = (ground: string, share: number) => {
-      const [a, b] = [channels(token(`stage-${stage}`)), channels(ground)];
+      const [a, b] = [channels(token(`band-${band}`)), channels(ground)];
       return `#${a
         .map((v, i) =>
           Math.round((v * share + (b[i] ?? 0) * (1 - share)) * 255)

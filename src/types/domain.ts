@@ -79,6 +79,15 @@ export type InjuryRegion = (typeof INJURY_REGIONS)[number];
 export const INJURY_STAGES = ['new', 'recent', 'years', 'og', 'oog'] as const;
 export type InjuryStage = (typeof INJURY_STAGES)[number];
 
+/**
+ * How long ago, finer, for the pill's colour (20261118226000, the owner,
+ * 2026-11-18): under 6 months, 6-12 months, 1-2 years, 2-5, 5-10, 10-20,
+ * 20-30, 30-40, 40-50, 50 and more. Green to red at ten years, then to dark
+ * purple. The words stay the stage.
+ */
+export const INJURY_BANDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+export type InjuryBand = (typeof INJURY_BANDS)[number];
+
 export function regionForRange(range: LevelRange): InjuryRegion {
   switch (range) {
     case 'C1–C4':
@@ -511,6 +520,8 @@ export interface BrowseMember {
   injuryDatePrecision: DatePrecision | null;
   /** How long ago, sent whether or not the date is (src/lib/injury.ts). */
   injuryStage: InjuryStage | null;
+  /** The finer band, for the colour (20261118226000). */
+  injuryBand: InjuryBand | null;
   region: InjuryRegion;
   /** Derived on read, never stored — a stored age is wrong within a year. */
   age: number | null;

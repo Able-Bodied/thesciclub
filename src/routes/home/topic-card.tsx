@@ -154,6 +154,7 @@ export function TopicCard({
               <LevelHighlight
                 level={starter.level}
                 stage={starter.stage}
+                band={starter.band}
                 injuryType={starter.injuryType}
               />
             </>
@@ -258,6 +259,7 @@ function QuotedReply({
               <LevelHighlight
                 level={replier.level}
                 stage={replier.stage}
+                band={replier.band}
                 injuryType={replier.injuryType}
               />
             </>

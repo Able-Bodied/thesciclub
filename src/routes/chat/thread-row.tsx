@@ -126,6 +126,7 @@ export function ThreadRow({
                 <LevelHighlight
                   level={other.level}
                   stage={other.stage}
+                  band={other.band}
                   injuryType={other.injuryType}
                 />
               ) : null}
