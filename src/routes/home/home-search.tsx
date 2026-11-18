@@ -1,10 +1,15 @@
 import { Search, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDialogFocus } from '@/lib/dialog-focus';
+import { useEvents } from '@/lib/events';
 import type { HomeTopic } from '@/lib/home/types';
+import { useBrowseMembers } from '@/lib/members';
+import { useOrganizations } from '@/lib/organizations';
 import { matchesSearch, searchWords } from '@/lib/search';
+import { dateWindowRange } from '@/routes/events/filters';
 import { longWhen } from '@/routes/events/format';
+import { EVENT_HORIZON_DAYS } from '@/routes/home/feed';
 import type { BrowseMember, ClubEvent, Organization } from '@/types/domain';
 
 const EACH = 5;
@@ -74,8 +79,45 @@ function Row({
 }
 
 /**
- * Search, over the whole of Home (the owner, 2026-11-01): topics, the events
- * Home has read, members and organizations, as each letter is typed.
+ * Search with its own reads. Home's feed is posts alone (the owner,
+ * 2026-11-18) and no longer reads events, members or organizations, so search
+ * asks for them itself, and only once it is opened: the same days of events
+ * Home used to show, everybody but the reader, and every organization.
+ */
+export function HomeSearchReading({
+  topics,
+  memberId,
+  linkState,
+  onClose,
+}: {
+  topics: readonly HomeTopic[];
+  memberId: string | null;
+  linkState: unknown;
+  onClose: () => void;
+}) {
+  const [eventWindow] = useState(() => {
+    const to = new Date(Date.now() + (EVENT_HORIZON_DAYS + 1) * 86_400_000).toISOString();
+    const from = dateWindowRange('any')?.from;
+    return from ? { from, to } : { to };
+  });
+  const { events } = useEvents(eventWindow);
+  const { members } = useBrowseMembers();
+  const { organizations } = useOrganizations();
+  const sources = useMemo(
+    () => ({
+      topics,
+      events,
+      members: members.filter((member) => member.id !== memberId),
+      organizations,
+    }),
+    [topics, events, members, memberId, organizations],
+  );
+  return <HomeSearch sources={sources} linkState={linkState} onClose={onClose} />;
+}
+
+/**
+ * Search, over the whole club (the owner, 2026-11-01): posts, upcoming
+ * events, members and organizations, as each letter is typed.
  */
 export function HomeSearch({
   sources,

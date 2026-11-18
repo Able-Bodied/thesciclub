@@ -1,43 +1,24 @@
 import { Search } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FilterButton } from '@/components/filter-button';
 import { LoadingCards } from '@/components/loading-cards';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
-import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes, voteFor } from '@/lib/chat/likes';
 import { useReactions } from '@/lib/chat/reactions';
 import { useChatRooms } from '@/lib/chat/rooms';
-import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
 import { usePostViews } from '@/lib/chat/views';
 import { afterPaint, debugMark, debugScreenStart } from '@/lib/debug-log';
-import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
-import { useFilterPlace } from '@/lib/filter-place';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
-import { type FeedItem, HOME_SEGMENTS, type HomeSegment, type HomeShow } from '@/lib/home/types';
-import { useHome } from '@/lib/home-state';
-import { useMapData } from '@/lib/map-data';
-import { useBrowseMembers } from '@/lib/members';
-import { useNearHome } from '@/lib/near-home';
-import { useOrganizationFollows } from '@/lib/organization-follows';
-import { useOrganizations } from '@/lib/organizations';
+import type { FeedItem, HomeSegment, HomeShow } from '@/lib/home/types';
 import { useSession } from '@/lib/session';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { SharePostButton } from '@/routes/chat/share-post';
-import { EventCard } from '@/routes/events/event-card';
-import { dateWindowRange } from '@/routes/events/filters';
 import { ComposeCard } from '@/routes/home/compose-card';
-import {
-  EVENT_HORIZON_DAYS,
-  HOME_EVENT_MILES,
-  inSegment,
-  pickEvents,
-  SEGMENT_PEOPLE,
-  suggestPeople,
-} from '@/routes/home/feed';
+import { inSegment } from '@/routes/home/feed';
 import { FeedbackCard } from '@/routes/home/feedback-card';
 import { HomeFilterSheet } from '@/routes/home/filter-sheet';
 import {
@@ -49,23 +30,25 @@ import {
   matchesFeedFilters,
   openRoomsById,
 } from '@/routes/home/filters';
-import { HomeSearch } from '@/routes/home/home-search';
-import { PersonCard } from '@/routes/home/person-card';
+import { HomeSearchReading } from '@/routes/home/home-search';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { ProfileCard, useProfileAsk } from '@/routes/home/profile-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
-import { membersBeyond, milesBetween, organizationMiles } from '@/routes/peers/filters';
-import type { ClubEvent, RsvpStatus } from '@/types/domain';
 
 /**
- * Home: recent topics, photographs, upcoming events and members, from the mock's `homePage()`.
- * Every card leads to something that already exists; reporting, removal and mutes are theirs.
+ * Home: recent posts and photographs. Every card leads to something that
+ * already exists; reporting, removal and mutes are theirs.
  *
+ * - Posts alone (the owner, 2026-11-18): "let's skip loading events and peers
+ *   for now in the home feed. Just do posts. We can add those back in later
+ *   and people can find them in the peers and events tabs." Home was waiting
+ *   for the events' and the members' reads before it drew a post. Their cards,
+ *   their reads and the distance filter were here until the commit that says
+ *   so; `feed.ts` still mixes the three kinds, and is handed no events and
+ *   no people. Search reads them itself, once it is opened.
  * - A capped column, as Events is (`src/routes/events/page.tsx`): distance is effort.
  * - Reads once and does not subscribe: a list that reorders while read loses the reader's place.
  *   Do not add a subscription as a fix for "Home did not update".
- * - Everything waits for all three sources, so `buildFeed` does not re-mix under the reader. A
- *   failed source says so once at the top; the rest still draws.
  * - The filter (`filters.ts`) narrows the pill's built list, so "2 of 8 match" counts cards on
  *   screen. Component state, as on Events: carries across pills, a visit starts with none.
  */
@@ -76,47 +59,22 @@ const TYPES: [HomeSegment, string][] = [
   ['questions', 'Questions'],
   ['topics', 'Posts'],
   ['photos', 'Photos'],
-  ['events', 'Events'],
-  ['people', 'People'],
 ];
-
-type Source = 'topics' | 'events' | 'people';
-
-/** Which sources each pill draws from, and so waits for. */
-const SOURCES: Record<HomeSegment, Source[]> = {
-  everything: ['topics', 'events', 'people'],
-  questions: ['topics'],
-  topics: ['topics'],
-  photos: ['topics'],
-  events: ['events'],
-  people: ['people'],
-};
+const NO_EVENTS: never[] = [];
+const NO_PEOPLE: never[] = [];
 
 /**
- * What each source asks the club for, by debug mode's names for them: what
- * the list was waiting on when its posts were drawn (lib/debug-log.ts).
+ * What the posts ask the club for, by debug mode's names for them: what the
+ * list was waiting on when its posts were drawn (lib/debug-log.ts).
  */
-const SOURCE_REQUESTS: Record<Source, string[]> = {
-  topics: [
-    'rpc:home_topics_ranked',
-    'rpc:home_topics_shown',
-    'table:chat_topics',
-    'table:chat_rooms',
-  ],
-  events: [
-    'table:events',
-    'table:data_feeds',
-    'rpc:events_within_miles',
-    'rpc:map_events',
-    'rpc:map_peer_cities',
-    'rpc:map_organizations',
-    'rpc:map_home',
-  ],
-  people: ['table:browse_members', 'rpc:chat_my_threads'],
-};
+const POST_REQUESTS = [
+  'rpc:home_topics_ranked',
+  'rpc:home_topics_shown',
+  'table:chat_topics',
+  'table:chat_rooms',
+];
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [searching, setSearching] = useState(false);
   const wide = useWideLayout();
   const session = useSession();
@@ -125,7 +83,8 @@ export default function HomePage() {
   // In the URL, as on Events and Chat: back returns to the pill, and it can be linked.
   const [searchParams, setSearchParams] = useSearchParams();
   const fromUrl = searchParams.get('segment');
-  const segment: HomeSegment = HOME_SEGMENTS.includes(fromUrl as HomeSegment)
+  // An old link to the Events or People kind opens everything: Home has neither now.
+  const segment: HomeSegment = TYPES.some(([id]) => id === fromUrl)
     ? (fromUrl as HomeSegment)
     : 'everything';
   const setSegment = useCallback(
@@ -147,78 +106,12 @@ export default function HomePage() {
   );
   const topicRead = useHomeTopics(view);
   const rooms = useChatRooms();
-  // Only the days Home shows (pickEvents); it once read every stored event. Fixed per visit.
-  const [eventWindow] = useState(() => {
-    const to = new Date(Date.now() + (EVENT_HORIZON_DAYS + 1) * 86_400_000).toISOString();
-    const from = dateWindowRange('any')?.from;
-    return from ? { from, to } : { to };
-  });
-  const eventsRead = useEvents(eventWindow);
-  // Events within 100 miles unless Filter chose a distance (the owner, 2026-11-17);
-  // peers, at any distance until then, as on Peers.
-  const near = useNearHome(filters.withinMiles ?? HOME_EVENT_MILES);
-  // Peers measured as the Peers tab does, from what the map holds; and how far
-  // each event is, closest first.
-  const home = useHome();
-  const mapData = useMapData(true);
-  const place = useFilterPlace();
-  const peersFar = useMemo(
-    () => membersBeyond(mapData.contents, filters.withinMiles),
-    [mapData.contents, filters.withinMiles],
-  );
-  const eventMiles = useMemo(() => {
-    const from = place ?? mapData.contents.home;
-    const miles = new Map<string, number>();
-    if (!from) return miles;
-    for (const spot of mapData.contents.events) miles.set(spot.id, milesBetween(from, spot));
-    // An online event counts from its host, as the 100 miles does.
-    const hosts = organizationMiles({ ...mapData.contents, home: from });
-    for (const event of eventsRead.events) {
-      const host = event.organizationId ? hosts.get(event.organizationId) : undefined;
-      if (!miles.has(event.id) && host !== undefined) miles.set(event.id, host);
-    }
-    return miles;
-  }, [place, mapData.contents, eventsRead.events]);
-  const events = useMemo(
-    () => pickEvents(eventsRead.events, undefined, near.ids, eventMiles),
-    [eventsRead.events, near.ids, eventMiles],
-  );
-  const { organizations: everyOrganization, byId: organizationsById } = useOrganizations();
-  const viewer = useViewerEvents(memberId);
-  const membersRead = useBrowseMembers();
-  const threadsRead = useMyThreads();
-  const [writeError, setWriteError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const topics = useMemo(
     () => toHomeTopics(topicRead.topics, topicRead.posts, rooms.rooms),
     [topicRead.topics, topicRead.posts, rooms.rooms],
   );
-  // Anybody the viewer has actually spoken with directly. A direct thread
-  // nobody has written in is not a conversation, as Chat's own list agrees.
-  const talkedTo = useMemo(
-    () =>
-      new Set(
-        threadsRead.threads
-          .filter((thread) => thread.kind === 'direct' && thread.lastAt !== null)
-          .flatMap((thread) => (thread.otherMemberId ? [thread.otherMemberId] : [])),
-      ),
-    [threadsRead.threads],
-  );
-  const people = useMemo(
-    () =>
-      suggestPeople(
-        peersFar
-          ? membersRead.members.filter((member) => !peersFar.has(member.id))
-          : membersRead.members,
-        memberId,
-        talkedTo,
-        new Date(),
-        SEGMENT_PEOPLE,
-      ),
-    [membersRead.members, peersFar, memberId, talkedTo],
-  );
-
   const authors = useChatAuthors(
     topics.flatMap((topic) => [
       topic.authorId,
@@ -235,48 +128,13 @@ export default function HomePage() {
   const likes = usePostLikes(openingPostIds);
   const views = usePostViews(openingPostIds);
 
-  const loading: Record<Source, boolean> = {
-    topics: topicRead.loading || rooms.loading,
-    // The map too, for the distances, so the order does not jump when it lands.
-    events: eventsRead.loading || near.status === 'loading' || mapData.status === 'loading',
-    // A failed conversations read is not waited on: a redundant suggestion beats none.
-    people:
-      membersRead.loading ||
-      threadsRead.loading ||
-      (filters.withinMiles !== null && mapData.status === 'loading'),
-  };
-  const errors: Record<Source, string | null> = {
-    topics: topicRead.error ?? rooms.error,
-    events: eventsRead.error,
-    people: membersRead.error,
-  };
-  const sources: Source[] = SOURCES[segment];
-  const settled = sources.every((source) => !loading[source]);
-  const failures = sources.flatMap((source) => {
-    const error = errors[source];
-    return error ? [error] : [];
-  });
+  const settled = !(topicRead.loading || rooms.loading);
+  const failure = topicRead.error ?? rooms.error;
+  const failures = failure ? [failure] : [];
 
-  // My posts and My replies are posts alone; From my orgs is their members'
-  // posts and the events they hold; nobody is suggested under any of the three.
-  const { following } = useOrganizationFollows();
   const items = useMemo(
-    () =>
-      inSegment(segment, {
-        topics,
-        events:
-          filters.show === 'all'
-            ? events
-            : filters.show === 'orgs'
-              ? events.filter(
-                  (event) =>
-                    (event.organizationId !== null && following.has(event.organizationId)) ||
-                    event.cohostIds.some((id) => following.has(id)),
-                )
-              : [],
-        people: filters.show === 'all' ? people : [],
-      }),
-    [segment, topics, events, people, filters.show, following],
+    () => inSegment(segment, { topics, events: NO_EVENTS, people: NO_PEOPLE }),
+    [segment, topics],
   );
   const filterContext = useMemo<FeedFilterContext>(
     () => ({
@@ -304,34 +162,11 @@ export default function HomePage() {
     const fresh = topicRead.readAt !== null && topicRead.readAt >= reached;
     return afterPaint(() => {
       if (fresh) {
-        debugMark(
-          '/home',
-          'Fresh posts’ text on screen',
-          sources.flatMap((source) => SOURCE_REQUESTS[source]),
-        );
+        debugMark('/home', 'Fresh posts’ text on screen', POST_REQUESTS);
       } else debugMark('/home', 'Earlier posts’ text still on screen');
     });
-  }, [pathname, postsDrawn, topicRead.readAt, sources]);
+  }, [pathname, postsDrawn, topicRead.readAt]);
   const profile = useProfileAsk(memberId);
-
-  const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
-  const onRsvp = useCallback(
-    (event: ClubEvent, next: RsvpStatus | null) => {
-      if (!memberId) return;
-      setWriteError(null);
-      void setRsvp(event.id, memberId, next).then((result) => {
-        // Re-read rather than patch: the tallies come from the database.
-        if (result.ok) {
-          viewer.reload();
-          eventsRead.reload?.();
-          rsvpSheetFor(event, next, (again) => {
-            onRsvp(event, again);
-          });
-        } else setWriteError(result.error ?? 'Could not save that.');
-      });
-    },
-    [memberId, viewer, eventsRead.reload, rsvpSheetFor],
-  );
 
   /** A standing opener's likes, drawn as unknown until they are read. */
   function likesFor(opening: ChatPost | null): CardLikes | undefined {
@@ -405,45 +240,19 @@ export default function HomePage() {
             }
           />
         );
+      // Neither is handed to the feed: see the note at the top.
       case 'event':
-        return (
-          <EventCard
-            event={item.event}
-            status={viewer.rsvps.get(item.event.id) ?? null}
-            organization={
-              item.event.organizationId
-                ? (organizationsById.get(item.event.organizationId) ?? null)
-                : null
-            }
-            onOpen={() => {
-              void navigate(`/events/${item.event.id}`, { state: linkState });
-            }}
-            onOpenOrganization={(id) => {
-              void navigate(`/events/organizations/${id}`, { state: linkState });
-            }}
-            onOpenMember={(id) => {
-              void navigate(`/peers/${id}`, { state: linkState });
-            }}
-            onRsvp={(next) => {
-              onRsvp(item.event, next);
-            }}
-          />
-        );
       case 'person':
-        return <PersonCard member={item.member} linkState={linkState} />;
+        return null;
     }
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {searching ? (
-        <HomeSearch
-          sources={{
-            topics,
-            events: eventsRead.events,
-            members: membersRead.members.filter((member) => member.id !== memberId),
-            organizations: everyOrganization,
-          }}
+        <HomeSearchReading
+          topics={topics}
+          memberId={memberId}
           linkState={linkState}
           onClose={() => {
             setSearching(false);
@@ -480,13 +289,12 @@ export default function HomePage() {
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {/* Before the list loads. Posted from here (the owner, 2026-10-09); Photos keeps
-              its picker card. Not on Events (the owner, 2026-10-10): it read as an event. */}
+              its picker card. */}
           {segment === 'photos' ? (
             <ComposeCard segment={segment} linkState={linkState} />
-          ) : segment === 'events' ? null : (
+          ) : (
             <QuickAsk rooms={rooms.rooms} linkState={linkState} className="mb-[11px]" />
           )}
-          {writeError ? <Problem sentences={[writeError]} /> : null}
 
           {!settled ? (
             <LoadingCards label="Loading…" height={170} />
@@ -497,13 +305,11 @@ export default function HomePage() {
                 <>
                   <ul className="arrive">
                     {shown.map((item, index) => (
-                      // An event card carries its own bottom margin; the
-                      // others are given the same one here.
                       <Fragment key={item.key}>
-                        <li className={item.kind === 'event' ? '' : 'mb-[11px]'}>{draw(item)}</li>
+                        <li className="mb-[11px]">{draw(item)}</li>
                         {/* Below the first card (the owner, 2026-10-28): what
-                            members think of the app. Not on the Events pill. */}
-                        {index === 0 && segment !== 'events' ? (
+                            members think of the app. */}
+                        {index === 0 ? (
                           <FeedbackCard
                             rooms={rooms.rooms}
                             linkState={linkState}
@@ -511,9 +317,7 @@ export default function HomePage() {
                           />
                         ) : null}
                         {/* Sixth (the owner, 2026-11-01), or last in a shorter feed. */}
-                        {profile.ask &&
-                        segment !== 'events' &&
-                        index === Math.min(4, shown.length - 1) ? (
+                        {profile.ask && index === Math.min(4, shown.length - 1) ? (
                           <ProfileCard
                             ask={profile.ask}
                             onNotNow={profile.notNow}
@@ -541,7 +345,6 @@ export default function HomePage() {
       {sheetOpen ? (
         <HomeFilterSheet
           chips={chipsFor(items, filters, filterContext)}
-          home={{ city: home?.city ?? null, status: near.status }}
           segments={TYPES}
           segment={segment}
           onSegment={setSegment}
@@ -559,7 +362,6 @@ export default function HomePage() {
           }}
         />
       ) : null}
-      {rsvpSheet}
     </div>
   );
 }
