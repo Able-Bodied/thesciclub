@@ -1,10 +1,9 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { InjuryStagePart } from '@/components/injury-stage-pill';
+import { InjuryStageNote } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
-import { injuryStageOf } from '@/lib/injury';
 import { usePhoto } from '@/lib/use-photo';
 import { Blurred, InjuredIn, STAND_IN_AGE, STAND_IN_PLACE } from '@/routes/about/blurred';
 import { JoinTheClub } from '@/routes/about/page';
@@ -141,13 +140,8 @@ export default function AboutProfilePage() {
                   <span className="whitespace-nowrap">
                     · <Blurred>{STAND_IN_AGE}</Blurred> · <Blurred>{STAND_IN_PLACE}</Blurred>
                   </span>
-                  {injuryStageOf(member) ? (
-                    <>
-                      {' · '}
-                      <InjuryStagePart member={member} />
-                    </>
-                  ) : null}
                 </p>
+                <InjuryStageNote member={member} className="mt-1.5" />
                 {injuryYear ? (
                   <p className="mt-1 text-[0.78125rem] text-white/90">
                     <InjuredIn year={injuryYear} precision={member.injuryDatePrecision} />
