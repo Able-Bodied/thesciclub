@@ -94,8 +94,11 @@ describe('segments', () => {
       expect.arrayContaining(['Pat Pro', 'Fay Family', 'Una Unsure']),
     );
     expect(names({ ...start, leaveOut: ['orgAdmins'] })).not.toContain('Ada Admin');
-    // Mentors and non-mentors are chips of the same group.
-    expect(names({ ...start, leaveOut: [...start.leaveOut, 'nonMentors'] })).toEqual(['Mentor']);
+    // SCI peers unticked leaves out only members with SCI/D, mentors among
+    // them; staff and family & friends stay while their own chips are ticked
+    // (the owner, 2026-11-18: "Deselecting non-mentor filters out all the non
+    // SCI people").
+    expect(names({ ...start, leaveOut: ['sciPeers'] }).sort()).toEqual(['Fay Family', 'Pat Pro']);
     // A search finds anybody by name, left out or not.
     expect(names({ ...start, search: 'Pat' })).toEqual(['Pat Pro']);
     // Where Peers starts is no filter; a change from it is one each.

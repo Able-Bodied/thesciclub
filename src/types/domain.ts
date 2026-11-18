@@ -665,10 +665,13 @@ export interface MemberFilters {
   search: string;
 }
 
-/** Who can be left out of Peers: mentors or not, those without SCI/D themselves, those unsure of their level, org admins. */
+/**
+ * Who can be left out of Peers: members with SCI/D themselves, those without
+ * (staff, family & friends), those unsure of their level, org admins. Mentors
+ * have their own tab, so no chip (the owner, 2026-11-18).
+ */
 export const PEERS_LEFT_OUT = [
-  'mentors',
-  'nonMentors',
+  'sciPeers',
   'professionals',
   'family',
   'unsure',
