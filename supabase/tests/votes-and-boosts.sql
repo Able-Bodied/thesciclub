@@ -5,12 +5,12 @@
 -- Cal cannot see Ann's downvote. Ann cannot boost, through the function or
 -- the table; Sus, suspended, cannot downvote. Adm boosts Old twice and takes
 -- one back: 10, which Adm sees as boost and Ann does not.
--- Ann's room, best first: Fresh (new, unseen), Down (newer, unseen, but -2),
--- Old (20 hours, unseen, +10), Seen (newest, but Ann has read it). Skipping
--- one, two at a time: Down, Old.
+-- Ann's room, best first: Old (20 hours, unseen, +10 is ten days), Fresh (new,
+-- unseen, -1), Down (newer, unseen, but -2), Seen (newest, but Ann has read it,
+-- so a week behind). Skipping one, two at a time: Fresh, Down.
 -- Run against the test project on 2026-11-18:
 --   "flip: 0 likes/-1; cal sees 0; ann boost: refused/refused; sus: refused;
---    old: 10 adm 10 10 ann -; order: Fresh,Down,Old,Seen; page: Down,Old".
+--    old: 10 adm 10 10 ann -; order: Old,Fresh,Down,Seen; page: Fresh,Down".
 --
 --   node --env-file=.env.local <runner> supabase/tests/votes-and-boosts.sql
 --
