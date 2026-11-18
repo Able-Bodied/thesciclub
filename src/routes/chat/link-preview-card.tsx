@@ -51,7 +51,7 @@ export function LinkPreviewCard({
   const video = preview.youtubeId;
 
   const words = (
-    <span className="block min-w-0 flex-1 px-3 py-2.5">
+    <span className="block min-w-0 flex-1 px-3 py-2.5 [overflow-wrap:anywhere]">
       <span className="block font-semibold text-[0.71875rem] text-grey uppercase tracking-[0.06em] [overflow-wrap:anywhere]">
         {site}
       </span>
