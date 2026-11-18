@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,21 +6,19 @@ import type * as Attachments from '@/lib/chat/attachments';
 import type * as Likes from '@/lib/chat/likes';
 import type * as Reactions from '@/lib/chat/reactions';
 import type * as ChatRooms from '@/lib/chat/rooms';
-import type * as Threads from '@/lib/chat/threads';
-import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/types';
-import type * as Events from '@/lib/events';
+import type { ChatAuthor, ChatPost, ChatRoom } from '@/lib/chat/types';
 import type * as HomeTopics from '@/lib/home/topics';
 import type { HomeTopicSummary } from '@/lib/home/types';
-import type { NearHome } from '@/lib/near-home';
 import type * as NotificationsModule from '@/lib/notifications';
-import { makeEvent, makeMember, makePost, makeRoom, makeTag } from '@/test/factory';
-import type { BrowseMember, ClubEvent, RsvpStatus } from '@/types/domain';
+import { makeEvent, makeMember, makePost, makeRoom } from '@/test/factory';
+import type { BrowseMember, ClubEvent } from '@/types/domain';
 
 /**
  * Home, with every hook that reads the database stubbed and every pure
- * function real: `toHomeTopics`, `pickEvents`, `suggestPeople`, `buildFeed`
- * and `inSegment` decide what is on screen here exactly as they do in the
- * app. The order of the mix is their own tests' business, not this file's.
+ * function real: `toHomeTopics`, `buildFeed` and `inSegment` decide what is
+ * on screen here exactly as they do in the app. Posts alone since 2026-11-18;
+ * the events and members stubbed here are what search would read, and what
+ * the feed must not.
  */
 
 const db = vi.hoisted(() => ({
@@ -30,47 +28,16 @@ const db = vi.hoisted(() => ({
   topicsError: null as string | null,
   rooms: [] as ChatRoom[],
   events: [] as ClubEvent[],
-  eventsLoading: false,
-  eventsError: null as string | null,
-  rsvps: new Map<string, RsvpStatus>(),
   members: [] as BrowseMember[],
-  membersLoading: false,
-  membersError: null as string | null,
-  threads: [] as ChatThread[],
+  /** How often the events and the members were asked for. */
+  eventsAsked: 0,
+  membersAsked: 0,
   authors: new Map<string, ChatAuthor>(),
-  setRsvp: vi.fn(),
-  reload: vi.fn(),
-  reloadEvents: vi.fn(),
   likes: new Map<string, string[]>(),
   likesAskedFor: [] as string[][],
   liked: [] as string[],
   /** The posts whose likes are still being read. */
   likesLoading: new Set<string>(),
-  near: { status: 'unplaced', ids: null as ReadonlySet<string> | null },
-  nearAskedFor: [] as (number | null)[],
-}));
-
-// Which events are near home is a database answer; Events' default distance.
-const mapped = vi.hoisted(() => ({
-  contents: {
-    events: [],
-    peerCities: [],
-    organizations: [] as { id: string; latitude: number; longitude: number }[],
-    home: null as { latitude: number; longitude: number } | null,
-  },
-}));
-vi.mock('@/lib/map-data', () => ({
-  useMapData: () => ({ status: 'ready', contents: mapped.contents }),
-}));
-vi.mock('@/lib/home-state', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  useHome: () => null,
-}));
-vi.mock('@/lib/near-home', () => ({
-  useNearHome: (miles: number | null): NearHome => {
-    db.nearAskedFor.push(miles);
-    return db.near as NearHome;
-  },
 }));
 
 // Likes are a read and a write of the club; the hook has its own test.
@@ -127,16 +94,6 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
   useChatRooms: () => ({ rooms: db.rooms, loading: false, error: null, reload: () => undefined }),
 }));
 
-vi.mock('@/lib/chat/threads', async (importOriginal) => ({
-  ...(await importOriginal<typeof Threads>()),
-  useMyThreads: () => ({
-    threads: db.threads,
-    loading: false,
-    error: null,
-    reload: () => undefined,
-  }),
-}));
-
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () => db.authors,
 }));
@@ -153,17 +110,11 @@ vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
   },
 }));
 
-vi.mock('@/lib/events', async (importOriginal) => ({
-  rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
-  useEvents: () => ({
-    events: db.events,
-    loading: db.eventsLoading,
-    error: db.eventsError,
-    reload: db.reloadEvents,
-  }),
-  useViewerEvents: () => ({ rsvps: db.rsvps, loading: false, error: null, reload: db.reload }),
-  setRsvp: (...args: unknown[]): Promise<{ ok: boolean; error?: string }> =>
-    db.setRsvp(...args) as Promise<{ ok: boolean; error?: string }>,
+vi.mock('@/lib/events', () => ({
+  useEvents: () => {
+    db.eventsAsked += 1;
+    return { events: db.events, loading: false, error: null };
+  },
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -171,12 +122,10 @@ vi.mock('@/lib/organizations', () => ({
 }));
 
 vi.mock('@/lib/members', () => ({
-  useBrowseMembers: () => ({
-    members: db.members,
-    loading: db.membersLoading,
-    error: db.membersError,
-    signedOut: false,
-  }),
+  useBrowseMembers: () => {
+    db.membersAsked += 1;
+    return { members: db.members, loading: false, error: null, signedOut: false };
+  },
 }));
 
 vi.mock('@/lib/session', () => ({
@@ -251,26 +200,17 @@ beforeEach(() => {
   db.topicsLoading = false;
   db.topicsError = null;
   db.events = [makeEvent({ id: 'swim', title: 'Adaptive swim night', startTime: soon(3) })];
-  db.eventsLoading = false;
-  db.eventsError = null;
-  db.rsvps = new Map();
+  db.eventsAsked = 0;
+  db.membersAsked = 0;
   db.members = [
     makeMember({ id: 'me', displayName: 'Alex' }),
     makeMember({ id: 'kerry', type: 'mentor', displayName: 'Kerry' }),
   ];
-  db.membersLoading = false;
-  db.membersError = null;
-  db.threads = [];
   db.authors = new Map();
-  db.setRsvp = vi.fn().mockResolvedValue({ ok: true });
-  db.reload = vi.fn();
-  db.reloadEvents = vi.fn();
   db.likes = new Map();
   db.likesAskedFor = [];
   db.liked = [];
   db.likesLoading = new Set();
-  db.near = { status: 'unplaced', ids: null };
-  db.nearAskedFor = [];
 });
 
 // Display is on Me only (the owner, 2026-10-22).
@@ -286,36 +226,6 @@ it('has the notifications bell after Filter', () => {
   const filter = screen.getByRole('button', { name: 'Filters' });
   const bell = screen.getByRole('link', { name: 'Notifications' });
   expect(filter.compareDocumentPosition(bell) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-});
-
-// 2026-10-21: Home suggested events Events leaves out for distance.
-describe('events near home', () => {
-  beforeEach(() => {
-    db.events = [
-      makeEvent({ id: 'near', title: 'Swim across town', startTime: soon(2) }),
-      makeEvent({ id: 'far', title: 'Swim three hours away', startTime: soon(3) }),
-      makeEvent({ id: 'online', title: 'Video meetup', format: 'online', startTime: soon(4) }),
-    ];
-  });
-
-  it('shows only the events near home, online ones by their host', () => {
-    db.near = { status: 'ready', ids: new Set(['near', 'online']) };
-    renderPage('/home?segment=events');
-    expect(screen.getByText('Swim across town')).toBeInTheDocument();
-    expect(screen.getByText('Video meetup')).toBeInTheDocument();
-    expect(screen.queryByText('Swim three hours away')).not.toBeInTheDocument();
-  });
-
-  it('waits for the answer rather than showing far events first', () => {
-    db.near = { status: 'loading', ids: null };
-    renderPage('/home?segment=events');
-    expect(screen.queryByText('Swim three hours away')).not.toBeInTheDocument();
-  });
-
-  it('shows every event when home is not on the map', () => {
-    renderPage('/home?segment=events');
-    expect(screen.getByText('Swim three hours away')).toBeInTheDocument();
-  });
 });
 
 describe('likes on Home', () => {
@@ -405,13 +315,30 @@ describe('Home', () => {
     expect(headings[0]).toHaveTextContent('Home');
   });
 
-  it('lists topics, photographs, events and people under Everything', () => {
+  // The owner, 2026-11-18: "let's skip loading events and peers for now in
+  // the home feed. Just do posts." Home had waited for both before it drew a
+  // post; now it asks for neither until search is opened.
+  it('lists posts and photographs alone, and reads no events or members for them', async () => {
     renderPage();
     expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Wheel covers I made' })).toBeInTheDocument();
-    expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
-    expect(feed()).toHaveLength(4);
+    expect(screen.queryByText('Adaptive swim night')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Kerry' })).toBeNull();
+    expect(feed()).toHaveLength(2);
+    expect([db.eventsAsked, db.membersAsked]).toEqual([0, 0]);
+
+    // Search still finds both: it reads them itself, once it is opened.
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search the club' }), 'swim');
+    expect(screen.getByRole('link', { name: /Adaptive swim night/ })).toBeInTheDocument();
+  });
+
+  // A link saved while Home had an Events kind: everything, not an empty page.
+  it('opens everything from an old link to the Events or People kind', () => {
+    renderPage('/home?segment=events');
+    expect(feed()).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
   });
 
   // An administrator reads closed rooms; no member can follow them in.
@@ -442,18 +369,9 @@ describe('Home', () => {
 
     // It reads nothing, so asking does not wait for the list.
     it('is there while the list is still loading', () => {
-      db.membersLoading = true;
+      db.topicsLoading = true;
       renderPage();
       expect(screen.getByRole('status')).toHaveTextContent('Loading…');
-      expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
-    });
-
-    // A box to ask the club on top of a list of events read as part of it.
-    it('is not on the Events pill, and is on Topics', () => {
-      const { unmount } = renderPage('/home?segment=events');
-      expect(screen.queryByRole('textbox', { name: 'Ask or post to the club' })).toBeNull();
-      unmount();
-      renderPage('/home?segment=topics');
       expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
     });
   });
@@ -470,14 +388,6 @@ describe('Home', () => {
       await show(user, 'Photos');
       expect(feed()).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Wheel covers I made' })).toBeInTheDocument();
-
-      await show(user, 'Events');
-      expect(feed()).toHaveLength(1);
-      expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
-
-      await show(user, 'People');
-      expect(feed()).toHaveLength(1);
-      expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
     });
 
     it('list only questions under Questions, under the box to ask one', () => {
@@ -522,56 +432,11 @@ describe('Home', () => {
     });
   });
 
-  describe('waiting', () => {
-    // Drawing each source as it lands would re-mix the list under the reader.
-    it('draws nothing under Everything until all three sources have settled', () => {
-      db.membersLoading = true;
-      renderPage();
-      expect(screen.getByRole('status')).toHaveTextContent('Loading…');
-      expect(screen.queryByRole('link', { name: 'Morning or evening routine?' })).toBeNull();
-      expect(screen.queryByText('Adaptive swim night')).toBeNull();
-    });
-
-    it('lets a single-kind pill draw once its own source has', () => {
-      db.membersLoading = true;
-      renderPage('/home?segment=topics');
-      expect(screen.queryByRole('status')).toBeNull();
-      expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
-    });
-  });
-
-  it('says once that a source failed, and still draws the others', () => {
-    db.eventsError = 'Could not load events. You are offline.';
-    renderPage();
-    expect(screen.getByRole('alert')).toHaveTextContent('Could not load events. You are offline.');
-    expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
-  });
-
   it('does not say a failed pill is merely empty', () => {
     db.topicsError = 'Could not load the posts. You are offline.';
     renderPage('/home?segment=topics');
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load the posts.');
     expect(screen.queryByText(/No posts yet/)).toBeNull();
-  });
-
-  it('saves an RSVP and reads the tallies again', async () => {
-    const user = userEvent.setup();
-    renderPage('/home?segment=events');
-    await user.click(screen.getByRole('button', { name: 'RSVP' }));
-    expect(db.setRsvp).toHaveBeenCalledWith('swim', 'me', 'going');
-    await waitFor(() => {
-      expect(db.reload).toHaveBeenCalled();
-      expect(db.reloadEvents).toHaveBeenCalled();
-    });
-  });
-
-  it('says so when an RSVP is refused', async () => {
-    db.setRsvp = vi.fn().mockResolvedValue({ ok: false, error: 'Your answer was not saved.' });
-    const user = userEvent.setup();
-    renderPage('/home?segment=events');
-    await user.click(screen.getByRole('button', { name: 'RSVP' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Your answer was not saved.');
   });
 
   it('never draws a count of zero', () => {
@@ -583,8 +448,6 @@ describe('Home', () => {
     beforeEach(() => {
       db.topics = [];
       db.posts = [];
-      db.events = [];
-      db.members = [makeMember({ id: 'me' })];
     });
 
     it.each([
@@ -599,12 +462,6 @@ describe('Home', () => {
         'No photographs yet. A post with a photograph shows up here.',
         ['See the rooms', '/chat?segment=rooms'],
       ],
-      [
-        'events',
-        'Nothing on the calendar near you in the next 30 days.',
-        ['See the whole calendar', '/events'],
-      ],
-      ['people', 'Nobody new to suggest today.', ['See everyone in Peers', '/peers']],
     ] as const)('%s', (segment, sentence, link) => {
       renderPage(segment === 'everything' ? '/home' : `/home?segment=${segment}`);
       expect(screen.getByText(sentence)).toBeInTheDocument();
@@ -623,10 +480,10 @@ describe('Home', () => {
   });
 
   it('points to the rest of a single-kind list', () => {
-    renderPage('/home?segment=events');
-    expect(screen.getByRole('link', { name: 'See the whole calendar' })).toHaveAttribute(
+    renderPage('/home?segment=topics');
+    expect(screen.getByRole('link', { name: 'See the rooms' })).toHaveAttribute(
       'href',
-      '/events',
+      '/chat?segment=rooms',
     );
   });
 });
@@ -652,40 +509,6 @@ describe('filtering the feed', () => {
         body: '',
         attachments: ['rooms/equip/a.webp'],
       }),
-    ];
-    db.events = [
-      makeEvent({
-        id: 'swim',
-        title: 'Adaptive swim night',
-        city: 'San Jose',
-        startTime: soon(3),
-        tags: [makeTag('swimming', 'sport')],
-      }),
-      makeEvent({
-        id: 'circle',
-        title: 'Peer support circle',
-        city: null,
-        format: 'online',
-        startTime: soon(5),
-      }),
-    ];
-    db.members = [
-      makeMember({ id: 'me', displayName: 'Alex', city: 'San Jose' }),
-      makeMember({
-        id: 'kerry',
-        type: 'mentor',
-        displayName: 'Kerry',
-        city: 'San Jose',
-        topics: ['Adaptive sports'],
-      }),
-      makeMember({
-        id: 'dante',
-        type: 'mentor',
-        displayName: 'Dante',
-        city: 'Aptos',
-        topics: ['Bowel programme'],
-      }),
-      makeMember({ id: 'jan', type: 'mentor', displayName: 'Jan', city: 'Santa Cruz' }),
     ];
   });
 
@@ -713,21 +536,21 @@ describe('filtering the feed', () => {
     renderPage();
     await user.click(screen.getByRole('button', { name: /^Filters/ }));
     expect(screen.getByRole('dialog', { name: 'Filter your feed' })).toBeInTheDocument();
-    expect(screen.getByText('7 of 7 match')).toBeInTheDocument();
+    expect(screen.getByText('2 of 2 match')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Bowel management' }));
-    await user.click(screen.getByRole('button', { name: 'Show 2' }));
+    await user.click(screen.getByRole('button', { name: 'Show 1' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('button', { name: /^Filters, / })).toBeInTheDocument();
   });
 
   it('offers only the rooms something in this pill has', async () => {
     const user = userEvent.setup();
-    renderPage('/home?segment=events');
+    renderPage('/home?segment=photos');
     await user.click(screen.getByRole('button', { name: /^Filters/ }));
     const dialog = within(screen.getByRole('dialog'));
-    // The swim is sport; the circle is online. No topic, no member.
-    expect(dialog.getByRole('button', { name: 'Adaptive sport' })).toBeInTheDocument();
+    // The photograph is in Equipment; the other post is not a photograph.
+    expect(dialog.getByRole('button', { name: 'Equipment & assistive tech' })).toBeInTheDocument();
     expect(dialog.queryByRole('button', { name: 'Bowel management' })).toBeNull();
     // A closed room is never a chip, not even for an administrator's read.
     expect(dialog.queryByRole('button', { name: 'Skin & pressure sores' })).toBeNull();
@@ -738,23 +561,13 @@ describe('filtering the feed', () => {
     renderPage();
     await user.click(screen.getByRole('button', { name: /^Filters/ }));
     await user.click(screen.getByRole('button', { name: 'Bowel management' }));
-    await user.click(screen.getByRole('button', { name: 'Show 2' }));
-    expect(cards()).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Show 1' }));
+    expect(cards()).toHaveLength(1);
     await sheetAgreesWithList(user);
     await user.click(screen.getByRole('button', { name: /^Filters, / }));
     await user.click(screen.getByRole('button', { name: /^Clear/ }));
     await user.click(screen.getByRole('button', { name: /^Show / }));
-    expect(cards()).toHaveLength(7);
-  });
-
-  // The owner, 2026-11-17: events start within 100 miles; Filter still has
-  // nothing chosen, so Worth meeting reaches the whole club.
-  it('starts events at 100 miles, with no distance chosen', () => {
-    db.nearAskedFor = [];
-    renderPage();
-    expect(db.nearAskedFor).toContain(100);
-    expect(db.nearAskedFor).not.toContain(null);
-    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
+    expect(cards()).toHaveLength(2);
   });
 });
 
