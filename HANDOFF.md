@@ -726,7 +726,8 @@ All live. Migration headers and the files named say how and why.
   Include filter has "SCI peers" in place of "Mentors" and "Non-mentors".
 - **Home's filter** (2026-11-18): Show is whose posts (Everything, My posts,
   My replies, From my orgs), Type is the kinds Show used to list, Sort by is
-  the order (Default ranking, Most recent replies, Most recent posts). The
+  the order, a menu of seven (Default ranking; most recent replies or posts;
+  most views, replies, upvotes or engaged users, `20261118240000`). The
   default is still `home_topics_ranked`; any other choice asks
   `home_topics_shown` (`20261118230000`) which posts and in what order, and
   the card quotes the first reply. From my orgs is posts by members of the

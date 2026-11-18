@@ -104,8 +104,11 @@ describe('HomeFilterSheet', () => {
     ).toEqual(['Everything', 'My posts', 'My replies', 'From my orgs']);
     await user.click(screen.getByRole('button', { name: 'My replies' }));
     expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_FEED_FILTERS, show: 'replied' });
-    await user.click(screen.getByRole('button', { name: 'Most recent replies' }));
-    expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_FEED_FILTERS, sort: 'replies' });
+    // Sort by is a menu (the owner, 2026-11-18), with the seven orders.
+    const sort = screen.getByRole('combobox', { name: 'Sort by' });
+    expect(within(sort).getAllByRole('option')).toHaveLength(7);
+    await user.selectOptions(sort, 'Most engaged users');
+    expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_FEED_FILTERS, sort: 'engaged' });
   });
 
   it('asks how far, for events and peers alone', () => {

@@ -1,6 +1,6 @@
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
 import type { ChatRoom } from '@/lib/chat/types';
-import type { HomeSegment } from '@/lib/home/types';
+import type { HomeSegment, HomeSort } from '@/lib/home/types';
 import type { NearHomeStatus } from '@/lib/near-home';
 import { DistanceFilter } from '@/routes/events/distance-filter';
 import { type FeedFilters, SHOW_CHIPS, SORT_CHIPS, toggleRoom } from '@/routes/home/filters';
@@ -12,7 +12,8 @@ import { type FeedFilters, SHOW_CHIPS, SORT_CHIPS, toggleRoom } from '@/routes/h
  *
  * Show is whose posts (the owner, 2026-11-18: "everything, my posts, my
  * replies, from my orgs"); the kinds it listed until then are Type, kept
- * beside it at the owner's word; Sort by is the posts' order. One of each.
+ * beside it at the owner's word; Sort by is the posts' order, a menu between
+ * the two. One of each.
  */
 
 export interface HomeFilterSheetProps {
@@ -68,6 +69,26 @@ export function HomeFilterSheet({
         ))}
       </FilterGroup>
 
+      {/* A menu, as Sort by on Peers, and above Type (the owner, 2026-11-18). */}
+      <label className="mb-4 block">
+        <span className="mb-2 block font-extrabold font-head text-[0.71875rem] text-grey uppercase tracking-[0.13em]">
+          Sort by
+        </span>
+        <select
+          value={filters.sort}
+          onChange={(event) => {
+            onChange({ ...filters, sort: event.target.value as HomeSort });
+          }}
+          className="min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+        >
+          {SORT_CHIPS.map(([id, label]) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <FilterGroup title="Type">
         {segments.map(([id, label]) => (
           <FilterChip
@@ -76,19 +97,6 @@ export function HomeFilterSheet({
             on={segment === id}
             onClick={() => {
               onSegment(id);
-            }}
-          />
-        ))}
-      </FilterGroup>
-
-      <FilterGroup title="Sort by">
-        {SORT_CHIPS.map(([id, label]) => (
-          <FilterChip
-            key={id}
-            label={label}
-            on={filters.sort === id}
-            onClick={() => {
-              onChange({ ...filters, sort: id });
             }}
           />
         ))}
