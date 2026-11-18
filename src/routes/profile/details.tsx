@@ -14,8 +14,9 @@ import { googlePhotoUrl, useGooglePhoto } from '@/lib/google-photo';
 import {
   ageFrom,
   dateLabel,
+  injuryBandOf,
+  injuryBandText,
   injuryStageOf,
-  injuryStageText,
   isAdult,
   MINIMUM_AGE,
 } from '@/lib/injury';
@@ -808,11 +809,12 @@ function InjuryDateShown({
   onChange: (showInjuryDate: boolean) => void;
 }) {
   const stage = injuryStageOf(details);
+  const band = injuryBandOf(details);
   const date =
     details.injuryDate && details.injuryDatePrecision
       ? dateLabel(details.injuryDate, details.injuryDatePrecision)
       : null;
-  if (!stage || !date) return null;
+  if (!stage || band === null || !date) return null;
   return (
     <label className="mt-3 block">
       <span className="mb-1.5 block font-semibold text-[0.8125rem] text-ink">What members see</span>
@@ -823,7 +825,7 @@ function InjuryDateShown({
         }}
         className="min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] text-ink outline-none focus:border-emphasis"
       >
-        <option value="stage">Only the group: {injuryStageText(stage, details.injuryType)}</option>
+        <option value="stage">Only the group: {injuryBandText(band, details.injuryType)}</option>
         <option value="date">The date too: {date}</option>
       </select>
     </label>
