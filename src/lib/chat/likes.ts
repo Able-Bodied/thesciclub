@@ -15,9 +15,10 @@ import { getSupabase } from '@/lib/supabase';
  * instead of Like. An upvote is a like: `chat_post_likes` keeps its rows, names list and
  * notification. A downvote is anonymous (`chat_post_downvotes`, nobody reads another's). A club
  * administrator's long press or right click on the up arrow adds 10 (`admin_boost_post`), which
- * members see only as part of the score. Since 20261118190000 a boost is 10 at most and lasts 14
- * days. `chat_post_scores` says each score and the reader's vote;
- * on a database without it, the score is the likes and nobody has downvoted.
+ * lifts the post in Top and on Home. Since 20261118190000 a boost is 10 at most and lasts 14
+ * days; since 20261118195000 it is in no score, so members never see it. `chat_post_scores` says
+ * each score and the reader's vote; on a database without it, the score is the likes and nobody
+ * has downvoted.
  *
  * Before the votes, likes on posts in rooms: who likes which, liking, and taking it back.
  *
@@ -482,11 +483,8 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
             const was = current.get(postId);
             if (!was) return current;
             const next = new Map(current);
-            next.set(postId, {
-              ...was,
-              score: was.score + result.value - (was.boost ?? 0),
-              boost: result.value,
-            });
+            // Not in the score (20261118195000): only the order and the label move.
+            next.set(postId, { ...was, boost: result.value });
             return next;
           });
           announce(more ? 'Boosted by 10 for 14 days.' : 'Boost removed.');

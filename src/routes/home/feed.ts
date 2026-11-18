@@ -28,6 +28,8 @@ const PEOPLE_POOL = 12;
 /** How many of each kind the Everything list mixes in, at most. */
 const MIX_EVENTS = 4;
 const MIX_PEOPLE = 3;
+/** Topics before the first extra (the owner, 2026-11-18: two spots further down than it was). */
+const FIRST_EXTRA_AFTER = 4;
 
 /** And how many a single-kind pill lists. */
 const SEGMENT_TOPICS = 40;
@@ -88,6 +90,8 @@ function dayNumber(today: Date): number {
 /**
  * Members worth meeting today.
  *
+ * - Mentors only (the owner, 2026-11-18): they have filled out their profiles,
+ *   so the card has something to say about them.
  * - Nobody the viewer already talks to directly: a suggestion to meet
  *   somebody you are already messaging is noise.
  * - Not the club's own account, which is not a person.
@@ -108,7 +112,7 @@ export function suggestPeople(
   count: number = MIX_PEOPLE,
 ): BrowseMember[] {
   const candidates = othersOnly([...members], viewerId).filter(
-    (member) => !member.isAdmin && !talkedTo.has(member.id),
+    (member) => member.type === 'mentor' && !member.isAdmin && !talkedTo.has(member.id),
   );
   const viewer = members.find((member) => member.id === viewerId) ?? null;
   const ranked = viewer
@@ -158,9 +162,9 @@ export interface FeedSources {
 /**
  * The mix for Everything.
  *
- * Topics and photographs together, newest activity first, because they are
- * what members wrote. After every second one, one extra: an event, then a
- * person, then an event, alternating until both run out, at most four events
+ * Topics and photographs together, in the reader's order, because they are
+ * what members wrote. After the fourth, then every second one, one extra: an
+ * event, then a person, then an event, alternating until both run out, at most four events
  * and three people. Extras left when the topics run out go at the end, so a
  * quiet week still lists what is on and who to meet. With no topics at all
  * the list is the extras alone.
@@ -179,7 +183,7 @@ export function buildFeed({ topics, events, people }: FeedSources): FeedItem[] {
   const feed: FeedItem[] = [];
   topics.forEach((topic, index) => {
     feed.push(topicItem(topic));
-    if (index % 2 === 1) {
+    if (index >= FIRST_EXTRA_AFTER - 1 && (index - FIRST_EXTRA_AFTER + 1) % 2 === 0) {
       const extra = nextExtra();
       if (extra) feed.push(extra);
     }

@@ -1,0 +1,3 @@
+-- Undo for 20261118195000_a_boost_lifts_a_post_but_is_not_in_its_score.sql:
+-- run 20261118190000's private.chat_post_score again, which puts the boost
+-- back in the score.

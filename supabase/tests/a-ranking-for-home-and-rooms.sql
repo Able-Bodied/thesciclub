@@ -1,9 +1,10 @@
 -- ============================================================================
 -- One ranking for Home and a room's Top, Home's replies, a capped boost, and
--- the administrators told at -3 (20261118190000)
+-- the administrators told at -3 (20261118190000, 20261118195000)
 -- ============================================================================
--- Boost: Adm boosts Old twice, still 10; a 20-day-old boost on Seen counts 0;
--- taking Old's back leaves 0.
+-- Boost: Adm boosts Old twice, still 10, and Old's score stays 0 since a
+-- boost is not in a score (20261118195000); a 20-day-old boost on Seen counts
+-- 0; taking Old's back leaves 0.
 -- Ann's room, best first:
 --   Quiet  Cal's first topic, 4 days old, no reply: 2 days at most, +14 +5
 --   Down   unseen, an hour, voted -2: the votes count 0, not less, +14
@@ -18,7 +19,7 @@
 -- Three downvotes on Old's opening post: one report, no reporter, raised by
 -- votes, and a fourth does not make another. Adm reads it as raised_by_votes.
 -- Run against the test project on 2026-11-18:
---   "boost: 10 10 0 0; order: Quiet,Down,Moved,Old,Glance,Mine,Seen;
+--   "boost: 10 10 0 0 0; order: Quiet,Down,Moved,Old,Glance,Mine,Seen;
 --    moved: top,unread; old: latest,reply; reports: 1 true true"
 --
 --   node --env-file=.env.local <runner> supabase/tests/a-ranking-for-home-and-rooms.sql
@@ -116,6 +117,7 @@ begin
 
   perform set_config('request.jwt.claims', json_build_object('sub', adm, 'role', 'authenticated')::text, true);
   boost := public.admin_boost_post(p_old) || ' ' || public.admin_boost_post(p_old) || ' '
+        || (select s.score from public.chat_post_scores(array[p_old]) s) || ' '
         || (select s.boost from public.chat_post_scores(array[p_seen]) s) || ' '
         || public.admin_boost_post(p_old, false);
 

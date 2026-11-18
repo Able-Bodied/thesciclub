@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatRoom } from '@/lib/chat/types';
 import { appFeedbackRoom, FeedbackCard } from '@/routes/home/feedback-card';
 
@@ -42,6 +42,43 @@ describe('the feedback card on Home', () => {
     unmount();
     renderCard();
     expect(screen.queryByRole('link', { name: 'Send feedback' })).toBeNull();
+  });
+
+  // The owner, 2026-11-18: seen once today, gone until tomorrow.
+  it('stays while seen, then is gone from the next visit until tomorrow', () => {
+    let onScreen: (entries: { isIntersecting: boolean }[]) => void = () => undefined;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: typeof onScreen) {
+          onScreen = callback;
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+      },
+    );
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      vi.setSystemTime(new Date(2026, 10, 18, 23, 0));
+      const first = renderCard();
+      act(() => {
+        onScreen([{ isIntersecting: true }]);
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.getByRole('link', { name: 'Send feedback' })).toBeVisible();
+      first.unmount();
+
+      const later = renderCard();
+      expect(screen.queryByRole('link', { name: 'Send feedback' })).toBeNull();
+      later.unmount();
+
+      vi.setSystemTime(new Date(2026, 10, 19, 0, 30));
+      renderCard();
+      expect(screen.getByRole('link', { name: 'Send feedback' })).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('is not drawn while there is no open App Feedback room', () => {

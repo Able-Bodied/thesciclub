@@ -1,5 +1,5 @@
 import { MessageSquareHeart } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { ChatRoom } from '@/lib/chat/types';
 
@@ -34,9 +34,62 @@ function hideForAWhile(): void {
   }
 }
 
+const SEEN_KEY = 'sciclub.feedbackCardSeenOn';
+
+/** The member's own calendar day, as YYYY-MM-DD. */
+function today(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+/** On screen at an earlier visit today (the owner, 2026-11-18: once a day is enough). */
+function seenEarlierToday(): boolean {
+  try {
+    return window.localStorage.getItem(SEEN_KEY) === today();
+  } catch {
+    return false;
+  }
+}
+
 /**
- * A card below the first item in Home's feed: tell us what you think. Not now
- * hides it on this device for a month; Me keeps Send app feedback for always.
+ * Half the card on screen for a second counts as seen, as a post on Home does
+ * (lib/chat/home-views.ts). It stays until Home is left, and is gone from then
+ * until tomorrow.
+ */
+function useSeenToday(shown: boolean) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!shown || !element || typeof IntersectionObserver === 'undefined') return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        clearTimeout(timer);
+        if (!entry?.isIntersecting) return;
+        timer = setTimeout(() => {
+          try {
+            window.localStorage.setItem(SEEN_KEY, today());
+          } catch {
+            // Shown again next visit, which is the harmless way to fail.
+          }
+          observer.disconnect();
+        }, 1000);
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(element);
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [shown]);
+  return ref;
+}
+
+/**
+ * A card below the first item in Home's feed: tell us what you think. Once a
+ * day: seen, it is gone until tomorrow. Not now hides it on this device for a
+ * month; Me keeps Send app feedback for always.
  */
 export function FeedbackCard({
   rooms,
@@ -48,14 +101,16 @@ export function FeedbackCard({
   linkState: unknown;
   className?: string;
 }) {
-  const [hidden, setHidden] = useState(hiddenNow);
+  const [hidden, setHidden] = useState(() => hiddenNow() || seenEarlierToday());
   const room = appFeedbackRoom(rooms);
+  const seenRef = useSeenToday(!hidden && room !== null);
   if (hidden || !room) return null;
 
   return (
     // An item of the feed's list, drawn only when there is something to show.
     <li className={className}>
       <section
+        ref={seenRef}
         aria-labelledby="home-feedback-title"
         className="rounded-[17px] border border-line bg-tint p-3.5"
       >
