@@ -25,13 +25,16 @@
 -- administrator.
 --
 -- chat_topics_ranked(room, max_rows, skip): a room's topics best first, a
--- page at a time. Reddit's "hot" order, on the topic's last activity rather
--- than its start, since a reply brings a conversation back today:
---   sign(score) * log10(max(|score|, 1)) + epoch(last_post_at) / 45000
--- so each tenfold in score counts as 12.5 hours newer, and a topic the reader
--- has never opened (not theirs, not read, its opening post not seen on Home)
--- another 12.5 hours. A topic's score is its opening post's. Everything a new
--- member sees is unseen alike, so for them it is score and time alone.
+-- page at a time, counted in days since the club moves in days, not hours:
+--   days since the topic's last activity, less its score, less 7 if unseen
+-- so each point of score is a day newer (an administrator's +10 ten days),
+-- and a topic the reader has never opened (not theirs, not read, its opening
+-- post not seen on Home) a week newer. Reddit's "hot" order counts a tenfold in
+-- score as 12.5 hours; tried on the test site, a +20 boost could not lift a
+-- topic over one a week newer, so it is not used. Last activity, not start,
+-- since a reply brings a conversation back today. A topic's score is its
+-- opening post's. Everything a new member sees is unseen alike, so for them it
+-- is score and time alone.
 -- chat_topics_page is unchanged, for store apps that still call it.
 --
 -- Probe: votes-and-boosts.sql. Undo: supabase/undo/20261118180000.sql.
@@ -247,9 +250,9 @@ as $$
   ),
   page as materialized (
     select s.*,
-      sign(s.score) * log(greatest(abs(s.score), 1)::numeric)
-        + extract(epoch from s.last_post_at) / 45000
-        + case when s.unseen then 1 else 0 end as rank
+      extract(epoch from s.last_post_at) / 86400
+        + s.score
+        + case when s.unseen then 7 else 0 end as rank
     from scored s
     order by rank desc, s.last_post_at desc, s.id desc
     offset greatest(coalesce(skip, 0), 0)
