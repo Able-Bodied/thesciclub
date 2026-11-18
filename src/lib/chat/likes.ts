@@ -489,7 +489,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
             });
             return next;
           });
-          announce(more ? 'Boosted by 10 for 14 days.' : 'Boost taken back.');
+          announce(more ? 'Boosted by 10 for 14 days.' : 'Boost removed.');
         })
         .catch((e: unknown) => {
           pending.current.delete(postId);
