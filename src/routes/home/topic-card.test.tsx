@@ -7,6 +7,10 @@ import type { ChatAuthor } from '@/lib/chat/types';
 import { TopicCard } from '@/routes/home/topic-card';
 import { makeHomeTopic, makePost, makeRoom } from '@/test/factory';
 
+vi.mock('@/lib/organizations', () => ({
+  useOrganizations: () => ({ organizations: [{ id: 'o1', name: 'NorCal SCI' }] }),
+}));
+
 const sent = vi.hoisted(() => ({ calls: [] as unknown[][], failure: null as string | null }));
 vi.mock('@/lib/chat/topics', async (importOriginal) => ({
   ...(await importOriginal<typeof Topics>()),
@@ -243,6 +247,20 @@ describe('a question', () => {
     expect(link).toHaveClass('bg-gradient-to-br');
     await user.click(link);
     expect(screen.getByText(/at \/chat\/rooms\/bowel\/topics\/q1/)).toBeInTheDocument();
+  });
+
+  // The owner, 2026-11-17: an @mention on Home opened only the question.
+  it('lets an @Organization in a question open its page, and the card the question', async () => {
+    const user = userEvent.setup();
+    renderCard({
+      topic: makeHomeTopic({ id: 'q2', title: 'Going to @NorCal SCI tonight?', isQuestion: true }),
+    });
+    expect(screen.getByRole('link', { name: 'Open the question' })).toHaveAttribute(
+      'href',
+      '/chat/rooms/bowel/topics/q2',
+    );
+    await user.click(screen.getByRole('link', { name: '@NorCal SCI' }));
+    expect(screen.getByText(/at \/events\/organizations\/o1/)).toBeInTheDocument();
   });
 
   it('leaves an ordinary topic as a plain title', () => {
