@@ -10,7 +10,7 @@ import { makeRoom } from '@/test/factory';
 function renderSheet(overrides: Partial<HomeFilterSheetProps> = {}) {
   const props: HomeFilterSheetProps = {
     segments: [
-      ['everything', 'Everything'],
+      ['everything', 'All'],
       ['events', 'Events'],
     ],
     segment: 'everything',
@@ -64,7 +64,10 @@ describe('HomeFilterSheet', () => {
   });
 
   it('marks a chip that is on as pressed', () => {
-    renderSheet({ filters: { rooms: ['sport'], withinMiles: 50 }, activeCount: 2 });
+    renderSheet({
+      filters: { ...EMPTY_FEED_FILTERS, rooms: ['sport'], withinMiles: 50 },
+      activeCount: 2,
+    });
     expect(screen.getByRole('button', { name: 'Adaptive sport' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -78,9 +81,31 @@ describe('HomeFilterSheet', () => {
 
   it('hands back the filters with a room toggled', async () => {
     const user = userEvent.setup();
-    const { onChange } = renderSheet({ filters: { rooms: ['bowel'], withinMiles: 50 } });
+    const { onChange } = renderSheet({
+      filters: { ...EMPTY_FEED_FILTERS, rooms: ['bowel'], withinMiles: 50 },
+    });
     await user.click(screen.getByRole('button', { name: 'Adaptive sport' }));
-    expect(onChange).toHaveBeenLastCalledWith({ rooms: ['bowel', 'sport'], withinMiles: 50 });
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...EMPTY_FEED_FILTERS,
+      rooms: ['bowel', 'sport'],
+      withinMiles: 50,
+    });
+  });
+
+  // The owner, 2026-11-18: Show is whose posts, with a sort beside it; the
+  // kinds it used to list are Type.
+  it('offers whose posts under Show, an order under Sort by, and the kinds under Type', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderSheet();
+    expect(
+      group('Show')
+        .getAllByRole('button')
+        .map((chip) => chip.textContent),
+    ).toEqual(['Everything', 'My posts', 'My replies', 'From my orgs']);
+    await user.click(screen.getByRole('button', { name: 'My replies' }));
+    expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_FEED_FILTERS, show: 'replied' });
+    await user.click(screen.getByRole('button', { name: 'Most recent replies' }));
+    expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_FEED_FILTERS, sort: 'replies' });
   });
 
   it('asks how far, for events and peers alone', () => {
@@ -104,9 +129,9 @@ describe('HomeFilterSheet', () => {
     expect(screen.queryByRole('heading', { name: 'Rooms' })).not.toBeInTheDocument();
   });
 
-  it('chooses what Home shows', async () => {
+  it('chooses the kind Home shows, under Type', async () => {
     const props = renderSheet();
-    expect(screen.getByRole('button', { name: 'Everything' })).toHaveAttribute(
+    expect(group('Type').getByRole('button', { name: 'All' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

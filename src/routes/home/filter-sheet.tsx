@@ -3,13 +3,16 @@ import type { ChatRoom } from '@/lib/chat/types';
 import type { HomeSegment } from '@/lib/home/types';
 import type { NearHomeStatus } from '@/lib/near-home';
 import { DistanceFilter } from '@/routes/events/distance-filter';
-import { type FeedFilters, toggleRoom } from '@/routes/home/filters';
+import { type FeedFilters, SHOW_CHIPS, SORT_CHIPS, toggleRoom } from '@/routes/home/filters';
 
 /**
  * "Filter your feed": what Home shows, and that list narrowed by room and by
  * place. What it shows was a row of pills, moved here for the room (the owner,
  * 2026-11-01).
  *
+ * Show is whose posts (the owner, 2026-11-18: "everything, my posts, my
+ * replies, from my orgs"); the kinds it listed until then are Type, kept
+ * beside it at the owner's word; Sort by is the posts' order. One of each.
  */
 
 export interface HomeFilterSheetProps {
@@ -53,6 +56,19 @@ export function HomeFilterSheet({
       applyLabel={`Show ${matchCount}`}
     >
       <FilterGroup title="Show">
+        {SHOW_CHIPS.map(([id, label]) => (
+          <FilterChip
+            key={id}
+            label={label}
+            on={filters.show === id}
+            onClick={() => {
+              onChange({ ...filters, show: id });
+            }}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="Type">
         {segments.map(([id, label]) => (
           <FilterChip
             key={id}
@@ -60,6 +76,19 @@ export function HomeFilterSheet({
             on={segment === id}
             onClick={() => {
               onSegment(id);
+            }}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="Sort by">
+        {SORT_CHIPS.map(([id, label]) => (
+          <FilterChip
+            key={id}
+            label={label}
+            on={filters.sort === id}
+            onClick={() => {
+              onChange({ ...filters, sort: id });
             }}
           />
         ))}

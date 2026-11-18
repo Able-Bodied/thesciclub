@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AUTHOR_COLUMNS, type ChatAuthorRow, rememberChatAuthors } from '@/lib/chat/authors';
 import { POST_COLUMNS, type PostRow, toPost } from '@/lib/chat/topics';
 import type { ChatPost, ChatRoom } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
-import type { HomeReply, HomeReplyRef, HomeTopic, HomeTopicSummary } from '@/lib/home/types';
+import {
+  DEFAULT_HOME_VIEW,
+  type HomeReply,
+  type HomeReplyRef,
+  type HomeTopic,
+  type HomeTopicSummary,
+  type HomeView,
+} from '@/lib/home/types';
 import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
@@ -52,7 +59,10 @@ interface TopicRow {
 
 function toSummary(row: TopicRow, ranked?: RankedRow, order?: number): HomeTopicSummary {
   return {
-    ...(ranked && order !== undefined ? { order, previewIds: ranked.previews } : {}),
+    // An order without the replies to quote is a chosen Show or Sort
+    // (`home_topics_shown`): the card quotes the first reply, as before the ranking.
+    ...(order !== undefined ? { order } : {}),
+    ...(ranked ? { previewIds: ranked.previews } : {}),
     id: row.id,
     roomId: row.room_id,
     title: row.title,
@@ -140,7 +150,8 @@ export function toHomeTopics(
         },
       ];
     });
-  return topics.some((topic) => topic.order !== undefined) ? spreadRuns(cards) : cards;
+  // Spread only the default order: a chosen one is shown as asked for.
+  return topics.some((topic) => topic.previewIds !== undefined) ? spreadRuns(cards) : cards;
 }
 
 /**
@@ -194,6 +205,26 @@ async function readRanked(signal: AbortSignal): Promise<RankedRow[] | null> {
   }
 }
 
+/**
+ * Which posts, in order, for a Show or Sort other than the default, or null on any failure:
+ * the read after it then says so.
+ */
+async function readShown(view: HomeView, signal: AbortSignal): Promise<string[] | null> {
+  try {
+    const { data, error } = (await getSupabase()
+      .rpc('home_topics_shown', {
+        p_show: view.show,
+        p_sort: view.sort,
+        max_rows: HOME_TOPIC_LIMIT,
+      })
+      .abortSignal(signal)) as Result<{ topic_id: string; ord: number }[]>;
+    if (error || !Array.isArray(data)) return null;
+    return [...data].sort((a, b) => a.ord - b.ord).map((row) => row.topic_id);
+  } catch {
+    return null;
+  }
+}
+
 export interface HomeTopicsState {
   topics: HomeTopicSummary[];
   /** The posts each card needs, a removed opener included. See the header. */
@@ -208,7 +239,7 @@ const ATTEMPT = 'Could not load the posts.';
  * Read once, on arrival. Home does not subscribe to changes; the page's header
  * says why.
  */
-export function useHomeTopics(): HomeTopicsState {
+export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsState {
   const [state, setState] = useState<HomeTopicsState>({
     topics: [],
     posts: [],
@@ -216,13 +247,21 @@ export function useHomeTopics(): HomeTopicsState {
     error: null,
   });
   const kept = useKeptRead();
+  const { show, sort } = view;
+  /** The choice the state now holds. */
+  const held = useRef<string | null>(null);
 
   useEffect(() => {
     // Shown again within the minute, nothing changed (lib/kept-reads.ts).
-    if (kept.fresh('home')) return;
+    const key = `home:${show}:${sort}`;
+    // Unless what is held is another choice's: a choice gone back to is read again.
+    if (kept.fresh(key) && held.current === key) return;
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
-    const landed = kept.start('home');
+    const landed = kept.start(key);
+    const chosen = show !== 'all' || sort !== 'ranking';
+    // Another choice: the last one's cards go while its own are read.
+    setState((before) => (before.loading ? before : { ...before, loading: true }));
     const fail = (error: string) => {
       setState({ topics: [], posts: [], loading: false, error });
     };
@@ -230,8 +269,13 @@ export function useHomeTopics(): HomeTopicsState {
     async function load() {
       try {
         const supabase = getSupabase();
-        const ranked = await readRanked(controller.signal);
+        const ranked = chosen ? null : await readRanked(controller.signal);
+        const shown = chosen ? await readShown({ show, sort }, controller.signal) : null;
         if (aborted()) return;
+        if (chosen && shown === null) {
+          fail(ATTEMPT);
+          return;
+        }
         const select = supabase
           .from('chat_topics')
           .select(
@@ -254,9 +298,13 @@ export function useHomeTopics(): HomeTopicsState {
             )
               .in('replies.id', replyIds.length > 0 ? replyIds : [NO_ID])
               .abortSignal(controller.signal)
-          : opening(select.order('last_post_at', { ascending: false }).limit(HOME_TOPIC_LIMIT))
-              .limit(2, { referencedTable: 'replies' })
-              .abortSignal(controller.signal))) as Result<TopicRow[]>;
+          : shown
+            ? opening(select.in('id', shown.length > 0 ? shown : [NO_ID]))
+                .limit(2, { referencedTable: 'replies' })
+                .abortSignal(controller.signal)
+            : opening(select.order('last_post_at', { ascending: false }).limit(HOME_TOPIC_LIMIT))
+                .limit(2, { referencedTable: 'replies' })
+                .abortSignal(controller.signal))) as Result<TopicRow[]>;
         if (aborted()) return;
         if (topicRows.error) {
           fail(describeError(topicRows.error, ATTEMPT));
@@ -264,9 +312,10 @@ export function useHomeTopics(): HomeTopicsState {
         }
         const rows = topicRows.data ?? [];
         const rankOf = new Map(ranked?.map((row, order) => [row.topic_id, { row, order }]));
+        const shownAt = new Map(shown?.map((id, order) => [id, order]));
         const topics = rows.map((row) => {
           const at = rankOf.get(row.id);
-          return toSummary(row, at?.row, at?.order);
+          return toSummary(row, at?.row, at?.order ?? shownAt.get(row.id));
         });
         // The opener can be in both lists; once each.
         const byId = new Map<string, ChatPost>();
@@ -283,6 +332,7 @@ export function useHomeTopics(): HomeTopicsState {
             .filter((author): author is ChatAuthorRow => Boolean(author)),
         );
         setState({ topics, posts, loading: false, error: null });
+        held.current = key;
         landed();
       } catch (e) {
         if (aborted()) return;
@@ -294,7 +344,7 @@ export function useHomeTopics(): HomeTopicsState {
     return () => {
       controller.abort();
     };
-  }, [kept]);
+  }, [kept, show, sort]);
 
   return state;
 }

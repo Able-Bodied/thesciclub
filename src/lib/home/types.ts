@@ -30,6 +30,24 @@ export const HOME_SEGMENTS = [
 export type HomeSegment = (typeof HOME_SEGMENTS)[number];
 
 /**
+ * Whose posts Home shows, and in what order (the owner, 2026-11-18: "under
+ * show, I think we should have everything, my posts, my replies, from my
+ * orgs", and "sort by default ranking, most recent replies, most recent
+ * post"). `home_topics_shown` (20261118230000) reads each.
+ */
+export const HOME_SHOWS = ['all', 'mine', 'replied', 'orgs'] as const;
+export type HomeShow = (typeof HOME_SHOWS)[number];
+export const HOME_SORTS = ['ranking', 'replies', 'newest'] as const;
+export type HomeSort = (typeof HOME_SORTS)[number];
+
+export interface HomeView {
+  show: HomeShow;
+  sort: HomeSort;
+}
+
+export const DEFAULT_HOME_VIEW: HomeView = { show: 'all', sort: 'ranking' };
+
+/**
  * A topic as Home reads it, straight from `chat_topics`.
  *
  * No unread flag or view count on this row. Home reads each opening post's
