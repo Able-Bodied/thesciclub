@@ -107,6 +107,7 @@ export function Composer({
   mentions = false,
   mentionScope = {},
   draftKey,
+  onTyping,
 }: {
   placeholder: string;
   /** What the send button says to a screen reader. */
@@ -124,6 +125,11 @@ export function Composer({
   mentionScope?: MentionScope;
   /** Keeps the unsent words on this device under this name (lib/chat/drafts.ts). */
   draftKey?: string | undefined;
+  /**
+   * Told at each change the member makes to a new message, whether it has
+   * words: the dots the others see (lib/chat/typing.ts). Not while editing.
+   */
+  onTyping?: ((hasWords: boolean) => void) | undefined;
 }) {
   const announce = useAnnounce();
   const [draft, setDraft] = useState(() => (draftKey ? readDraft(draftKey) : ''));
@@ -209,6 +215,7 @@ export function Composer({
     onChange: (next) => {
       draftVersion.current += 1;
       setDraft(next);
+      if (!editing) onTyping?.(next.trim() !== '');
       requestAnimationFrame(resize);
     },
     above: true,
@@ -272,6 +279,7 @@ export function Composer({
       return;
     }
     const submittedVersion = draftVersion.current;
+    onTyping?.(false);
     setSending(true);
     setFailure(null);
     void onSend(body, files)
@@ -310,6 +318,7 @@ export function Composer({
       onChange={(event) => {
         draftVersion.current += 1;
         setDraft(event.target.value);
+        if (!editing) onTyping?.(event.target.value.trim() !== '');
         resize();
       }}
       onKeyDown={(event) => {
