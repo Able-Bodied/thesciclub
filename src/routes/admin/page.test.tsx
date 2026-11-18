@@ -1277,12 +1277,13 @@ describe('the invite list', () => {
     expect(await screen.findByText(/on its way to Dana@Example.com/)).toBeInTheDocument();
   });
 
-  it('sends the note and the name when they are given', async () => {
+  it('sends the note, the name and the email note when they are given', async () => {
     await openInvites();
     await screen.findByText((_, el) => el?.tagName === 'P' && el.textContent === 'For NorCal SCI');
     await userEvent.type(screen.getByLabelText('Email address'), 'dana@example.com');
     await userEvent.type(screen.getByLabelText(/Their name/), 'Dana Lee');
-    await userEvent.type(screen.getByLabelText(/Note/), 'Met at rugby');
+    await userEvent.type(screen.getByLabelText('Note (optional)'), 'Met at rugby');
+    await userEvent.type(screen.getByLabelText(/Note in the email/), 'See you Saturday');
     await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
     await waitFor(() => {
       expect(api.created).toEqual([
@@ -1291,6 +1292,7 @@ describe('the invite list', () => {
           organizationId: 'org1',
           note: 'Met at rugby',
           name: 'Dana Lee',
+          message: 'See you Saturday',
         },
       ]);
     });
