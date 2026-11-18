@@ -1,0 +1,3 @@
+-- Undo for 20261118220000_one_order_for_every_member.sql: run
+-- 20261118190000's private.chat_topic_rank and 20261118210000's
+-- public.home_topics_ranked again, which bring back the ranking for each member.

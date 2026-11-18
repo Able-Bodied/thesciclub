@@ -1,26 +1,28 @@
 -- ============================================================================
--- One ranking for Home and a room's Top, Home's replies, a capped boost, and
--- the administrators told at -3 (20261118190000, 20261118195000)
+-- One order for Home and a room's Top, Home's replies, a capped boost, and
+-- the administrators told at -3 (20261118190000, 20261118195000,
+-- 20261118220000)
 -- ============================================================================
 -- Boost: Adm boosts Old twice, still 10, and Old's score stays 0 since a
 -- boost is not in a score (20261118195000); a 20-day-old boost on Seen counts
 -- 0; taking Old's back leaves 0.
--- Ann's room, best first:
---   Quiet  Cal's first topic, 4 days old, no reply: 2 days at most, +14 +5
---   Down   unseen, an hour, voted -2: the votes count 0, not less, +14
---   Moved  Ann read it, then Bob replied; Ann posted in it: +12
---   Old    unseen, 5 days: +14
---   Glance seen on Home, not opened, an hour: +7
---   Mine   Ann's own, 10 minutes: no bonus
---   Seen   read, an hour: no bonus
--- Home, Moved's replies for Ann: top is Bob's reply with 2 votes, then the
--- first she has not read (Dan's); Cal's at -1 never. Old's, with no votes:
--- the newest, then the other.
+-- The room, best first, the same for Ann and for Cal whatever each has read
+-- or seen (20261118220000): last activity, 2 hours newer a vote.
+--   Moved  3 hours, 2 votes: an hour ahead
+--   Mine   Ann's, 10 minutes
+--   Down   1 hour, voted -2: the votes count 0, not less
+--   Glance 90 minutes, seen by Ann on Home: nothing for it
+--   Seen   2 hours, read by Ann: nothing for it
+--   Quiet  4 days
+--   Old    5 days
+-- Home, Moved's replies: top is Bob's reply with 2 votes, then the latest
+-- (Bob's newest), not the first Ann has not read; Cal's at -1 never. Old's,
+-- with no votes: the newest, then the other.
 -- Three downvotes on Old's opening post: one report, no reporter, raised by
 -- votes, and a fourth does not make another. Adm reads it as raised_by_votes.
 -- Run against the test project on 2026-11-18:
---   "boost: 10 10 0 0 0; order: Quiet,Down,Moved,Old,Glance,Mine,Seen;
---    moved: top,unread; old: latest,reply; reports: 1 true true"
+--   "boost: 10 10 0 0 0; order: Moved,Mine,Down,Glance,Seen,Quiet,Old, cal same;
+--    moved: top,latest; old: latest,reply; reports: 1 true true"
 --
 --   node --env-file=.env.local <runner> supabase/tests/a-ranking-for-home-and-rooms.sql
 --
@@ -100,15 +102,16 @@ begin
   update public.chat_topics set last_post_at = now() - case id
       when t_quiet then interval '4 days' when t_down then interval '1 hour'
       when t_moved then interval '3 hours' when t_old then interval '5 days'
-      when t_glance then interval '1 hour' when t_mine then interval '10 minutes'
-      else interval '1 hour' end
+      when t_glance then interval '90 minutes' when t_mine then interval '10 minutes'
+      else interval '2 hours' end
    where room_id = 'probe-1119-rank';
   insert into public.chat_topic_reads (topic_id, member_id, last_read_at) values
     (t_seen, ann, now()), (t_moved, ann, now() - interval '50 hours');
   insert into public.chat_post_views (post_id, member_id) values (p_glance, ann);
   insert into public.chat_post_downvotes (post_id, member_id) values
     (p_down, cal), (p_down, dan), (r_neg, dan);
-  insert into public.chat_post_likes (post_id, member_id) values (r_top, cal), (r_top, dan);
+  insert into public.chat_post_likes (post_id, member_id) values
+    (r_top, cal), (r_top, dan), (p_moved, cal), (p_moved, dan);
   -- A boost long over.
   insert into public.chat_post_boosts (post_id, admin_id, boosted_at)
     values (p_seen, adm, now() - interval '20 days');
@@ -123,13 +126,17 @@ begin
 
   perform set_config('request.jwt.claims', json_build_object('sub', ann, 'role', 'authenticated')::text, true);
   select string_agg(r.title, ',') into ord from public.chat_topics_ranked('probe-1119-rank') r;
+  perform set_config('request.jwt.claims', json_build_object('sub', cal, 'role', 'authenticated')::text, true);
+  ord := ord || ', cal ' || case when ord = (select string_agg(r.title, ',')
+    from public.chat_topics_ranked('probe-1119-rank') r) then 'same' else 'differs' end;
+  perform set_config('request.jwt.claims', json_build_object('sub', ann, 'role', 'authenticated')::text, true);
   select string_agg(x->>'kind', ',') into moved
     from public.home_topics_ranked(100) h, jsonb_array_elements(h.previews) x
-   where h.topic_id = t_moved and (x->>'id')::uuid in (r_top, r_dan);
+   where h.topic_id = t_moved and (x->>'id')::uuid in (r_top, r_new);
   select string_agg(x->>'kind' || ':' || (x->>'id'), ',') into old
     from public.home_topics_ranked(100) h, jsonb_array_elements(h.previews) x
    where h.topic_id = t_moved;
-  if old <> 'top:' || r_top || ',unread:' || r_dan then
+  if old <> 'top:' || r_top || ',latest:' || r_new then
     raise exception 'RESULT moved previews wrong: %', old;
   end if;
   select string_agg(x->>'kind', ',') into old
