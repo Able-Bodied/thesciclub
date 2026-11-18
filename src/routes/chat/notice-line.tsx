@@ -2,6 +2,7 @@ import { useAttachmentUrls } from '@/lib/chat/attachments';
 import { noticeText } from '@/lib/chat/threads';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatMessage, ChatNotice } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { ReportControl } from '@/routes/chat/report-control';
 
 /**
@@ -47,6 +48,7 @@ export function NoticeLine({
   reported: boolean;
   onReport: () => void;
 }) {
+  useMinute();
   const urls = useAttachmentUrls(
     notice === 'pictured' && message.removedAt === null ? message.attachments : [],
   );

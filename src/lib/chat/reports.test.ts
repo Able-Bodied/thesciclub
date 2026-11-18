@@ -70,7 +70,7 @@ describe('reportPreamble', () => {
     // would be true and misleading at once.
     expect(reportPreamble('message')).toContain('Nothing else in this conversation does.');
     expect(reportPreamble('post')).not.toContain('Nothing else');
-    expect(reportPreamble('post')).toContain('open the topic it is in');
+    expect(reportPreamble('post')).toContain('open where it was written');
   });
 });
 

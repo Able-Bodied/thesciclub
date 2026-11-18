@@ -5,6 +5,7 @@ import { useSmallCopies } from '@/lib/chat/attachments';
 import { formatPrice } from '@/lib/chat/listing-prices';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatTopic } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -66,6 +67,7 @@ export function ListingGrid({
   /** For sale: a listing with no price says so, rather than nothing. */
   priced?: boolean;
 }) {
+  useMinute();
   const postIds = topics
     .map((topic) => openingPosts.get(topic.id))
     .filter((id): id is string => Boolean(id));

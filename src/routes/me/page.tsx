@@ -363,7 +363,7 @@ export default function MePage() {
                   <ProfileLink
                     to="/me/saved"
                     title="Saved"
-                    description="Topics and posts you saved. Only you can see them."
+                    description="Posts and replies you saved. Only you can see them."
                   />
                   {userId ? (
                     <ProfileLink

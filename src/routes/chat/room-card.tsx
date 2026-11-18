@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
+import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 
 /**
  * One discussion room, in the list: the mock's `card cat`. The category colour is never the only
  * cue: every card sits under a label saying the word.
  *
- * Stats are "N topics · N posts", no members (nobody joins a room since 20260930000000), and left
- * off when there are no topics: two zeros read as a failed room.
+ * Stats are its questions, posts, replies and views, then when it was last active (the owner,
+ * 2026-11-18); no members (nobody joins a room since 20260930000000), and left off when nothing
+ * has been posted: a row of zeros reads as a failed room.
  *
  * The Closed chip is for administrators only: the select policy hides closed rooms from members,
  * but administrators see all twelve and need to tell which members can see.
@@ -55,6 +58,7 @@ export function RoomCard({
   starter?: ChatAuthor | null;
   stats: RoomStats | undefined;
 }) {
+  useMinute();
   const style = CATEGORY_STYLE[room.category];
   const closed = room.openedAt === null;
   return (
@@ -87,13 +91,19 @@ export function RoomCard({
           {room.description}
         </span>
         {stats && stats.topicCount > 0 ? (
-          <span className="mt-1.5 block font-semibold text-[0.75rem] text-emphasis leading-[1.45]">
-            {stats.topicCount} {stats.topicCount === 1 ? 'topic' : 'topics'} · {stats.postCount}{' '}
-            {stats.postCount === 1 ? 'post' : 'posts'}
-          </span>
+          <>
+            <span className="mt-1.5 block font-semibold text-[0.75rem] text-emphasis leading-[1.45]">
+              {roomCounts(stats)}
+            </span>
+            {stats.lastActivityAt ? (
+              <span className="block text-[0.75rem] text-grey leading-[1.45]">
+                {lastActivity(stats.lastActivityAt)}
+              </span>
+            ) : null}
+          </>
         ) : (
           <span className="mt-1.5 block text-[0.75rem] text-grey leading-[1.45]">
-            Nothing has been asked here yet.
+            Nothing has been posted here yet.
           </span>
         )}
 
@@ -114,6 +124,29 @@ export function RoomCard({
       </span>
     </Link>
   );
+}
+
+function counted(count: number, one: string, many: string): string {
+  return `${count.toLocaleString('en-US')} ${count === 1 ? one : many}`;
+}
+
+/**
+ * "12 posts (3 questions) · 41 replies · 212 views" (the owner, 2026-11-18:
+ * "Each question is a post"). The questions are inside the posts, and the
+ * brackets say so: side by side, "3 questions · 12 posts" read as fifteen
+ * things (screenshot review, 2026-11-18).
+ */
+export function roomCounts(stats: RoomStats): string {
+  return [
+    `${counted(stats.topicCount, 'post', 'posts')} (${counted(stats.questionCount, 'question', 'questions')})`,
+    counted(stats.replyCount, 'reply', 'replies'),
+    counted(stats.viewCount, 'view', 'views'),
+  ].join(' · ');
+}
+
+/** "Last activity 3 hours ago", "Last activity Sep 12". */
+export function lastActivity(iso: string, now: Date = new Date()): string {
+  return `Last activity ${chatTime(iso, now)}`;
 }
 
 /**

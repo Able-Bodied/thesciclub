@@ -6,6 +6,7 @@ import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/membe
 import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import type { HomeTopic } from '@/lib/home/types';
 import { markdownToPlain } from '@/lib/markdown';
 import { splitMentions } from '@/lib/mentions';
@@ -45,6 +46,7 @@ export function PhotoCard({
   viewCount?: number | null | undefined;
   reactions?: ReactNode;
 }) {
+  useMinute();
   const navigate = useNavigate();
   const opening = topic.opening;
   const to = `/chat/rooms/${topic.roomId}/topics/${topic.id}`;

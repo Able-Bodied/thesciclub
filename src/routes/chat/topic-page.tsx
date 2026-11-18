@@ -23,7 +23,7 @@ import { useReactions } from '@/lib/chat/reactions';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { saveKey, useTopicSaves } from '@/lib/chat/saves';
-import { chatTimeLong } from '@/lib/chat/time';
+import { chatTimeLong, chatTimeOn } from '@/lib/chat/time';
 import {
   deleteMyTopic,
   deleteTopic,
@@ -39,6 +39,7 @@ import {
   useTopicRealtime,
 } from '@/lib/chat/topics';
 import type { ChatPost } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { usePostViews } from '@/lib/chat/views';
 import { describeThrown } from '@/lib/describe-error';
 import { useHoldScroll } from '@/lib/hold-scroll';
@@ -80,6 +81,7 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
  * member's: they have already left, the furthest a report could go.
  */
 export default function TopicPage() {
+  useMinute();
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
@@ -217,8 +219,8 @@ export default function TopicPage() {
     if (
       !window.confirm(
         mine
-          ? 'Delete your topic? Nobody has answered yet, so the whole topic goes. This cannot be undone.'
-          : 'Delete this topic and every reply in it? This cannot be undone. Reports on its posts keep their own copy.',
+          ? 'Delete your post? Nobody has replied yet, so the whole post goes. This cannot be undone.'
+          : 'Delete this post and every reply under it? This cannot be undone. Reports keep their own copy.',
       )
     ) {
       return;
@@ -236,7 +238,7 @@ export default function TopicPage() {
         void navigate(room ? `/chat/rooms/${room.id}` : '/chat', { replace: true });
       })
       .catch((e: unknown) => {
-        setDeleteFailure(describeThrown(e, 'The topic was not deleted.'));
+        setDeleteFailure(describeThrown(e, 'The post was not deleted.'));
         setDeleting(false);
       });
   }
@@ -325,7 +327,7 @@ export default function TopicPage() {
         <div className="mx-auto w-full max-w-[720px]">
           <BackLink to={back.to} label={back.label} />
           <p className="mt-6 text-[0.875rem] text-ink2 leading-relaxed">
-            This topic cannot be shown.
+            This post cannot be shown.
           </p>
           {error ? (
             <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
@@ -400,7 +402,7 @@ export default function TopicPage() {
     canRemove: account.isAdmin || (post.authorId === account.userId && !answered(post)),
     // The opening post of the reader's own topic nobody else has posted in:
     // removing it would leave a title with nothing under it, so the topic goes.
-    removeLabel: wholeTopic(post) ? 'Delete topic' : undefined,
+    removeLabel: wholeTopic(post) ? 'Delete post' : undefined,
     onRemove: () => {
       if (wholeTopic(post)) removeTopic(true);
       else remove(post.id);
@@ -554,7 +556,11 @@ export default function TopicPage() {
               ) : (
                 'a deleted member'
               )}{' '}
-              on {chatTimeLong(topic.createdAt)}
+              {/* How long ago for a week, then the date (the owner,
+                  2026-11-18); the whole of it on a hover. */}
+              <time dateTime={topic.createdAt} title={chatTimeLong(topic.createdAt)}>
+                {chatTimeOn(topic.createdAt)}
+              </time>
             </span>
           </p>
           {/* An administrator seeding a room reaches this screen with a
@@ -564,7 +570,7 @@ export default function TopicPage() {
               answer. */}
           {closed ? (
             <p className="mt-2 rounded-[11px] bg-tint px-3 py-2 text-[0.78125rem] text-ink2 leading-[1.45]">
-              This room is closed. No member can see this topic yet.
+              This room is closed. No member can see this post yet.
             </p>
           ) : null}
           {/* One row, evenly spaced and the same height: Save, Mute, Move, Delete.
@@ -617,7 +623,7 @@ export default function TopicPage() {
                 // A transparent border, so it is exactly Mute's height.
                 className="rounded-full border border-transparent bg-destructive/10 px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-destructive leading-[1.3] transition-colors hover:bg-destructive/20 disabled:opacity-50"
               >
-                {deleting ? 'Deleting…' : 'Delete topic'}
+                {deleting ? 'Deleting…' : 'Delete post'}
               </button>
             ) : null}
           </div>
@@ -655,7 +661,7 @@ export default function TopicPage() {
           // A new topic is a new box, with that topic's draft.
           key={topicId}
           draftKey={topicId ? `topic:${topicId}` : undefined}
-          placeholder="Reply to this topic"
+          placeholder="Reply to this post"
           maxLength={POST_MAX}
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.

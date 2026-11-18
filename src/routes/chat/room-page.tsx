@@ -13,12 +13,13 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { useCoalesced } from '@/lib/use-coalesced';
 import { ChatBreadcrumb } from '@/routes/chat/breadcrumb';
 import { ListingGrid } from '@/routes/chat/listing-grid';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { QuickAsk } from '@/routes/chat/quick-ask';
-import { roomInitial } from '@/routes/chat/room-card';
+import { lastActivity, roomCounts, roomInitial } from '@/routes/chat/room-card';
 import { TopicRow } from '@/routes/chat/topic-row';
 
 /**
@@ -71,6 +72,7 @@ const CATEGORY_ICON: Record<RoomCategory, string> = {
 };
 
 export default function RoomPage() {
+  useMinute();
   const { roomId } = useParams<{ roomId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
@@ -192,18 +194,23 @@ export default function RoomPage() {
                   all" is not a promise to make about a closed room, which is
                   open to nobody — the banner below says so instead. */}
               {count && count.topicCount > 0 ? (
-                <p className="mt-[5px] font-semibold text-[0.78125rem] text-emphasis">
-                  {count.topicCount} {count.topicCount === 1 ? 'topic' : 'topics'} ·{' '}
-                  {count.postCount} {count.postCount === 1 ? 'post' : 'posts'}
-                  {closed ? '' : ' · open to all, full history'}
-                </p>
+                <>
+                  <p className="mt-[5px] font-semibold text-[0.78125rem] text-emphasis">
+                    {roomCounts(count)}
+                  </p>
+                  <p className="text-[0.75rem] text-grey leading-[1.45]">
+                    {count.lastActivityAt ? lastActivity(count.lastActivityAt) : null}
+                    {count.lastActivityAt && !closed ? ' · ' : null}
+                    {closed ? null : 'Open to all, full history'}
+                  </p>
+                </>
               ) : null}
             </span>
             {/* A room's replies notify whoever started the topic, so muting a
                 room means: no notifications for replies to my topics in it. */}
             <MuteButton
               target={{ kind: 'room', id: room.id }}
-              what="replies to your topics in this room"
+              what="replies to your posts in this room"
               className="mt-0.5 flex-none"
             />
           </div>
@@ -255,12 +262,10 @@ export default function RoomPage() {
             )
           ) : null}
           {topicsLoading ? (
-            <LoadingCards label="Loading the topics…" count={4} height={96} />
+            <LoadingCards label="Loading the posts…" count={4} height={96} />
           ) : error ? (
             <div className="py-10 text-center">
-              <p className="text-[0.875rem] text-ink2 leading-relaxed">
-                Could not load the topics.
-              </p>
+              <p className="text-[0.875rem] text-ink2 leading-relaxed">Could not load the posts.</p>
               <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
             </div>
           ) : sorted.length === 0 ? (
@@ -319,7 +324,7 @@ export default function RoomPage() {
                 disabled={loadingMore}
                 className="min-h-[44px] rounded-[10px] bg-tint px-4 py-2 font-semibold text-[0.8125rem] text-emphasis transition-colors hover:bg-line"
               >
-                {loadingMore ? 'Loading…' : 'Show more topics'}
+                {loadingMore ? 'Loading…' : 'Show more posts'}
               </button>
             </div>
           ) : null}

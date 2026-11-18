@@ -21,15 +21,15 @@
  * ---------------------------------------------------------------------------
  * The shape
  * ---------------------------------------------------------------------------
- * The build plan wrote the clock as "09:30". It is "9:30am" here, which is what
- * `timeOfDay` in events/format.ts already produces and therefore what every
- * time in this app already looks like. Two clock formats in one product is a
- * worse outcome than either of them.
+ * How long ago for a week, then a date (the owner, 2026-11-18: "Start with
+ * how many minutes ago, then how many hours ago followed by number of days
+ * and anything beyond a week has a date (use this concept for all content)").
+ * Before that it was a clock today, a weekday for six days, then a date.
  *
- * Today is a clock, the last six days are a weekday, anything older is a date,
- * and a date in another year carries the year. Each step is the least that is
- * still unambiguous, which is the point: a column of times is read by scanning,
- * and "Mon" scans where "15 Sep 2026, 09:30" does not.
+ * Counted on the instants, not the calendar: "2 days ago" is 48 hours or
+ * more, whatever the midnights between. A date in another year carries the
+ * year. A clock, where one is written ("9:30am"), is as `timeOfDay` in
+ * events/format.ts writes it.
  */
 
 function partsIn(date: Date, timeZone: string | undefined, options: Intl.DateTimeFormatOptions) {
@@ -46,30 +46,25 @@ function dayIn(date: Date, timeZone: string | undefined): string {
 }
 
 /**
- * "9:30am" · "Mon" · "12 Sep" · "12 Sep 2024".
+ * "just now" · "5 minutes ago" · "3 hours ago" · "2 days ago" · "Sep 12" ·
+ * "Sep 12, 2024".
  *
  * `now` is a parameter rather than read inside, so the whole thing is pure and
- * every case is testable without waiting for Tuesday.
+ * every case is testable without waiting. A screen that shows it calls
+ * `useMinute()` (use-minute.ts), so the words keep up with the clock.
  */
 export function chatTime(iso: string, now: Date = new Date(), timeZone?: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '';
 
-  const today = dayIn(now, timeZone);
-  const day = dayIn(at, timeZone);
-
-  if (day === today) {
-    const parts = partsIn(at, timeZone, { hour: 'numeric', minute: '2-digit', hour12: true });
-    return `${parts.hour}:${parts.minute}${(parts.dayPeriod ?? '').toLowerCase()}`;
-  }
-
-  // Whole days between the two calendar dates, counted on the dates themselves
-  // rather than on the instants: 23 hours ago can be either yesterday or this
-  // morning, and only the calendar knows which.
-  const elapsed = Math.round((Date.parse(today) - Date.parse(day)) / 86_400_000);
-  if (elapsed >= 1 && elapsed <= 6) {
-    return partsIn(at, timeZone, { weekday: 'short' }).weekday ?? '';
-  }
+  // A clock a little ahead of this one is still "just now", not the future.
+  const minutes = Math.floor((now.getTime() - at.getTime()) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
 
   const sameYear =
     partsIn(at, timeZone, { year: 'numeric' }).year ===
@@ -80,10 +75,18 @@ export function chatTime(iso: string, now: Date = new Date(), timeZone?: string)
 }
 
 /**
+ * `chatTime` at the end of a sentence: "started by Ana 3 hours ago", "started
+ * by Ana on Sep 12".
+ */
+export function chatTimeOn(iso: string, now: Date = new Date(), timeZone?: string): string {
+  const when = chatTime(iso, now, timeZone);
+  return when === '' || when === 'just now' || when.endsWith(' ago') ? when : `on ${when}`;
+}
+
+/**
  * The same moment written out: "September 18, 2026 at 9:30am".
  *
- * For the one place a topic says when it started, where the short form would be
- * a bare weekday under a heading and answer nothing.
+ * For the title on a time that is drawn short, and for a report.
  */
 export function chatTimeLong(iso: string, timeZone?: string): string {
   const at = new Date(iso);

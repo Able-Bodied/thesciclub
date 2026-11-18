@@ -143,7 +143,7 @@ export function HomeSearch({
             </p>
           ) : null}
           {found.topics.length > 0 ? (
-            <Group title="Topics">
+            <Group title="Posts">
               {found.topics.map((topic) => (
                 <Row
                   key={topic.id}

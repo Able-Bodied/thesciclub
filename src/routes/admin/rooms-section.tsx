@@ -111,7 +111,7 @@ export function RoomsSection() {
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
         Open the seeded ones a few at a time, as there are members to fill them. A closed room does
         not exist as far as a member is concerned. A room a member started is open already — closing
-        it hides it from members. The Home feed switch controls whether its topics and photos appear
+        it hides it from members. The Home feed switch controls whether its posts and photos appear
         in Home. Members can still open an excluded room in Chat. Nobody can rename or delete a
         room.
       </p>
@@ -210,8 +210,8 @@ export function RoomsSection() {
       </div>
 
       <p className="mt-2 text-[0.75rem] text-grey leading-[1.45]">
-        Open a room's name to read it and to start a topic in it. You can post in a closed room, so
-        that there is something there before anybody is let in.
+        Open a room's name to read it and to post in it. You can post in a closed room, so that
+        there is something there before anybody is let in.
       </p>
     </>
   );
@@ -219,7 +219,7 @@ export function RoomsSection() {
 
 /** "no topics" · "1 topic" · "4 topics". Undefined means not loaded yet, not zero. */
 function topicsIn(count: number | undefined): string {
-  if (count === undefined) return 'counting topics…';
-  if (count === 0) return 'no topics yet';
-  return `${count} ${count === 1 ? 'topic' : 'topics'}`;
+  if (count === undefined) return 'counting posts…';
+  if (count === 0) return 'no posts yet';
+  return `${count} ${count === 1 ? 'post' : 'posts'}`;
 }

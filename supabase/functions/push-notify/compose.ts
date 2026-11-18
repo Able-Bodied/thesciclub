@@ -234,20 +234,20 @@ export function compose(owed: Owed): PushMessage | null {
     // older `push_owed` sends no body at all: then it says what it used to.
     case 'reply':
       return {
-        title: `${name} replied to your topic`,
-        body: words(owed, true) || `${name} replied to your topic.`,
+        title: `${name} replied to your post`,
+        body: words(owed, true) || `${name} replied to your post.`,
         ...where,
       };
     case 'reply_participant':
       return {
-        title: `${name} replied in a topic you posted in`,
-        body: words(owed, true) || `${name} replied in a topic you posted in.`,
+        title: `${name} replied to a post you replied to`,
+        body: words(owed, true) || `${name} replied to a post you replied to.`,
         ...where,
       };
     case 'like': {
       // The member's own words, quoted so they read as theirs and not Bo's.
       const own = shorten(plainPost(owed.body ?? ''), LIKED_LENGTH);
-      const what = owed.detail === 'topic' ? 'topic' : 'post';
+      const what = owed.detail === 'topic' ? 'post' : 'reply';
       return {
         title: `${name} liked your ${what}`,
         body:
@@ -262,7 +262,7 @@ export function compose(owed: Owed): PushMessage | null {
     // detail is 'message:👍', 'post:👍' or 'topic:👍' (20261028000000).
     case 'reaction': {
       const [target, ...rest] = (owed.detail ?? '').split(':');
-      const what = target === 'message' || target === 'topic' ? target : 'post';
+      const what = target === 'message' ? 'message' : target === 'topic' ? 'post' : 'reply';
       const emoji = rest.join(':').trim();
       const reacted =
         emoji === '' ? `${name} reacted to your ${what}` : `${name} ${emoji} your ${what}`;
@@ -279,7 +279,7 @@ export function compose(owed: Owed): PushMessage | null {
     }
     // detail is 'topic' for a topic's opening post, as a like's.
     case 'mention': {
-      const what = owed.detail === 'topic' ? 'topic' : 'post';
+      const what = owed.detail === 'topic' ? 'post' : 'reply';
       return {
         title: `${name} mentioned you in a ${what}`,
         body: words(owed, true) || `${name} mentioned you in a ${what}.`,

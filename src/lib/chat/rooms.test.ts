@@ -243,7 +243,7 @@ describe('what is missing from a room somebody is describing', () => {
       'Say which part of life the room is about.',
     );
     expect(full({ d: '', t: '', b: '' })).toBe('Say what the room is for.');
-    expect(full({ t: '', b: '' })).toBe('Give the first topic a title.');
+    expect(full({ t: '', b: '' })).toBe('Give the first post a title.');
     expect(full({ b: '' })).toBe('Write the first topic.');
   });
 
@@ -312,10 +312,22 @@ describe('the room a member has to fill first', () => {
     room({ id: 'theirs', name: 'Theirs, empty', createdBy: 'bo' }),
   ];
   const stats = new Map<string, RoomStats>([
-    ['bowel', { topicCount: 0, postCount: 0 }],
-    ['mine-1', { topicCount: 0, postCount: 0 }],
-    ['mine-2', { topicCount: 3, postCount: 9 }],
-    ['theirs', { topicCount: 0, postCount: 0 }],
+    [
+      'bowel',
+      { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+    ],
+    [
+      'mine-1',
+      { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+    ],
+    [
+      'mine-2',
+      { topicCount: 3, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+    ],
+    [
+      'theirs',
+      { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+    ],
   ]);
 
   it('is theirs, empty, and nobody else’s', () => {

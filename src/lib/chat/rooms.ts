@@ -269,7 +269,7 @@ export function roomProblem(
   if (cleanDescription.length > ROOM_DESCRIPTION_MAX) {
     return `The description is ${ROOM_DESCRIPTION_MAX} characters or fewer.`;
   }
-  if (topicTitle.trim().length === 0) return 'Give the first topic a title.';
+  if (topicTitle.trim().length === 0) return 'Give the first post a title.';
   if (topicBody.trim().length === 0) return 'Write the first topic.';
   return null;
 }
@@ -430,9 +430,9 @@ export function useRoomStats(roomId?: string): {
     try {
       let query = getSupabase()
         .from('chat_room_stats')
-        // member_count is still in the view and is not read: nobody joins a
-        // room since 20260930000000. See RoomStats.
-        .select('room_id, topic_count, post_count');
+        // post_count and member_count are still in the view and are not
+        // read. See RoomStats.
+        .select('room_id, topic_count, question_count, reply_count, view_count, last_activity_at');
       if (roomId) query = query.eq('room_id', roomId);
       const { data, error } = await query.abortSignal(controller.signal);
       if (aborted()) return;
@@ -450,7 +450,10 @@ export function useRoomStats(roomId?: string): {
       const rows = data as {
         room_id: string;
         topic_count: number | string;
-        post_count: number | string;
+        question_count: number | string;
+        reply_count: number | string;
+        view_count: number | string;
+        last_activity_at: string | null;
       }[];
       setStats(
         new Map(
@@ -458,7 +461,10 @@ export function useRoomStats(roomId?: string): {
             row.room_id,
             {
               topicCount: Number(row.topic_count),
-              postCount: Number(row.post_count),
+              questionCount: Number(row.question_count),
+              replyCount: Number(row.reply_count),
+              viewCount: Number(row.view_count),
+              lastActivityAt: row.last_activity_at,
             },
           ]),
         ),

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatTopic } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { PostLikes } from '@/routes/chat/like-button';
 import type { CardLikes } from '@/routes/home/topic-card';
 
@@ -29,6 +30,7 @@ export function TopicRow({
   /** Where whoever started it is, in Classifieds (author-places.ts). */
   place?: string | undefined;
 }) {
+  useMinute();
   const faces = topic.participantIds.slice(0, 4);
 
   return (
@@ -80,18 +82,27 @@ export function TopicRow({
           {topic.replyCount > 0 ? (
             <>
               <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
-                {topic.replyCount}
+                {topic.replyCount.toLocaleString('en-US')}
               </b>
               <i className="mr-[9px] not-italic">{topic.replyCount === 1 ? 'reply' : 'replies'}</i>
             </>
           ) : null}
           <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
-            {topic.viewCount}
+            {topic.viewCount.toLocaleString('en-US')}
           </b>
           <i className="mr-[9px] not-italic">{topic.viewCount === 1 ? 'view' : 'views'}</i>
-          <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
-            {chatTime(topic.lastPostAt)}
-          </b>
+          {/* When it was posted, and the last reply if there is one, each
+              named (the owner, 2026-11-18: "how long ago the question was").
+              A bare, bold time read as a third count and did not say which
+              of the two it was (screenshot review, 2026-11-18). */}
+          <time dateTime={topic.createdAt} className="mr-[9px] whitespace-nowrap">
+            posted {chatTime(topic.createdAt)}
+          </time>
+          {topic.replyCount > 0 ? (
+            <time dateTime={topic.lastPostAt} className="whitespace-nowrap">
+              last reply {chatTime(topic.lastPostAt)}
+            </time>
+          ) : null}
           {place ? <i className="ml-[9px] not-italic">{place}</i> : null}
         </span>
       </span>

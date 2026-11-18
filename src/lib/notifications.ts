@@ -177,7 +177,7 @@ export function announceNotificationsChanged(): void {
 
 /** In quotes, and short: a topic's title or an event's, inside a sentence. */
 function quoted(place: string | null): string {
-  if (!place) return 'a topic';
+  if (!place) return 'a post';
   return `“${place.length > 60 ? `${place.slice(0, 59).trimEnd()}…` : place}”`;
 }
 
@@ -198,16 +198,16 @@ export function notificationSentence(n: AppNotification): string {
         : `${name} wrote in ${n.place ?? 'a group'}`;
     case 'reply':
       return n.count > 1
-        ? `${n.count} new replies to your topic ${quoted(n.place)}`
-        : `${name} replied to your topic ${quoted(n.place)}`;
+        ? `${n.count} new replies to your post ${quoted(n.place)}`
+        : `${name} replied to your post ${quoted(n.place)}`;
     case 'reply_participant':
       return n.count > 1
         ? `${n.count} new replies in ${quoted(n.place)}`
         : `${name} replied in ${quoted(n.place)}`;
     case 'like':
       return more > 0
-        ? `${name} and ${more} ${more === 1 ? 'other' : 'others'} liked your post in ${quoted(n.place)}`
-        : `${name} liked your post in ${quoted(n.place)}`;
+        ? `${name} and ${more} ${more === 1 ? 'other' : 'others'} liked what you wrote in ${quoted(n.place)}`
+        : `${name} liked what you wrote in ${quoted(n.place)}`;
     // detail is 'message:👍' or 'post:👍' (20261028000000).
     case 'reaction': {
       const [target, ...rest] = (n.detail ?? '').split(':');
@@ -215,7 +215,11 @@ export function notificationSentence(n: AppNotification): string {
       const what =
         target === 'message'
           ? `your message${n.place ? ` in ${n.place}` : ''}`
-          : `your post in ${quoted(n.place)}`;
+          : // A post or a reply under one (the owner's words, 2026-11-18):
+            // the row does not always say which.
+            target === 'topic'
+            ? `your post ${quoted(n.place)}`
+            : `what you wrote in ${quoted(n.place)}`;
       if (more > 0)
         return `${name} and ${more} ${more === 1 ? 'other' : 'others'} reacted to ${what}`;
       return emoji ? `${name} reacted ${emoji} to ${what}` : `${name} reacted to ${what}`;

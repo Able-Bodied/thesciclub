@@ -447,7 +447,7 @@ describe('Home', () => {
       const user = userEvent.setup();
       renderPage();
 
-      await show(user, 'Topics');
+      await show(user, 'Posts');
       expect(feed()).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
 
@@ -496,7 +496,7 @@ describe('Home', () => {
     it('write the pill to the URL, and a card carries it to the next screen', async () => {
       const user = userEvent.setup();
       renderPage();
-      await show(user, 'Topics');
+      await show(user, 'Posts');
       await user.click(screen.getByRole('link', { name: 'Morning or evening routine?' }));
       expect(
         screen.getByText(
@@ -533,10 +533,10 @@ describe('Home', () => {
   });
 
   it('does not say a failed pill is merely empty', () => {
-    db.topicsError = 'Could not load the topics. You are offline.';
+    db.topicsError = 'Could not load the posts. You are offline.';
     renderPage('/home?segment=topics');
-    expect(screen.getByRole('alert')).toHaveTextContent('Could not load the topics.');
-    expect(screen.queryByText(/No topics yet/)).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load the posts.');
+    expect(screen.queryByText(/No posts yet/)).toBeNull();
   });
 
   it('saves an RSVP and reads the tallies again', async () => {
@@ -575,12 +575,12 @@ describe('Home', () => {
       ['everything', 'Nothing here yet.', null],
       [
         'topics',
-        'No topics yet. Rooms open a few at a time, and anybody can start one.',
+        'No posts yet. Rooms open a few at a time, and anybody can start one.',
         ['See the rooms', '/chat?segment=rooms'],
       ],
       [
         'photos',
-        'No photographs yet. A topic with a photograph shows up here.',
+        'No photographs yet. A post with a photograph shows up here.',
         ['See the rooms', '/chat?segment=rooms'],
       ],
       [

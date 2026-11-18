@@ -7,6 +7,7 @@ import { filterMyTopics, type MyTopicKind, useMyTopics } from '@/lib/chat/my-top
 import { useChatRooms } from '@/lib/chat/rooms';
 import { chatTime } from '@/lib/chat/time';
 import { ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 
 const KINDS = [
   ['all', 'All'],
@@ -16,6 +17,7 @@ const KINDS = [
 
 /** The questions and posts the member started, newest first. */
 export default function MyPostsPage() {
+  useMinute();
   const { userId } = useAccount();
   const { topics, error, reload } = useMyTopics(userId);
   const { rooms } = useChatRooms();

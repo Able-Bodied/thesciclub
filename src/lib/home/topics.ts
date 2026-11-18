@@ -116,7 +116,7 @@ export interface HomeTopicsState {
   error: string | null;
 }
 
-const ATTEMPT = 'Could not load the topics.';
+const ATTEMPT = 'Could not load the posts.';
 
 /**
  * Read once, on arrival. Home does not subscribe to changes; the page's header

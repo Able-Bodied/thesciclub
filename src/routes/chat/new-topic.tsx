@@ -186,7 +186,7 @@ export default function NewTopicPage() {
               ? 'New app feedback'
               : listing
                 ? 'New listing'
-                : 'New topic'}
+                : 'New post'}
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
           {feedback
@@ -326,7 +326,7 @@ export default function NewTopicPage() {
           htmlFor="topic-body"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          {feedback ? 'Tell us more' : listing ? 'Description' : 'The first post'}{' '}
+          {feedback ? 'Tell us more' : listing ? 'Description' : 'Details'}{' '}
           {sharing ? null : <span className="font-normal text-grey">(optional)</span>}
         </label>
         {sharing ? (

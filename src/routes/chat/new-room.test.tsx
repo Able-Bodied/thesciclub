@@ -115,7 +115,7 @@ async function fillIn(
     over.description ?? 'Overuse, transfers, and what helped.',
   );
   await user.type(screen.getByLabelText('What is it about?'), over.title ?? 'Twenty years');
-  await user.type(screen.getByLabelText('The first post'), over.body ?? 'What did you change?');
+  await user.type(screen.getByLabelText('Details'), over.body ?? 'What did you change?');
   return user;
 }
 
@@ -146,7 +146,7 @@ describe('starting a room', () => {
   // construction": the first topic is on this form and not on a later one.
   it('asks for the first topic, and says why', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: 'The first topic' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'The first post' })).toBeInTheDocument();
     expect(screen.getByText(/nobody arrives to an empty one/)).toBeInTheDocument();
   });
 
@@ -210,13 +210,18 @@ describe('starting a room', () => {
     );
     // Nothing cleared, nothing navigated. What somebody has just typed is the
     // most expensive thing on the page.
-    expect(screen.getByLabelText('The first post')).toHaveValue('What did you change?');
+    expect(screen.getByLabelText('Details')).toHaveValue('What did you change?');
     expect(db.navigated).toEqual([]);
   });
 
   it('links to the empty room a member has been told to fill', async () => {
     db.rooms = [room({ id: 'mine-1a2b', name: 'Hand cycling', sortOrder: 1000, createdBy: 'me' })];
-    db.stats = new Map([['mine-1a2b', { topicCount: 0, postCount: 0, memberCount: 1 }]]);
+    db.stats = new Map([
+      [
+        'mine-1a2b',
+        { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+      ],
+    ]);
     db.failure = 'Fill your last room before starting another. Hand cycling has nothing in it yet.';
     renderPage();
     const user = await fillIn();

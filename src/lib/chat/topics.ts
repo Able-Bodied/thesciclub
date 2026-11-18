@@ -289,7 +289,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
       if (read.error) {
         setTopics([]);
         setHasMore(false);
-        setError(describeError(read.error, 'Could not load the topics.'));
+        setError(describeError(read.error, 'Could not load the posts.'));
         setLoading(false);
         return;
       }
@@ -302,7 +302,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
       setTopics([]);
       setHasMore(false);
       setLoadingMore(false);
-      setError(describeThrown(e, 'Could not load the topics.'));
+      setError(describeThrown(e, 'Could not load the posts.'));
       setLoading(false);
     }
   }, [roomId]);
@@ -578,16 +578,16 @@ export async function createTopic(
     return {
       ok: false,
       error: describeError(error, {
-        attempt: 'The topic was not created.',
+        attempt: 'The post was not created.',
         constraints: {
           chat_topics_title_check: 'A title is up to 140 characters.',
-          chat_posts_check: `A topic needs some words or a photograph, and at most ${POST_MAX_WORDS} characters.`,
+          chat_posts_check: `A post needs some words or a photograph, and at most ${POST_MAX_WORDS} characters.`,
           chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
         },
       }),
     };
   }
-  if (!data) return { ok: false, error: 'The topic was not created.' };
+  if (!data) return { ok: false, error: 'The post was not created.' };
   return { ok: true, value: data };
 }
 
@@ -598,12 +598,12 @@ export async function createTopic(
  */
 const POST_REFUSALS = {
   attempt: 'Your reply was not posted.',
-  refused: 'You cannot post in this room.',
+  refused: 'You cannot reply in this room.',
   // The topic was deleted by an administrator while this was being written.
-  missing: 'This topic has been deleted.',
+  missing: 'This post has been deleted.',
   constraints: {
     chat_posts_check: `A reply needs some words or a photograph, and at most ${POST_MAX_WORDS} characters.`,
-    chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
+    chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one reply.`,
   },
 };
 
@@ -631,7 +631,7 @@ export async function sendPost(
     .select(POST_COLUMNS)
     .single()) as Result<PostRow>;
   if (error) return { ok: false, error: describeError(error, POST_REFUSALS) };
-  if (!data) return { ok: false, error: 'The post was not saved.' };
+  if (!data) return { ok: false, error: 'Your reply was not posted.' };
   return { ok: true, value: toPost(data) };
 }
 
@@ -666,8 +666,8 @@ export async function editPost(
       ok: false,
       error: describeError(error, {
         attempt: 'Your edit was not saved.',
-        refused: 'You can only edit your own post.',
-        missing: 'This post is not there any more.',
+        refused: 'You can only edit what you wrote.',
+        missing: 'That post or reply is not there any more.',
       }),
     };
   }
@@ -685,7 +685,8 @@ export async function removePost(postId: string): Promise<ChatWriteResult<string
   const { data, error } = (await getSupabase().rpc('chat_remove_post', {
     post: postId,
   })) as Result<string[]>;
-  if (error) return { ok: false, error: describeError(error, 'The post was not removed.') };
+  if (error)
+    return { ok: false, error: describeError(error, 'The post or reply was not removed.') };
   return { ok: true, value: data ?? [] };
 }
 
@@ -703,8 +704,8 @@ export async function deleteTopic(topicId: string): Promise<ChatWriteResult<stri
     return {
       ok: false,
       error: describeError(error, {
-        attempt: 'The topic was not deleted.',
-        missing: 'That topic is not there any more.',
+        attempt: 'The post was not deleted.',
+        missing: 'That post is not there any more.',
       }),
     };
   }
@@ -729,7 +730,7 @@ export async function editTopicTitle(
       error: describeError(error, {
         attempt: 'Your edit was not saved.',
         refused: 'You can only edit your own topic.',
-        missing: 'This topic is not there any more.',
+        missing: 'This post is not there any more.',
       }),
     };
   }
@@ -748,8 +749,8 @@ export async function deleteMyTopic(topicId: string): Promise<ChatWriteResult<st
     return {
       ok: false,
       error: describeError(error, {
-        attempt: 'The topic was not deleted.',
-        missing: 'That topic is not there any more.',
+        attempt: 'The post was not deleted.',
+        missing: 'That post is not there any more.',
       }),
     };
   }
@@ -767,9 +768,9 @@ export async function moveTopic(topicId: string, roomId: string): Promise<ChatWr
       topic: topicId,
       to_room: roomId,
     });
-    if (error) return { ok: false, error: describeError(error, 'The topic was not moved.') };
+    if (error) return { ok: false, error: describeError(error, 'The post was not moved.') };
     return { ok: true, value: null };
   } catch (e) {
-    return { ok: false, error: describeThrown(e, 'The topic was not moved.') };
+    return { ok: false, error: describeThrown(e, 'The post was not moved.') };
   }
 }

@@ -152,7 +152,7 @@ describe('the reports panel', () => {
     // so there is nothing here to build a link out of — and a post, which a
     // member could already read, gets one.
     renderSection([report({ id: 'r1' })]);
-    expect(screen.queryByRole('link', { name: 'Open the topic' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Open the post' })).toBeNull();
   });
 
   it('opens the topic a reported post is in', () => {
@@ -167,7 +167,7 @@ describe('the reports panel', () => {
         place: 'Bowel management › What fits in a rucksack',
       }),
     ]);
-    expect(screen.getByRole('link', { name: 'Open the topic' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Open the post' })).toHaveAttribute(
       'href',
       '/chat/rooms/bowel/topics/t1',
     );
@@ -450,7 +450,7 @@ describe('a profile report', () => {
     renderSection([profileReport()]);
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
     expect(screen.queryByText('Already removed')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Open the topic' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Open the post' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Go to Bo After' }));
     expect(went).toEqual(['bo']);
     await userEvent.click(screen.getByRole('button', { name: 'Settle it' }));

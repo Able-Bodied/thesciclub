@@ -82,7 +82,7 @@ describe('the notifications list', () => {
     db.pages = [[item({ id: '1' })]];
     renderPage();
     expect(
-      await screen.findByRole('button', { name: /Jan replied to your topic “Best cushion\?”/ }),
+      await screen.findByRole('button', { name: /Jan replied to your post “Best cushion\?”/ }),
     ).toBeInTheDocument();
     expect(screen.getByText('Try a ROHO.')).toBeInTheDocument();
   });

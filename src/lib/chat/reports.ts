@@ -72,7 +72,7 @@ export function reportPreamble(kind: 'post' | 'message' | 'profile'): string {
     return "This profile's name, @username, photograph and what the member wrote on it, as they are now, go to the club's administrators, with your name. Changing the profile later does not remove them. The member is not told.";
   }
   if (kind === 'post') {
-    return "This post, who wrote it and when go to the club's administrators, with your name, and they can open the topic it is in. The person is not told.";
+    return "This post or reply, who wrote it and when go to the club's administrators, with your name, and they can open where it was written. The person is not told.";
   }
   return "This message, who wrote it and when go to the club's administrators, with your name. Nothing else in this conversation does. The person is not told.";
 }

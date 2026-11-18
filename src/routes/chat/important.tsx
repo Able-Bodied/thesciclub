@@ -11,6 +11,7 @@ import {
   remindImportant,
 } from '@/lib/chat/important';
 import { chatTime } from '@/lib/chat/time';
+import { useMinute } from '@/lib/chat/use-minute';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
@@ -104,6 +105,7 @@ export function ImportantPeopleSheet({
   canRemind: boolean;
   onClose: () => void;
 }) {
+  useMinute();
   const titleId = useId();
   const dialog = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);

@@ -111,9 +111,9 @@ describe('asking, from a room', () => {
     expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
   });
 
-  it('goes back to the room and says New topic', () => {
+  it('goes back to the room and says New post', () => {
     renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'New topic' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'New post' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Equipment & assistive tech' })).toHaveAttribute(
       'href',
       '/chat/rooms/equip',
@@ -138,7 +138,7 @@ describe('asking, from a room', () => {
     renderPage();
     const story = 'Twenty years of pushing. '.repeat(400).trim();
     await user.type(screen.getByLabelText('What is it about?'), 'My story');
-    await user.click(screen.getByLabelText(/The first post/));
+    await user.click(screen.getByLabelText(/Details/));
     await user.paste(story);
     // Nothing counts down at the start of a long story.
     expect(screen.queryByText(/characters left/, { selector: '#topic-body-hint' })).toBeNull();
@@ -158,7 +158,7 @@ describe('asking, from a room', () => {
     const user = userEvent.setup();
     renderPage();
     await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
-    await user.type(screen.getByLabelText(/^The first post/), 'Which ones last?');
+    await user.type(screen.getByLabelText(/^Details/), 'Which ones last?');
     await user.click(post());
     await waitFor(() => {
       expect(db.navigated).toEqual([['/chat/rooms/equip/topics/topic-1', undefined]]);
@@ -175,7 +175,7 @@ describe('asking, from Home', () => {
       'href',
       '/home?segment=topics',
     );
-    expect(screen.getByRole('heading', { level: 1, name: 'New topic' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'New post' })).toBeInTheDocument();
     expect(screen.getByLabelText('What is it about?')).toBeInTheDocument();
     expect(post()).toBeDisabled();
   });
@@ -184,7 +184,7 @@ describe('asking, from Home', () => {
     const user = userEvent.setup();
     renderPage(fromHome);
     await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
-    await user.type(screen.getByLabelText(/^The first post/), 'Which ones last?');
+    await user.type(screen.getByLabelText(/^Details/), 'Which ones last?');
     await user.click(post());
     await waitFor(() => {
       expect(db.navigated).toEqual([
@@ -241,20 +241,20 @@ describe('sharing a photograph, from Home', () => {
     await user.type(screen.getByLabelText('Say something about it'), 'My first flat');
     expect(post()).toBeDisabled();
     expect(screen.getByText('Add a photograph, or some words.')).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/The first post/), 'Step-free, at last.');
+    await user.type(screen.getByLabelText(/Details/), 'Step-free, at last.');
     expect(post()).toBeEnabled();
   });
 
   // What somebody has just typed is the most expensive thing on the page.
   it('keeps the draft on a refusal and takes the photograph back out', async () => {
-    db.failure = 'The topic was not created. You are not in this room.';
+    db.failure = 'The post was not created. You are not in this room.';
     const user = userEvent.setup();
     renderPage(sharing);
     await user.upload(fileInput(), photo('cushion.jpg'));
     await user.type(screen.getByLabelText('Say something about it'), 'Four hours, no marks');
     await user.click(post());
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The topic was not created. You are not in this room.',
+      'The post was not created. You are not in this room.',
     );
     expect(screen.getByLabelText('Say something about it')).toHaveValue('Four hours, no marks');
     expect(db.deleted).toEqual([['rooms/equip/cushion.jpg']]);
@@ -263,7 +263,7 @@ describe('sharing a photograph, from Home', () => {
 
   it('is asking when the state says anything else', () => {
     renderPage({ from: 'home', kind: 'something' });
-    expect(screen.getByRole('heading', { level: 1, name: 'New topic' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'New post' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/home');
   });
 });
@@ -290,7 +290,7 @@ describe('asking whether it is a question', () => {
     const box = screen.getByRole('checkbox', { name: /This is a question/ });
     expect(box).not.toBeChecked();
     await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
-    await user.type(screen.getByLabelText(/^The first post/), 'Which ones last?');
+    await user.type(screen.getByLabelText(/^Details/), 'Which ones last?');
     await user.click(box);
     await user.click(post());
     await waitFor(() => {
@@ -332,7 +332,7 @@ describe('app feedback', () => {
   it('leaves every other room as it was', () => {
     db.rooms = [makeRoom({ id: 'equip', name: 'Equipment & assistive tech', category: 'Kit' })];
     renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'New topic' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'New post' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add a photograph' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Post it' })).toBeInTheDocument();
   });

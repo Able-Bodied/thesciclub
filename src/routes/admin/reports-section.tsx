@@ -87,7 +87,7 @@ export function ReportsSection({
     // place with "Removed by an administrator" in it.
     const ok = window.confirm(
       report.kind === 'post'
-        ? 'Remove this post?\n\nIt disappears from the topic for everybody. This report keeps its copy of what it said.'
+        ? 'Remove this post or reply?\n\nIt disappears from the room for everybody. This report keeps its copy of what it said.'
         : 'Remove this message?\n\nIts text is replaced with "Removed by an administrator" for everybody in the conversation. This report keeps its copy of what it said.',
     );
     if (!ok) return;
@@ -352,7 +352,7 @@ function ReportRow({
             data-target="small"
             className="whitespace-nowrap rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-emphasis transition-colors hover:bg-line"
           >
-            Open the topic
+            Open the post
           </Link>
         ) : null}
         {authorId ? (
