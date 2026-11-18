@@ -95,7 +95,7 @@ describe('PostLikes', () => {
     expect(
       screen.getByRole('button', { name: "Downvoted Nicole's post. Press to take it back." }),
     ).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('-2')).toBeVisible();
+    expect(screen.getByText('−2')).toBeVisible();
     expect(screen.queryByRole('button', { name: /^Score/ })).toBeNull();
   });
 
