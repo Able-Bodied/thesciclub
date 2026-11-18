@@ -37,7 +37,16 @@ export type HomeSegment = (typeof HOME_SEGMENTS)[number];
  */
 export const HOME_SHOWS = ['all', 'mine', 'replied', 'orgs'] as const;
 export type HomeShow = (typeof HOME_SHOWS)[number];
-export const HOME_SORTS = ['ranking', 'replies', 'newest'] as const;
+export const HOME_SORTS = [
+  'ranking',
+  'replies',
+  'newest',
+  // 20261118240000: the most of each first.
+  'views',
+  'most_replies',
+  'upvotes',
+  'engaged',
+] as const;
 export type HomeSort = (typeof HOME_SORTS)[number];
 
 export interface HomeView {

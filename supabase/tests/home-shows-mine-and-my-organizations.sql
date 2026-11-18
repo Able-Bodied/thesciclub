@@ -91,4 +91,27 @@ select
   (select count(*) from public.home_topics_shown('all', 'ranking', 100) s join probe_titles p on p.id = s.topic_id) as probe_posts_under_everything;
 reset role;
 
+-- For the four orders of 20261118240000. Mine: seen by three, upvoted by one.
+-- Stranger's: upvoted by two (who have so seen it). Fellow's has the one reply.
+insert into public.chat_topic_reads (topic_id, member_id, last_read_at) values
+  ('11230000-0000-0000-0000-000000000001', 'bbbbbbbb-1123-0000-0000-00000000000b', now()),
+  ('11230000-0000-0000-0000-000000000001', 'cccccccc-1123-0000-0000-00000000000c', now()),
+  ('11230000-0000-0000-0000-000000000001', 'dddddddd-1123-0000-0000-00000000000d', now());
+insert into public.chat_post_likes (post_id, member_id) values
+  ('11230000-0000-0000-0001-000000000001', 'bbbbbbbb-1123-0000-0000-00000000000b'),
+  ('11230000-0000-0000-0001-000000000003', 'aaaaaaaa-1123-0000-0000-00000000000a'),
+  ('11230000-0000-0000-0001-000000000003', 'bbbbbbbb-1123-0000-0000-00000000000b');
+
+\echo ''
+\echo '== 4. the four orders of 20261118240000 (expect views: Mine / Stranger… / Fellow…; most replies: Fellow… / Stranger… / Mine; upvotes: Stranger… / Mine / Fellow…; engaged: Stranger… / Fellow… / Mine) =='
+select private.act_as('aaaaaaaa-1123-0000-0000-00000000000a') is not null as ok;
+set local role authenticated;
+select
+  (select string_agg(p.title, ' / ' order by s.ord) from public.home_topics_shown('all', 'views', 100) s join probe_titles p on p.id = s.topic_id) as by_views,
+  (select string_agg(p.title, ' / ' order by s.ord) from public.home_topics_shown('all', 'most_replies', 100) s join probe_titles p on p.id = s.topic_id) as by_most_replies;
+select
+  (select string_agg(p.title, ' / ' order by s.ord) from public.home_topics_shown('all', 'upvotes', 100) s join probe_titles p on p.id = s.topic_id) as by_upvotes,
+  (select string_agg(p.title, ' / ' order by s.ord) from public.home_topics_shown('all', 'engaged', 100) s join probe_titles p on p.id = s.topic_id) as by_engaged;
+reset role;
+
 rollback;

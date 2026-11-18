@@ -39,7 +39,7 @@ export const EMPTY_FEED_FILTERS: FeedFilters = {
   sort: 'ranking',
 };
 
-/** The chips under Show and Sort by, in order (the owner, 2026-11-18). */
+/** The chips under Show, and the choices in Sort by's menu, in order (the owner, 2026-11-18). */
 export const SHOW_CHIPS: readonly (readonly [HomeShow, string])[] = [
   ['all', 'Everything'],
   ['mine', 'My posts'],
@@ -50,6 +50,10 @@ export const SORT_CHIPS: readonly (readonly [HomeSort, string])[] = [
   ['ranking', 'Default ranking'],
   ['replies', 'Most recent replies'],
   ['newest', 'Most recent posts'],
+  ['views', 'Most views'],
+  ['most_replies', 'Most replies'],
+  ['upvotes', 'Most upvotes'],
+  ['engaged', 'Most engaged users'],
 ];
 
 /**
