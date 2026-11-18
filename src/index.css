@@ -182,15 +182,16 @@
   --stage-oog: #a3275e;
   /* The pills' ten bands of how long ago (the owner, 2026-11-18: "green most
      junior to red most senior ... make red the color for 10 years post and then
-     progress to a dark purple"): under 6 months, 6-12 months, 1-2 years, 2-5,
+     progress to a dark purple"; then "newly injured light green, 6-12 months
+     greenish orange, 1-2 years almost orange, then range from orange to red"): under 6 months, 6-12 months, 1-2 years, 2-5,
      5-10, 10-20 (red), 20-30, 30-40, 40-50, 50 and more. White words at half
      over a photograph and --ink at 30% on the page, light or dark, all past
      4.5:1 (theme-contrast.test.ts). */
-  --band-0: #1d7a3e;
-  --band-1: #5e9a1a;
-  --band-2: #9a9414;
-  --band-3: #c08a12;
-  --band-4: #dc6f1c;
+  --band-0: #4fae4a;
+  --band-1: #93a322;
+  --band-2: #cf9419;
+  --band-3: #e8701a;
+  --band-4: #dc5420;
   --band-5: #d1302a;
   --band-6: #a8226e;
   --band-7: #8a2a8c;
