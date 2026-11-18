@@ -187,15 +187,15 @@
      over a photograph and --ink at 30% on the page, light or dark, all past
      4.5:1 (theme-contrast.test.ts). */
   --band-0: #1d7a3e;
-  --band-1: #4a8a22;
-  --band-2: #7a8c14;
-  --band-3: #a8800f;
-  --band-4: #d0661c;
+  --band-1: #5e9a1a;
+  --band-2: #9a9414;
+  --band-3: #c08a12;
+  --band-4: #dc6f1c;
   --band-5: #d1302a;
-  --band-6: #b0264f;
-  --band-7: #8e2a6e;
-  --band-8: #6c2a85;
-  --band-9: #4b1d6b;
+  --band-6: #a8226e;
+  --band-7: #8a2a8c;
+  --band-8: #5e2fa0;
+  --band-9: #33105c;
   /* The same stages as words (the owner, 2026-11-17: the words in the colour, no
      band; brighter, same hues, 2026-11-17). On a light page, each past 4.5:1 on
      --paper and --canvas (theme-contrast.test.ts); --stage-*-light
