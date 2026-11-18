@@ -116,27 +116,49 @@ describe('a photograph on Home', () => {
 
   it('draws no likes until it is handed them', () => {
     renderCard();
-    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Upvote/ })).toBeNull();
   });
 
   it('likes the opening post, named for the topic', async () => {
     const onToggle = vi.fn();
-    renderCard({ likes: { likedBy: ['jan'], readerId: 'me', onToggle, failure: null } });
+    renderCard({
+      likes: {
+        likedBy: ['jan'],
+        readerId: 'me',
+        score: 1,
+        myVote: 0,
+        boost: null,
+        onToggle,
+        onDownvote: vi.fn(),
+        failure: null,
+      },
+    });
     expect(
       screen.getByRole('button', {
-        name: '1 like on First trip out with the new cushion. Show who.',
+        name: 'Score 1 on First trip out with the new cushion. Show who upvoted.',
       }),
     ).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole('button', { name: 'Like First trip out with the new cushion' }),
+      screen.getByRole('button', { name: 'Upvote First trip out with the new cushion' }),
     );
     expect(onToggle).toHaveBeenCalledOnce();
   });
 
   it('draws Like and the count on the reader’s own photograph', () => {
-    renderCard({ likes: { likedBy: ['jan'], readerId: 'me', onToggle: vi.fn(), failure: null } });
-    expect(screen.getByRole('button', { name: /^Like/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^1 like on/ })).toBeInTheDocument();
+    renderCard({
+      likes: {
+        likedBy: ['jan'],
+        readerId: 'me',
+        score: 1,
+        myVote: 0,
+        boost: null,
+        onToggle: vi.fn(),
+        onDownvote: vi.fn(),
+        failure: null,
+      },
+    });
+    expect(screen.getByRole('button', { name: /^Upvote/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Score 1 on/ })).toBeInTheDocument();
   });
 
   it('says so when a like did not land', () => {
@@ -144,7 +166,11 @@ describe('a photograph on Home', () => {
       likes: {
         likedBy: [],
         readerId: 'me',
+        score: 0,
+        myVote: 0,
+        boost: null,
         onToggle: vi.fn(),
+        onDownvote: vi.fn(),
         failure: 'Your like was not saved. You cannot like this.',
       },
     });
@@ -154,7 +180,16 @@ describe('a photograph on Home', () => {
   it('draws no likes when the opening post was taken back', () => {
     renderCard({
       topic: photoTopic({ opening: null }),
-      likes: { likedBy: ['jan'], readerId: 'me', onToggle: vi.fn(), failure: null },
+      likes: {
+        likedBy: ['jan'],
+        readerId: 'me',
+        score: 1,
+        myVote: 0,
+        boost: null,
+        onToggle: vi.fn(),
+        onDownvote: vi.fn(),
+        failure: null,
+      },
     });
     expect(screen.queryByRole('button', { name: /like/i })).toBeNull();
   });

@@ -119,6 +119,8 @@ export function toPost(row: PostRow): ChatPost {
  * place in.
  */
 export function sortTopics(topics: ChatTopic[], sort: RoomSort): ChatTopic[] {
+  // Top is ranked by the database, so the list is already in its order.
+  if (sort === 'top') return [...topics];
   const byActivity = (a: ChatTopic, b: ChatTopic) => b.lastPostAt.localeCompare(a.lastPostAt);
   return [...topics].sort((a, b) => {
     if (sort === 'replies' && a.replyCount !== b.replyCount) return b.replyCount - a.replyCount;
@@ -230,6 +232,26 @@ export async function readTopicPages(
   return { rows: rows.slice(0, want), more: rows.length > want, error: null };
 }
 
+/**
+ * The first `want` topics best first (chat_topics_ranked, 20261118180000), a page at a time by
+ * how many are already read, plus whether there are more.
+ */
+export async function readRankedPages(
+  page: (size: number, skip: number) => PromiseLike<Result<TopicRow[]>>,
+  want: number,
+): Promise<{ rows: TopicRow[]; more: boolean; error: Failure | null }> {
+  const rows: TopicRow[] = [];
+  while (rows.length <= want) {
+    const size = Math.min(MAX_TOPIC_PAGE, want + 1 - rows.length);
+    const result = await page(size, rows.length);
+    if (result.error) return { rows: [], more: false, error: result.error };
+    const batch = result.data ?? [];
+    rows.push(...batch);
+    if (batch.length < size) break;
+  }
+  return { rows: rows.slice(0, want), more: rows.length > want, error: null };
+}
+
 export interface RoomTopicsState {
   topics: ChatTopic[];
   loading: boolean;
@@ -242,7 +264,8 @@ export interface RoomTopicsState {
   showMore: () => void;
 }
 
-export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
+/** `ranked`: best first (the Top sort), else newest activity first. */
+export function useRoomTopics(roomId: string | undefined, ranked = false): RoomTopicsState {
   const [topics, setTopics] = useState<ChatTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -265,18 +288,29 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
     const supabase = getSupabase();
 
     try {
-      let read = await readTopicPages(
-        (size, before) =>
-          supabase
-            .rpc('chat_topics_page', {
-              room: roomId,
-              max_rows: size,
-              before_at: before?.at ?? null,
-              before_id: before?.id ?? null,
-            })
-            .abortSignal(controller.signal) as PromiseLike<Result<TopicRow[]>>,
-        want.current,
-      );
+      let read = ranked
+        ? await readRankedPages(
+            (size, skip) =>
+              supabase
+                .rpc('chat_topics_ranked', { room: roomId, max_rows: size, skip })
+                .abortSignal(controller.signal) as PromiseLike<Result<TopicRow[]>>,
+            want.current,
+          )
+        : null;
+      // A database before 20261118180000: newest activity first, as before.
+      if (!read || missingFunction(read.error))
+        read = await readTopicPages(
+          (size, before) =>
+            supabase
+              .rpc('chat_topics_page', {
+                room: roomId,
+                max_rows: size,
+                before_at: before?.at ?? null,
+                before_id: before?.id ?? null,
+              })
+              .abortSignal(controller.signal) as PromiseLike<Result<TopicRow[]>>,
+          want.current,
+        );
       // A database before 20261104212000: the whole list, as before.
       if (missingFunction(read.error)) {
         const all = (await supabase
@@ -305,7 +339,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
       setError(describeThrown(e, 'Could not load the posts.'));
       setLoading(false);
     }
-  }, [roomId]);
+  }, [roomId, ranked]);
 
   useEffect(() => {
     want.current = TOPIC_PAGE;

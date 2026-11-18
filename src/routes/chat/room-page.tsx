@@ -6,7 +6,7 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
-import { usePostLikes } from '@/lib/chat/likes';
+import { usePostLikes, voteFor } from '@/lib/chat/likes';
 import { PRICED_ROOM, useListingPrices } from '@/lib/chat/listing-prices';
 import { useTopicOpeningPosts } from '@/lib/chat/opening-posts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -53,6 +53,7 @@ import { TopicRow } from '@/routes/chat/topic-row';
  */
 
 const SORT_LABELS: Record<RoomSort, string> = {
+  top: 'Top',
   activity: 'Activity',
   replies: 'Replies',
   views: 'Views',
@@ -78,6 +79,9 @@ export default function RoomPage() {
   const { rooms, loading: roomsLoading } = useChatRooms();
   // Home's pill, when the room was opened from a card's room name there.
   const location = useLocation();
+  // Top first (the owner, 2026-11-18): votes, an administrator's boost, recent activity, and what
+  // the reader has not opened yet, ranked by the database. The others order the rows read.
+  const [sort, setSort] = useState<RoomSort>('top');
   const {
     topics,
     loading: topicsLoading,
@@ -86,7 +90,7 @@ export default function RoomPage() {
     hasMore,
     loadingMore,
     showMore,
-  } = useRoomTopics(roomId);
+  } = useRoomTopics(roomId, sort === 'top');
   const { stats, reload: reloadStats } = useRoomStats(roomId);
   const { byTopic: openingPosts, reload: reloadOpeners } = useTopicOpeningPosts(
     topics.map((topic) => topic.id),
@@ -110,7 +114,6 @@ export default function RoomPage() {
     onChange: reloadAll,
     enabled: Boolean(roomId),
   });
-  const [sort, setSort] = useState<RoomSort>('activity');
 
   const room = rooms.find((r) => r.id === roomId) ?? null;
   const sorted = useMemo(() => sortTopics(topics, sort), [topics, sort]);
@@ -299,23 +302,14 @@ export default function RoomPage() {
                   place={topic.authorId ? places.get(topic.authorId) : undefined}
                   likes={
                     postId
-                      ? {
-                          likedBy: likes.byPost.get(postId) ?? [],
-                          readerId: account.status === 'member' ? account.userId : null,
-                          loading: likes.loadingFor(postId),
-                          unavailable: Boolean(likes.error),
-                          onToggle: () => {
-                            likes.toggle(postId);
-                          },
-                          failure: likes.failure?.postId === postId ? likes.failure.message : null,
-                        }
+                      ? voteFor(likes, postId, account.status === 'member' ? account.userId : null)
                       : undefined
                   }
                 />
               );
             })
           )}
-          {/* Newest activity first, 40 at a time; a sort orders those shown. */}
+          {/* Top or newest activity first, 40 at a time; the other sorts order those shown. */}
           {!topicsLoading && !error && hasMore ? (
             <div className="mt-3 flex justify-center">
               <button

@@ -82,6 +82,14 @@ vi.mock('@/lib/chat/likes', async (importOriginal) => ({
       toggle: (id: string) => {
         db.liked.push(id);
       },
+      downvote: () => undefined,
+      boost: () => undefined,
+      isAdmin: false,
+      scoreOf: (id: string) => ({
+        score: (db.likes.get(id) ?? []).length,
+        myVote: (db.likes.get(id) ?? []).includes('me') ? (1 as const) : (0 as const),
+        boost: null,
+      }),
       reload: () => undefined,
     };
   },
@@ -486,26 +494,26 @@ describe('likes', () => {
     expect(db.likesAskedFor.at(-1)).toEqual(['1', '3']);
   });
 
-  it('offers Like on somebody else’s post, named for it, and likes on a press', async () => {
+  it('offers an upvote on somebody else’s post, named for it, and upvotes on a press', async () => {
     renderTopic();
-    await userEvent.click(screen.getByRole('button', { name: "Like Nicole's post" }));
+    await userEvent.click(screen.getByRole('button', { name: "Upvote Nicole's post" }));
     expect(db.liked).toEqual(['1']);
   });
 
-  it('offers Like and the count on the reader’s own post', async () => {
+  it('offers the arrows and the score on the reader’s own post', async () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
     db.likes = new Map([['2', ['nicole']]]);
     renderTopic();
-    const mine = screen.getByRole('button', { name: '1 like on your post. Show who.' });
+    const mine = screen.getByRole('button', { name: 'Score 1 on your post. Show who upvoted.' });
     const article = mine.closest('article');
     if (!article) throw new Error('the count is not inside its post');
-    await userEvent.click(within(article).getByRole('button', { name: 'Like your post' }));
+    await userEvent.click(within(article).getByRole('button', { name: 'Upvote your post' }));
     expect(db.liked).toEqual(['2']);
-    expect(screen.getAllByRole('button', { name: /^Like / })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^Upvote / })).toHaveLength(2);
   });
 
   // The robots, 2026-11-04: a liked post drew "Like" until its likes were read.
-  it('never draws Like on a post whose likes are still being read', () => {
+  it('never draws an upvote on a post whose votes are still being read', () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan', replyTo: '1' })];
     db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
     db.likes = new Map([
@@ -515,27 +523,28 @@ describe('likes', () => {
     // A reply has just arrived: the first post's likes are still known.
     db.likesLoading = new Set(['2']);
     renderTopic();
-    expect(screen.queryByText(/^Like$/)).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Like / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Upvote / })).toBeNull();
     expect(
-      screen.getByRole('button', { name: "Liked Nicole's post. Press to take it back." }),
+      screen.getByRole('button', { name: "Upvoted Nicole's post. Press to take it back." }),
     ).toHaveAttribute('aria-pressed', 'true');
-    expect(
-      screen.getByRole('button', { name: "Your like on Jan's post is not known" }),
-    ).toBeDisabled();
+    for (const arrow of screen.getAllByRole('button', {
+      name: "Your vote on Jan's post is not known",
+    })) {
+      expect(arrow).toBeDisabled();
+    }
   });
 
-  it('likes a reply as well as a top-level post', () => {
+  it('upvotes a reply as well as a top-level post', () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan', replyTo: '1' })];
     db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
     db.likes = new Map([['2', ['me']]]);
     renderTopic();
     expect(
-      screen.getByRole('button', { name: "Liked Jan's post. Press to take it back." }),
+      screen.getByRole('button', { name: "Upvoted Jan's post. Press to take it back." }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('says under the post when a like did not land', () => {
+  it('says under the post when a vote did not land', () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan' })];
     db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
     db.likeFailure = { postId: '2', message: 'Your like was not saved. You cannot like this.' };
@@ -543,7 +552,7 @@ describe('likes', () => {
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('Your like was not saved. You cannot like this.');
     expect(alert.closest('article')).toBe(
-      screen.getByRole('button', { name: "Like Jan's post" }).closest('article'),
+      screen.getByRole('button', { name: "Upvote Jan's post" }).closest('article'),
     );
   });
 });
@@ -587,15 +596,17 @@ describe('saving', () => {
 });
 
 describe('views on every standing post', () => {
-  it('shows a zero view count alongside likes on opening posts and replies', () => {
+  it('shows a zero view count alongside the score on opening posts and replies', () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me', replyTo: '1' })];
     renderTopic();
     const articles = screen.getAllByRole('article');
     for (const article of articles) {
       // Nested articles also include their children; each still has its own count.
       expect(within(article).getAllByText('0 views').length).toBeGreaterThan(0);
-      expect(within(article).getAllByText('0 likes').length).toBeGreaterThan(0);
-      expect(within(article).getAllByRole('button', { name: /^Like / }).length).toBeGreaterThan(0);
+      expect(within(article).getAllByText('0').length).toBeGreaterThan(0);
+      expect(within(article).getAllByRole('button', { name: /^Upvote / }).length).toBeGreaterThan(
+        0,
+      );
     }
   });
 });

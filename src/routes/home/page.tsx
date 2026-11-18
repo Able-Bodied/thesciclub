@@ -6,7 +6,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useChatAuthors } from '@/lib/chat/authors';
-import { usePostLikes } from '@/lib/chat/likes';
+import { usePostLikes, voteFor } from '@/lib/chat/likes';
 import { useReactions } from '@/lib/chat/reactions';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
@@ -262,16 +262,7 @@ export default function HomePage() {
   /** A standing opener's likes, drawn as unknown until they are read. */
   function likesFor(opening: ChatPost | null): CardLikes | undefined {
     if (!opening) return undefined;
-    return {
-      likedBy: likes.byPost.get(opening.id) ?? [],
-      readerId: memberId,
-      loading: likes.loadingFor(opening.id),
-      unavailable: Boolean(likes.error),
-      onToggle: () => {
-        likes.toggle(opening.id);
-      },
-      failure: likes.failure?.postId === opening.id ? likes.failure.message : null,
-    };
+    return voteFor(likes, opening.id, memberId);
   }
 
   function draw(item: FeedItem) {
