@@ -21,6 +21,7 @@ import { MuteButton } from '@/routes/chat/mute-button';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { lastActivity, roomCounts, roomInitial } from '@/routes/chat/room-card';
 import { TopicRow } from '@/routes/chat/topic-row';
+import { ShareRoomButton } from '@/routes/events/share-event';
 
 /**
  * One discussion room: its topics, and the way in.
@@ -211,11 +212,14 @@ export default function RoomPage() {
             </span>
             {/* A room's replies notify whoever started the topic, so muting a
                 room means: no notifications for replies to my topics in it. */}
-            <MuteButton
-              target={{ kind: 'room', id: room.id }}
-              what="replies to your posts in this room"
-              className="mt-0.5 flex-none"
-            />
+            <span className="mt-0.5 flex flex-none items-start gap-1.5">
+              {/* Not a closed room: no member could open the link. */}
+              {closed ? null : <ShareRoomButton id={room.id} name={room.name} />}
+              <MuteButton
+                target={{ kind: 'room', id: room.id }}
+                what="replies to your posts in this room"
+              />
+            </span>
           </div>
 
           {closed ? (
