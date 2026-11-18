@@ -135,6 +135,29 @@ export function injuryStageText(stage: InjuryStage, injuryType?: string | null):
     .replace('Injured', 'Diagnosed');
 }
 
+/**
+ * Each band in words (the owner, 2026-11-18: "Update the text in all Injured
+ * 2-5 years etc"), so the words say what the colour does.
+ */
+export const INJURY_BAND_TEXT: Record<InjuryBand, string> = {
+  0: 'Injured under 6 months',
+  1: 'Injured 6–12 months',
+  2: 'Injured 1–2 years',
+  3: 'Injured 2–5 years',
+  4: 'Injured 5–10 years',
+  5: 'Injured 10–20 years',
+  6: 'Injured 20–30 years',
+  7: 'Injured 30–40 years',
+  8: 'Injured 40–50 years',
+  9: 'Injured 50+ years',
+};
+
+/** The band in words; a condition is diagnosed rather than injured. */
+export function injuryBandText(band: InjuryBand, injuryType?: string | null): string {
+  const words = INJURY_BAND_TEXT[band];
+  return injuryType === 'condition' ? words.replace('Injured', 'Diagnosed') : words;
+}
+
 /** A year inside each stage, for ordering and matching where the date is hidden. */
 const STAGE_YEARS: Record<InjuryStage, number> = {
   new: 0.25,

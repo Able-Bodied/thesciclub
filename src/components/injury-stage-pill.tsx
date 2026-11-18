@@ -1,4 +1,4 @@
-import { injuryBandOf, injuryStageOf, injuryStageText, stageBand } from '@/lib/injury';
+import { injuryBandOf, injuryBandText, injuryStageOf, stageBand } from '@/lib/injury';
 import { cn } from '@/lib/utils';
 import type { BrowseMember, InjuryBand, InjuryStage } from '@/types/domain';
 
@@ -62,7 +62,7 @@ export function InjuryStageNote({ member, className }: { member: Staged; classNa
         className,
       )}
     >
-      {injuryStageText(stage, member.injuryType)}
+      {injuryBandText(band, member.injuryType)}
     </span>
   );
 }
@@ -85,16 +85,18 @@ export function LevelHighlight({
   injuryType?: string | null | undefined;
 }) {
   if (!stage) return <>{level}</>;
+  const shade = band ?? stageBand(stage);
+  const words = injuryBandText(shade, injuryType);
   return (
     <span
-      title={injuryStageText(stage, injuryType)}
+      title={words}
       className={cn(
         'box-decoration-clone rounded-full px-1.5 font-normal text-ink',
-        BYLINE_PILL[band ?? stageBand(stage)],
+        BYLINE_PILL[shade],
       )}
     >
       {level}
-      <span className="sr-only">, {injuryStageText(stage, injuryType).toLowerCase()}</span>
+      <span className="sr-only">, {words.toLowerCase()}</span>
     </span>
   );
 }
