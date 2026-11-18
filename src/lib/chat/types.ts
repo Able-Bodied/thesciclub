@@ -1,4 +1,4 @@
-import type { InjuryStage } from '@/types/domain';
+import type { InjuryBand, InjuryStage } from '@/types/domain';
 
 /**
  * The shapes Chat passes around.
@@ -114,6 +114,8 @@ export interface ChatAuthor {
   level: string | null;
   /** How long ago, to colour the level (20261117040000). Absent before it. */
   stage?: InjuryStage | null;
+  /** The finer band, for the colour (20261118226000). Absent before it. */
+  band?: InjuryBand | null;
   injuryType?: string | null;
   isAdmin: boolean;
   /** Whether /peers/:id will show them, and therefore whether to link. */

@@ -213,6 +213,7 @@ export default function GroupMembersPage() {
                       <LevelHighlight
                         level={author.level}
                         stage={author.stage}
+                        band={author.band}
                         injuryType={author.injuryType}
                       />
                     ) : null}

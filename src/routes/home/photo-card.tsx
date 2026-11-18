@@ -96,6 +96,7 @@ export function PhotoCard({
                 <LevelHighlight
                   level={author.level}
                   stage={author.stage}
+                  band={author.band}
                   injuryType={author.injuryType}
                 />
                 {' · '}

@@ -180,6 +180,22 @@
   --stage-years: #0e7490;
   --stage-og: #6b3fa8;
   --stage-oog: #a3275e;
+  /* The pills' ten bands of how long ago (the owner, 2026-11-18: "green most
+     junior to red most senior ... make red the color for 10 years post and then
+     progress to a dark purple"): under 6 months, 6-12 months, 1-2 years, 2-5,
+     5-10, 10-20 (red), 20-30, 30-40, 40-50, 50 and more. White words at half
+     over a photograph and --ink at 30% on the page, light or dark, all past
+     4.5:1 (theme-contrast.test.ts). */
+  --band-0: #1d7a3e;
+  --band-1: #4a8a22;
+  --band-2: #7a8c14;
+  --band-3: #a8800f;
+  --band-4: #d0661c;
+  --band-5: #d1302a;
+  --band-6: #b0264f;
+  --band-7: #8e2a6e;
+  --band-8: #6c2a85;
+  --band-9: #4b1d6b;
   /* The same stages as words (the owner, 2026-11-17: the words in the colour, no
      band; brighter, same hues, 2026-11-17). On a light page, each past 4.5:1 on
      --paper and --canvas (theme-contrast.test.ts); --stage-*-light
@@ -281,6 +297,16 @@
   --color-stage-years: var(--stage-years);
   --color-stage-og: var(--stage-og);
   --color-stage-oog: var(--stage-oog);
+  --color-band-0: var(--band-0);
+  --color-band-1: var(--band-1);
+  --color-band-2: var(--band-2);
+  --color-band-3: var(--band-3);
+  --color-band-4: var(--band-4);
+  --color-band-5: var(--band-5);
+  --color-band-6: var(--band-6);
+  --color-band-7: var(--band-7);
+  --color-band-8: var(--band-8);
+  --color-band-9: var(--band-9);
   --color-stage-new-text: var(--stage-new-text);
   --color-stage-new-light: var(--stage-new-light);
   --color-stage-recent-text: var(--stage-recent-text);

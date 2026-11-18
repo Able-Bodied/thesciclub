@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChatAuthor } from '@/lib/chat/types';
+import { toInjuryBand } from '@/lib/injury';
 import { readInBatches } from '@/lib/read-pages';
 import {
   holdFacesFresh,
@@ -70,7 +71,7 @@ onFacesStale(readAuthorsAgain);
 
 /** What a face and a byline need, read alone or embedded in another read. */
 export const AUTHOR_COLUMNS =
-  'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, injury_stage, is_admin, has_profile';
+  'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, injury_stage, injury_band, is_admin, has_profile';
 
 export interface ChatAuthorRow {
   id: string;
@@ -87,6 +88,8 @@ export interface ChatAuthorRow {
   condition_name?: string | null;
   /** Optional: absent from a database before 20261117040000. */
   injury_stage?: string | null;
+  /** Optional: absent from a database before 20261118226000. */
+  injury_band?: number | null;
   is_admin: boolean;
   has_profile: boolean;
 }
@@ -108,6 +111,7 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
       levelRange: row.level_range,
     }),
     stage: INJURY_STAGES.find((stage) => stage === row.injury_stage) ?? null,
+    band: toInjuryBand(row.injury_band),
     injuryType: row.injury_type ?? null,
     isAdmin: row.is_admin,
     hasProfile: row.has_profile,

@@ -22,6 +22,7 @@ export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember 
     injuryDate: null,
     injuryDatePrecision: null,
     injuryStage: null,
+    injuryBand: null,
     region: 'Thoracic',
     age: 40,
     howInjured: null,

@@ -547,6 +547,7 @@ function WhoReactedSheet({
                           <LevelHighlight
                             level={author.level}
                             stage={author.stage}
+                            band={author.band}
                             injuryType={author.injuryType}
                           />
                         </span>
