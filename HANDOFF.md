@@ -716,6 +716,14 @@ All live. Migration headers and the files named say how and why.
   goes when nothing is remembered (a notification, a shared link, a
   refresh). A new screen needs no line of its own, only an `h1`, which names
   it on the next screen's line. Rooms and posts keep their breadcrumb.
+- **Three fixes from the owner's reports** (2026-11-18): whoever speaks for
+  an event's organization is not asked "how did it go?" (they may not review
+  it; `20261118200000`), and the review page gives a refused member their own
+  reason. A Home card quotes a reply made with Reply on the post itself, not
+  only one filed under nothing (`home_topics_ranked`, `20261118210000`, one
+  condition changed in the ranking of `20261118190000`; `lib/home/topics.ts`
+  for the read without it), and every quoted reply says when it came. Peers'
+  Include filter has "SCI peers" in place of "Mentors" and "Non-mentors".
 
 ## Environment
 
