@@ -61,6 +61,12 @@ export interface EventCardProps {
    */
   attached?: boolean;
   /**
+   * Shared in a chat message (the owner, 2026-11-18: "there is no space for a
+   * picture and a description. Drop the picture and just have the
+   * description. Cap it"): no picture, and the words cut at MESSAGE_WORDS.
+   */
+  inMessage?: boolean;
+  /**
    * Drawn inside the card's border, under the buttons.
    *
    * The series line lives here rather than under the card. Sat outside, its
@@ -97,6 +103,18 @@ const RSVP_BUTTON =
 const RSVP_OPEN = 'border-[1.4px] border-line text-emphasis hover:border-emphasis hover:bg-tint';
 const RSVP_CHOSEN = 'border-[1.4px] border-emphasis bg-tint text-emphasis hover:bg-line';
 
+/** How many characters of an event's words a chat message carries. */
+const MESSAGE_WORDS = 140;
+
+/** At most `max` characters, cut at a word and marked with an ellipsis. */
+export function capWords(text: string | null | undefined, max: number): string {
+  const words = (text ?? '').replace(/\s+/g, ' ').trim();
+  if (words.length <= max) return words;
+  const cut = words.slice(0, max + 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? cut.slice(0, space) : words.slice(0, max)).replace(/[\s,.;:–—-]+$/, '')}…`;
+}
+
 export function EventCard({
   event,
   status,
@@ -107,6 +125,7 @@ export function EventCard({
   onRsvp,
   past = false,
   attached = false,
+  inMessage = false,
   footer,
   occurrence = false,
   mapHref,
@@ -143,6 +162,11 @@ export function EventCard({
   const whenLine = timeRange(event.startTime, event.endTime, event.timezone, event.allDay);
   const whereLine = placeLine(event);
   const registerHref = safeHref(event.registrationUrl);
+  // In a message, the card's sentence or else the start of the description,
+  // cut short; elsewhere the sentence only, as before.
+  const summary = inMessage
+    ? capWords(event.detailSummary?.trim() ? event.detailSummary : event.description, MESSAGE_WORDS)
+    : event.detailSummary;
 
   // A past event is a line, not a card. Everything the full card carries is
   // there to answer "should I go to this" — the tags, the place, who else is
@@ -293,13 +317,13 @@ export function EventCard({
           ) : null}
           <OutOfStateMark state={event.state} className="mt-1" />
 
-          {event.detailSummary ? (
-            <span className="mt-1.5 block text-[0.8125rem] text-ink leading-[1.45]">
-              {event.detailSummary}
-            </span>
+          {summary ? (
+            <span className="mt-1.5 block text-[0.8125rem] text-ink leading-[1.45]">{summary}</span>
           ) : null}
         </span>
-        <EventCover path={event.photoPath} alt={event.photoAlt} size="card" className="-mr-1" />
+        {inMessage ? null : (
+          <EventCover path={event.photoPath} alt={event.photoAlt} size="card" className="-mr-1" />
+        )}
       </button>
 
       {/* Beside the card's button, not in it: it is a button of its own. */}

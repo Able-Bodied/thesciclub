@@ -74,6 +74,7 @@ function SharedEventCard({ eventId }: { eventId: string }) {
         organization={organization}
         past={isEventOver(event)}
         attached
+        inMessage
         onOpen={() => {
           void navigate(`/events/${event.id}`);
         }}
