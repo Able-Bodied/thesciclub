@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
+import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import type { MorePhotoChange } from '@/lib/events';
+import { useMyOrganizations } from '@/lib/organization-representatives';
+import { useOrganizations } from '@/lib/organizations';
 import {
   CHANGE_DAYS,
   canChangeReview,
@@ -30,6 +34,19 @@ export default function ReviewPage({ kind }: { kind: ReviewTarget['kind'] }) {
   const target: ReviewTarget = { kind, id };
   const { reviews, options, loading } = useReviews(target);
   const back = kind === 'event' ? `/events/${id}` : `/events/organizations/${id}`;
+  // Which organization of the reader's own this is or was held by, if any:
+  // why they may not review it. Only read to say so; the database decides.
+  const account = useAccount();
+  const represented = useMyOrganizations(account.userId);
+  const { organizations, loading: organizationsLoading } = useOrganizations();
+  const spokenFor =
+    organizations.find(
+      (organization) =>
+        represented.ids.has(organization.id) &&
+        (kind === 'organization'
+          ? organization.id === id
+          : organization.name === options?.organizationName),
+    )?.name ?? null;
   // On an event's page the list holds other dates' too; only this one's is it.
   const mine = reviews.find(
     (review) => review.mine && (kind === 'organization' ? !review.eventId : review.eventId === id),
@@ -38,7 +55,7 @@ export default function ReviewPage({ kind }: { kind: ReviewTarget['kind'] }) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pt-6 pb-10">
-        {loading ? (
+        {loading || (!options?.canReview && (represented.loading || organizationsLoading)) ? (
           <p role="status" className="py-8 text-center text-[0.875rem] text-grey">
             Loading…
           </p>
@@ -53,14 +70,62 @@ export default function ReviewPage({ kind }: { kind: ReviewTarget['kind'] }) {
             back={back}
           />
         ) : (
-          <p className="py-8 text-center text-[0.875rem] text-ink2 leading-[1.5]">
-            {kind === 'event'
-              ? 'Reviews of an event come from people who checked in to it.'
-              : 'Reviews of an organization come from its members.'}
-          </p>
+          <ReviewRefused
+            kind={kind}
+            title={options?.title ?? null}
+            organizer={spokenFor}
+            back={back}
+          />
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Refused, with the name, the reader's own reason and a way on (the owner,
+ * 2026-11-18: the follow-up notification opened "an empty page" for their own
+ * event, one line giving a reason that was not theirs). review_options
+ * refuses whoever speaks for the organization, and whoever has not checked in
+ * to the event or does not belong to the organization.
+ */
+export function ReviewRefused({
+  kind,
+  title,
+  organizer,
+  back,
+}: {
+  kind: ReviewTarget['kind'];
+  title: string | null;
+  /** The organization the reader speaks for, when that is why; null when it is not. */
+  organizer: string | null;
+  back: string;
+}) {
+  const why =
+    kind === 'event'
+      ? organizer
+        ? `You’re an admin of ${organizer}, which held this event, so you can’t review it. Reviews come from the other members who came.`
+        : 'Only people who checked in to an event can review it, and you aren’t checked in to this one.'
+      : organizer
+        ? `You’re an admin of ${organizer}, so you can’t review it. Reviews come from its other members.`
+        : 'Only members of an organization can review it, and you aren’t a member of this one.';
+  return (
+    <>
+      <OwnBack to={back} label={kind === 'event' ? 'Event' : 'Organization'}>
+        {null}
+      </OwnBack>
+      <p className="font-bold text-[0.75rem] text-grey uppercase tracking-[0.13em]">Review</p>
+      <h1 className="mt-1 mb-3 font-extrabold font-display text-[1.5rem] text-ink leading-tight">
+        {title ?? (kind === 'event' ? 'This event' : 'This organization')}
+      </h1>
+      <p className="text-[0.9375rem] text-ink2 leading-[1.5]">{why}</p>
+      <Link
+        to={back}
+        className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold transition-colors hover:bg-gold-hi"
+      >
+        {kind === 'event' ? 'Open the event' : 'Open the organization'}
+      </Link>
+    </>
   );
 }
 

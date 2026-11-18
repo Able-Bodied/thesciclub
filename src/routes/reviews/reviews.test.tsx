@@ -10,6 +10,8 @@ const api = vi.hoisted(() => ({
   rows: [] as object[],
   options: [] as object[],
   calls: [] as [string, Record<string, unknown>][],
+  /** Organizations the reader speaks for. */
+  represented: [] as string[],
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -24,6 +26,18 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 vi.mock('@/lib/announce', () => ({ useAnnounce: () => () => undefined }));
+// Only to say why somebody is refused: who the reader is, and which
+// organizations they speak for.
+vi.mock('@/lib/account', () => ({ useAccount: () => ({ userId: 'me' }) }));
+vi.mock('@/lib/organization-representatives', () => ({
+  useMyOrganizations: () => ({ ids: new Set(api.represented), loading: false }),
+}));
+vi.mock('@/lib/organizations', () => ({
+  useOrganizations: () => ({
+    organizations: [{ id: 'o1', name: 'NorCal SCI' }],
+    loading: false,
+  }),
+}));
 vi.mock('@/lib/photos', () => ({ PHOTOS_BUCKET: 'photos', usePhotoUrl: () => null }));
 
 const row = (over: object = {}) => ({
@@ -58,6 +72,7 @@ beforeEach(() => {
   api.rows = [];
   api.options = [offered({ can_review: false })];
   api.calls = [];
+  api.represented = [];
 });
 
 function section() {
@@ -154,7 +169,24 @@ describe('reviews on a page', () => {
 describe('writing a review', () => {
   it('turns away somebody who did not check in', async () => {
     form();
-    expect(await screen.findByText(/people who checked in/)).toBeInTheDocument();
+    expect(await screen.findByText(/you aren’t checked in to this one/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Climbing' })).toBeInTheDocument();
+  });
+
+  // The owner, 2026-11-18: the follow-up notification for their own event
+  // opened one line about checking in, which they had done. Whoever speaks
+  // for the organization that held it is told that.
+  it('tells somebody who speaks for the organization that this is why', async () => {
+    api.represented = ['o1'];
+    form();
+    expect(
+      await screen.findByText(/You’re an admin of NorCal SCI, which held this event/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/checked in/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Open the event' })).toHaveAttribute(
+      'href',
+      '/events/e1',
+    );
   });
 
   it('needs stars, and sends the choices', async () => {

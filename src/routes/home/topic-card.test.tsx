@@ -130,8 +130,9 @@ describe('a topic on Home', () => {
       }),
       repliers: [author({ id: 'j', displayName: 'Jan', level: 'T4' })],
     });
+    // With when it came (the owner, 2026-11-18).
     expect(screen.getByRole('link', { name: 'Jan' }).closest('span')).toHaveTextContent(
-      /^Jan · T4$/,
+      /^Jan · T4 · \S/,
     );
     expect(screen.getByText('Evenings, after a year of mornings.')).toBeInTheDocument();
     expect(screen.getByText('3 replies')).toBeInTheDocument();

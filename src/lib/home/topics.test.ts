@@ -83,9 +83,10 @@ describe('toHomeTopics', () => {
     expect(topic?.firstReply?.id).toBe('standing');
   });
 
-  // A reply to an answer belongs under that answer (20260930000000). The card
-  // shows the first answer to the topic, not the first reply to anything.
-  it('skips a reply that sits under another post when choosing the first one', () => {
+  // The owner, 2026-11-18: a card said "2 replies" and showed none, because
+  // both were made with Reply on the post itself. A reply filed under the
+  // opening post is an answer to it; one filed under another reply is not.
+  it('shows the first reply even when it was made under the post itself', () => {
     const [topic] = toHomeTopics(
       [summary({ id: 't', replyCount: 2 })],
       [
@@ -100,7 +101,7 @@ describe('toHomeTopics', () => {
       ],
       [bowel],
     );
-    expect(topic?.firstReply?.id).toBe('answer');
+    expect(topic?.firstReply?.id).toBe('under-opening');
   });
 
   it('calls a topic a photo topic when its opening post has a photograph', () => {

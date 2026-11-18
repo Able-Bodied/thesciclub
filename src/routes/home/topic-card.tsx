@@ -262,14 +262,13 @@ function QuotedReply({
               />
             </>
           ) : null}
-          {reply.kind === 'first' ? null : (
-            <span className="font-normal text-grey">
-              {' · '}
-              {[label, reply.kind === 'top' ? null : chatTime(reply.post.createdAt)]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-          )}
+          {/* When it came, on every reply quoted, the first one too (the
+              owner, 2026-11-18: "a date/time/minutes ago of the first
+              response in the preview"). */}
+          <span className="font-normal text-grey">
+            {' · '}
+            {[label, chatTime(reply.post.createdAt)].filter(Boolean).join(' · ')}
+          </span>
         </span>
       </p>
       <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52] [&_a]:relative [&_a]:z-[1]">
