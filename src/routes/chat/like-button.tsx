@@ -28,7 +28,20 @@ import { cn } from '@/lib/utils';
 
 /** Sized in em off its own letters, so it grows with the text-size setting. */
 const CONTROL = 'inline-flex items-center gap-[0.35em] font-bold font-head leading-[1.3]';
-const ARROW = 'inline-flex items-center justify-center rounded-full p-[0.3em] transition-colors';
+/**
+ * The pill is one size wherever it is drawn (it was 18px tall on a post at first, the screenshot
+ * review, 2026-11-18): 15px letters, so each arrow is a 34px target, in em so it grows with the
+ * text-size setting.
+ */
+const PILL = 'inline-flex items-center rounded-full bg-tint text-[0.9375rem]';
+const ARROW = 'inline-flex items-center justify-center rounded-full p-[0.45em] transition-colors';
+/** The reader's own vote, on its arrow and the score: up in the club's colour, down in Mind's. */
+const VOTED: Record<Vote, string> = { 1: 'text-emphasis', [-1]: 'text-room-mind', 0: 'text-ink' };
+
+/** The score, with a true minus sign: a hyphen reads cramped beside the arrow. */
+function scoreText(score: number): string {
+  return score < 0 ? `−${String(-score)}` : String(score);
+}
 /** How long a press is a long press, in milliseconds. */
 const LONG_PRESS = 550;
 
@@ -124,7 +137,7 @@ export function PostLikes({
 
   return (
     <span className={cn(CONTROL, className)}>
-      <span className="inline-flex items-center rounded-full bg-tint">
+      <span className={PILL}>
         {readerId ? (
           <button
             type="button"
@@ -164,7 +177,7 @@ export function PostLikes({
           </button>
         ) : null}
         {unknown ? (
-          <span className="px-[0.2em] font-semibold text-ink2">
+          <span className="px-[0.2em] font-semibold text-[0.8125rem] text-ink2">
             {loading ? '…' : 'Votes unavailable'}
           </span>
         ) : canOpen ? (
@@ -176,14 +189,17 @@ export function PostLikes({
             }}
             aria-label={`Score ${score} on ${what}. Show who upvoted.`}
             data-target="small"
-            className="min-w-[1.4em] px-[0.1em] text-center text-ink underline-offset-2 hover:underline"
+            className={cn(
+              'min-w-[1.6em] px-[0.1em] text-center underline-offset-2 hover:underline',
+              VOTED[myVote],
+            )}
           >
-            {score}
+            {scoreText(score)}
           </button>
         ) : (
-          <span className="min-w-[1.4em] px-[0.1em] text-center text-ink">
+          <span className={cn('min-w-[1.6em] px-[0.1em] text-center', VOTED[myVote])}>
             <span className="sr-only">Score </span>
-            {score}
+            {scoreText(score)}
           </span>
         )}
         {readerId && onDownvote ? (
@@ -202,7 +218,7 @@ export function PostLikes({
             data-target="small"
             className={cn(
               ARROW,
-              myVote === -1 && !unknown ? 'text-ink' : 'text-ink2 hover:text-ink',
+              myVote === -1 && !unknown ? 'text-room-mind' : 'text-ink2 hover:text-room-mind',
             )}
           >
             <ArrowBigDown
@@ -218,7 +234,7 @@ export function PostLikes({
       </span>
       {/* An administrator's alone: to members the boost is part of the score. */}
       {boost && !unknown ? (
-        <span className="font-semibold text-[0.85em] text-grey">Boost +{boost}</span>
+        <span className="font-semibold text-[0.75rem] text-ink2">Boost +{boost}</span>
       ) : null}
       {open ? (
         <LikesSheet
