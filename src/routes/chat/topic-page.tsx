@@ -8,6 +8,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useMyBlocks } from '@/lib/blocks';
@@ -507,7 +508,8 @@ export default function TopicPage() {
             tabIndex={-1}
             className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3] outline-none [overflow-wrap:anywhere]"
           >
-            {topic.title}
+            {/* A question's @people and @Organizations open their pages (the owner, 2026-11-17). */}
+            <LinkedText text={topic.title} />
           </h1>
           {room?.id === PRICED_ROOM ? (
             <ListingPrice
