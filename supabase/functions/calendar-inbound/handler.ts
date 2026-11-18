@@ -253,7 +253,10 @@ async function calendarText(
   return null;
 }
 
-/** The one ignored invitation its sender is told about; receive says this. */
+/**
+ * The ignored invitations their sender is told about: one date of a repeating
+ * event that could not be copied, and why (20261118250000); receive says this.
+ */
 const ONE_DATE = 'A change to one date of a repeating event';
 
 /** What the club now holds, so the sender can check it; no such email means it never arrived. */
@@ -310,7 +313,9 @@ export function repliesFor(
         {
           to: sender,
           subject: `Taken off The SCI Club: ${title}`,
-          text: `The invitation was cancelled, so ${title} is no longer on the club's calendar.`,
+          text: invite.recurrenceId
+            ? `One date of ${title}, ${whenLine(invite)}, was cancelled, so it is no longer on the club's calendar. Its other dates stay.`
+            : `The invitation was cancelled, so ${title} is no longer on the club's calendar.`,
         },
       ];
     case 'held': {
@@ -344,7 +349,7 @@ export function repliesFor(
         {
           to: sender,
           subject: `Not copied to The SCI Club: ${title}`,
-          text: `A change to one date of ${title} was not copied, because the club cannot hold one date of a repeating event apart from the rest.\n\nChange that date in the club, or change the whole series in your calendar.`,
+          text: result.reason.replace(ONE_DATE, `A change to one date of ${title}`),
         },
       ];
   }
