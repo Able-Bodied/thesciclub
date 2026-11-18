@@ -37,6 +37,9 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
   const [note, setNote] = useState('');
   // Optional (the owner, 2026-11-15): "Hi Ana," and joining's name.
   const [name, setName] = useState('');
+  // Quoted in the email (the owner, 2026-11-17: "if I want to add a note to
+  // the invite e-mail"); the Note stays on the list only.
+  const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -63,6 +66,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
           : organizationId,
       note: note.trim() || null,
       ...(name.trim() ? { name } : {}),
+      ...(message.trim() ? { message } : {}),
     })
       .then((result) => {
         if (!result.ok) {
@@ -72,6 +76,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
         setEmail('');
         setName('');
         setNote('');
+        setMessage('');
         if (result.sendError) setError(result.sendError);
         else setDone(`The link is on its way to ${address}.`);
         onCreated();
@@ -167,11 +172,35 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
           id="invite-note"
           placeholder="Met at rugby practice"
           value={note}
+          aria-describedby="invite-note-hint"
           onChange={(e) => {
             setNote(e.target.value);
           }}
           className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
         />
+        <p id="invite-note-hint" className="mt-1 text-[0.75rem] text-grey leading-[1.4]">
+          On the list here only, not in the email.
+        </p>
+      </div>
+
+      <div className="mt-2.5">
+        <label htmlFor="invite-message" className="block font-bold text-[0.75rem] text-ink">
+          Message in the email (optional)
+        </label>
+        <textarea
+          id="invite-message"
+          rows={3}
+          maxLength={1000}
+          value={message}
+          aria-describedby="invite-message-hint"
+          onChange={(e) => {
+            setMessage(e.target.value);
+          }}
+          className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] leading-[1.45] outline-none focus:border-emphasis disabled:opacity-40"
+        />
+        <p id="invite-message-hint" className="mt-1 text-[0.75rem] text-grey leading-[1.4]">
+          Quoted in the email, from you. Others can see an inbox, so keep it general.
+        </p>
       </div>
 
       <p className="mt-2.5 text-[0.75rem] text-grey leading-[1.45]">

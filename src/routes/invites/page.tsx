@@ -63,6 +63,8 @@ export default function InvitesPage() {
   const [note, setNote] = useState('');
   // Optional (the owner, 2026-11-15): "Hi Ana," and joining's name.
   const [name, setName] = useState('');
+  // Quoted in the email (the owner, 2026-11-17).
+  const [message, setMessage] = useState('');
   // Asked only of an org admin of several (the owner, 2026-10-30); of one, the
   // database knows which.
   const [organizationId, setOrganizationId] = useState('');
@@ -180,6 +182,7 @@ export default function InvitesPage() {
         email: address,
         note: note.trim() || null,
         ...(name.trim() ? { name } : {}),
+        ...(message.trim() ? { message } : {}),
         ...(permissions.unlimited ? { unlimited: true } : {}),
         ...(assigned
           ? { organizationId: assigned.id }
@@ -194,6 +197,7 @@ export default function InvitesPage() {
         setEmail('');
         setName('');
         setNote('');
+        setMessage('');
         setOrganizationId('');
         // On the list, but the email did not go: say so, and the row has Resend.
         setNotice(result.sendError ?? `The link is on its way to ${address}.`);
@@ -461,6 +465,33 @@ export default function InvitesPage() {
                 }}
                 className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
               />
+            </div>
+
+            <div className="mt-2.5">
+              <label
+                htmlFor="mentor-invite-message"
+                className="block font-bold text-[0.75rem] text-ink"
+              >
+                Message in the email (optional)
+              </label>
+              <textarea
+                id="mentor-invite-message"
+                rows={3}
+                maxLength={1000}
+                value={message}
+                disabled={left === 0}
+                aria-describedby="mentor-invite-message-hint"
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                }}
+                className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] leading-[1.45] outline-none focus:border-emphasis disabled:opacity-40"
+              />
+              <p
+                id="mentor-invite-message-hint"
+                className="mt-1 text-[0.75rem] text-grey leading-[1.4]"
+              >
+                Quoted in the email, from you. Others can see an inbox, so keep it general.
+              </p>
             </div>
 
             <button

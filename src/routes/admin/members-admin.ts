@@ -442,16 +442,30 @@ export async function createInvite(input: {
   note: string | null;
   /** What to call them, optional: the email's "Hi Ana," and joining's name (20261115160000). */
   name?: string | null;
+  /** Quoted in the email, from the inviter, optional (20261117160000). */
+  message?: string | null;
 }): Promise<{ ok: boolean; error?: string; sendError?: string }> {
   const name = input.name?.trim() ? input.name.trim() : null;
-  // Not destructured: the client types rpc data as `any`. With a name only:
-  // the version without one is the iPhone app's too.
-  const result = await getSupabase().rpc('admin_create_invite', {
-    raw_email: input.email,
-    organization_id: input.organizationId,
-    note: input.note,
-    ...(name ? { p_name: name } : {}),
-  });
+  const message = input.message?.trim() ? input.message.trim() : null;
+  // Not destructured: the client types rpc data as `any`. With a name or a
+  // message only: the version without either is the iPhone app's too.
+  const result = await getSupabase().rpc(
+    'admin_create_invite',
+    message
+      ? {
+          raw_email: input.email,
+          p_message: message,
+          organization_id: input.organizationId,
+          note: input.note,
+          p_name: name,
+        }
+      : {
+          raw_email: input.email,
+          organization_id: input.organizationId,
+          note: input.note,
+          ...(name ? { p_name: name } : {}),
+        },
+  );
   if (result.error) return { ok: false, error: describeError(result.error, INVITE_REFUSAL) };
   const created: unknown = result.data;
   const id = (created as { id?: unknown } | null)?.id;
