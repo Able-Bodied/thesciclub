@@ -396,7 +396,7 @@ export default function MePage() {
                       {invitePermissions.canInvite ? (
                         <ProfileLink
                           to="/invites"
-                          title="Your invites"
+                          title="Invite new members"
                           description={
                             invitePermissions.unlimited
                               ? 'You can invite people without a limit.'
