@@ -80,7 +80,7 @@ export function TopicCard({
             className={
               topic.isQuestion
                 ? 'block text-left font-bold text-[0.6875rem] text-gold-hi uppercase tracking-[0.12em] after:absolute after:inset-0 after:rounded-[17px]'
-                : 'sr-only after:absolute after:inset-0 after:rounded-[17px]'
+                : 'block h-0 after:absolute after:inset-0 after:rounded-[17px]'
             }
           >
             {topic.isQuestion ? 'Question' : null}
