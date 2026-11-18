@@ -101,25 +101,38 @@ export async function createMyInvite(input: {
    * Without it, the database gives a member of exactly one organization that one.
    */
   noOrganization?: boolean;
+  /** Quoted in the email, from the inviter, optional (20261117160000). */
+  message?: string | null;
 }): Promise<{ ok: boolean; error?: string; sendError?: string }> {
   const name = input.name?.trim() ? input.name.trim() : null;
+  const message = input.message?.trim() ? input.message.trim() : null;
   // Not destructured: the client types rpc data as `any`. The version with
   // p_name (which may be null) writes the name and takes a null organization
   // as none; the one without is the iPhone app's.
   const result = await getSupabase().rpc(
     'create_my_invite',
-    name || input.noOrganization
+    message
       ? {
+          // The version with a message chooses between those two the same way.
           raw_email: input.email,
+          p_message: message,
+          note: input.note,
+          p_organization: input.organizationId ?? null,
           p_name: name,
-          note: input.note,
-          p_organization: input.organizationId ?? null,
+          p_no_organization: input.noOrganization === true,
         }
-      : {
-          raw_email: input.email,
-          note: input.note,
-          p_organization: input.organizationId ?? null,
-        },
+      : name || input.noOrganization
+        ? {
+            raw_email: input.email,
+            p_name: name,
+            note: input.note,
+            p_organization: input.organizationId ?? null,
+          }
+        : {
+            raw_email: input.email,
+            note: input.note,
+            p_organization: input.organizationId ?? null,
+          },
   );
   if (result.error)
     return {
