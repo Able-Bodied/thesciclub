@@ -74,7 +74,7 @@ export function safeHref(raw: string | null): string | null {
  * like a broken app rather than a blocked attack.
  */
 /** A member's profile, the one address inside the app a post's @mention may link to. */
-const PEER_HREF = /^\/peers\/[0-9a-f-]{36}$/;
+const PEER_HREF = /^\/(peers|events\/organizations)\/[0-9a-f-]{36}$/;
 
 function sanitizeInto(source: Node, target: Node, doc: Document, peers: boolean): void {
   for (const child of Array.from(source.childNodes)) {

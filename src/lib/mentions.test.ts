@@ -54,6 +54,28 @@ describe('the @names in some words', () => {
   });
 });
 
+// The owner, 2026-11-17: an organization by its full name, spaces and all.
+describe('an @organization in some words', () => {
+  const orgs = [
+    { id: 'o1', name: 'NorCal SCI' },
+    { id: 'o2', name: 'NorCal' },
+  ];
+  it('finds the longest name, any case, and the @usernames around it', () => {
+    expect(splitMentions('Ask @norcal sci, or @maya.', orgs)).toEqual([
+      { kind: 'text', text: 'Ask ' },
+      { kind: 'organization', text: '@norcal sci', id: 'o1' },
+      { kind: 'text', text: ', or ' },
+      { kind: 'mention', text: '@maya', username: 'maya' },
+      { kind: 'text', text: '.' },
+    ]);
+  });
+  it('not inside a word, an address, or a longer word', () => {
+    expect(
+      splitMentions('me@NorCal SCI and @NorCalSCI', orgs).filter((p) => p.kind === 'organization'),
+    ).toEqual([]);
+  });
+});
+
 describe('who to suggest', () => {
   const member = (username: string, displayName: string): MentionCandidate => ({
     id: username,

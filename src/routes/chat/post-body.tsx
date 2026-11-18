@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { markdownToHtml } from '@/lib/markdown';
 import { useMentionedMembers } from '@/lib/mentions';
+import { useOrganizations } from '@/lib/organizations';
 import { sanitizeHtml } from '@/routes/events/rich-text';
 
 /**
@@ -12,16 +13,22 @@ import { sanitizeHtml } from '@/routes/events/rich-text';
 export function PostBody({ text, className }: { text: string; className?: string }) {
   const navigate = useNavigate();
   const members = useMentionedMembers(text);
-  const html = markdownToHtml(text, (username) => {
-    const member = members.get(username);
-    return member?.hasProfile ? `/peers/${member.id}` : null;
-  });
+  const { organizations } = useOrganizations();
+  const html = markdownToHtml(
+    text,
+    (username) => {
+      const member = members.get(username);
+      return member?.hasProfile ? `/peers/${member.id}` : null;
+    },
+    organizations,
+  );
 
   // A profile opens in the app, not as a new page load.
   const follow = (event: MouseEvent<HTMLDivElement>) => {
     const link = (event.target as Element).closest('a');
     const href = link?.getAttribute('href') ?? '';
-    if (!href.startsWith('/peers/') || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    const inApp = href.startsWith('/peers/') || href.startsWith('/events/organizations/');
+    if (!inApp || event.metaKey || event.ctrlKey || event.shiftKey) return;
     event.preventDefault();
     void navigate(href);
   };

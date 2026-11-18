@@ -1,5 +1,5 @@
 import { findLinks } from '@/lib/links';
-import { splitMentions } from '@/lib/mentions';
+import { type MentionOrganization, splitMentions } from '@/lib/mentions';
 
 /**
  * A small Markdown, for an event's "About it" (the owner, 2026-10-10).
@@ -28,7 +28,15 @@ const NUMBERED = /^\s*\d{1,3}[.)]\s+(.+)$/;
 /** Where an @username links to, or null to leave it as words (a post's mentions). */
 export type MentionHref = (username: string) => string | null;
 
-export function markdownToHtml(text: string, mention?: MentionHref): string {
+/** Organizations an @Full Name links to, as /events/organizations/:id (the owner, 2026-11-17). */
+let organizationsNow: readonly MentionOrganization[] = [];
+
+export function markdownToHtml(
+  text: string,
+  mention?: MentionHref,
+  organizations: readonly MentionOrganization[] = [],
+): string {
+  organizationsNow = organizations;
   const out: string[] = [];
   let paragraph: string[] = [];
   // Asserted rather than annotated: the closures below reset it, which
@@ -121,9 +129,14 @@ function plain(text: string, mention?: MentionHref): string {
 
 function mentions(text: string, mention?: MentionHref): string {
   if (!mention) return escapeHtml(text);
-  return splitMentions(text)
+  return splitMentions(text, organizationsNow)
     .map((piece) => {
-      const href = piece.kind === 'mention' ? mention(piece.username) : null;
+      const href =
+        piece.kind === 'mention'
+          ? mention(piece.username)
+          : piece.kind === 'organization'
+            ? `/events/organizations/${piece.id}`
+            : null;
       return href
         ? `<a href="${escapeHtml(href)}">${escapeHtml(piece.text)}</a>`
         : escapeHtml(piece.text);
