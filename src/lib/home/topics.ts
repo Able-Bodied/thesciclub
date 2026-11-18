@@ -13,9 +13,12 @@ import { getSupabase } from '@/lib/supabase';
  * `chat_room_is_readable` policies.
  *
  * `opening` is the earliest post, unfiltered: filtering out a removed question would present
- * its first reply as the question. `replies` are standing top-level posts (`replyTo` null, since
- * 20260930000000), so a card never quotes a side-conversation; two suffice, as a standing opener
- * is the first of them.
+ * its first reply as the question. `replies` are standing answers to the topic: made in the open
+ * (`replyTo` null) or with Reply on the opening post itself, which is how a first reply is often
+ * made, and a card that skipped those said "2 replies" and showed none (the owner, 2026-11-18;
+ * 20261118210000 for the ranking). A reply to a reply is a side-conversation and is not quoted.
+ * Read without that filter, which names no post, and chosen in `toHomeTopics`; two suffice, as a
+ * standing opener is the first of them.
  *
  * Closed rooms: administrators can read them, so `toHomeTopics` drops them against the rooms list
  * (as `continue-in-room.tsx` does), or an administrator's Home would look busier than a member's.
@@ -115,7 +118,12 @@ export function toHomeTopics(
       const first = list[0];
       const opening = first?.removedAt === null ? first : null;
       const firstReply =
-        list.slice(1).find((post) => post.removedAt === null && post.replyTo === null) ?? null;
+        list
+          .slice(1)
+          .find(
+            (post) =>
+              post.removedAt === null && (post.replyTo === null || post.replyTo === first?.id),
+          ) ?? null;
       return [
         {
           ...topic,
@@ -236,7 +244,6 @@ export function useHomeTopics(): HomeTopicsState {
             .order('id', { referencedTable: 'opening' })
             .limit(1, { referencedTable: 'opening' })
             .is('replies.removed_at', null)
-            .is('replies.reply_to', null)
             .order('created_at', { referencedTable: 'replies' })
             .order('id', { referencedTable: 'replies' });
         const replyIds = ranked?.flatMap((row) => row.previews.map((ref) => ref.id)) ?? [];
