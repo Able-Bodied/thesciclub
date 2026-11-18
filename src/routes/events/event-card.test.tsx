@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Events from '@/lib/events';
-import { EventCard, type EventCardProps } from '@/routes/events/event-card';
+import { capWords, EventCard, type EventCardProps } from '@/routes/events/event-card';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 
 const attendees = vi.hoisted(() => ({ read: vi.fn() }));
@@ -385,5 +385,17 @@ describe('View on the map on a card', () => {
   it('is not drawn without a place to go', () => {
     renderCard();
     expect(screen.queryByRole('link', { name: /on the map/ })).toBeNull();
+  });
+});
+
+describe('capWords, for an event shared in a message', () => {
+  it('keeps short words whole and cuts long ones at a word, with an ellipsis', () => {
+    expect(capWords('  Pain   management\nwith Stephen. ', 140)).toBe(
+      'Pain management with Stephen.',
+    );
+    expect(capWords('Join us for an evening of stretching, talk and tea.', 30)).toBe(
+      'Join us for an evening of…',
+    );
+    expect(capWords(null, 30)).toBe('');
   });
 });
