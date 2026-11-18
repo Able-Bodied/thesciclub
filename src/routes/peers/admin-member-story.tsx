@@ -62,6 +62,53 @@ export interface MemberStory {
   activeDays: number;
   lastActive: string | null;
   recordedSince: string | null;
+  /** Counts of what they have done (20261118160000); absent before it. */
+  did?: {
+    postsViewed: number;
+    questionsAsked: number;
+    questionsAnswered: number;
+    messagesSent: number;
+    eventsViewed: number;
+    eventsGoing: number;
+    reviewsWritten: number;
+  };
+}
+
+/**
+ * What they have done, as numbers. Events viewed is a count, never which;
+ * reviews are those under their own name, as anonymous ones stay hidden.
+ */
+function DidCard({ did }: { did: NonNullable<MemberStory['did']> }) {
+  const rows: [string, number][] = [
+    ['Posts viewed', did.postsViewed],
+    ['Questions asked', did.questionsAsked],
+    ['Questions answered', did.questionsAnswered],
+    ['Messages sent', did.messagesSent],
+    ['Events viewed', did.eventsViewed],
+    ['Events RSVP’d', did.eventsGoing],
+    ['Reviews written', did.reviewsWritten],
+  ];
+  return (
+    <div className="mt-2.5 flow-root rounded-[17px] border border-line bg-paper px-3.5 py-1">
+      <dl>
+        {rows.map(([label, n]) => (
+          <div
+            key={label}
+            className="flex justify-between gap-3 border-line border-b py-2.5 last:border-b-0"
+          >
+            <dt className="text-[0.78125rem] text-grey">{label}</dt>
+            <dd className="font-semibold text-[0.85rem] tabular-nums">
+              {n.toLocaleString('en-US')}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="border-line border-t py-2.5 text-[0.75rem] text-grey leading-[1.45]">
+        Events RSVP’d counts Going. Reviews are those under their own name; anonymous ones stay
+        anonymous.
+      </p>
+    </div>
+  );
 }
 
 /** "Nov 10", or "Nov 10, 2025" in another year. */
@@ -279,7 +326,7 @@ export function AdminMemberStory({ memberId, name }: { memberId: string; name: s
           {state.message}
         </p>
       ) : (
-        <StoryCard story={state.story} />
+        <StoryCards story={state.story} />
       )}
     </Section>
   );
@@ -353,5 +400,14 @@ function StoryCard({ story }: { story: MemberStory }) {
       />
       <DetailRow label="Days active" value={activeSentence(story)} />
     </div>
+  );
+}
+
+function StoryCards({ story }: { story: MemberStory }) {
+  return (
+    <>
+      <StoryCard story={story} />
+      {story.did ? <DidCard did={story.did} /> : null}
+    </>
   );
 }
