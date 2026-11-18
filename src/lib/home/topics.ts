@@ -23,10 +23,11 @@ import { getSupabase } from '@/lib/supabase';
  * Closed rooms: administrators can read them, so `toHomeTopics` drops them against the rooms list
  * (as `continue-in-room.tsx` does), or an administrator's Home would look busier than a member's.
  *
- * Since 20261118190000 the order is the reader's own: `home_topics_ranked` says which forty and in
- * what order (unseen, new replies, votes, a boost: see the migration), and which replies each
- * card quotes (the top one, and the first unread or the latest). The topics are then read as
- * before, by id, with those replies. A database without the function gets the read above.
+ * Since 20261118190000 `home_topics_ranked` says which forty and in what order, and which replies
+ * each card quotes. Since 20261118220000 that order is the same for every member: last activity,
+ * a little newer for votes and a boost; and the replies are the top one and the latest. The
+ * topics are then read as before, by id, with those replies. A database without the function
+ * gets the read above.
  */
 
 export const HOME_TOPIC_LIMIT = 40;
