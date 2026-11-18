@@ -29,11 +29,13 @@ function renderSheet(overrides: Partial<FilterSheetProps> = {}) {
 const topicChips = () => screen.getAllByRole('button', { name: /^Topic \d+$/ });
 
 describe('who to look for', () => {
-  it('leaves out non-mentors when their chip is unticked', async () => {
+  it('leaves out SCI peers when their chip is unticked, and has no chip for mentors', async () => {
     const onChange = vi.fn();
     renderSheet({ onChange });
-    await userEvent.click(screen.getByRole('button', { name: 'Non-mentors' }));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ leaveOut: ['nonMentors'] }));
+    await userEvent.click(screen.getByRole('button', { name: 'SCI peers' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ leaveOut: ['sciPeers'] }));
+    // Mentors have their own tab (the owner, 2026-11-18).
+    expect(screen.queryByRole('button', { name: 'Mentors' })).toBeNull();
   });
 
   it('offers the organizations in the list, as a menu', async () => {

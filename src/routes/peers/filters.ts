@@ -29,10 +29,17 @@ import {
   type PeersSegment,
 } from '@/types/domain';
 
-/** The "Include" chips, in order; unticked is left out (the owner, 2026-11-12). */
+/**
+ * The "Include" chips, in order; unticked is left out (the owner, 2026-11-12).
+ *
+ * "SCI peers" are the members with SCI/D themselves, mentors among them. It
+ * took the place of "Mentors" and "Non-mentors" (the owner, 2026-11-18):
+ * unticking Non-mentors left out everybody who was not a mentor, staff and
+ * family & friends too, whatever their own chips said; and mentors have the
+ * Mentors tab.
+ */
 export const LEAVE_OUT: readonly { id: PeersLeftOut; label: string }[] = [
-  { id: 'mentors', label: 'Mentors' },
-  { id: 'nonMentors', label: 'Non-mentors' },
+  { id: 'sciPeers', label: 'SCI peers' },
   { id: 'professionals', label: 'Staff' },
   { id: 'family', label: 'Family & friends' },
   { id: 'orgAdmins', label: 'Org admins' },
@@ -66,8 +73,13 @@ function leaveOutChanges(filters: MemberFilters, starting: MemberFilters): numbe
 function leftOut(member: BrowseMember, filters: MemberFilters): boolean {
   const out = new Set(filters.leaveOut);
   if (out.has('professionals') && member.injuryType === 'professional') return true;
-  if (out.has('mentors') && member.type === 'mentor') return true;
-  if (out.has('nonMentors') && member.type !== 'mentor') return true;
+  if (
+    out.has('sciPeers') &&
+    member.injuryType !== 'family' &&
+    member.injuryType !== 'professional'
+  ) {
+    return true;
+  }
   if (out.has('family') && member.injuryType === 'family') return true;
   return out.has('orgAdmins') && member.representedOrganizations.length > 0;
 }
