@@ -368,8 +368,6 @@ export default function MePage() {
                           description="Members, invites, organizations and moderation."
                         />
                       ) : null}
-                      {/* How long each request takes, for an administrator (2026-11-18). */}
-                      {isAdmin ? <DebugMode /> : null}
                       {canConnect ? (
                         <ProfileLink
                           to="/stats"
@@ -496,6 +494,20 @@ export default function MePage() {
               <InstallSettings />
               {/* Follows the account, not the device, as its own words say. */}
               <BlockedMembers />
+              {/* How long each request takes, for an administrator; with the
+                  other settings of this device, where the owner asked for it
+                  (2026-11-18; it was among Club tools for a day). */}
+              {isAdmin ? (
+                <section aria-labelledby="debug-mode-heading" className="mt-6">
+                  <h2
+                    id="debug-mode-heading"
+                    className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+                  >
+                    For administrators
+                  </h2>
+                  <DebugMode />
+                </section>
+              ) : null}
             </div>
           </TabPanel>
         ) : null}

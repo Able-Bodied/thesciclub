@@ -734,7 +734,7 @@ All live. Migration headers and the files named say how and why.
   reader's organizations and the events those hold; My posts and My replies
   are posts alone.
 
-- **Debug mode** (2026-11-18): an administrator's switch in Me's club tools,
+- **Debug mode** (2026-11-18): an administrator's switch in Me's Settings,
   kept in that browser. While on, a pill over every screen opens its request
   times: each request on one time line, and the ones that waited for one
   another (`lib/debug-log.ts`, `components/debug-panel.tsx`). `timedFetch`

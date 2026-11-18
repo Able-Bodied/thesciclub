@@ -3,7 +3,7 @@ import { debugState, setDebugEnabled, subscribeDebug } from '@/lib/debug-log';
 import { cn } from '@/lib/utils';
 
 /**
- * Debug mode's switch, in Me's club tools for an administrator (the owner,
+ * Debug mode's switch, in Me's Settings for an administrator (the owner,
  * 2026-11-18). On this device only: see lib/debug-log.ts.
  */
 export function DebugMode() {
@@ -16,7 +16,7 @@ export function DebugMode() {
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
             {enabled
               ? 'On, on this device. The pill in the corner of each screen lists its requests and how long each took.'
-              : 'Shows how long each request takes on every screen. Only on this device, and only you see it.'}
+              : 'Shows how long each request takes on every screen. This device only, visible only to you.'}
           </p>
         </div>
         <button

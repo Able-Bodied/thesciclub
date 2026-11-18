@@ -188,7 +188,7 @@ export function DebugPanelView({
           {copied ? 'Copied' : 'Copy as text'}
         </button>
         <p className="min-w-0 flex-1 text-[0.75rem] text-grey leading-[1.35]">
-          Only you see this, on this device. Turn it off in Me.
+          Only you see this, on this device. Turn it off in Me, under Settings.
         </p>
       </footer>
     </section>
