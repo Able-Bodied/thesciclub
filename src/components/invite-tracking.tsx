@@ -22,14 +22,14 @@ function Step({ on, children }: { on: boolean; children: React.ReactNode }) {
 
 /** The onboarding steps (onboarding_steps), as an administrator reads them. */
 const STEP_NAMES: Record<string, string> = {
-  agree: 'the rules',
-  name: 'name',
-  username: 'username',
-  birthday: 'birthday',
-  injury: 'injury',
-  city: 'city',
-  phone: 'phone',
-  photo: 'photo',
+  agree: 'Rules',
+  name: 'Name',
+  username: 'Username',
+  birthday: 'Birthday',
+  injury: 'Injury',
+  city: 'City',
+  phone: 'Phone',
+  photo: 'Photo',
 };
 
 export function InvitePerson({
@@ -62,7 +62,7 @@ export function InvitePerson({
             {invite.rsvp === 'interested' ? 'Interested' : 'Going'}
           </Step>
         ) : null}
-        <Step on={started}>{step ? `Started · got to ${step}` : 'Started joining'}</Step>
+        <Step on={started}>{step ? `Stopped at ${step}` : 'Started'}</Step>
         <Step on={joined}>
           {joined && invite.memberName && invite.memberName !== invite.name
             ? `Joined as ${invite.memberName}`
