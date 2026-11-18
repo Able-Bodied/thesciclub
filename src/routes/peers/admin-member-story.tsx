@@ -4,15 +4,17 @@ import { Link } from 'react-router-dom';
 import { chatDayHeading } from '@/lib/chat/time';
 import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
-import { methodLabel, methodPhrase } from '@/routes/admin/sign-in-methods';
+import { methodLabel } from '@/routes/admin/sign-in-methods';
 import { DetailRow, Section } from '@/routes/peers/profile-parts';
 
 /**
  * At the foot of a member's page, for the club's administrators only: how the
- * member came, how they sign in, what they use, whether the club can notify
- * them, and how often they come (the owner, 2026-11-18). Nothing new is
+ * member joined, what they use, whether the club can notify them, how they
+ * sign in, and how often they come (the owner, 2026-11-18). Nothing new is
  * recorded; admin_member_story (20261118150000) reads what Admin → Stats and
  * Admin → Members already keep, and refuses anyone else.
+ *
+ * Values are short and carry no full stop, as the profile's Details card.
  */
 
 interface StoryDevice {
@@ -62,34 +64,36 @@ export interface MemberStory {
   recordedSince: string | null;
 }
 
-/** "Sep 13, 2026". */
-function longDate(iso: string): string {
+/** "Nov 10", or "Nov 10, 2025" in another year. */
+function shortDate(iso: string, now: Date = new Date()): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '';
-  return at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return at.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+  });
 }
-
-/** "Today", "Yesterday", "Monday", "Thu, Nov 6". */
-const day = (iso: string) => chatDayHeading(iso);
 
 /** Mid-sentence: "today", "yesterday", "Monday", "Thu, Nov 6". */
 function inline(iso: string): string {
-  const said = day(iso);
+  const said = chatDayHeading(iso);
   return said === 'Today' || said === 'Yesterday' ? said.toLowerCase() : said;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${String(n)} ${n === 1 ? one : many}`;
 
-/** One sentence: who or what brought them. */
+const capital = (line: string) => line.charAt(0).toUpperCase() + line.slice(1);
+
+/** Who or what brought them. */
 export function cameSentence(story: MemberStory): React.ReactNode {
   const came = story.came;
-  const asked = story.askedForInvite ? ' They had asked for an invite.' : '';
   if (!came) {
     return story.askedForInvite
-      ? 'Asked for an invite. No invite is on record.'
-      : 'No invite is on record: added by hand, or before invites were kept.';
+      ? 'Asked for an invite; no invite is on record'
+      : 'No invite on record: added by hand, or before invites were kept';
   }
-  const claimed = came.claimedProfile ? ', claiming their directory profile' : '';
+  const claimed = came.claimedProfile ? ', and claimed their directory profile' : '';
   const event = came.event ? (
     <>
       {came.registered ? ' after registering for ' : ' for '}
@@ -98,18 +102,18 @@ export function cameSentence(story: MemberStory): React.ReactNode {
       </Link>
     </>
   ) : null;
-  if (came.way === 'open') return `Joined while anybody could join, with no invite.${asked}`;
+  if (came.way === 'open') return 'Joined while anybody could join, with no invite';
   if (came.way === 'qr') {
     const from = came.qrCode?.organization ? ` from ${came.qrCode.organization}` : '';
     const at = came.qrCode?.event ? ` at ${came.qrCode.event}` : '';
-    return `Scanned a QR code${from}${at}${claimed}.${asked}`;
+    return `Scanned a QR code${from}${at}${claimed}`;
   }
   if (came.way === 'organization') {
     return (
       <>
         Invited by {came.organization ?? 'an organization'}
         {event}
-        {claimed}.{asked}
+        {claimed}
       </>
     );
   }
@@ -124,57 +128,72 @@ export function cameSentence(story: MemberStory): React.ReactNode {
         'a member who has since left'
       )}
       {event}
-      {claimed}.{asked}
+      {claimed}
     </>
   );
 }
 
-/** "Invited Nov 3 · email opened Nov 3 · link used Nov 4 · joined Nov 4". */
-function cameSteps(story: MemberStory): string | null {
+/** "Sent Nov 3 · email opened Nov 3 · link used Nov 4 · joined Nov 4": the one join date. */
+function cameSteps(story: MemberStory): string {
   const came = story.came;
-  if (!came) return null;
+  const sent = came ? (came.sentAt ?? came.invitedAt) : null;
   const steps = [
-    (came.sentAt ?? came.invitedAt)
-      ? `invited ${inline(came.sentAt ?? came.invitedAt ?? '')}`
-      : null,
-    came.emailOpenedAt ? `email opened ${inline(came.emailOpenedAt)}` : null,
-    came.linkOpenedAt ? `link used ${inline(came.linkOpenedAt)}` : null,
-    came.acceptedAt ? `joined ${inline(came.acceptedAt)}` : null,
+    sent ? `sent ${shortDate(sent)}` : null,
+    came?.emailOpenedAt ? `email opened ${shortDate(came.emailOpenedAt)}` : null,
+    came?.linkOpenedAt ? `link used ${shortDate(came.linkOpenedAt)}` : null,
+    `joined ${shortDate(story.joinedAt)}`,
+    story.askedForInvite && came ? 'had asked for an invite' : null,
   ].filter((step): step is string => step !== null);
-  if (!steps.length) return null;
-  const line = steps.join(' · ');
-  return line.charAt(0).toUpperCase() + line.slice(1);
+  return capital(steps.join(' · '));
 }
 
-/** "The iPhone app", "Home Screen app on iOS", "Chrome 156 on macOS". */
+const DEVICE: Record<string, string> = {
+  iOS: 'iPhone',
+  iPadOS: 'iPad',
+  macOS: 'Mac',
+  Android: 'Android phone',
+  Windows: 'Windows computer',
+  ChromeOS: 'Chromebook',
+  Linux: 'Linux computer',
+};
+
+/** The device first: "iPhone · the club's app", "Mac · Chrome 157". */
 export function deviceName(device: StoryDevice): string {
-  const os = device.os ?? 'an unknown system';
-  if (device.surface === 'app') {
-    return device.os === 'Android' ? 'The Android app' : 'The iPhone app';
-  }
+  const what = (device.os ? DEVICE[device.os] : undefined) ?? device.os ?? 'Unknown device';
+  if (device.surface === 'app') return `${what} · the club’s app`;
   const browser = device.browser
     ? `${device.browser}${device.browserVersion ? ` ${device.browserVersion}` : ''}`
-    : 'A browser';
-  if (device.surface === 'home_screen') return `Home Screen app (${browser} on ${os})`;
-  return `${browser} on ${os}`;
+    : 'a browser';
+  if (device.surface === 'home_screen') return `${what} · Home Screen shortcut (${browser})`;
+  return `${what} · ${browser}`;
 }
 
+/** When, and what it says of notifications; why not, where it cannot be asked. */
 function deviceDetails(device: StoryDevice): string {
-  const parts = [
-    `seen ${inline(device.seenAt)}`,
-    device.screenWidth && device.screenHeight
-      ? `${String(device.screenWidth)}×${String(device.screenHeight)}`
-      : null,
-    device.colorScheme ? `${device.colorScheme} mode` : null,
+  const notifications =
     device.notifications === 'allowed'
       ? 'notifications allowed'
       : device.notifications === 'refused'
         ? 'notifications blocked'
         : device.notifications === 'not_asked'
-          ? 'notifications not asked yet'
-          : null,
-  ];
-  return parts.filter(Boolean).join(' · ');
+          ? 'notifications never turned on'
+          : device.surface === 'browser' && (device.os === 'iOS' || device.os === 'iPadOS')
+            ? 'no notifications in an iPhone browser'
+            : null;
+  return [`seen ${inline(device.seenAt)}`, notifications].filter(Boolean).join(' · ');
+}
+
+/** The ways they come, plainly: the club's app, the shortcut, the website. */
+export function usesSentence(story: MemberStory): string {
+  const app = story.appLastSeen !== null || story.devices.some((d) => d.surface === 'app');
+  const ways = [
+    app ? 'the club’s app' : null,
+    story.devices.some((d) => d.surface === 'home_screen') ? 'the Home Screen shortcut' : null,
+    story.devices.some((d) => d.surface === 'browser') ? 'the website in a browser' : null,
+  ].filter((way): way is string => way !== null);
+  const last = ways.pop();
+  if (last === undefined) return 'Not seen yet';
+  return capital(ways.length ? `${ways.join(', ')} and ${last}` : last);
 }
 
 /** Whether the club can reach them now, which is more than a permission. */
@@ -182,22 +201,27 @@ export function notifySentence(story: MemberStory): string {
   const { app, web } = story.notify;
   if (app + web === 0) {
     return story.devices.some((d) => d.notifications === 'refused')
-      ? 'Off. They blocked notifications on a device.'
-      : 'Off. No device is signed up for notifications.';
+      ? 'No: blocked on a device'
+      : 'No: never turned on';
   }
-  const on = [
-    app ? plural(app, 'iPhone app') : null,
-    web ? plural(web, 'browser or Home Screen app', 'browsers or Home Screen apps') : null,
-  ].filter(Boolean);
-  return `On, for ${on.join(' and ')}.`;
+  const on = [app ? plural(app, 'phone app') : null, web ? plural(web, 'browser') : null].filter(
+    Boolean,
+  );
+  return `Yes, on ${on.join(' and ')}`;
 }
 
 export function activeSentence(story: MemberStory): string | null {
   if (!story.recordedSince) return null;
-  const since = longDate(story.recordedSince);
-  if (story.activeDays === 0) return `No days since counting began on ${since}.`;
-  return `${plural(story.activeDays, 'day')} since counting began on ${since}.`;
+  return `On ${plural(story.activeDays, 'day')} since ${shortDate(story.recordedSince)}, when counting began`;
 }
+
+const METHOD_PHRASE: Record<string, string> = {
+  email: 'email and password',
+  link: 'a one-time link',
+  passkey: 'a passkey',
+  oauth: 'Google or Apple',
+};
+const phrase = (method: string) => METHOD_PHRASE[method] ?? methodLabel(method);
 
 type State =
   | { status: 'loading' }
@@ -262,52 +286,34 @@ export function AdminMemberStory({ memberId, name }: { memberId: string; name: s
 }
 
 function StoryCard({ story }: { story: MemberStory }) {
-  const steps = cameSteps(story);
   const signedUp = story.signIns.signedUpWith;
   const others = story.signIns.linked.filter((m) => m !== signedUp);
+  const signIns = story.signIns.count
+    ? `Signed in ${plural(story.signIns.count, 'time')}${
+        story.signIns.lastAt ? `, most recently ${inline(story.signIns.lastAt)}` : ''
+      }`
+    : null;
+  const note = 'mt-1 block text-[0.78125rem] text-grey';
   return (
     <div className="flow-root rounded-[17px] border border-line bg-paper px-3.5 py-1">
       <DetailRow
-        label="How they came"
+        label="How they joined"
         value={
           <>
             {cameSentence(story)}
-            {steps ? <span className="mt-1 block text-[0.78125rem] text-grey">{steps}</span> : null}
+            <span className={note}>{cameSteps(story)}</span>
             {story.came?.message ? (
-              <span className="mt-1 block text-[0.78125rem] text-grey">
-                Their invite said: “{story.came.message}”
-              </span>
+              <span className={note}>Their invite said: “{story.came.message}”</span>
             ) : null}
             {story.came?.note ? (
-              <span className="mt-1 block text-[0.78125rem] text-grey">
-                Note on the invite: {story.came.note}
-              </span>
+              <span className={note}>Note on the invite: {story.came.note}</span>
             ) : null}
           </>
         }
       />
-      <DetailRow label="Joined" value={longDate(story.joinedAt)} />
+      <DetailRow label="Uses" value={usesSentence(story)} />
       <DetailRow
-        label="Signs in with"
-        value={
-          signedUp || story.signIns.count ? (
-            <>
-              {signedUp
-                ? `Signed up with ${methodPhrase(signedUp)}`
-                : 'Signed up before this was kept'}
-              {others.length ? `; also ${others.map(methodLabel).join(', ')}` : ''}.
-              {story.signIns.count ? (
-                <span className="mt-1 block text-[0.78125rem] text-grey">
-                  {plural(story.signIns.count, 'sign-in')}
-                  {story.signIns.lastAt ? `, the latest ${inline(story.signIns.lastAt)}` : ''}
-                </span>
-              ) : null}
-            </>
-          ) : null
-        }
-      />
-      <DetailRow
-        label="Uses"
+        label="Devices"
         value={
           story.devices.length ? (
             <ul className="space-y-2">
@@ -319,14 +325,31 @@ function StoryCard({ story }: { story: MemberStory }) {
               ))}
             </ul>
           ) : (
-            'No device seen yet.'
+            'None seen yet'
           )
         }
       />
       <DetailRow label="Notifications" value={notifySentence(story)} />
       <DetailRow
+        label="Sign-in"
+        value={
+          signedUp || signIns ? (
+            <>
+              {signedUp
+                ? `Signed up with ${phrase(signedUp)}${
+                    others.length ? `; can also use ${others.map(phrase).join(', ')}` : ''
+                  }`
+                : 'Sign-up way not recorded'}
+              {signIns ? <span className={note}>{signIns}</span> : null}
+            </>
+          ) : null
+        }
+      />
+      <DetailRow
         label="Last active"
-        value={story.lastActive ? day(story.lastActive) : 'Not seen since counting began.'}
+        value={
+          story.lastActive ? chatDayHeading(story.lastActive) : 'Not seen since counting began'
+        }
       />
       <DetailRow label="Days active" value={activeSentence(story)} />
     </div>
