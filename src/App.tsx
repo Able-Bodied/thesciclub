@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskAfterSending } from '@/components/ask-after-sending';
 import { BackLine, BackLineProvider, BackTrail } from '@/components/back-line';
+import { DebugPanel } from '@/components/debug-panel';
 import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
@@ -335,6 +336,8 @@ function ShellContent() {
           ordered last there): it pushes the screen up rather than covering
           it. Phones' browsers only; see install-nudge.tsx. */}
       <InstallNudge />
+      {/* An administrator's request times, when they turned them on in Me. */}
+      <DebugPanel />
     </BackLineProvider>
   );
 }

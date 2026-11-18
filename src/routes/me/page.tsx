@@ -23,6 +23,7 @@ import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
 import { BlockedMembers } from '@/routes/me/blocked-members';
 import { ConfirmEmailBanner } from '@/routes/me/confirm-email-banner';
+import { DebugMode } from '@/routes/me/debug-mode';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { DisplaySummary } from '@/routes/me/display-summary';
@@ -399,6 +400,8 @@ export default function MePage() {
                           description="Members, invites, organizations and moderation."
                         />
                       ) : null}
+                      {/* How long each request takes, for an administrator (2026-11-18). */}
+                      {isAdmin ? <DebugMode /> : null}
                       {canConnect ? (
                         <ProfileLink
                           to="/stats"

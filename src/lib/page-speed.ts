@@ -1,4 +1,5 @@
 import { matchPath } from 'react-router-dom';
+import { debugCards, debugRequest, debugScreen } from '@/lib/debug-log';
 
 /**
  * How fast the app is for the people using it (the owner, 2026-11-04;
@@ -197,15 +198,40 @@ export function timedFetch(base: typeof fetch = (...args) => fetch(...args)): ty
     const endpoint = endpointOf(url);
     if (!endpoint || endpoint === `rpc:${LOG_RPC}`) return base(input, init);
     const started = performance.now();
+    // An administrator's debug mode sees each one too (debug-log.ts), with
+    // what a table was asked: that stays on their device.
+    const detail = endpoint.startsWith('table:') ? whatWasAsked(url) : '';
     try {
       const response = await base(input, init);
-      record(endpoint, performance.now() - started, response.ok);
+      const ms = performance.now() - started;
+      const length = Number(response.headers.get('content-length'));
+      debugRequest(
+        endpoint,
+        detail,
+        started,
+        ms,
+        response.ok,
+        Number.isFinite(length) && length > 0 ? length : null,
+      );
+      record(endpoint, ms, response.ok);
       return response;
     } catch (thrown) {
-      record(endpoint, performance.now() - started, false);
+      const ms = performance.now() - started;
+      debugRequest(endpoint, detail, started, ms, false, null);
+      record(endpoint, ms, false);
       throw thrown;
     }
   };
+}
+
+/** A read's own words, shortened: which columns, filters and order. */
+function whatWasAsked(url: string): string {
+  try {
+    const asked = decodeURIComponent(new URL(url).search.slice(1));
+    return asked.length > 160 ? `${asked.slice(0, 159)}…` : asked;
+  } catch {
+    return '';
+  }
 }
 
 function record(endpoint: string, ms: number, ok: boolean) {
@@ -324,6 +350,7 @@ export function noteScreen(pathname: string): void {
   if (current === null || (!touched && current.opened && !current.done)) {
     if (current === null && typeof window !== 'undefined') watchVisit();
     current = { path: pathname, at: 0, opened: true, done: false, hidden };
+    debugScreen(pathname, 0, true);
     return;
   }
   // From the tap that led here, not from when the screen took over: a
@@ -333,6 +360,7 @@ export function noteScreen(pathname: string): void {
   // start gives a time past now; the move then starts here.
   const at = lastInput !== null && lastInput <= now && now - lastInput < 10_000 ? lastInput : now;
   current = { path: pathname, at, opened: false, done: false, hidden };
+  debugScreen(pathname, at, false);
 }
 
 /**
@@ -344,6 +372,7 @@ export function cardsShown(): void {
   if (!visit || visit.done || visit.path !== window.location.pathname) return;
   visit.done = true;
   const finish = () => {
+    debugCards(visit.path, performance.now() - visit.at);
     if (visit.hidden || document.visibilityState === 'hidden') return;
     push({
       kind: 'load',
