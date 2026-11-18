@@ -19,6 +19,7 @@ function ShareButton({
   url,
   linkNote,
   when,
+  className,
 }: {
   label: string;
   heading: string;
@@ -27,6 +28,8 @@ function ShareButton({
   linkNote: string;
   /** When an event is, on its own line under its name in the message. */
   when?: string | undefined;
+  /** In place of the light-on-dark look of an event's or organization's header. */
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -38,9 +41,15 @@ function ShareButton({
         onClick={() => {
           setOpen(true);
         }}
-        className="-mt-2.5 -mr-2 inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full px-3 text-[#B9CADF] text-[0.8125rem] hover:bg-white/10"
+        className={
+          className ??
+          '-mt-2.5 -mr-2 inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full px-3 text-[#B9CADF] text-[0.8125rem] hover:bg-white/10'
+        }
       >
-        <Send aria-hidden="true" className="h-[14px] w-[14px]" />
+        <Send
+          aria-hidden="true"
+          className={className ? 'h-[1.1em] w-[1.1em]' : 'h-[14px] w-[14px]'}
+        />
         Share
       </button>
       {open
@@ -112,6 +121,24 @@ export function ShareOrganizationButton({ id, name }: { id: string; name: string
       title={name}
       url={`${siteOrigin()}/events/organizations/${id}`}
       linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
+    />
+  );
+}
+
+/**
+ * A room's page (the owner, 2026-11-18: "a share link for rooms, so we can
+ * share rooms with people"). Like an organization's, it is the club's: whoever
+ * opens it signs in, or asks for an invite, first.
+ */
+export function ShareRoomButton({ id, name }: { id: string; name: string }) {
+  return (
+    <ShareButton
+      label={`Share the room ${name}`}
+      heading="Share room"
+      title={name}
+      url={`${siteOrigin()}/chat/rooms/${id}`}
+      linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
+      className="inline-flex items-center gap-1 rounded-full border border-line px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-emphasis leading-[1.3] transition-colors hover:bg-tint"
     />
   );
 }
