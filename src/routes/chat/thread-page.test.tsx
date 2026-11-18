@@ -121,6 +121,10 @@ vi.mock('@/lib/chat/realtime', () => ({
   useRealtimeRows: () => undefined,
 }));
 
+vi.mock('@/lib/chat/typing', () => ({
+  useTyping: () => ({ typing: [], typed: () => undefined }),
+}));
+
 vi.mock('@/lib/chat/threads', async (importOriginal) => ({
   ...(await importOriginal<typeof Threads>()),
   useThreadMessages: () => ({

@@ -449,6 +449,33 @@
 }
 
 /*
+ * Somebody is typing (src/routes/chat/typing-dots.tsx): three dots rising in
+ * turn, as in Messages. The one loop in the app, and only while they write;
+ * with motion reduced they stand still, as the block above leaves them.
+ */
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.typing-dot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--grey);
+  opacity: 0.45;
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+/*
  * Three one-shot motions after React Bits (reactbits.dev), redrawn here
  * without its libraries. None loops, and the block above stops all three.
  */

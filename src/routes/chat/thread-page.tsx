@@ -31,6 +31,7 @@ import { useSharedPosts } from '@/lib/chat/shared-posts';
 import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
 import { chatDayHeading, messageDateTime, sameChatDay } from '@/lib/chat/time';
 import type { ChatMessage } from '@/lib/chat/types';
+import { useTyping } from '@/lib/chat/typing';
 import { describeThrown } from '@/lib/describe-error';
 import { useHoldScroll } from '@/lib/hold-scroll';
 import { announceNotificationsChanged } from '@/lib/notifications';
@@ -43,6 +44,7 @@ import { NoticeLine } from '@/routes/chat/notice-line';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 import { SWIPE_MAX, useSwipeDates } from '@/routes/chat/swipe-dates';
+import { TypingDots, typingSentence } from '@/routes/chat/typing-dots';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 
 /**
@@ -172,10 +174,23 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   const roster = useThreadRoster(threadId);
   const mentionScope = useMemo(() => ({ among: roster.memberIds }), [roster.memberIds]);
 
+  // Who else is writing now (lib/chat/typing.ts). Nobody to write to in a pair
+  // whose other half has left. Only the roster, and nobody this member blocked:
+  // their messages are hidden here too.
+  const typing = useTyping(
+    thread?.kind === 'direct' && thread.otherMemberId === null ? undefined : threadId,
+    account.userId,
+  );
+  const typers = typing.typing.filter(
+    (id) => roster.memberIds.includes(id) && !blocks.ids.has(id) && !blockedHere.has(id),
+  );
+
   const authors = useChatAuthors([
     thread?.otherMemberId ?? null,
     ...messages.map((message) => message.authorId),
+    ...typers,
   ]);
+  const typingWho = typers.map((id) => authors.get(id) ?? null);
   const other = thread?.otherMemberId ? (authors.get(thread.otherMemberId) ?? null) : null;
   // Signed under the reader's token: a group's picture is as private as its
   // words. Empty for a pair, and for a group with none.
@@ -291,6 +306,17 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
     if (pin.holding() || shouldFollowScroll(distance)) toBottom('smooth');
     else setBehind(true);
   }, [newestId, toBottom, pin]);
+
+  // The dots come into view for a reader at the bottom, as a message would;
+  // one reading further up is left where they are.
+  const someoneTyping = typers.length > 0;
+  useEffect(() => {
+    if (!someoneTyping || !opened.current) return;
+    const element = scroller.current;
+    if (!element) return;
+    const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+    if (pin.holding() || shouldFollowScroll(distance)) toBottom('smooth');
+  }, [someoneTyping, toBottom, pin]);
 
   // Show earlier keeps what the reader was looking at where it was: the
   // distance from the bottom is put back once the earlier messages are drawn.
@@ -734,8 +760,13 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
               </Fragment>
             ))
           )}
+          <TypingDots who={typingWho} group={thread.kind === 'group'} />
         </div>
       </div>
+      {/* The dots in words, outside the log, so they are not read as a message. */}
+      <p aria-live="polite" className="sr-only">
+        {typingSentence(typingWho.map((author) => author?.displayName ?? 'Someone'))}
+      </p>
 
       {behind ? (
         <div className="pointer-events-none relative z-10 flex justify-center">
@@ -768,6 +799,7 @@ function ThreadScreen({ threadId }: { threadId: string | undefined }) {
           sendOnEnter
           mentions
           mentionScope={mentionScope}
+          onTyping={typing.typed}
           editing={
             edited
               ? {
