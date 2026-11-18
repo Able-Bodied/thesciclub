@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
 import { useAnnounce } from '@/lib/announce';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import {
@@ -173,9 +174,11 @@ export default function GuestListPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pt-4 pb-10">
-        <Link to={`/events/${id}`} className="font-bold text-[0.875rem] text-emphasis">
-          ← {event?.title ?? 'The event'}
-        </Link>
+        <OwnBack to={`/events/${id}`} label={event?.title ?? 'The event'}>
+          <Link to={`/events/${id}`} className="font-bold text-[0.875rem] text-emphasis">
+            ← {event?.title ?? 'The event'}
+          </Link>
+        </OwnBack>
         <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink">Guest list</h1>
         <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
           For the event's organizers and the club's administrators only. Members are listed when

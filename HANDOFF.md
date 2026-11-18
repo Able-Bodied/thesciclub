@@ -707,6 +707,15 @@ All live. Migration headers and the files named say how and why.
   and a date from a week old; a component that shows one calls `useMinute()`
   so it keeps up. Messages inside a conversation keep their clock under the
   day's heading.
+- **The way back** (2026-11-18): one thin line at the top of every screen
+  below a tab's first, naming the screen the member was on and going there
+  (`components/back-line.tsx`, the owner's pick of three drawn options). The
+  trail is `lib/back-trail.ts`: it starts again at a tab's first screen, and
+  each tab keeps its own when left. A screen's own back link is wrapped in
+  `OwnBack` (`BackLink` does it): not drawn under the line, and where back
+  goes when nothing is remembered (a notification, a shared link, a
+  refresh). A new screen needs no line of its own, only an `h1`, which names
+  it on the next screen's line. Rooms and posts keep their breadcrumb.
 
 ## Environment
 

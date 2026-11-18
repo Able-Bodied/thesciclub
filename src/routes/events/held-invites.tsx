@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import {
@@ -30,9 +31,11 @@ export default function HeldInvitesPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pt-4 pb-10">
-        <Link to="/events" className="font-bold text-[0.875rem] text-emphasis">
-          ← Events
-        </Link>
+        <OwnBack to="/events" label="Events">
+          <Link to="/events" className="font-bold text-[0.875rem] text-emphasis">
+            ← Events
+          </Link>
+        </OwnBack>
         <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink">
           Calendar invitations
         </h1>

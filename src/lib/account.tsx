@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
+import { forgetTrail } from '@/lib/back-trail';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import { forgetDrafts } from '@/lib/chat/drafts';
 import { describeError, describeThrown } from '@/lib/describe-error';
@@ -277,8 +278,9 @@ export async function signOut(): Promise<{ ok: boolean; error?: string }> {
     resetAttachmentUrls();
     // Unsent words, which the next person on this device must not read.
     forgetDrafts();
-    // And where each tab was left.
+    // And where each tab was left, and the way back from it.
     forgetTabPlaces();
+    forgetTrail();
     // And anything else held in memory for the screens (lib/shared-reads.ts).
     forgetSharedReads();
   }

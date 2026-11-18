@@ -1,6 +1,7 @@
 import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, type Location, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
 import { InjuryStageNote } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PartnerLabel } from '@/components/partner-label';
@@ -342,16 +343,18 @@ function BlockedProfile({
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-[560px] px-4 pt-3 pb-8">
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => {
-              void navigate(backToMembers(location), { replace: true });
-            }}
-            className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-emphasis"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {backFrom(location.state)}
-          </button>
+          <OwnBack to={backToMembers(location)} label={backFrom(location.state)} spacer>
+            <button
+              type="button"
+              onClick={() => {
+                void navigate(backToMembers(location), { replace: true });
+              }}
+              className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-emphasis"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {backFrom(location.state)}
+            </button>
+          </OwnBack>
           <ItemActions what={name} title="Member actions">
             <button type="button" onClick={unblock}>
               Unblock {name}
@@ -505,17 +508,19 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
             reads on a bright sky. From `lg` the picture is a floated card and
             the row goes back above everything, in navy on the canvas. */}
         <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-3 lg:static lg:px-0 lg:pt-0 lg:pb-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              void navigate(backToMembers(location), { replace: true });
-            }}
-            className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] lg:text-emphasis lg:drop-shadow-none"
-            data-target="small"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {backFrom(location.state)}
-          </button>
+          <OwnBack to={backToMembers(location)} label={backFrom(location.state)} spacer>
+            <button
+              type="button"
+              onClick={() => {
+                void navigate(backToMembers(location), { replace: true });
+              }}
+              className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] lg:text-emphasis lg:drop-shadow-none"
+              data-target="small"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {backFrom(location.state)}
+            </button>
+          </OwnBack>
           {/* An administrator's profile is their own, with an Admin chip
               beside Peer mentor (the owner, 2026-10-01); it was the club's
               "official account" page until administrators were people. */}

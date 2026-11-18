@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -243,15 +244,17 @@ export default function EventDetailPage() {
         <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
           <div className="mx-auto w-full max-w-[var(--events-measure)]">
             <div className="flex items-start justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate(back, { state: backState(location) });
-                }}
-                className="block pb-3 text-[#B9CADF] text-[0.875rem]"
-              >
-                ← {backLabel(location)}
-              </button>
+              <OwnBack to={back} label={backLabel(location)} state={backState(location)} spacer>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigate(back, { state: backState(location) });
+                  }}
+                  className="block pb-3 text-[#B9CADF] text-[0.875rem]"
+                >
+                  ← {backLabel(location)}
+                </button>
+              </OwnBack>
               {/* Invite only has no link to share (the owner, 2026-11-14). */}
               {memberId && !linkIsClosed(event.audience) ? (
                 <ShareEventButton

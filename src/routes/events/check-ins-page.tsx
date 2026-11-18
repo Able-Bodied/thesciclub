@@ -1,6 +1,7 @@
 import { Printer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
 import { MemberAvatar } from '@/components/member-avatar';
 import { QrCode } from '@/components/qr-code';
 import { type CheckedInMember, checkInUrl, fetchCheckIns } from '@/lib/check-ins';
@@ -37,9 +38,11 @@ export default function CheckInsPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pt-4 pb-10">
-        <Link to={`/events/${id}`} className="font-bold text-[0.875rem] text-emphasis">
-          ← {title}
-        </Link>
+        <OwnBack to={`/events/${id}`} label={title}>
+          <Link to={`/events/${id}`} className="font-bold text-[0.875rem] text-emphasis">
+            ← {title}
+          </Link>
+        </OwnBack>
         <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink">Check-ins</h1>
         <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
           Print this and put it by the door. Members scan it and tap once. It works from an hour

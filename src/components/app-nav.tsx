@@ -1,8 +1,10 @@
 import { Bell } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { litTab } from '@/components/lit-tab';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
+import { sayNext } from '@/lib/back-trail';
 import { useBadgeRealtime } from '@/lib/badges';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { useUnprovenEmail } from '@/lib/email-proof';
@@ -10,7 +12,6 @@ import { useIconBadge } from '@/lib/icon-badge';
 import { useUnseenNotifications } from '@/lib/notifications';
 import { rememberTabPlace, tabPlace } from '@/lib/tab-places';
 import { cn } from '@/lib/utils';
-import { backToHome } from '@/routes/home/back';
 
 /**
  * The five-tab bottom bar, matching `nav()` in docs/index.html.
@@ -45,18 +46,8 @@ const TABS = [
   { to: '/me', label: 'Me', Icon: MeIcon },
 ] as const;
 
-/**
- * The tab a screen belongs to. A topic, an event or a profile opened from a
- * card on Home belongs to Home — its back link says Home and goes there — so
- * Home is lit rather than Chat, Events or Peers, whose paths those screens
- * live under. Otherwise a tab is lit on its own path and everything beneath
- * it, as NavLink would.
- */
-export function litTab(pathname: string, state: unknown): string | null {
-  if (backToHome(state) !== null) return '/home';
-  const tab = TABS.find(({ to }) => pathname === to || pathname.startsWith(`${to}/`));
-  return tab?.to ?? null;
-}
+// Which tab a screen lights is lit-tab.ts, shared with the line back.
+export { litTab } from '@/components/lit-tab';
 
 export function AppNav() {
   // Reading a conversation happens on a screen that is not this one, so the
@@ -120,6 +111,10 @@ export function AppNav() {
               // Another tab: back where it was left. The lit one: its first
               // screen, the way out of a conversation or a profile.
               to={isActive ? to : (tabPlace(to)?.path ?? to)}
+              // The way back is that tab's own (lib/back-trail.ts).
+              onClick={() => {
+                sayNext('tab');
+              }}
               state={isActive ? undefined : tabPlace(to)?.state}
               aria-current={isActive ? 'page' : undefined}
               // The dot is decorative, so without this the tab is called "Chat"
