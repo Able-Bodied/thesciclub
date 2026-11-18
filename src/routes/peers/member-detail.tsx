@@ -24,6 +24,7 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 import { backToEvents } from '@/routes/events/back';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { backToHome } from '@/routes/home/back';
+import { AdminMemberStory } from '@/routes/peers/admin-member-story';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { FamilySection } from '@/routes/peers/family-section';
 import { FamilySheet } from '@/routes/peers/family-sheet';
@@ -991,6 +992,12 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 Everything here is what {member.displayName} chose to publish in the NorCal SCI
                 mentor directory.
               </div>
+            ) : null}
+
+            {/* Last of all, for the club's administrators only (the owner,
+                2026-11-18); the database refuses anybody else. */}
+            {account.isAdmin && member.type !== 'organization' && !member.isSeed ? (
+              <AdminMemberStory memberId={member.id} name={member.displayName} />
             ) : null}
           </div>
         </div>
