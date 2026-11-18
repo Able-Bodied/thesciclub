@@ -243,6 +243,9 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     "Invitation emails" on the event's page to whoever may change it
     (`event_invitation_emails`). Emails before it left only the last one.
     Probe: `calendar-invite-asks-and-emails.sql`.
+    Can't go (`event_declines`) counts as an answer in the club too
+    (`20261117170000`): no chat invite, and a guest who accepted in their
+    calendar is not made Going again to a date they said Can't go to.
   - `invites@` tested end to end 2026-10-24 (function deployed). The
     website still shows `events@` until the branch reaches `main`.
 

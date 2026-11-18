@@ -158,4 +158,44 @@ select string_agg(l.outcome, ',' order by l.outcome) as outcomes,
   left join public.members m on m.id = l.decided_by
  where l.base_uid = 'probe-asks-held@google.com';
 
+\echo ''
+\echo '== 6. THE ONE THAT MATTERS (20261117170000): Can''t go in the club is an answer. Yes accepted in their calendar, then said Can''t go to the first date; Blocker, no longer blocking, said Can''t go and is put on the invitation afterwards (expect added, updated; still 1 message; Yes not going to the first date, going to a later one; 2 can''t-gos left) =='
+delete from public.member_blocks where blocker_id = 'dddddddd-c0c6-0000-0000-00000000000d';
+set local role service_role;
+select r ->> 'outcome' as outcome
+  from (select public.calendar_invite_receive('owner@probe.example', true, null,
+    base || jsonb_build_object('uid', 'probe-asks-cant@google.com', 'title', 'Probe Cant',
+      'guests', jsonb_build_array(jsonb_build_object('email', 'yes@probe.example', 'answer', 'yes')))) r
+    from probe_payload) s;
+reset role;
+select private.act_as('bbbbbbbb-c0c6-0000-0000-00000000000b') is not null as ok;
+set local role authenticated;
+select public.set_event_declined(
+  (select e.id from public.events e where e.title = 'Probe Cant' order by e.start_time limit 1), true) as yes_cant_go;
+reset role;
+insert into public.event_declines (event_id, member_id)
+select e.id, 'dddddddd-c0c6-0000-0000-00000000000d'
+  from public.events e where e.title = 'Probe Cant' order by e.start_time limit 1;
+set local role service_role;
+select r ->> 'outcome' as outcome
+  from (select public.calendar_invite_receive('owner@probe.example', true, null,
+    base || jsonb_build_object('uid', 'probe-asks-cant@google.com', 'title', 'Probe Cant',
+      'sequence', 1, 'description', 'New words',
+      'guests', jsonb_build_array(
+        jsonb_build_object('email', 'yes@probe.example', 'answer', 'yes'),
+        jsonb_build_object('email', 'blocker@probe.example', 'answer', 'none')))) r
+    from probe_payload) s;
+reset role;
+select (select count(*) from public.chat_messages m
+         where m.author_id = 'aaaaaaaa-c0c6-0000-0000-00000000000a') as messages,
+       (select count(*) from public.event_rsvps v
+         where v.member_id = 'bbbbbbbb-c0c6-0000-0000-00000000000b'
+           and v.event_id = (select e.id from public.events e where e.title = 'Probe Cant'
+                              order by e.start_time limit 1)) as yes_first_date_rsvps,
+       (select count(*) > 0 from public.event_rsvps v join public.events e on e.id = v.event_id
+         where e.title = 'Probe Cant' and v.member_id = 'bbbbbbbb-c0c6-0000-0000-00000000000b'
+           and v.status = 'going') as yes_going_later,
+       (select count(*) from public.event_declines d join public.events e on e.id = d.event_id
+         where e.title = 'Probe Cant') as cant_gos;
+
 rollback;
