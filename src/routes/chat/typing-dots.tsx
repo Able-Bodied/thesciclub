@@ -1,6 +1,19 @@
 import { MemberAvatar } from '@/components/member-avatar';
 import type { ChatAuthor } from '@/lib/chat/types';
 
+function Face({ author, className }: { author: ChatAuthor | null; className?: string }) {
+  if (!author) return <span className={className ?? 'h-[34px] w-[34px] flex-none'} />;
+  return (
+    <MemberAvatar
+      id={author.id}
+      displayName={author.displayName}
+      photoPath={author.photoPath}
+      photoAlt={author.photoAlt}
+      className={className}
+    />
+  );
+}
+
 /** "Ana is typing", "Ana and Ben are typing", "Ana, Ben and 2 others are typing". */
 export function typingSentence(names: readonly string[]): string {
   const [first, second] = names;
@@ -13,8 +26,9 @@ export function typingSentence(names: readonly string[]): string {
 
 /**
  * The three dots at the foot of a conversation while somebody else writes, in
- * a bubble like theirs, beside the first one's face (the owner, 2026-11-18).
- * A group names them over it, as it names who wrote each message.
+ * a bubble like theirs, beside their face, or the first two's overlapped
+ * (the owner, 2026-11-18). A group names them over it, as it names who wrote
+ * each message.
  *
  * Drawn only: screen readers hear the sentence from the status line the thread
  * keeps outside its message log, so the dots are not read as a message.
@@ -28,18 +42,20 @@ export function TypingDots({
   group: boolean;
 }) {
   if (who.length === 0) return null;
-  const first = who[0] ?? null;
+  const [first = null, second = null] = who;
   return (
     <div aria-hidden="true" className="mb-3.5 flex items-start gap-2.5">
-      {first ? (
-        <MemberAvatar
-          id={first.id}
-          displayName={first.displayName}
-          photoPath={first.photoPath}
-          photoAlt={first.photoAlt}
-        />
+      {who.length > 1 ? (
+        // Two faces, overlapped, in the space of one: more than one is typing.
+        <span className="relative h-[34px] w-[34px] flex-none">
+          <Face author={first} className="absolute top-0 left-0 h-[24px] w-[24px] rounded-[8px]" />
+          <Face
+            author={second}
+            className="absolute right-0 bottom-0 h-[24px] w-[24px] rounded-[8px] ring-2 ring-canvas"
+          />
+        </span>
       ) : (
-        <span className="h-[34px] w-[34px] flex-none" />
+        <Face author={first} />
       )}
       <div className="min-w-0">
         {group ? (

@@ -458,20 +458,21 @@
   60%,
   100% {
     transform: translateY(0);
-    opacity: 0.45;
+    opacity: 0.4;
   }
   30% {
     transform: translateY(-3px);
-    opacity: 1;
+    opacity: 0.9;
   }
 }
 .typing-dot {
   display: block;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 9999px;
-  background: var(--grey);
-  opacity: 0.45;
+  /* The words' own colour, faded: grey on a bubble was easy to miss. */
+  background: var(--ink);
+  opacity: 0.4;
   animation: typing-dot 1.2s ease-in-out infinite;
 }
 
