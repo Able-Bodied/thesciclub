@@ -8,6 +8,8 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { markdownToPlain } from '@/lib/markdown';
+import { splitMentions } from '@/lib/mentions';
+import { useOrganizations } from '@/lib/organizations';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
@@ -49,6 +51,7 @@ export function PhotoCard({
   const name = byline(topic.authorId, author);
   // Read here is read: a view, as opening the topic is (home-views.ts).
   const seenRef = useSeenOnHome(topic.opening?.id);
+  const { organizations } = useOrganizations();
 
   return (
     <article ref={seenRef} className="relative rounded-[17px] border border-line bg-paper p-3.5">
@@ -119,14 +122,29 @@ export function PhotoCard({
         </div>
       ) : null}
 
-      <Link
-        to={to}
-        state={linkState}
-        data-target="small"
-        className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] underline-offset-2 hover:underline after:absolute after:inset-0 after:rounded-[17px]"
-      >
-        {topic.title}
-      </Link>
+      {/* A title's @people and @Organizations open their pages (the owner, 2026-11-17). */}
+      {splitMentions(topic.title, organizations).some((part) => part.kind !== 'text') ? (
+        <>
+          <Link
+            to={to}
+            state={linkState}
+            aria-label="Open the post"
+            className="sr-only after:absolute after:inset-0 after:rounded-[17px]"
+          />
+          <p className="mt-2.5 font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] [&_a]:relative [&_a]:z-[1]">
+            <LinkedText text={topic.title} />
+          </p>
+        </>
+      ) : (
+        <Link
+          to={to}
+          state={linkState}
+          data-target="small"
+          className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] underline-offset-2 hover:underline after:absolute after:inset-0 after:rounded-[17px]"
+        >
+          {topic.title}
+        </Link>
+      )}
       {opening?.body ? (
         <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink leading-[1.52] [&_a]:relative [&_a]:z-[1]">
           <LinkedText text={markdownToPlain(opening.body)} />

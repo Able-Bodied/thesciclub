@@ -8,6 +8,8 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { markdownToPlain } from '@/lib/markdown';
+import { splitMentions } from '@/lib/mentions';
+import { useOrganizations } from '@/lib/organizations';
 import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
@@ -53,12 +55,47 @@ export function TopicCard({
   const opening = topic.opening;
   // Read here is read: a view, as opening the topic is (home-views.ts).
   const seenRef = useSeenOnHome(topic.opening?.id);
+  const { organizations } = useOrganizations();
+  const mentioned = splitMentions(topic.title, organizations).some((part) => part.kind !== 'text');
 
   return (
     <article ref={seenRef} className="relative rounded-[17px] border border-line bg-paper p-3.5">
       <RoomTag room={topic.room} linkState={linkState} />
 
-      {topic.isQuestion ? (
+      {mentioned ? (
+        /* A title with @people or @Organizations (the owner, 2026-11-17): its
+           words with their links above the card's stretched link, which is
+           then named for what it does rather than reading the title twice. */
+        <div
+          className={
+            topic.isQuestion
+              ? 'mt-2.5 rounded-[14px] bg-gradient-to-br from-plate to-plate-hover px-4 pt-3.5 pb-6 text-center text-white ring-1 ring-plate-edge/50 ring-inset'
+              : 'mt-2'
+          }
+        >
+          <Link
+            to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
+            state={linkState}
+            aria-label={topic.isQuestion ? 'Open the question' : 'Open the post'}
+            className={
+              topic.isQuestion
+                ? 'block text-left font-bold text-[0.6875rem] text-gold-hi uppercase tracking-[0.12em] after:absolute after:inset-0 after:rounded-[17px]'
+                : 'sr-only after:absolute after:inset-0 after:rounded-[17px]'
+            }
+          >
+            {topic.isQuestion ? 'Question' : null}
+          </Link>
+          <p
+            className={
+              topic.isQuestion
+                ? 'mt-3 font-extrabold font-head text-[1.375rem] leading-[1.3] [overflow-wrap:anywhere] [&_a]:relative [&_a]:z-[1]'
+                : 'font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] [&_a]:relative [&_a]:z-[1]'
+            }
+          >
+            <LinkedText text={topic.title} />
+          </p>
+        </div>
+      ) : topic.isQuestion ? (
         /* A question, large on the header band's colour like Facebook's coloured posts (the
            owner's pick). The text size is the member's, never shrunk to fit. */
         <Link
