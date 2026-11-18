@@ -472,7 +472,7 @@ export default function InvitesPage() {
                 htmlFor="mentor-invite-message"
                 className="block font-bold text-[0.75rem] text-ink"
               >
-                Message in the email (optional)
+                Note in the email (optional)
               </label>
               <textarea
                 id="mentor-invite-message"
@@ -490,7 +490,8 @@ export default function InvitesPage() {
                 id="mentor-invite-message-hint"
                 className="mt-1 text-[0.75rem] text-grey leading-[1.4]"
               >
-                Quoted in the email, from you. Others can see an inbox, so keep it general.
+                Shown in the email as a note from you. Others may see their inbox, so leave out
+                anything private.
               </p>
             </div>
 
