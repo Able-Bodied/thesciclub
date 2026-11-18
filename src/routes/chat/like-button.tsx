@@ -371,19 +371,20 @@ export function LikesSheet({
         {onBoost ? (
           <div className="flex-none border-line border-t px-[18px] py-3">
             <p className="font-bold text-[0.78125rem] text-grey">
-              For administrators: boost {boost ? `+${boost}` : 'none'}
+              For administrators: {boost ? `boosted +${boost}` : 'not boosted'}
             </p>
             <p className="mt-0.5 text-[0.75rem] text-grey leading-[1.45]">
-              Members see the boost only as part of the score. A long press or right click on the up
-              arrow adds 10 too.
+              A boost adds 10 for 14 days, once per post. Members see it only as part of the score.
+              A long press or right click on the up arrow boosts too.
             </p>
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
+                disabled={(boost ?? 0) >= 10}
                 onClick={() => {
                   onBoost(true);
                 }}
-                className="min-h-[44px] flex-1 rounded-xl bg-tint px-4 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-line"
+                className="min-h-[44px] flex-1 rounded-xl bg-tint px-4 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-line disabled:opacity-40"
               >
                 Add 10
               </button>
@@ -395,7 +396,7 @@ export function LikesSheet({
                 }}
                 className="min-h-[44px] flex-1 rounded-xl bg-tint px-4 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-line disabled:opacity-40"
               >
-                Take 10 back
+                Take it back
               </button>
             </div>
           </div>

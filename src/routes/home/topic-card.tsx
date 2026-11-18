@@ -8,7 +8,7 @@ import type { PostVote } from '@/lib/chat/likes';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import { useMinute } from '@/lib/chat/use-minute';
-import type { HomeTopic } from '@/lib/home/types';
+import type { HomeReply, HomeReplyKind, HomeTopic } from '@/lib/home/types';
 import { markdownToPlain } from '@/lib/markdown';
 import { splitMentions } from '@/lib/mentions';
 import { useOrganizations } from '@/lib/organizations';
@@ -33,7 +33,7 @@ import { AnswerBox } from '@/routes/home/answer-box';
 export function TopicCard({
   topic,
   starter,
-  replier,
+  repliers,
   linkState,
   likes,
   viewCount,
@@ -43,7 +43,8 @@ export function TopicCard({
   topic: HomeTopic;
   /** Null for a former member, and while the name is still loading. */
   starter: ChatAuthor | null;
-  replier: ChatAuthor | null;
+  /** Who wrote each of `topic.replies`, in the same order; null as `starter`. */
+  repliers: readonly (ChatAuthor | null)[];
   /** Router state for the topic page, so its back link can say Home. */
   linkState: unknown;
   /** Who likes the opening post, or nothing while the likes load. */
@@ -54,7 +55,6 @@ export function TopicCard({
   answerAs?: string | null | undefined;
 }) {
   useMinute();
-  const reply = topic.firstReply;
   const opening = topic.opening;
   // Read here is read: a view, as opening the topic is (home-views.ts).
   const seenRef = useSeenOnHome(topic.opening?.id);
@@ -168,53 +168,14 @@ export function TopicCard({
         <LinkPreviewCard preview={opening.linkPreview} className="relative" />
       ) : null}
 
-      {reply ? (
-        <div className="mt-[11px] border-tint border-l-[2.5px] py-0.5 pl-3">
-          <p className="flex items-center gap-[9px]">
-            <AvatarLink
-              memberId={replier?.id}
-              hasProfile={replier?.hasProfile}
-              state={linkState}
-              className="relative z-[1]"
-            >
-              {replier ? (
-                <MemberAvatar
-                  id={replier.id}
-                  displayName={replier.displayName}
-                  photoPath={replier.photoPath}
-                  photoAlt={replier.photoAlt}
-                  className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]"
-                />
-              ) : (
-                <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
-              )}
-            </AvatarLink>
-            <span className="font-semibold text-[0.78125rem] text-ink2">
-              <BylineName authorId={reply.authorId} author={replier} linkState={linkState} />
-              {replier?.level ? (
-                <>
-                  {' · '}
-                  <LevelHighlight
-                    level={replier.level}
-                    stage={replier.stage}
-                    injuryType={replier.injuryType}
-                  />
-                </>
-              ) : null}
-            </span>
-          </p>
-          <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52] [&_a]:relative [&_a]:z-[1]">
-            {reply.body ? (
-              <LinkedText text={markdownToPlain(reply.body)} />
-            ) : (
-              'Replied with a photograph.'
-            )}
-          </p>
-          {reply.linkPreview ? (
-            <LinkPreviewCard preview={reply.linkPreview} className="relative" />
-          ) : null}
-        </div>
-      ) : null}
+      {topic.replies.map((reply, at) => (
+        <QuotedReply
+          key={reply.post.id}
+          reply={reply}
+          replier={repliers[at] ?? null}
+          linkState={linkState}
+        />
+      ))}
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
         {opening && likes ? (
@@ -252,6 +213,87 @@ export function TopicCard({
     </article>
   );
 }
+
+/**
+ * A reply quoted on the card. Since 20261118190000 the ranking says which and why, and the byline
+ * says so: "Top reply", or when it came. A card on an older database quotes the first reply, as
+ * it always did, with no label.
+ */
+function QuotedReply({
+  reply,
+  replier,
+  linkState,
+}: {
+  reply: HomeReply;
+  replier: ChatAuthor | null;
+  linkState: unknown;
+}) {
+  const label = REPLY_LABEL[reply.kind];
+  return (
+    <div className="mt-[11px] border-tint border-l-[2.5px] py-0.5 pl-3">
+      <p className="flex items-center gap-[9px]">
+        <AvatarLink
+          memberId={replier?.id}
+          hasProfile={replier?.hasProfile}
+          state={linkState}
+          className="relative z-[1]"
+        >
+          {replier ? (
+            <MemberAvatar
+              id={replier.id}
+              displayName={replier.displayName}
+              photoPath={replier.photoPath}
+              photoAlt={replier.photoAlt}
+              className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]"
+            />
+          ) : (
+            <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
+          )}
+        </AvatarLink>
+        <span className="min-w-0 font-semibold text-[0.78125rem] text-ink2">
+          <BylineName authorId={reply.post.authorId} author={replier} linkState={linkState} />
+          {replier?.level ? (
+            <>
+              {' · '}
+              <LevelHighlight
+                level={replier.level}
+                stage={replier.stage}
+                injuryType={replier.injuryType}
+              />
+            </>
+          ) : null}
+          {reply.kind === 'first' ? null : (
+            <span className="font-normal text-grey">
+              {' · '}
+              {[label, reply.kind === 'top' ? null : chatTime(reply.post.createdAt)]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          )}
+        </span>
+      </p>
+      <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52] [&_a]:relative [&_a]:z-[1]">
+        {reply.post.body ? (
+          <LinkedText text={markdownToPlain(reply.post.body)} />
+        ) : (
+          'Replied with a photograph.'
+        )}
+      </p>
+      {reply.post.linkPreview ? (
+        <LinkPreviewCard preview={reply.post.linkPreview} className="relative" />
+      ) : null}
+    </div>
+  );
+}
+
+const REPLY_LABEL: Record<HomeReplyKind, string | null> = {
+  top: 'Top reply',
+  unread: 'New reply',
+  latest: 'Latest reply',
+  // Beside a top reply or another latest: when it came is enough.
+  reply: null,
+  first: null,
+};
 
 /** What a card's votes need: the topic page's posts take the same. */
 export type CardLikes = PostVote;

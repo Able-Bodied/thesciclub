@@ -156,6 +156,7 @@ export function makeHomeTopic(overrides: Partial<HomeTopic> = {}): HomeTopic {
     room: makeRoom(),
     opening: makePost({ topicId: id }),
     firstReply: null,
+    replies: overrides.firstReply ? [{ post: overrides.firstReply, kind: 'first' }] : [],
     photo: false,
     ...overrides,
   };

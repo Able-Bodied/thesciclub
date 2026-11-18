@@ -47,6 +47,28 @@ export interface HomeTopicSummary {
   replyCount: number;
   /** Asked as a question (20261010010000), and drawn larger on Home. */
   isQuestion: boolean;
+  /** Its place in `home_topics_ranked`'s order (20261118190000); absent on the older read. */
+  order?: number | undefined;
+  /** The replies `home_topics_ranked` picked for the card, by id. */
+  previewIds?: readonly HomeReplyRef[] | undefined;
+}
+
+/**
+ * Which reply a card quotes, and why (20261118190000):
+ * `top` the highest score, 1 or more; `unread` the first the reader has not read;
+ * `latest` the newest; `reply` another newest one, so a card still shows two;
+ * `first` the earliest, on a database without the ranking.
+ */
+export type HomeReplyKind = 'top' | 'unread' | 'latest' | 'reply' | 'first';
+
+export interface HomeReplyRef {
+  id: string;
+  kind: HomeReplyKind;
+}
+
+export interface HomeReply {
+  post: ChatPost;
+  kind: HomeReplyKind;
 }
 
 /** One topic, with what a card needs to draw it. */
@@ -63,6 +85,11 @@ export interface HomeTopic extends HomeTopicSummary {
   opening: ChatPost | null;
   /** The earliest standing post after the opening one, if anybody has replied. */
   firstReply: ChatPost | null;
+  /**
+   * What the card quotes: up to two replies, the top one first, or else oldest first. On a
+   * database without the ranking, `firstReply` alone.
+   */
+  replies: HomeReply[];
   /** The opening post carries at least one photograph. */
   photo: boolean;
 }

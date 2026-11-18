@@ -84,6 +84,7 @@ const report = (o: Partial<ChatReport> & { id: string }): ChatReport => ({
   createdAt: '2026-09-18T11:00:00Z',
   reporterId: 'ada',
   reporterName: 'Ada',
+  raisedByVotes: false,
   reportedAuthorId: 'bo',
   reportedAuthorName: 'Bo',
   reportCount: 1,

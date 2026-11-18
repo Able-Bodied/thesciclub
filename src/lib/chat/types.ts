@@ -410,6 +410,8 @@ export interface ChatReport {
   /** Null for somebody who has since been removed from the club. */
   reporterId: string | null;
   reporterName: string | null;
+  /** Made when members voted the post down to -3, with no reporter (20261118190000). */
+  raisedByVotes: boolean;
   reportedAuthorId: string | null;
   reportedAuthorName: string | null;
   /** How many members reported this same post or message. Never fewer than 1. */
