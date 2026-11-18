@@ -62,7 +62,14 @@ export function InvitePerson({
             {invite.rsvp === 'interested' ? 'Interested' : 'Going'}
           </Step>
         ) : null}
-        <Step on={started}>{step ? `Stopped at ${step}` : 'Started'}</Step>
+        {step ? (
+          // Where they left off, outlined and plain: a drop-off, not a step reached.
+          <span className="rounded-full border border-line px-2 py-0.5 text-ink2">
+            Stopped at {step}
+          </span>
+        ) : (
+          <Step on={started}>Started</Step>
+        )}
         {/* "Stopped at" already says they have not joined; one line, not two. */}
         {step ? null : (
           <Step on={joined}>
