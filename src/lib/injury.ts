@@ -137,11 +137,12 @@ export function injuryStageText(stage: InjuryStage, injuryType?: string | null):
 
 /**
  * Each band in words (the owner, 2026-11-18: "Update the text in all Injured
- * 2-5 years etc"), so the words say what the colour does.
+ * 2-5 years etc"; "<6 mo." and "6-12 mo."), so the words say what the
+ * colour does.
  */
 export const INJURY_BAND_TEXT: Record<InjuryBand, string> = {
-  0: 'Injured under 6 months',
-  1: 'Injured 6–12 months',
+  0: 'Injured <6 mo.',
+  1: 'Injured 6–12 mo.',
   2: 'Injured 1–2 years',
   3: 'Injured 2–5 years',
   4: 'Injured 5–10 years',
