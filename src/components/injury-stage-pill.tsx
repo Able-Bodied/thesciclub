@@ -3,18 +3,23 @@ import { cn } from '@/lib/utils';
 import type { BrowseMember, InjuryStage } from '@/types/domain';
 
 /**
- * Each stage's colour at half strength behind the words, in regular weight
- * (the owner, 2026-11-17: coloured words "blend in to the background too
- * much", back to pills, "50% with white text, but not bolded"). The words are
- * white over photographs; in a byline they are --ink, near white on a dark
- * page and navy on a light one, where white on half a colour would not read.
+ * Each stage's colour, on its words (the owner, 2026-11-17: the words in the
+ * colour; a band took too much room and a dot was too subtle). The light
+ * set is for words over a photograph (Peers' cards and profiles), always dark.
  */
-const STAGE_PILL: Record<InjuryStage, string> = {
-  new: 'bg-stage-new/50',
-  recent: 'bg-stage-recent/50',
-  years: 'bg-stage-years/50',
-  og: 'bg-stage-og/50',
-  oog: 'bg-stage-oog/50',
+const STAGE_TEXT: Record<InjuryStage, string> = {
+  new: 'text-stage-new-text',
+  recent: 'text-stage-recent-text',
+  years: 'text-stage-years-text',
+  og: 'text-stage-og-text',
+  oog: 'text-stage-oog-text',
+};
+const STAGE_ON_PHOTO: Record<InjuryStage, string> = {
+  new: 'text-stage-new-light',
+  recent: 'text-stage-recent-light',
+  years: 'text-stage-years-light',
+  og: 'text-stage-og-light',
+  oog: 'text-stage-oog-light',
 };
 
 type Staged = Pick<
@@ -23,32 +28,25 @@ type Staged = Pick<
 >;
 
 /**
- * How long ago, as a pill on its own line under the summary line of Peers'
- * cards and profiles, always over a photograph's shade: "Injured 10+ years".
- * Nothing where there is no date (family, staff, "rather not say"). The date
- * itself is hidden unless its member shows it (20261117030000), so the stage
- * is drawn.
+ * How long ago, as the last part of a summary line over a photograph, in its
+ * stage's colour: "10+ years since injury", kept whole. Nothing where
+ * there is no date (family, staff, "rather not say"). The date itself is
+ * hidden unless its member shows it (20261117030000), so the stage is drawn.
  */
-export function InjuryStageNote({ member, className }: { member: Staged; className?: string }) {
+export function InjuryStagePart({ member }: { member: Staged }) {
   const stage = injuryStageOf(member);
   if (!stage) return null;
   return (
-    <span
-      className={cn(
-        'inline-flex max-w-full items-center rounded-full px-2.5 py-[3px] font-normal text-[0.8125rem] text-white leading-snug',
-        STAGE_PILL[stage],
-        className,
-      )}
-    >
+    <span className={cn('whitespace-nowrap font-semibold', STAGE_ON_PHOTO[stage])}>
       {injuryStageText(stage, member.injuryType)}
     </span>
   );
 }
 
 /**
- * The level in a chat byline and on Home, as a pill in its stage's colour.
+ * The level in a chat byline and on Home, in its stage's colour.
  * The words on hover or a long press, and said aloud, so the colour is never
- * the only way to know the stage. No date, no pill.
+ * the only way to know the stage. No date, no colour.
  */
 export function LevelHighlight({
   level,
@@ -63,10 +61,7 @@ export function LevelHighlight({
   return (
     <span
       title={injuryStageText(stage, injuryType)}
-      className={cn(
-        'box-decoration-clone rounded-full px-1.5 font-normal text-ink',
-        STAGE_PILL[stage],
-      )}
+      className={cn('font-semibold', STAGE_TEXT[stage])}
     >
       {level}
       <span className="sr-only">, {injuryStageText(stage, injuryType).toLowerCase()}</span>
