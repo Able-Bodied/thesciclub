@@ -739,6 +739,18 @@ All live. Migration headers and the files named say how and why.
   times: each request on one time line, and the ones that waited for one
   another (`lib/debug-log.ts`, `components/debug-panel.tsx`). `timedFetch`
   and `cardsShown` in `page-speed.ts` tell it; nothing is sent anywhere.
+- **Home is posts alone, read in one request** (2026-11-18, "for now"): no
+  event or peer cards, none of their reads, no Events or People under Type
+  and no Distance in the filter; members find those in their own tabs. The
+  owner means to add them back later: `feed.ts` still mixes the three kinds
+  and `HomeFilterSheet` still draws Distance when handed `home`, so restore
+  the reads in `routes/home/page.tsx` from the commit before this one, and
+  draw the posts without waiting for them. Search reads events, members and
+  organizations itself once opened (`HomeSearchReading`). The posts come
+  from `home_feed` (`20261118260000`): the order and everything a card is
+  drawn from in one answer, read as the member; a database without it gets
+  the two requests as before. Votes, views and reactions are still three
+  small reads after it, and do not hold up the text.
 
 ## Environment
 
