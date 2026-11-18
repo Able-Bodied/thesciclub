@@ -17,10 +17,10 @@ import { cn } from '@/lib/utils';
  * post, or a topic is a column of identical buttons to a screen reader. The score opens the list of
  * who upvoted (an upvote is a like, and likes were always named); downvotes are anonymous.
  *
- * A club administrator's long press on the up arrow, or right click, adds 10 to the score. The
+ * A club administrator's long press on the up arrow, or right click, boosts the post. The
  * click that follows a long press is swallowed, so it does not also upvote. The list has the same
- * as buttons, with taking 10 back, for a keyboard and a screen reader. Only an administrator sees
- * the boost; to members it is part of the score.
+ * as buttons, with removing the boost, for a keyboard and a screen reader. Only an administrator
+ * sees the boost: it lifts the post in the order and is in no score (20261118195000).
  *
  * The list is a dialog like report-sheet.tsx, `fixed` since it opens from inside a card. The
  * score is refocused by name on close: Safari does not focus a clicked button.
@@ -235,7 +235,7 @@ export function PostLikes({
           </button>
         ) : null}
       </span>
-      {/* An administrator's alone: to members the boost is part of the score. */}
+      {/* An administrator's alone: members never see the boost. */}
       {boost && !unknown ? <span className="font-semibold text-ink2">Boost +{boost}</span> : null}
       {open ? (
         <LikesSheet
@@ -374,8 +374,9 @@ export function LikesSheet({
               For administrators: {boost ? `boosted +${boost}` : 'not boosted'}
             </p>
             <p className="mt-0.5 text-[0.75rem] text-grey leading-[1.45]">
-              A boost adds 10 for 14 days, once per post. Members see it only as part of the score.
-              A long press or right click on the up arrow boosts too.
+              A boost lifts the post in Top and on Home for 14 days, once per post. Members don't
+              see it, and it isn't in the score. A long press or right click on the up arrow boosts
+              too.
             </p>
             <div className="mt-2 flex gap-2">
               <button

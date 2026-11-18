@@ -101,6 +101,7 @@ describe('suggestPeople', () => {
   const others = Array.from({ length: 14 }, (_, index) =>
     makeMember({
       id: `m${String(index).padStart(2, '0')}`,
+      type: 'mentor',
       displayName: `Member ${index}`,
       // Earlier members share more with the viewer, so they rank higher.
       state: index < 7 ? 'CA' : 'NY',
@@ -113,11 +114,18 @@ describe('suggestPeople', () => {
     expect(suggestPeople([viewer], 'me', new Set(), NOW)).toEqual([]);
   });
 
-  it('leaves out the viewer, the club account and anybody they already talk to', () => {
-    const club = makeMember({ id: 'club', isAdmin: true, state: 'CA' });
-    const friend = makeMember({ id: 'friend', state: 'CA' });
-    const stranger = makeMember({ id: 'stranger', state: 'CA' });
-    const picked = suggestPeople([viewer, club, friend, stranger], 'me', new Set(['friend']), NOW);
+  it('leaves out the viewer, the club account, anybody they already talk to and peers', () => {
+    const club = makeMember({ id: 'club', type: 'mentor', isAdmin: true, state: 'CA' });
+    const friend = makeMember({ id: 'friend', type: 'mentor', state: 'CA' });
+    const stranger = makeMember({ id: 'stranger', type: 'mentor', state: 'CA' });
+    // Mentors only (the owner, 2026-11-18): a peer's profile may say little.
+    const peer = makeMember({ id: 'peer', type: 'peer', state: 'CA' });
+    const picked = suggestPeople(
+      [viewer, club, friend, stranger, peer],
+      'me',
+      new Set(['friend']),
+      NOW,
+    );
     expect(picked.map((member) => member.id)).toEqual(['stranger']);
   });
 
@@ -149,19 +157,18 @@ describe('suggestPeople', () => {
   });
 
   // Hidden from Peers means no row in browse_members, so there is nobody to
-  // rank against. Mentors first, then the newest.
-  it('puts mentors first, then the newest, for a viewer hidden from Peers', () => {
+  // rank against. The newest first.
+  it('puts the newest first, for a viewer hidden from Peers', () => {
     const picked = suggestPeople(
       [
-        makeMember({ id: 'old', createdAt: '2026-01-01T00:00:00Z' }),
-        makeMember({ id: 'new', createdAt: '2026-09-01T00:00:00Z' }),
-        makeMember({ id: 'mentor', type: 'mentor', createdAt: '2025-01-01T00:00:00Z' }),
+        makeMember({ id: 'old', type: 'mentor', createdAt: '2026-01-01T00:00:00Z' }),
+        makeMember({ id: 'new', type: 'mentor', createdAt: '2026-09-01T00:00:00Z' }),
       ],
       'me',
       new Set(),
       NOW,
     );
-    expect(picked.map((member) => member.id)).toEqual(['mentor', 'new', 'old']);
+    expect(picked.map((member) => member.id)).toEqual(['new', 'old']);
   });
 
   it('gives six when asked, for the People pill', () => {
@@ -178,17 +185,18 @@ describe('buildFeed', () => {
     expect(buildFeed({ topics: [], events: [], people: [] })).toEqual([]);
   });
 
-  it('puts an event or a person after every second topic, alternating', () => {
+  // The first after the fourth topic (the owner, 2026-11-18), then every second.
+  it('puts an event or a person after the fourth topic and every second after, alternating', () => {
     expect(keys(buildFeed({ topics, events, people }))).toEqual([
       'topic:a',
       'topic:b',
-      'event:e1',
       'topic:c',
       'topic:d',
-      'person:p1',
+      'event:e1',
       'topic:e',
       // The topics ran out; what is left of the extras follows, still
       // alternating, and capped at four events and three people.
+      'person:p1',
       'event:e2',
       'person:p2',
       'event:e3',
@@ -210,12 +218,13 @@ describe('buildFeed', () => {
   });
 
   it('carries on with one kind when the other runs out', () => {
-    expect(keys(buildFeed({ topics: topics.slice(0, 4), events: [], people }))).toEqual([
+    expect(keys(buildFeed({ topics, events: [], people }))).toEqual([
       'topic:a',
       'topic:b',
-      'person:p1',
       'topic:c',
       'topic:d',
+      'person:p1',
+      'topic:e',
       'person:p2',
       'person:p3',
     ]);

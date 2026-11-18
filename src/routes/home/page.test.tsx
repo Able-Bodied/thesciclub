@@ -256,7 +256,7 @@ beforeEach(() => {
   db.rsvps = new Map();
   db.members = [
     makeMember({ id: 'me', displayName: 'Alex' }),
-    makeMember({ id: 'kerry', displayName: 'Kerry' }),
+    makeMember({ id: 'kerry', type: 'mentor', displayName: 'Kerry' }),
   ];
   db.membersLoading = false;
   db.membersError = null;
@@ -673,12 +673,19 @@ describe('filtering the feed', () => {
       makeMember({ id: 'me', displayName: 'Alex', city: 'San Jose' }),
       makeMember({
         id: 'kerry',
+        type: 'mentor',
         displayName: 'Kerry',
         city: 'San Jose',
         topics: ['Adaptive sports'],
       }),
-      makeMember({ id: 'dante', displayName: 'Dante', city: 'Aptos', topics: ['Bowel programme'] }),
-      makeMember({ id: 'jan', displayName: 'Jan', city: 'Santa Cruz' }),
+      makeMember({
+        id: 'dante',
+        type: 'mentor',
+        displayName: 'Dante',
+        city: 'Aptos',
+        topics: ['Bowel programme'],
+      }),
+      makeMember({ id: 'jan', type: 'mentor', displayName: 'Jan', city: 'Santa Cruz' }),
     ];
   });
 
