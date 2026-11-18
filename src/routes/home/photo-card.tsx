@@ -129,7 +129,7 @@ export function PhotoCard({
             to={to}
             state={linkState}
             aria-label="Open the post"
-            className="sr-only after:absolute after:inset-0 after:rounded-[17px]"
+            className="block h-0 after:absolute after:inset-0 after:rounded-[17px]"
           />
           <p className="mt-2.5 font-extrabold font-head text-[1rem] text-ink leading-[1.32] [overflow-wrap:anywhere] [&_a]:relative [&_a]:z-[1]">
             <LinkedText text={topic.title} />
