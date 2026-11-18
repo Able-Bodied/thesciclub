@@ -150,24 +150,23 @@ describe('injury stage colours', () => {
       expect(contrast(token(`stage-${stage}-light`), ground)).toBeGreaterThanOrEqual(AA);
     }
   });
-  // The pills (the owner, 2026-11-17): the stage partly over the
+  // The pills (the owner, 2026-11-17): the stage at half strength over the
   // ground, white words over a photograph, --ink on the page, light and dark.
-  it.each(STAGES)('words on a --stage-%s pill clear AA', (stage) => {
-    // The stage at `share` over the ground: half on the cards, 30% in a byline.
-    const over = (ground: string, share: number) => {
+  it.each(STAGES)('words on a --stage-%s pill at 50% clear AA', (stage) => {
+    const half = (ground: string) => {
       const [a, b] = [channels(token(`stage-${stage}`)), channels(ground)];
       return `#${a
         .map((v, i) =>
-          Math.round((v * share + (b[i] ?? 0) * (1 - share)) * 255)
+          Math.round(((v + (b[i] ?? 0)) / 2) * 255)
             .toString(16)
             .padStart(2, '0'),
         )
         .join('')}`;
     };
-    expect(contrast('#ffffff', over(PHOTO_SHADE, 0.5))).toBeGreaterThanOrEqual(AA);
+    expect(contrast('#ffffff', half(PHOTO_SHADE))).toBeGreaterThanOrEqual(AA);
     for (const ground of ['paper', 'canvas']) {
-      expect(contrast(token('ink'), over(token(ground), 0.3))).toBeGreaterThanOrEqual(AA);
-      expect(contrast(darkToken('ink'), over(darkToken(ground), 0.3))).toBeGreaterThanOrEqual(AA);
+      expect(contrast(token('ink'), half(token(ground)))).toBeGreaterThanOrEqual(AA);
+      expect(contrast(darkToken('ink'), half(darkToken(ground)))).toBeGreaterThanOrEqual(AA);
     }
   });
 });
