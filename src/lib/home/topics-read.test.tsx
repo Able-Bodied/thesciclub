@@ -6,12 +6,25 @@ import { HOME_TOPIC_LIMIT, useHomeTopics } from '@/lib/home/topics';
 import { keptReadsStale } from '@/lib/kept-reads';
 
 const db = vi.hoisted(() => ({
+  /** What `home_feed` answers; null is a database without it. */
+  feed: null as unknown[] | null,
+  rpcs: [] as string[],
   calls: [] as unknown[][],
   includeHidden: false,
   includeClosed: false,
 }));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
+    rpc: (name: string) => ({
+      abortSignal: () => {
+        db.rpcs.push(name);
+        return Promise.resolve(
+          name === 'home_feed' && db.feed
+            ? { data: db.feed, error: null }
+            : { data: null, error: { code: 'PGRST202', message: 'no such function' } },
+        );
+      },
+    }),
     from: (table: string) => {
       const query = {
         select: (columns: string) => {
@@ -75,6 +88,8 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 beforeEach(() => {
+  db.feed = null;
+  db.rpcs = [];
   db.calls = [];
   db.includeHidden = true;
   db.includeClosed = true;
@@ -116,6 +131,72 @@ it('brings the cards’ names and faces in the same read, ready on the first ren
   expect(unnamed).toEqual([]);
   // And nothing read for an author already known.
   expect(db.calls.filter(([kind]) => kind === 'select')).toHaveLength(1);
+});
+
+// The owner, 2026-11-18: the posts were asked for only once the ranking had
+// answered, and their text waited for both. One request now says which posts,
+// in what order, and carries all a card is drawn from.
+it('reads the order, the posts and their authors in one request', async () => {
+  const post = (id: string, at: string, author: string) => ({
+    id,
+    topic_id: 'second',
+    author_id: author,
+    body: id,
+    attachments: [],
+    created_at: at,
+    removed_at: null,
+    removed_by_admin: false,
+    edited_at: null,
+    reply_to: null,
+    link_preview: null,
+  });
+  const card = (id: string, ord: number, more: object = {}) => ({
+    id,
+    room_id: 'bowel',
+    title: id,
+    author_id: 'a1',
+    created_at: '2026-10-10T10:00:00Z',
+    last_post_at: '2026-10-10T10:00:00Z',
+    reply_count: 0,
+    is_question: false,
+    ord,
+    previews: [],
+    author: { id: 'a1', display_name: 'Ana' },
+    opening: [],
+    replies: [],
+    ...more,
+  });
+  // Sent out of order: the place is in each card, not in where it came.
+  db.feed = [
+    card('second', 1, {
+      previews: [{ id: 'answer', kind: 'latest' }],
+      opening: [post('question', '2026-10-10T10:00:00Z', 'a1')],
+      replies: [
+        {
+          ...post('answer', '2026-10-10T11:00:00Z', 'b2'),
+          author: { id: 'b2', display_name: 'Bo' },
+        },
+      ],
+    }),
+    card('first', 0),
+  ];
+  const { result } = renderHook(() => {
+    const read = useHomeTopics();
+    // As Home asks: the authors of what has arrived, replies included.
+    return { read, authors: useChatAuthors(read.posts.map((each) => each.authorId)) };
+  });
+  await waitFor(() => {
+    expect(result.current.read.loading).toBe(false);
+  });
+  expect(db.rpcs).toEqual(['home_feed']);
+  expect(db.calls).toEqual([]);
+  expect(result.current.read.topics.map((topic) => [topic.id, topic.order])).toEqual([
+    ['second', 1],
+    ['first', 0],
+  ]);
+  expect(result.current.read.topics[0]?.previewIds).toEqual([{ id: 'answer', kind: 'latest' }]);
+  expect(result.current.read.posts.map((each) => each.id)).toEqual(['question', 'answer']);
+  expect(result.current.authors.get('b2')?.displayName).toBe('Bo');
 });
 
 // From 2026-11-18's filter until this, every read blanked Home to its

@@ -35,6 +35,11 @@ import { getSupabase } from '@/lib/supabase';
  * a little newer for votes and a boost; and the replies are the top one and the latest. The
  * topics are then read as before, by id, with those replies. A database without the function
  * gets the read above.
+ *
+ * Since 20261118260000 all of it is one request, `home_feed`: which posts, in what order, and
+ * each with its author, opening post and replies, in the shape the read of `chat_topics` gave
+ * (the owner, 2026-11-18: the posts were asked for only once the ranking had answered, and their
+ * text waited for both). A database without that function is read as above, in two requests.
  */
 
 export const HOME_TOPIC_LIMIT = 40;
@@ -55,6 +60,13 @@ interface TopicRow {
   opening?: PostRow[] | null;
   replies?: (PostRow & { author?: ChatAuthorRow | null })[] | null;
   author?: ChatAuthorRow | null;
+}
+
+/** A card of `home_feed`: the topic as above, with its place and the replies the ranking chose. */
+interface FeedRow extends TopicRow {
+  ord: number;
+  /** Null for a chosen Show or Sort: the card quotes the first reply. */
+  previews: HomeReplyRef[] | null;
 }
 
 function toSummary(row: TopicRow, ranked?: RankedRow, order?: number): HomeTopicSummary {
@@ -206,6 +218,21 @@ async function readRanked(signal: AbortSignal): Promise<RankedRow[] | null> {
 }
 
 /**
+ * The whole of Home's posts in one request, or null to read as before: a database without
+ * `home_feed`, or any failure, which the reads after it report if they fail too.
+ */
+async function readFeed(view: HomeView, signal: AbortSignal): Promise<FeedRow[] | null> {
+  try {
+    const { data, error } = (await getSupabase()
+      .rpc('home_feed', { p_show: view.show, p_sort: view.sort, max_rows: HOME_TOPIC_LIMIT })
+      .abortSignal(signal)) as Result<FeedRow[]>;
+    return error || !Array.isArray(data) ? null : data;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Which posts, in order, for a Show or Sort other than the default, or null on any failure:
  * the read after it then says so.
  */
@@ -274,9 +301,50 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
       setState({ topics: [], posts: [], loading: false, error, readAt: null });
     };
 
+    /** What came back, as the state: the posts once each, and their authors remembered. */
+    function land(rows: readonly TopicRow[], topics: HomeTopicSummary[]) {
+      // The opener can be in both lists; once each.
+      const byId = new Map<string, ChatPost>();
+      for (const row of rows) {
+        for (const post of [...(row.opening ?? []), ...(row.replies ?? [])]) {
+          byId.set(post.id, toPost(post));
+        }
+      }
+      // The cards' names and faces came with the topics: no second read.
+      rememberChatAuthors(
+        rows
+          .flatMap((row) => [row.author, ...(row.replies ?? []).map((reply) => reply.author)])
+          .filter((author): author is ChatAuthorRow => Boolean(author)),
+      );
+      setState({
+        topics,
+        posts: [...byId.values()],
+        loading: false,
+        error: null,
+        readAt: performance.now(),
+      });
+      held.current = key;
+      landed();
+    }
+
     async function load() {
       try {
         const supabase = getSupabase();
+        const feed = await readFeed({ show, sort }, controller.signal);
+        if (aborted()) return;
+        if (feed) {
+          land(
+            feed,
+            feed.map((row) =>
+              toSummary(
+                row,
+                row.previews ? { topic_id: row.id, previews: row.previews } : undefined,
+                row.ord,
+              ),
+            ),
+          );
+          return;
+        }
         const ranked = chosen ? null : await readRanked(controller.signal);
         const shown = chosen ? await readShown({ show, sort }, controller.signal) : null;
         if (aborted()) return;
@@ -325,23 +393,7 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
           const at = rankOf.get(row.id);
           return toSummary(row, at?.row, at?.order ?? shownAt.get(row.id));
         });
-        // The opener can be in both lists; once each.
-        const byId = new Map<string, ChatPost>();
-        for (const row of rows) {
-          for (const post of [...(row.opening ?? []), ...(row.replies ?? [])]) {
-            byId.set(post.id, toPost(post));
-          }
-        }
-        const posts = [...byId.values()];
-        // The cards' names and faces came with the topics: no second read.
-        rememberChatAuthors(
-          rows
-            .flatMap((row) => [row.author, ...(row.replies ?? []).map((reply) => reply.author)])
-            .filter((author): author is ChatAuthorRow => Boolean(author)),
-        );
-        setState({ topics, posts, loading: false, error: null, readAt: performance.now() });
-        held.current = key;
-        landed();
+        land(rows, topics);
       } catch (e) {
         if (aborted()) return;
         fail(describeThrown(e, ATTEMPT));
