@@ -253,7 +253,7 @@ export function EventCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-start gap-[13px] text-left"
+        className={cn('flex w-full items-start gap-[13px] text-left', inMessage && 'flex-wrap')}
       >
         {/* Date and host stacked in one narrow column, so the title always
             starts at the same x no matter which of them is present. */}
@@ -317,13 +317,21 @@ export function EventCard({
           ) : null}
           <OutOfStateMark state={event.state} className="mt-1" />
 
-          {summary ? (
+          {summary && !inMessage ? (
             <span className="mt-1.5 block text-[0.8125rem] text-ink leading-[1.45]">{summary}</span>
           ) : null}
         </span>
         {inMessage ? null : (
           <EventCover path={event.photoPath} alt={event.photoAlt} size="card" className="-mr-1" />
         )}
+        {/* In a message, the whole card's width under the date and title: in
+            the column beside the date it ran five short lines (screenshot
+            review, 2026-11-18). */}
+        {summary && inMessage ? (
+          <span className="-mt-1 block basis-full text-[0.8125rem] text-ink leading-[1.45]">
+            {summary}
+          </span>
+        ) : null}
       </button>
 
       {/* Beside the card's button, not in it: it is a button of its own. */}
