@@ -341,11 +341,13 @@ describe('what the sender is told', () => {
     );
   });
 
-  it('a change to one date that was not copied is said, not dropped', () => {
+  it('a change to one date that was not copied is said, not dropped, with why', () => {
     const reason =
-      'A change to one date of a repeating event is not copied; change it in the club.';
-    expect(told({ outcome: 'ignored', reason })[0]?.subject).toBe(
-      'Not copied to The SCI Club: Friday Happy Hour',
+      "A change to one date of a repeating event was not copied, because the event is not on the club's calendar.";
+    const [mail] = told({ outcome: 'ignored', reason });
+    expect(mail?.subject).toBe('Not copied to The SCI Club: Friday Happy Hour');
+    expect(mail?.text).toBe(
+      "A change to one date of Friday Happy Hour was not copied, because the event is not on the club's calendar.",
     );
   });
 
