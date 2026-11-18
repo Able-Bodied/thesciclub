@@ -237,6 +237,8 @@ interface ReportRow {
   created_at: string;
   reporter_id: string | null;
   reporter_name: string | null;
+  /** Absent from a database before 20261118190000. */
+  raised_by_votes?: boolean;
   reported_author_id: string | null;
   reported_author_name: string | null;
   report_count: number;
@@ -354,6 +356,7 @@ function toReport(row: ReportRow): ChatReport {
     createdAt: row.created_at,
     reporterId: row.reporter_id,
     reporterName: row.reporter_name,
+    raisedByVotes: row.raised_by_votes === true,
     reportedAuthorId: row.reported_author_id,
     reportedAuthorName: row.reported_author_name,
     reportCount: row.report_count,

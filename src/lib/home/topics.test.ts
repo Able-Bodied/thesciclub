@@ -187,6 +187,50 @@ describe('toHomeTopics', () => {
     expect(again).toEqual(once);
   });
 
+  // 20261118190000: the reader's order, never a third card in a row from one room or one member,
+  // and the replies the ranking picked, top first, one removed since left out.
+  it('keeps the ranked order but spreads runs, and quotes the replies picked', () => {
+    const anxiety = makeRoom({ id: 'anxiety' });
+    const ranked = [
+      summary({ id: 'r1', order: 0, authorId: 'ann', lastPostAt: '2026-09-01T10:00:00Z' }),
+      summary({ id: 'r2', order: 1, authorId: 'bo' }),
+      summary({ id: 'r3', order: 2, authorId: 'cy' }),
+      summary({ id: 'a1', order: 3, authorId: 'ann', roomId: 'anxiety' }),
+      summary({ id: 'a2', order: 4, authorId: 'ann', roomId: 'anxiety' }),
+      summary({ id: 'a3', order: 5, authorId: 'ann', roomId: 'anxiety' }),
+      summary({
+        id: 'r4',
+        order: 6,
+        authorId: 'dee',
+        previewIds: [
+          { id: 'gone', kind: 'top' },
+          { id: 'top', kind: 'top' },
+          { id: 'new', kind: 'unread' },
+        ],
+      }),
+    ];
+    const topics = toHomeTopics(
+      ranked,
+      [
+        makePost({ id: 'open', topicId: 'r4', createdAt: '2026-09-20T09:00:00Z' }),
+        makePost({ id: 'new', topicId: 'r4', createdAt: '2026-09-20T12:00:00Z' }),
+        makePost({ id: 'top', topicId: 'r4', createdAt: '2026-09-20T11:00:00Z' }),
+        makePost({
+          id: 'gone',
+          topicId: 'r4',
+          createdAt: '2026-09-20T10:00:00Z',
+          removedAt: '2026-09-20T13:00:00Z',
+        }),
+      ],
+      [bowel, anxiety],
+    );
+    expect(topics.map((t) => t.id)).toEqual(['r1', 'r2', 'a1', 'r3', 'a2', 'a3', 'r4']);
+    expect(topics.at(-1)?.replies.map((r) => `${r.kind}:${r.post.id}`)).toEqual([
+      'top:top',
+      'unread:new',
+    ]);
+  });
+
   it('draws the title alone for a topic whose posts were not read', () => {
     const [topic] = toHomeTopics([summary({ id: 't' })], [], [bowel]);
     expect(topic?.opening).toBeNull();

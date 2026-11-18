@@ -141,13 +141,14 @@ describe('PostLikes', () => {
       }
     });
 
-    it('can add and take back 10 from the list, for a keyboard', async () => {
+    it('can take a boost back from the list, for a keyboard, but not add a second', async () => {
       const onBoost = vi.fn();
       renderLikes({ onBoost, boost: 10 });
       await userEvent.click(screen.getByRole('button', { name: /^Score/ }));
-      await userEvent.click(screen.getByRole('button', { name: 'Add 10' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Take 10 back' }));
-      expect(onBoost.mock.calls).toEqual([[true], [false]]);
+      // A boost is 10 at most (20261118190000).
+      expect(screen.getByRole('button', { name: 'Add 10' })).toBeDisabled();
+      await userEvent.click(screen.getByRole('button', { name: 'Take it back' }));
+      expect(onBoost.mock.calls).toEqual([[false]]);
     });
   });
 

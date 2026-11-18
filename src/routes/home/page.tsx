@@ -189,7 +189,10 @@ export default function HomePage() {
   );
 
   const authors = useChatAuthors(
-    topics.flatMap((topic) => [topic.authorId, topic.firstReply?.authorId ?? null]),
+    topics.flatMap((topic) => [
+      topic.authorId,
+      ...topic.replies.map((reply) => reply.post.authorId),
+    ]),
   );
   // Likes on every topic and photograph: one read for every opening post,
   // whichever pill is showing, so switching pills does not read again.
@@ -272,11 +275,9 @@ export default function HomePage() {
           <TopicCard
             topic={item.topic}
             starter={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
-            replier={
-              item.topic.firstReply?.authorId
-                ? (authors.get(item.topic.firstReply.authorId) ?? null)
-                : null
-            }
+            repliers={item.topic.replies.map((reply) =>
+              reply.post.authorId ? (authors.get(reply.post.authorId) ?? null) : null,
+            )}
             linkState={linkState}
             reactions={
               item.topic.opening ? (

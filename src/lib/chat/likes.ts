@@ -15,7 +15,8 @@ import { getSupabase } from '@/lib/supabase';
  * instead of Like. An upvote is a like: `chat_post_likes` keeps its rows, names list and
  * notification. A downvote is anonymous (`chat_post_downvotes`, nobody reads another's). A club
  * administrator's long press or right click on the up arrow adds 10 (`admin_boost_post`), which
- * members see only as part of the score. `chat_post_scores` says each score and the reader's vote;
+ * members see only as part of the score. Since 20261118190000 a boost is 10 at most and lasts 14
+ * days. `chat_post_scores` says each score and the reader's vote;
  * on a database without it, the score is the likes and nobody has downvoted.
  *
  * Before the votes, likes on posts in rooms: who likes which, liking, and taking it back.
@@ -178,7 +179,7 @@ export async function undownvotePost(
 
 const BOOST_FAILED = { attempt: 'The boost was not saved.', refused: 'Only administrators boost.' };
 
-/** An administrator's +10, or taking the latest 10 back. The boost after. */
+/** An administrator's +10 for 14 days, or taking it back. The boost after: 10 or 0. */
 export async function boostPost(postId: string, more: boolean): Promise<ChatWriteResult<number>> {
   const { data, error } = (await getSupabase().rpc('admin_boost_post', { post: postId, more })) as {
     data: number | null;
@@ -282,6 +283,9 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const [attempt, setAttempt] = useState(0);
   // Posts with a write in flight. A ref, not state: nothing is drawn from it.
   const pending = useRef(new Set<string>());
+  // The scores as last drawn, for a boost's check without re-creating it on every vote.
+  const scoresRef = useRef(scores);
+  scoresRef.current = scores;
   // The posts whose likes are drawn; read again, they stay up meanwhile.
   const shown = useRef<string | null>(null);
   const kept = useKeptRead();
@@ -460,6 +464,11 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const boost = useCallback(
     (postId: string, more: boolean) => {
       if (!isAdmin || pending.current.has(postId)) return;
+      // One boost at a time (20261118190000): a second long press says so.
+      if (more && (scoresRef.current.get(postId)?.boost ?? 0) >= 10) {
+        announce('Already boosted by 10. A boost lasts 14 days.');
+        return;
+      }
       pending.current.add(postId);
       setFailure(null);
       void boostPost(postId, more)
@@ -480,7 +489,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
             });
             return next;
           });
-          announce(more ? 'Boosted by 10.' : '10 taken back from the boost.');
+          announce(more ? 'Boosted by 10 for 14 days.' : 'Boost taken back.');
         })
         .catch((e: unknown) => {
           pending.current.delete(postId);

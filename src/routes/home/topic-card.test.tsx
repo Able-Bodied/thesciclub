@@ -58,7 +58,7 @@ function renderCard(props: Partial<Parameters<typeof TopicCard>[0]> = {}) {
             <TopicCard
               topic={makeHomeTopic({ id: 't1', title: 'Morning or evening routine?' })}
               starter={author({ id: 'a', displayName: 'Alex', level: 'C6' })}
-              replier={null}
+              repliers={[]}
               linkState={{ from: 'home' }}
               {...props}
             />
@@ -128,7 +128,7 @@ describe('a topic on Home', () => {
         replyCount: 3,
         firstReply: makePost({ authorId: 'j', body: 'Evenings, after a year of mornings.' }),
       }),
-      replier: author({ id: 'j', displayName: 'Jan', level: 'T4' }),
+      repliers: [author({ id: 'j', displayName: 'Jan', level: 'T4' })],
     });
     expect(screen.getByRole('link', { name: 'Jan' }).closest('span')).toHaveTextContent(
       /^Jan · T4$/,

@@ -126,8 +126,8 @@ describe('a kept tab shown again', () => {
   it('asks nothing when switched back to within the minute', async () => {
     const tab = renderTab();
     await settle();
-    // 17 on a show; before, 14 of them again on every switch.
-    expect(db.requests).toHaveLength(17);
+    // 18 on a show (Home's ranking is one, 20261118190000); before, 14 of them again on every switch.
+    expect(db.requests).toHaveLength(18);
     expect(await tab.showAgain()).toBe(0);
   });
 

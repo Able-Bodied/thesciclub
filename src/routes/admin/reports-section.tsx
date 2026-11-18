@@ -298,20 +298,27 @@ function ReportRow({
       <Snapshot report={report} edits={edits} />
 
       <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-        Reported by{' '}
-        <MemberName
-          id={report.reporterId}
-          name={report.reporterName}
-          gone="a deleted member"
-          authors={authors}
-          onGoToMember={onGoToMember}
-        />{' '}
-        on {chatTimeLong(report.createdAt)}
+        {report.raisedByVotes ? (
+          // Nobody reported it: the votes did (20261118190000).
+          <>Members voted this down to −3 by {chatTimeLong(report.createdAt)}</>
+        ) : (
+          <>
+            Reported by{' '}
+            <MemberName
+              id={report.reporterId}
+              name={report.reporterName}
+              gone="a deleted member"
+              authors={authors}
+              onGoToMember={onGoToMember}
+            />{' '}
+            on {chatTimeLong(report.createdAt)}
+          </>
+        )}
         {/* Only past one. "1 member reported this" is a sentence saying what
             the row already says. */}
         {report.reportCount > 1 ? ` · ${report.reportCount} members reported this` : ''}
       </p>
-      {report.note ? (
+      {report.note && !report.raisedByVotes ? (
         <p className="mt-1.5 text-[0.8125rem] text-ink2 leading-[1.5]">“{report.note}”</p>
       ) : null}
 

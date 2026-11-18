@@ -3,7 +3,7 @@ import { AUTHOR_COLUMNS, type ChatAuthorRow, rememberChatAuthors } from '@/lib/c
 import { POST_COLUMNS, type PostRow, toPost } from '@/lib/chat/topics';
 import type { ChatPost, ChatRoom } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
-import type { HomeTopic, HomeTopicSummary } from '@/lib/home/types';
+import type { HomeReply, HomeReplyRef, HomeTopic, HomeTopicSummary } from '@/lib/home/types';
 import { useKeptRead } from '@/lib/kept-reads';
 import { getSupabase } from '@/lib/supabase';
 
@@ -19,6 +19,11 @@ import { getSupabase } from '@/lib/supabase';
  *
  * Closed rooms: administrators can read them, so `toHomeTopics` drops them against the rooms list
  * (as `continue-in-room.tsx` does), or an administrator's Home would look busier than a member's.
+ *
+ * Since 20261118190000 the order is the reader's own: `home_topics_ranked` says which forty and in
+ * what order (unseen, new replies, votes, a boost: see the migration), and which replies each
+ * card quotes (the top one, and the first unread or the latest). The topics are then read as
+ * before, by id, with those replies. A database without the function gets the read above.
  */
 
 export const HOME_TOPIC_LIMIT = 40;
@@ -41,8 +46,9 @@ interface TopicRow {
   author?: ChatAuthorRow | null;
 }
 
-function toSummary(row: TopicRow): HomeTopicSummary {
+function toSummary(row: TopicRow, ranked?: RankedRow, order?: number): HomeTopicSummary {
   return {
+    ...(ranked && order !== undefined ? { order, previewIds: ranked.previews } : {}),
     id: row.id,
     roomId: row.room_id,
     title: row.title,
@@ -58,6 +64,15 @@ interface Result<T> {
   data: T | null;
   error: Failure | null;
 }
+
+/** A row of `home_topics_ranked`. */
+interface RankedRow {
+  topic_id: string;
+  previews: HomeReplyRef[];
+}
+
+/** No reply has this id: an `in` filter that matches nothing. */
+const NO_ID = '00000000-0000-0000-0000-000000000000';
 
 /** Earliest first, with the id to break a tie so two reads agree. */
 function byPostTime(a: ChatPost, b: ChatPost): number {
@@ -86,8 +101,13 @@ export function toHomeTopics(
     else byTopic.set(post.topicId, [post]);
   }
 
-  return [...topics]
-    .sort((a, b) => b.lastPostAt.localeCompare(a.lastPostAt) || a.id.localeCompare(b.id))
+  const cards = [...topics]
+    .sort(
+      (a, b) =>
+        (a.order !== undefined && b.order !== undefined ? a.order - b.order : 0) ||
+        b.lastPostAt.localeCompare(a.lastPostAt) ||
+        a.id.localeCompare(b.id),
+    )
     .flatMap((topic) => {
       const room = open.get(topic.roomId);
       if (!room) return [];
@@ -102,10 +122,67 @@ export function toHomeTopics(
           room,
           opening,
           firstReply,
+          replies: topic.previewIds
+            ? pickedReplies(topic.previewIds, list)
+            : firstReply
+              ? [{ post: firstReply, kind: 'first' as const }]
+              : [],
           photo: opening !== null && opening.attachments.length > 0,
         },
       ];
     });
+  return topics.some((topic) => topic.order !== undefined) ? spreadRuns(cards) : cards;
+}
+
+/**
+ * The replies the ranking picked, those that came back standing: the top one first, or with no
+ * top one, oldest first, so two read as the conversation went.
+ */
+function pickedReplies(refs: readonly HomeReplyRef[], posts: readonly ChatPost[]): HomeReply[] {
+  const byId = new Map(posts.map((post) => [post.id, post]));
+  const picked = refs.flatMap((ref): HomeReply[] => {
+    const post = byId.get(ref.id);
+    return post?.removedAt === null ? [{ post, kind: ref.kind }] : [];
+  });
+  if (picked.some((reply) => reply.kind === 'top')) return picked.slice(0, 2);
+  return picked.sort((a, b) => byPostTime(a.post, b.post)).slice(0, 2);
+}
+
+/**
+ * At most two in a row from one room or one member (the plan the owner approved, 2026-11-18):
+ * a third is put after the next card that is neither, keeping the order otherwise.
+ */
+export function spreadRuns<T extends { roomId: string; authorId: string | null }>(
+  items: readonly T[],
+): T[] {
+  const rest = [...items];
+  const out: T[] = [];
+  while (rest.length > 0) {
+    const [a, b] = out.slice(-2);
+    const third = (item: T) =>
+      a !== undefined &&
+      b !== undefined &&
+      ((a.roomId === item.roomId && b.roomId === item.roomId) ||
+        (item.authorId !== null && a.authorId === item.authorId && b.authorId === item.authorId));
+    const at = rest.findIndex((item) => !third(item));
+    out.push(...rest.splice(at === -1 ? 0 : at, 1));
+  }
+  return out;
+}
+
+/**
+ * The reader's order and each card's replies, or null to read as before: a database without
+ * `home_topics_ranked`, or any failure, which the read after it reports if it fails too.
+ */
+async function readRanked(signal: AbortSignal): Promise<RankedRow[] | null> {
+  try {
+    const { data, error } = (await getSupabase()
+      .rpc('home_topics_ranked', { max_rows: HOME_TOPIC_LIMIT })
+      .abortSignal(signal)) as Result<RankedRow[]>;
+    return error || !Array.isArray(data) ? null : data;
+  } catch {
+    return null;
+  }
 }
 
 export interface HomeTopicsState {
@@ -144,31 +221,45 @@ export function useHomeTopics(): HomeTopicsState {
     async function load() {
       try {
         const supabase = getSupabase();
-        const topicRows = (await supabase
+        const ranked = await readRanked(controller.signal);
+        if (aborted()) return;
+        const select = supabase
           .from('chat_topics')
           .select(
             `${TOPIC_COLUMNS}, author:chat_authors!chat_topics_author_id_fkey(${AUTHOR_COLUMNS}), chat_rooms!inner(show_in_home, opened_at), opening:chat_posts(${POST_COLUMNS}), replies:chat_posts(${POST_COLUMNS}, author:chat_authors!chat_posts_author_id_fkey(${AUTHOR_COLUMNS}))`,
           )
           .eq('chat_rooms.show_in_home', true)
-          .not('chat_rooms.opened_at', 'is', null)
-          .order('last_post_at', { ascending: false })
-          .limit(HOME_TOPIC_LIMIT)
-          .order('created_at', { referencedTable: 'opening' })
-          .order('id', { referencedTable: 'opening' })
-          .limit(1, { referencedTable: 'opening' })
-          .is('replies.removed_at', null)
-          .is('replies.reply_to', null)
-          .order('created_at', { referencedTable: 'replies' })
-          .order('id', { referencedTable: 'replies' })
-          .limit(2, { referencedTable: 'replies' })
-          .abortSignal(controller.signal)) as Result<TopicRow[]>;
+          .not('chat_rooms.opened_at', 'is', null);
+        const opening = (query: typeof select) =>
+          query
+            .order('created_at', { referencedTable: 'opening' })
+            .order('id', { referencedTable: 'opening' })
+            .limit(1, { referencedTable: 'opening' })
+            .is('replies.removed_at', null)
+            .is('replies.reply_to', null)
+            .order('created_at', { referencedTable: 'replies' })
+            .order('id', { referencedTable: 'replies' });
+        const replyIds = ranked?.flatMap((row) => row.previews.map((ref) => ref.id)) ?? [];
+        const topicRows = (await (ranked
+          ? opening(
+              select.in('id', ranked.length > 0 ? ranked.map((row) => row.topic_id) : [NO_ID]),
+            )
+              .in('replies.id', replyIds.length > 0 ? replyIds : [NO_ID])
+              .abortSignal(controller.signal)
+          : opening(select.order('last_post_at', { ascending: false }).limit(HOME_TOPIC_LIMIT))
+              .limit(2, { referencedTable: 'replies' })
+              .abortSignal(controller.signal))) as Result<TopicRow[]>;
         if (aborted()) return;
         if (topicRows.error) {
           fail(describeError(topicRows.error, ATTEMPT));
           return;
         }
         const rows = topicRows.data ?? [];
-        const topics = rows.map(toSummary);
+        const rankOf = new Map(ranked?.map((row, order) => [row.topic_id, { row, order }]));
+        const topics = rows.map((row) => {
+          const at = rankOf.get(row.id);
+          return toSummary(row, at?.row, at?.order);
+        });
         // The opener can be in both lists; once each.
         const byId = new Map<string, ChatPost>();
         for (const row of rows) {
