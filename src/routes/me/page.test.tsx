@@ -370,13 +370,13 @@ describe('MePage', () => {
     renderMe();
     expect(screen.queryByText('Invites')).not.toBeInTheDocument();
     expect(screen.queryByText(/cannot invite/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Your invites/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Invite new members/ })).not.toBeInTheDocument();
   });
 
   it('tells a mentor they can, and offers the way in', () => {
     own.member = ownMember({ type: 'mentor' });
     renderMe();
-    const invites = screen.getByRole('link', { name: /Your invites/ });
+    const invites = screen.getByRole('link', { name: /Invite new members/ });
     expect(invites).toHaveAttribute('href', '/invites');
     expect(invites).toHaveAccessibleDescription(/As a mentor you can invite \d+ people by email/);
   });
@@ -560,7 +560,7 @@ describe('unlimited invite card', () => {
       );
       expect(await screen.findByText('You can invite people without a limit.')).toBeInTheDocument();
       expect(screen.queryByText(/put 10 numbers/)).toBeNull();
-      expect(screen.getByRole('link', { name: /Your invites/ })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /Invite new members/ })).toHaveAttribute(
         'href',
         '/invites',
       );

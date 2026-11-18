@@ -14,6 +14,7 @@ import {
 import { useMemberOrganizations } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
+import { InviteSheet } from '@/routes/admin/invite-sheet';
 import {
   canWithdraw,
   createMyInvite,
@@ -100,6 +101,7 @@ export default function InvitesPage() {
       .sort((a, b) => a.name.localeCompare(b.name));
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -231,7 +233,7 @@ export default function InvitesPage() {
         <div className="mx-auto w-full max-w-[560px]">
           <BackLink to="/me" label="Me" />
           <h1 className="mt-1 font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
-            Your invites
+            Invite new members
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
             {permissions.unlimited
@@ -504,6 +506,43 @@ export default function InvitesPage() {
               {busyId === 'new' ? 'Adding…' : 'Add and send the link'}
             </button>
           </div>
+
+          {/* Here rather than in Admin (the owner, 2026-11-18: "a little section
+              with a button above the People you have invited section"). For
+              administrators: inviteList is theirs (members-admin.ts). */}
+          {isAdmin ? (
+            <section aria-labelledby="invite-sheet-title" className="mt-5">
+              <h2
+                id="invite-sheet-title"
+                className="mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+              >
+                From a spreadsheet
+              </h2>
+              <p className="mb-2.5 text-[0.78125rem] text-grey leading-[1.4]">
+                A Google Sheet link or rows pasted from any spreadsheet. Each person gets an email
+                from you, with your message.
+              </p>
+              {sheetOpen ? (
+                <div className="overflow-hidden rounded-[14px] border border-line bg-paper">
+                  <InviteSheet
+                    onCreated={() => {
+                      void load();
+                    }}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSheetOpen(true);
+                  }}
+                  className="flex min-h-[44px] items-center justify-center rounded-[11px] border border-line bg-paper px-4 font-bold font-head text-[0.875rem] text-emphasis"
+                >
+                  Invite from a spreadsheet
+                </button>
+              )}
+            </section>
+          ) : null}
 
           <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
             People you have invited
