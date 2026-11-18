@@ -695,6 +695,18 @@ All live. Migration headers and the files named say how and why.
   stay as "Deleted member"; the member left in a direct conversation with
   them can delete it. No colour-blind mode: nothing relies on colour alone.
   Netlify's "hosted on Netlify" HTML comment stays.
+- **Words in rooms, and times** (2026-11-18): what a member starts in a room
+  is a **post** (a **question** is a post asked as one), what is written
+  under it is a **reply**. The code and database still say topic
+  (`chat_topics`) and post (`chat_posts`); only what people read changed, in
+  the app, the notification settings and the lock-screen words
+  (`push-notify/compose.ts`). A room's card and page count posts, the questions among them,
+  replies and views and say when it was last active
+  (`chat_room_stats`, `20261118170000`; `roomCounts` in `room-card.tsx`).
+  Every time on content is `chatTime`: just now, minutes, hours, days ago,
+  and a date from a week old; a component that shows one calls `useMinute()`
+  so it keeps up. Messages inside a conversation keep their clock under the
+  day's heading.
 
 ## Environment
 

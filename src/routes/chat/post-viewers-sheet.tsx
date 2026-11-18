@@ -5,6 +5,7 @@ import { MemberAvatar } from '@/components/member-avatar';
 import { SheetGrip } from '@/components/sheet-grip';
 import { fetchPostViewers, type PostViewer } from '@/lib/chat/post-viewers';
 import { chatTime } from '@/lib/chat/time';
+import { useMinute } from '@/lib/chat/use-minute';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,7 @@ const DEVICE_LABELS = { mobile: 'Mobile', desktop: 'Desktop' } as const;
  * cards whose positioning would otherwise frame the sheet.
  */
 export function PostViewersSheet({ postId, onClose }: { postId: string; onClose: () => void }) {
+  useMinute();
   const titleId = useId();
   const dialog = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);

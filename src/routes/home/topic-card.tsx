@@ -6,6 +6,7 @@ import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/membe
 import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import type { HomeTopic } from '@/lib/home/types';
 import { markdownToPlain } from '@/lib/markdown';
 import { splitMentions } from '@/lib/mentions';
@@ -51,6 +52,7 @@ export function TopicCard({
   /** The member reading, who can answer a question from here. */
   answerAs?: string | null | undefined;
 }) {
+  useMinute();
   const reply = topic.firstReply;
   const opening = topic.opening;
   // Read here is read: a view, as opening the topic is (home-views.ts).

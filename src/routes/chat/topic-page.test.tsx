@@ -637,14 +637,14 @@ describe('a topic', () => {
   describe('deleting it', () => {
     it('is not offered to a member', () => {
       renderTopic();
-      expect(screen.queryByRole('button', { name: 'Delete topic' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Delete post' })).toBeNull();
     });
 
     it('asks first, and does nothing when the administrator says no', async () => {
       db.isAdmin = true;
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
       renderTopic();
-      await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Delete post' }));
       expect(confirm).toHaveBeenCalledOnce();
       expect(db.deleted).toEqual([]);
       confirm.mockRestore();
@@ -654,7 +654,7 @@ describe('a topic', () => {
       db.isAdmin = true;
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
       renderTopic();
-      await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Delete post' }));
       expect(await screen.findByText('The room')).toBeInTheDocument();
       expect(db.deleted).toEqual(['t']);
       expect(db.filesDeleted).toEqual([['rooms/bowel/a.webp']]);
@@ -663,11 +663,11 @@ describe('a topic', () => {
 
     it('says so when it fails, and stays', async () => {
       db.isAdmin = true;
-      db.deleteFails = 'The topic was not deleted. You cannot do that here.';
+      db.deleteFails = 'The post was not deleted. You cannot do that here.';
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
       renderTopic();
-      await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('The topic was not deleted.');
+      await userEvent.click(screen.getByRole('button', { name: 'Delete post' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('The post was not deleted.');
       expect(screen.queryByText('The room')).toBeNull();
       confirm.mockRestore();
     });
@@ -717,7 +717,7 @@ describe('a topic', () => {
     const link = screen.getByRole('link', { name: 'Nicole' });
     expect(link).toHaveAttribute('href', '/peers/nicole');
     const row = link.closest('p');
-    expect(row?.textContent).toMatch(/started by Nicole on/i);
+    expect(row?.textContent).toMatch(/started by Nicole/i);
     expect(row?.querySelector('[aria-hidden="true"]')).toHaveTextContent(/\S/);
   });
 
@@ -726,7 +726,7 @@ describe('a topic', () => {
     db.posts = [post({ id: '1', body: 'Travelling with a bowel programme' })];
     renderTopic();
     expect(screen.queryByRole('link', { name: 'Nicole' })).toBeNull();
-    expect(screen.getByText(/started by Nicole on/i)).toBeInTheDocument();
+    expect(screen.getByText(/started by Nicole/i)).toBeInTheDocument();
   });
 
   // The owner, 2026-10-29: a topic posted with only a title offered no Edit.
@@ -771,12 +771,12 @@ describe('a topic', () => {
 
   // The owner, 2026-10-29: removing an unanswered topic's opening post left
   // its title standing.
-  it('offers Delete topic on the viewer’s own topic while nobody else has posted', async () => {
+  it('offers Delete post on the viewer’s own topic while nobody else has posted', async () => {
     if (db.topic) db.topic = { ...db.topic, authorId: 'me' };
     db.posts = [post({ id: '1', authorId: 'me', body: 'Alone here.' })];
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderTopic();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete post' }));
     expect(await screen.findByText('The room')).toBeInTheDocument();
     expect(db.deleted).toEqual(['mine:t']);
     expect(db.removed).toEqual([]);
@@ -793,7 +793,7 @@ describe('a topic', () => {
     renderTopic();
     // Only the unanswered reply of their own can go.
     expect(screen.getAllByRole('button', { name: 'Remove your post' })).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: 'Delete topic' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete post' })).toBeNull();
   });
 
   // The owner, 2026-10-29: details added to a topic read as a reply under it.
@@ -802,7 +802,7 @@ describe('a topic', () => {
     renderTopic();
     const article = screen.getByText('Which cushion do you use?').closest('article');
     if (!article) throw new Error('no article');
-    expect(within(article).getByRole('heading', { name: 'The topic' })).toBeInTheDocument();
+    expect(within(article).getByRole('heading', { name: 'The post' })).toBeInTheDocument();
     expect(within(article).queryByText(/^\d+\/\d+$/)).toBeNull();
     expect(within(article).queryByRole('link', { name: 'Nicole' })).toBeNull();
     expect(screen.getByText('No answers yet. Yours can be the first.')).toBeInTheDocument();
@@ -843,7 +843,7 @@ describe('a topic', () => {
     it('puts the words in the reply composer, and Send saves them', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
-      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Half a reply');
+      await userEvent.type(screen.getByLabelText('Reply to this post'), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       const box = screen.getByLabelText('Edit your post');
       expect(box).toHaveValue('First draft.');
@@ -857,7 +857,7 @@ describe('a topic', () => {
       });
       // No new reply, and the unsent one is back.
       expect(db.sent).toEqual([]);
-      expect(await screen.findByLabelText('Reply to this topic')).toHaveValue('Half a reply');
+      expect(await screen.findByLabelText('Reply to this post')).toHaveValue('Half a reply');
       expect(screen.queryByText('Editing post')).toBeNull();
     });
 
@@ -876,21 +876,21 @@ describe('a topic', () => {
     it('is cancelled by the button and by Escape, with nothing saved', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
-      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Half a reply');
+      await userEvent.type(screen.getByLabelText('Reply to this post'), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       await userEvent.click(screen.getByRole('button', { name: 'Cancel editing' }));
-      expect(screen.getByLabelText('Reply to this topic')).toHaveValue('Half a reply');
+      expect(screen.getByLabelText('Reply to this post')).toHaveValue('Half a reply');
       expect(screen.getByText('First draft.')).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       await userEvent.type(screen.getByLabelText('Edit your post'), ' gone{Escape}');
-      expect(screen.getByLabelText('Reply to this topic')).toHaveValue('Half a reply');
+      expect(screen.getByLabelText('Reply to this post')).toHaveValue('Half a reply');
       expect(db.edited).toEqual([]);
     });
 
     it('ends when the post is removed', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
-      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Half a reply');
+      await userEvent.type(screen.getByLabelText('Reply to this post'), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       // What the next read brings, drawn on the re-render Remove causes.
       db.posts = [
@@ -901,7 +901,7 @@ describe('a topic', () => {
       await waitFor(() => {
         expect(screen.queryByText('Editing post')).toBeNull();
       });
-      expect(screen.getByLabelText('Reply to this topic')).toHaveValue('Half a reply');
+      expect(screen.getByLabelText('Reply to this post')).toHaveValue('Half a reply');
     });
 
     it('says Edited, with the time, under an edited post', () => {
@@ -1015,7 +1015,7 @@ describe('a topic', () => {
       renderTopic();
       await userEvent.click(screen.getByRole('button', { name: "Reply to Nicole's post" }));
       expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Nicole');
-      const box = screen.getByLabelText('Reply to this topic');
+      const box = screen.getByLabelText('Reply to this post');
       expect(box).toHaveFocus();
       await userEvent.type(box, 'Under the question.');
       await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
@@ -1032,7 +1032,7 @@ describe('a topic', () => {
       renderTopic();
       await userEvent.click(screen.getByRole('button', { name: "Reply to Jake's post" }));
       expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Jake');
-      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Under this reply.');
+      await userEvent.type(screen.getByLabelText('Reply to this post'), 'Under this reply.');
       await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
       await waitFor(() => {
         expect(db.sent).toEqual([['Under this reply.', 'r1']]);
@@ -1044,7 +1044,7 @@ describe('a topic', () => {
       await userEvent.click(screen.getByRole('button', { name: "Reply to Nicole's post" }));
       await userEvent.click(screen.getByRole('button', { name: 'Stop replying' }));
       expect(screen.queryByText(/Replying to/)).toBeNull();
-      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'On its own.');
+      await userEvent.type(screen.getByLabelText('Reply to this post'), 'On its own.');
       await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
       await waitFor(() => {
         expect(db.sent).toEqual([['On its own.', null]]);
@@ -1211,7 +1211,7 @@ describe('a topic', () => {
   // will pause, and a send bound to Enter would publish the first sentence.
   it('breaks a line on Enter rather than posting', async () => {
     renderTopic();
-    const box = screen.getByLabelText('Reply to this topic');
+    const box = screen.getByLabelText('Reply to this post');
     await userEvent.type(box, 'First line{Enter}second line');
     expect(db.sent).toEqual([]);
     expect(box).toHaveValue('First line\nsecond line');
@@ -1219,7 +1219,7 @@ describe('a topic', () => {
 
   it('posts what was typed when the button is pressed', async () => {
     renderTopic();
-    await userEvent.type(screen.getByLabelText('Reply to this topic'), 'That worked for me too.');
+    await userEvent.type(screen.getByLabelText('Reply to this post'), 'That worked for me too.');
     await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
     await waitFor(() => {
       expect(db.sent).toEqual([['That worked for me too.', null]]);
@@ -1231,7 +1231,7 @@ describe('a topic', () => {
   it('keeps the draft when the post is refused, and says what happened', async () => {
     db.sendFails = 'new row violates row-level security policy';
     renderTopic();
-    const box = screen.getByLabelText('Reply to this topic');
+    const box = screen.getByLabelText('Reply to this post');
     await userEvent.type(box, 'Four paragraphs of this.');
     await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
     await waitFor(() => {
@@ -1244,14 +1244,14 @@ describe('a topic', () => {
   // there for somebody who has joined nothing, and there is no Join.
   it('offers the composer to somebody who has joined nothing, and no Join', () => {
     renderTopic();
-    expect(screen.getByLabelText('Reply to this topic')).toBeInTheDocument();
+    expect(screen.getByLabelText('Reply to this post')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Join/ })).toBeNull();
   });
 
   it('offers a member no composer in a closed room', () => {
     db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
     renderTopic();
-    expect(screen.queryByLabelText('Reply to this topic')).toBeNull();
+    expect(screen.queryByLabelText('Reply to this post')).toBeNull();
     expect(screen.getByText('This room is closed. No member can see it yet.')).toBeInTheDocument();
   });
 
@@ -1259,7 +1259,7 @@ describe('a topic', () => {
     db.isAdmin = true;
     db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
     renderTopic();
-    expect(screen.getByText(/No member can see this topic yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No member can see this post yet/)).toBeInTheDocument();
   });
 });
 
@@ -1448,7 +1448,7 @@ describe('the header’s controls', () => {
     db.isAdmin = true;
     renderTopic();
     const move = screen.getByRole('button', { name: 'Move to another room' });
-    const remove = screen.getByRole('button', { name: 'Delete topic' });
+    const remove = screen.getByRole('button', { name: 'Delete post' });
     expect(move.parentElement).toBe(remove.parentElement);
     expect(move.parentElement).toHaveClass('flex', 'gap-2');
     expect(move.className).not.toMatch(/\bm[trl]?-/);

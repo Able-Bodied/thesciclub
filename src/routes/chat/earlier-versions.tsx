@@ -1,5 +1,6 @@
 import { chatTime } from '@/lib/chat/time';
 import type { ChatEdit } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 
 /**
@@ -22,6 +23,7 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
  * them (20260918200000).
  */
 export function EarlierVersions({ edits, from }: { edits: ChatEdit[]; from: string }) {
+  useMinute();
   return (
     <details className="mt-1.5 text-[0.78125rem]">
       <summary

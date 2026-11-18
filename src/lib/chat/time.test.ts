@@ -19,25 +19,20 @@ const now = new Date('2026-09-18T14:00:00Z'); // A Friday.
 const UTC = 'UTC';
 
 describe('chatTime', () => {
-  it('shows a clock for something that arrived today', () => {
-    expect(chatTime('2026-09-18T09:30:00Z', now, UTC)).toBe('9:30am');
-    expect(chatTime('2026-09-18T13:05:00Z', now, UTC)).toBe('1:05pm');
+  // The owner, 2026-11-18: minutes ago, then hours ago, then days, and a date
+  // beyond a week, for all content.
+  it('says how long ago for a week: just now, then minutes, hours and days', () => {
+    expect(chatTime('2026-09-18T13:59:30Z', now, UTC)).toBe('just now');
+    expect(chatTime('2026-09-18T13:59:00Z', now, UTC)).toBe('1 minute ago');
+    expect(chatTime('2026-09-18T13:01:00Z', now, UTC)).toBe('59 minutes ago');
+    expect(chatTime('2026-09-18T13:00:00Z', now, UTC)).toBe('1 hour ago');
+    expect(chatTime('2026-09-17T14:01:00Z', now, UTC)).toBe('23 hours ago');
+    expect(chatTime('2026-09-17T14:00:00Z', now, UTC)).toBe('1 day ago');
+    expect(chatTime('2026-09-11T14:01:00Z', now, UTC)).toBe('6 days ago');
   });
 
-  it('shows midnight and noon the way a clock does', () => {
-    expect(chatTime('2026-09-18T00:04:00Z', now, UTC)).toBe('12:04am');
-    expect(chatTime('2026-09-18T12:00:00Z', now, UTC)).toBe('12:00pm');
-  });
-
-  it('shows a weekday for the last six days', () => {
-    expect(chatTime('2026-09-17T23:00:00Z', now, UTC)).toBe('Thu');
-    expect(chatTime('2026-09-12T08:00:00Z', now, UTC)).toBe('Sat');
-  });
-
-  // The boundary: a week ago is a weekday name that could be this week or last,
-  // and "Fri" above "Fri" is the one thing the column must not do.
   it('shows a date once it is a week old', () => {
-    expect(chatTime('2026-09-11T08:00:00Z', now, UTC)).toBe('Sep 11');
+    expect(chatTime('2026-09-11T14:00:00Z', now, UTC)).toBe('Sep 11');
   });
 
   it('carries the year only when it is a different one', () => {
@@ -45,23 +40,11 @@ describe('chatTime', () => {
     expect(chatTime('2025-12-31T08:00:00Z', now, UTC)).toBe('Dec 31, 2025');
   });
 
-  // 23 hours before 09:00 is the previous calendar day, and the same 23 hours
-  // before 23:00 is this morning. Counting instants gets one of them wrong.
-  it('counts calendar days, not elapsed hours', () => {
-    const lateFriday = new Date('2026-09-18T23:00:00Z');
-    expect(chatTime('2026-09-18T00:30:00Z', lateFriday, UTC)).toBe('12:30am');
-    const earlyFriday = new Date('2026-09-18T08:00:00Z');
-    expect(chatTime('2026-09-17T09:00:00Z', earlyFriday, UTC)).toBe('Thu');
-  });
-
-  // A post is shown in the reader's zone, the opposite of how an event is
-  // shown. The same instant is this afternoon to one member and last night to
-  // another, and each of them is right about their own day.
-  it('answers in the reader’s zone', () => {
-    expect(chatTime('2026-09-18T20:30:00Z', now, 'UTC')).toBe('8:30pm');
-    expect(chatTime('2026-09-18T20:30:00Z', now, 'America/Los_Angeles')).toBe('1:30pm');
-    expect(chatTime('2026-09-18T02:30:00Z', now, 'UTC')).toBe('2:30am');
-    expect(chatTime('2026-09-18T02:30:00Z', now, 'America/Los_Angeles')).toBe('Thu');
+  // The date is the reader's own, the opposite of how an event is shown: the
+  // same instant is the 11th to one member and the 10th to another.
+  it('writes the date in the reader’s zone', () => {
+    expect(chatTime('2026-09-11T02:30:00Z', now, 'UTC')).toBe('Sep 11');
+    expect(chatTime('2026-09-11T02:30:00Z', now, 'America/Los_Angeles')).toBe('Sep 10');
   });
 
   it('gives nothing rather than "Invalid Date" for a timestamp it cannot read', () => {
@@ -69,9 +52,9 @@ describe('chatTime', () => {
   });
 
   // Clock skew between a member's device and the server: a post can arrive
-  // stamped a minute into the future. It is still today.
-  it('treats a moment slightly in the future as today', () => {
-    expect(chatTime('2026-09-18T14:01:00Z', now, UTC)).toBe('2:01pm');
+  // stamped a minute into the future.
+  it('treats a moment slightly in the future as just now', () => {
+    expect(chatTime('2026-09-18T14:01:00Z', now, UTC)).toBe('just now');
   });
 });
 

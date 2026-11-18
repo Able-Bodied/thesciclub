@@ -87,9 +87,9 @@ describe('Saved', () => {
     db.items = [{ ...postSave, post: { body: '', authorId: 'jan', removed: true } }];
     renderPage();
     expect(screen.queryByRole('link', { name: /Cushions/ })).toBeNull();
-    expect(screen.getByText('This post was removed.')).toBeInTheDocument();
+    expect(screen.getByText('This reply was removed.')).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole('button', { name: 'Remove the post Cushions from Saved' }),
+      screen.getByRole('button', { name: 'Remove the reply Cushions from Saved' }),
     );
     expect(db.removed).toHaveLength(1);
   });
@@ -99,7 +99,7 @@ describe('Saved', () => {
     db.removeFails = 'This is still saved.';
     renderPage();
     await userEvent.click(
-      screen.getByRole('button', { name: 'Remove the topic Cushions from Saved' }),
+      screen.getByRole('button', { name: 'Remove the post Cushions from Saved' }),
     );
     expect(await screen.findByRole('alert')).toHaveTextContent('This is still saved.');
   });

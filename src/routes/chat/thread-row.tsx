@@ -4,6 +4,7 @@ import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/memb
 import { noticeText, threadTitle } from '@/lib/chat/threads';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 
 /**
  * One conversation in the list, from the mock's `chatRow()`.
@@ -52,6 +53,7 @@ export function ThreadRow({
   /** A signed URL for a group's picture, made by the list for every row at once. */
   pictureUrl?: string | null | undefined;
 }) {
+  useMinute();
   const title = threadTitle(thread, other?.displayName ?? null);
   const mine = thread.lastAuthorId !== null && thread.lastAuthorId === viewerId;
 
@@ -135,7 +137,7 @@ export function ThreadRow({
         </span>
       </span>
 
-      <span className="flex-none self-start text-[0.71875rem] text-grey">
+      <span className="flex-none self-start whitespace-nowrap text-[0.71875rem] text-grey">
         {thread.lastAt ? chatTime(thread.lastAt) : ''}
       </span>
     </Link>

@@ -6,6 +6,7 @@ import { PartnerLabel } from '@/components/partner-label';
 import { firstClubLink } from '@/lib/chat/club-links';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
+import { useMinute } from '@/lib/chat/use-minute';
 import { cn } from '@/lib/utils';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { ClubLinkCard } from '@/routes/chat/club-link-card';
@@ -150,6 +151,7 @@ export function Post({
   /** The replies, as `<Post nested>` elements. */
   children?: ReactNode;
 }) {
+  useMinute();
   // The count the replies were hidden at, or null. See the header.
   const [hiddenAt, setHiddenAt] = useState<number | null>(null);
   const hidden = replies > 0 && hiddenAt === replies;
@@ -250,7 +252,7 @@ export function Post({
       )}
     >
       {hideBody || opening ? (
-        <h2 className="sr-only">{hideBody ? 'The question' : 'The topic'}</h2>
+        <h2 className="sr-only">{hideBody ? 'The question' : 'The post'}</h2>
       ) : (
         <div className="flex items-center gap-2.5">
           <AvatarLink memberId={author?.id} hasProfile={author?.hasProfile}>

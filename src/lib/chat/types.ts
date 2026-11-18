@@ -130,15 +130,26 @@ export interface ChatAuthor {
 }
 
 /**
- * How many topics and posts a room has.
+ * What a room counts (the owner, 2026-11-18; 20261118170000): its posts,
+ * the questions among them, the replies under them, their views, and when it was last
+ * active.
  *
- * The view still returns a member count for an older client; nothing draws
- * it since 20260930000000, when writing stopped needing a membership, so it
- * is not read.
+ * In the club's words a post is what a member starts in a room (`chat_topics`,
+ * the code's "topic"), a question is a post asked as one, and a reply is what
+ * is written under either.
+ *
+ * The view still returns post_count (every `chat_posts` row) and a member
+ * count for an older client; neither is read.
  */
 export interface RoomStats {
+  /** Questions and other posts together. */
   topicCount: number;
-  postCount: number;
+  questionCount: number;
+  replyCount: number;
+  /** The sum of each post's views: members who saw it, not times opened. */
+  viewCount: number;
+  /** Null for a room with nothing in it. */
+  lastActivityAt: string | null;
 }
 
 /** One topic in a room, as `chat_topics_for` returns it. */

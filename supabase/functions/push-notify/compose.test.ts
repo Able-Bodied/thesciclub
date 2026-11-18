@@ -85,7 +85,7 @@ describe('compose', () => {
       }),
     );
     expect(reply).toEqual({
-      title: 'Bo replied to your topic',
+      title: 'Bo replied to your post',
       body: 'Try it after breakfast',
       url: '/chat/rooms/r/topics/t?n=topic%3At',
       tag: 'topic:t',
@@ -106,7 +106,7 @@ describe('compose', () => {
 
   // An older push_owed, before 20261003000000, sends no body for a reply.
   it('falls back to who replied when no words arrive', () => {
-    expect(compose(owed({ kind: 'reply', body: null }))?.body).toBe('Bo replied to your topic.');
+    expect(compose(owed({ kind: 'reply', body: null }))?.body).toBe('Bo replied to your post.');
   });
 
   it('cuts a long message short', () => {
@@ -148,11 +148,11 @@ describe('compose', () => {
 
   it('says somebody replied in a topic the member posted in, and what they said', () => {
     expect(compose(owed({ kind: 'reply_participant', body: 'Same here' }))).toMatchObject({
-      title: 'Bo replied in a topic you posted in',
+      title: 'Bo replied to a post you replied to',
       body: 'Same here',
     });
     expect(compose(owed({ kind: 'reply_participant', body: null }))?.body).toBe(
-      'Bo replied in a topic you posted in.',
+      'Bo replied to a post you replied to.',
     );
   });
 
@@ -163,7 +163,7 @@ describe('compose', () => {
         owed({ kind: 'like', body: 'Try it after breakfast', detail: 'post', tag: 'like:p' }),
       ),
     ).toMatchObject({
-      title: 'Bo liked your post',
+      title: 'Bo liked your reply',
       body: '“Try it after breakfast”',
       tag: 'like:p',
     });
@@ -172,7 +172,7 @@ describe('compose', () => {
   it('says topic when the liked post opened the topic', () => {
     expect(
       compose(owed({ kind: 'like', body: 'Morning or evening?', detail: 'topic' }))?.title,
-    ).toBe('Bo liked your topic');
+    ).toBe('Bo liked your post');
   });
 
   it('quotes no more than the start of a long post', () => {
@@ -212,9 +212,9 @@ describe('compose', () => {
   it('says post or topic for a reaction in a room, without the formatting', () => {
     expect(
       compose(owed({ kind: 'reaction', body: '**Bring water**', detail: 'post:❤️' })),
-    ).toMatchObject({ title: 'Bo ❤️ your post', body: '“Bring water”' });
+    ).toMatchObject({ title: 'Bo ❤️ your reply', body: '“Bring water”' });
     expect(compose(owed({ kind: 'reaction', body: 'Morning?', detail: 'topic:🎉' }))?.title).toBe(
-      'Bo 🎉 your topic',
+      'Bo 🎉 your post',
     );
   });
 
@@ -240,13 +240,13 @@ describe('compose', () => {
         }),
       ),
     ).toMatchObject({
-      title: 'Bo mentioned you in a post',
+      title: 'Bo mentioned you in a reply',
       body: 'Ask @ana about ramps',
       url: '/chat/rooms/r/topics/t1?post=p1&n=mention%3Ap1',
       tag: 'mention:p1',
     });
     expect(compose(owed({ kind: 'mention', body: 'Hi @ana', detail: 'topic' }))?.title).toBe(
-      'Bo mentioned you in a topic',
+      'Bo mentioned you in a post',
     );
     expect(compose(owed({ kind: 'mention', body: '', photo_count: 1 }))?.body).toBe(
       'Sent a photograph.',

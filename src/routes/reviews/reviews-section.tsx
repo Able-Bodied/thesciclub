@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
+import { chatTime } from '@/lib/chat/time';
+import { useMinute } from '@/lib/chat/use-minute';
 import {
   averageRating,
   canChangeReview,
@@ -221,6 +223,7 @@ function Item({
   from: object;
   onChanged: () => void;
 }) {
+  useMinute();
   const name = review.anonymous ? 'Anonymous member' : (review.authorName ?? 'Deleted member');
   const elsewhere =
     review.eventId && !(target.kind === 'event' && target.id === review.eventId)
@@ -321,16 +324,14 @@ function Item({
   );
 }
 
+/** How long ago for a week, then a date, as all content (the owner, 2026-11-18). */
 function shortDate(at: string): string {
-  return new Date(at).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return chatTime(at);
 }
 
 /** What it said before, for anybody who reads it (the owner, 2026-11-16). */
 function History({ versions }: { versions: Review['history'] }) {
+  useMinute();
   return (
     <details className="mt-2">
       <summary className={`${LINK} inline-flex cursor-pointer items-center`} data-target="small">

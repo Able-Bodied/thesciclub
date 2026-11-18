@@ -6,10 +6,12 @@ import { useChatAuthors } from '@/lib/chat/authors';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { type SavedItem, saveKey, useSavedItems } from '@/lib/chat/saves';
 import { chatTime } from '@/lib/chat/time';
+import { useMinute } from '@/lib/chat/use-minute';
 import { markdownToPlain } from '@/lib/markdown';
 
 /** The topics and posts the reader saved, newest first. Only they see this list. */
 export default function SavedPage() {
+  useMinute();
   const { items, loading, error, reload, remove } = useSavedItems();
   const { rooms } = useChatRooms();
   const authors = useChatAuthors(items.map((item) => item.post?.authorId ?? null));
@@ -34,7 +36,7 @@ export default function SavedPage() {
             Saved
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-            Topics and posts you saved. Only you can see this list.
+            Posts and replies you saved. Only you can see this list.
           </p>
         </div>
       </header>
@@ -72,14 +74,14 @@ export default function SavedPage() {
               const author = item.post?.authorId ? authors.get(item.post.authorId) : null;
               const gone =
                 !item.topic || (item.postId !== null && (!item.post || item.post.removed));
-              const title = item.topic?.title ?? 'A topic you can no longer see';
+              const title = item.topic?.title ?? 'A post you can no longer see';
               const to = item.topic
                 ? `/chat/rooms/${item.topic.roomId}/topics/${item.topicId}${item.postId ? `?post=${item.postId}` : ''}`
                 : null;
               return (
                 <li key={key} className="rounded-[14px] border border-line bg-paper p-3.5">
                   <p className="font-semibold text-[0.75rem] text-grey">
-                    {item.postId ? 'Post' : 'Topic'}
+                    {item.postId ? 'Reply' : 'Post'}
                     {room ? ` · ${room.name}` : ''} · saved {chatTime(item.savedAt)}
                   </p>
                   {to && !gone ? (
@@ -97,7 +99,7 @@ export default function SavedPage() {
                   {gone ? (
                     <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.5]">
                       {item.topic
-                        ? 'This post was removed.'
+                        ? 'This reply was removed.'
                         : 'It was removed, or its room closed.'}
                     </p>
                   ) : item.post ? (
@@ -110,7 +112,7 @@ export default function SavedPage() {
                     onClick={() => {
                       unsave(item);
                     }}
-                    aria-label={`Remove ${item.postId ? 'the post' : 'the topic'} ${title} from Saved`}
+                    aria-label={`Remove ${item.postId ? 'the reply' : 'the post'} ${title} from Saved`}
                     data-target="small"
                     className="mt-2 font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
                   >

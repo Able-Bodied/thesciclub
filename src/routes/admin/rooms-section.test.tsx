@@ -115,9 +115,14 @@ describe('the rooms section on /admin', () => {
 
   it('says how much is in a room, so an administrator can tell when it is ready', () => {
     api.rooms = [room({ id: 'bowel' })];
-    api.stats = new Map([['bowel', { topicCount: 2, postCount: 6, memberCount: 0 }]]);
+    api.stats = new Map([
+      [
+        'bowel',
+        { topicCount: 2, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+      ],
+    ]);
     renderSection();
-    expect(screen.getByText(/2 topics/)).toBeInTheDocument();
+    expect(screen.getByText(/2 posts/)).toBeInTheDocument();
   });
 
   // Not "0 topics": the counts have not arrived, which is a different fact
@@ -125,14 +130,19 @@ describe('the rooms section on /admin', () => {
   it('does not report a room as empty before the counts arrive', () => {
     api.rooms = [room({ id: 'bowel' })];
     renderSection();
-    expect(screen.getByText(/counting topics/)).toBeInTheDocument();
+    expect(screen.getByText(/counting posts/)).toBeInTheDocument();
   });
 
   it('says a room is empty once it knows', () => {
     api.rooms = [room({ id: 'bowel' })];
-    api.stats = new Map([['bowel', { topicCount: 0, postCount: 0, memberCount: 0 }]]);
+    api.stats = new Map([
+      [
+        'bowel',
+        { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+      ],
+    ]);
     renderSection();
-    expect(screen.getByText(/no topics yet/)).toBeInTheDocument();
+    expect(screen.getByText(/no posts yet/)).toBeInTheDocument();
   });
 
   // The row leads with what a member would see rather than with the room's

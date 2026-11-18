@@ -85,16 +85,16 @@ describe('what a notification says', () => {
 
   it('quotes the topic a reply or like was in', () => {
     expect(notificationSentence(n({ kind: 'reply', place: 'Best cushion?' }))).toBe(
-      'Jan replied to your topic “Best cushion?”',
+      'Jan replied to your post “Best cushion?”',
     );
     expect(notificationSentence(n({ kind: 'reply_participant', count: 2, place: 'Ramps' }))).toBe(
       '2 new replies in “Ramps”',
     );
     expect(notificationSentence(n({ kind: 'like', count: 3, place: 'Ramps' }))).toBe(
-      'Jan and 2 others liked your post in “Ramps”',
+      'Jan and 2 others liked what you wrote in “Ramps”',
     );
     expect(notificationSentence(n({ kind: 'like', count: 2, place: 'Ramps' }))).toBe(
-      'Jan and 1 other liked your post in “Ramps”',
+      'Jan and 1 other liked what you wrote in “Ramps”',
     );
   });
 
@@ -106,14 +106,18 @@ describe('what a notification says', () => {
       notificationSentence(n({ kind: 'reaction', detail: 'message:❤️', place: 'Swimmers' })),
     ).toBe('Jan reacted ❤️ to your message in Swimmers');
     expect(notificationSentence(n({ kind: 'reaction', detail: 'post:🎉', place: 'Ramps' }))).toBe(
-      'Jan reacted 🎉 to your post in “Ramps”',
+      'Jan reacted 🎉 to what you wrote in “Ramps”',
     );
     // Folded, the others may have chosen another emoji.
     expect(
       notificationSentence(n({ kind: 'reaction', count: 3, detail: 'post:🎉', place: 'Ramps' })),
-    ).toBe('Jan and 2 others reacted to your post in “Ramps”');
+    ).toBe('Jan and 2 others reacted to what you wrote in “Ramps”');
     expect(notificationSentence(n({ kind: 'reaction', detail: null, place: 'Ramps' }))).toBe(
-      'Jan reacted to your post in “Ramps”',
+      'Jan reacted to what you wrote in “Ramps”',
+    );
+    // The post itself, not a reply under it (the owner's words, 2026-11-18).
+    expect(notificationSentence(n({ kind: 'reaction', detail: 'topic:🎉', place: 'Ramps' }))).toBe(
+      'Jan reacted 🎉 to your post “Ramps”',
     );
   });
 
@@ -123,7 +127,7 @@ describe('what a notification says', () => {
       'Jan mentioned you in “Ramps”',
     );
     expect(notificationSentence(n({ kind: 'mention', actorName: null }))).toBe(
-      'A member mentioned you in a topic',
+      'A member mentioned you in a post',
     );
   });
 

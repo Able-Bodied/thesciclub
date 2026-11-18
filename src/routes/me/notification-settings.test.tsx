@@ -192,8 +192,10 @@ describe('NotificationSettings', () => {
       kinds.muted = new Set(['reaction']);
       render(<NotificationSettings userId="u1" />);
       await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
-      const likes = screen.getByRole('button', { name: /Likes on my posts/ });
-      const reactions = screen.getByRole('button', { name: /Reactions to my posts and messages/ });
+      const likes = screen.getByRole('button', { name: /Likes on my posts and replies/ });
+      const reactions = screen.getByRole('button', {
+        name: /Reactions to my posts, replies and messages/,
+      });
       expect(likes).toHaveAttribute('aria-pressed', 'true');
       expect(reactions).toHaveAttribute('aria-pressed', 'false');
       expect(likes.closest('li')?.nextElementSibling).toBe(reactions.closest('li'));
@@ -207,8 +209,10 @@ describe('NotificationSettings', () => {
       kinds.muted = new Set(['mention']);
       render(<NotificationSettings userId="u1" />);
       await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
-      const reactions = screen.getByRole('button', { name: /Reactions to my posts and messages/ });
-      const mentions = screen.getByRole('button', { name: /Being mentioned in a post/ });
+      const reactions = screen.getByRole('button', {
+        name: /Reactions to my posts, replies and messages/,
+      });
+      const mentions = screen.getByRole('button', { name: /Being mentioned in a post or reply/ });
       expect(mentions).toHaveAttribute('aria-pressed', 'false');
       expect(reactions.closest('li')?.nextElementSibling).toBe(mentions.closest('li'));
       await userEvent.click(mentions);

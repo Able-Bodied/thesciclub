@@ -26,6 +26,7 @@ import {
   type WaitingImportant,
 } from '@/lib/chat/important';
 import { chatTime } from '@/lib/chat/time';
+import { useMinute } from '@/lib/chat/use-minute';
 import { markdownToPlain } from '@/lib/markdown';
 import {
   type AppNotification,
@@ -83,6 +84,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
 };
 
 export default function NotificationsPage() {
+  useMinute();
   const navigate = useNavigate();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -300,6 +302,7 @@ export default function NotificationsPage() {
 }
 
 function NotificationRow({ item, onOpen }: { item: AppNotification; onOpen: () => void }) {
+  useMinute();
   // A kind added after this build gets the bell, not a crash.
   const Icon = Object.hasOwn(KIND_ICON, item.kind) ? KIND_ICON[item.kind] : Bell;
   const sentence = notificationSentence(item);

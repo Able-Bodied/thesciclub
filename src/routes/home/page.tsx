@@ -71,7 +71,7 @@ import type { ClubEvent, RsvpStatus } from '@/types/domain';
 const SEGMENTS: [HomeSegment, string][] = [
   ['everything', 'Everything'],
   ['questions', 'Questions'],
-  ['topics', 'Topics'],
+  ['topics', 'Posts'],
   ['photos', 'Photos'],
   ['events', 'Events'],
   ['people', 'People'],
@@ -547,11 +547,11 @@ function EmptyList({ segment }: { segment: HomeSegment }) {
       ['/chat?segment=rooms', 'See the rooms'],
     ],
     topics: [
-      'No topics yet. Rooms open a few at a time, and anybody can start one.',
+      'No posts yet. Rooms open a few at a time, and anybody can start one.',
       ['/chat?segment=rooms', 'See the rooms'],
     ],
     photos: [
-      'No photographs yet. A topic with a photograph shows up here.',
+      'No photographs yet. A post with a photograph shows up here.',
       ['/chat?segment=rooms', 'See the rooms'],
     ],
     events: [

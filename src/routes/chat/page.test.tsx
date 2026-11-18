@@ -420,19 +420,37 @@ describe('the chat screen', () => {
   // first room opened.
   it('says a room is empty in words rather than in zeros', () => {
     db.rooms = [room({ id: 'bowel' })];
-    db.stats = new Map([['bowel', { topicCount: 0, postCount: 0, memberCount: 0 }]]);
+    db.stats = new Map([
+      [
+        'bowel',
+        { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+      ],
+    ]);
     renderPage();
-    expect(screen.getByText('Nothing has been asked here yet.')).toBeInTheDocument();
-    expect(screen.queryByText(/0 topics/)).toBeNull();
+    expect(screen.getByText('Nothing has been posted here yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/0 posts/)).toBeNull();
   });
 
   it('counts what is in a room once there is something in it', () => {
     db.rooms = [room({ id: 'bowel' })];
-    db.stats = new Map([['bowel', { topicCount: 1, postCount: 4 }]]);
+    db.stats = new Map([
+      [
+        'bowel',
+        {
+          topicCount: 3,
+          questionCount: 1,
+          replyCount: 4,
+          viewCount: 1200,
+          lastActivityAt: new Date(Date.now() - 3 * 3_600_000 - 5_000).toISOString(),
+        },
+      ],
+    ]);
     renderPage();
-    // Topics and posts, and no member count: nobody joins a room since
+    // Posts and the questions among them, replies and views, then the last activity
+    // (the owner, 2026-11-18). No member count: nobody joins a room since
     // 20260930000000, so there is nobody to count and no Joined chip.
-    expect(screen.getByText('1 topic · 4 posts')).toBeInTheDocument();
+    expect(screen.getByText('3 posts (1 question) · 4 replies · 1,200 views')).toBeInTheDocument();
+    expect(screen.getByText('Last activity 3 hours ago')).toBeInTheDocument();
     expect(screen.queryByText('Joined')).toBeNull();
   });
 

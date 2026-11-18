@@ -192,17 +192,37 @@ describe('a discussion room', () => {
   // Three zeros read as a room that failed rather than one that has not
   // started — and "open to all" is not true of a room that is shut.
   it('counts nothing until there is something to count', () => {
-    db.stats = new Map([['bowel', { topicCount: 0, postCount: 0 }]]);
+    db.stats = new Map([
+      [
+        'bowel',
+        { topicCount: 0, questionCount: 0, replyCount: 0, viewCount: 0, lastActivityAt: null },
+      ],
+    ]);
     renderRoom();
-    expect(screen.queryByText(/0 topics/)).toBeNull();
-    expect(screen.queryByText(/open to all/)).toBeNull();
+    expect(screen.queryByText(/0 posts/)).toBeNull();
+    expect(screen.queryByText(/open to all/i)).toBeNull();
   });
 
-  // Topics and posts, and no member count: nobody joins a room any more.
+  // What is in it and when it was last active, and no member count: nobody
+  // joins a room any more.
   it('counts once there is', () => {
-    db.stats = new Map([['bowel', { topicCount: 2, postCount: 7 }]]);
+    db.stats = new Map([
+      [
+        'bowel',
+        {
+          topicCount: 2,
+          questionCount: 1,
+          replyCount: 5,
+          viewCount: 9,
+          lastActivityAt: new Date(Date.now() - 2 * 86_400_000 - 5_000).toISOString(),
+        },
+      ],
+    ]);
     renderRoom();
-    expect(screen.getByText(/2 topics · 7 posts · open to all, full history/)).toBeInTheDocument();
+    expect(screen.getByText('2 posts (1 question) · 5 replies · 9 views')).toBeInTheDocument();
+    expect(
+      screen.getByText('Last activity 2 days ago · Open to all, full history'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/members/)).toBeNull();
   });
 
@@ -215,7 +235,7 @@ describe('a discussion room', () => {
     expect(screen.getByText(/This room is closed. No member can see it yet/)).toBeInTheDocument();
     // They can seed it before it opens.
     expect(screen.getByRole('textbox', { name: /Ask or post in/ })).toBeInTheDocument();
-    expect(screen.queryByText(/open to all/)).toBeNull();
+    expect(screen.queryByText(/open to all/i)).toBeNull();
   });
 
   it('invites the first topic rather than pretending there is activity', () => {
@@ -233,10 +253,10 @@ describe('a discussion room', () => {
   it('offers more topics only when there are more, and asks for them', async () => {
     db.topics = [topic({ id: '1', title: 'One' })];
     renderRoom();
-    expect(screen.queryByRole('button', { name: 'Show more topics' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show more posts' })).toBeNull();
     db.hasMore = true;
     renderRoom();
-    await userEvent.click(screen.getByRole('button', { name: 'Show more topics' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Show more posts' }));
     expect(db.showMore).toHaveBeenCalledTimes(1);
   });
 

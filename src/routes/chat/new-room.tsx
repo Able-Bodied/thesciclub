@@ -232,10 +232,10 @@ export default function NewRoomPage() {
           room's name in the list.
         </p>
 
-        <h2 className="mt-5 font-extrabold font-head text-[0.9375rem] text-ink">The first topic</h2>
+        <h2 className="mt-5 font-extrabold font-head text-[0.9375rem] text-ink">The first post</h2>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-          A room starts with its first topic, so nobody arrives to an empty one. This is an ordinary
-          topic — you can take it back afterwards like anything else you write.
+          A room starts with its first post, so nobody arrives to an empty one. This is an ordinary
+          post — you can take it back afterwards like anything else you write.
         </p>
 
         <label
@@ -259,7 +259,7 @@ export default function NewRoomPage() {
           htmlFor="room-topic-body"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          The first post
+          Details
         </label>
         <textarea
           id="room-topic-body"
