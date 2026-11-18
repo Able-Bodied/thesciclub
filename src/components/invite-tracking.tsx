@@ -1,4 +1,4 @@
-import type { InviteGroup, TrackedInvite } from '@/lib/invite-tracking';
+import { type InviteGroup, inviteSteps, type TrackedInvite } from '@/lib/invite-tracking';
 
 /**
  * How emailed invites did (the owner, 2026-11-14): the counts in a row and
@@ -20,6 +20,18 @@ function Step({ on, children }: { on: boolean; children: React.ReactNode }) {
   );
 }
 
+/** The onboarding steps (onboarding_steps), as an administrator reads them. */
+const STEP_NAMES: Record<string, string> = {
+  agree: 'the rules',
+  name: 'name',
+  username: 'username',
+  birthday: 'birthday',
+  injury: 'injury',
+  city: 'city',
+  phone: 'phone',
+  photo: 'photo',
+};
+
 export function InvitePerson({
   invite,
   isEvent,
@@ -29,9 +41,8 @@ export function InvitePerson({
   isEvent: boolean;
   className?: string;
 }) {
-  const joined = invite.joinedAt !== null;
-  const viewed = invite.linkOpenedAt !== null || invite.rsvp !== null || joined;
-  const opened = invite.openedAt !== null || viewed;
+  const { opened, viewed, started, joined } = inviteSteps(invite);
+  const step = !joined && invite.reachedStep ? STEP_NAMES[invite.reachedStep] : undefined;
   return (
     <li className={`${className} text-[0.8125rem] leading-[1.4]`}>
       <span className="block [overflow-wrap:anywhere]">
@@ -51,6 +62,7 @@ export function InvitePerson({
             {invite.rsvp === 'interested' ? 'Interested' : 'Going'}
           </Step>
         ) : null}
+        <Step on={started}>{step ? `Started · got to ${step}` : 'Started joining'}</Step>
         <Step on={joined}>
           {joined && invite.memberName && invite.memberName !== invite.name
             ? `Joined as ${invite.memberName}`
@@ -88,15 +100,16 @@ export function InviteFunnel({
   return (
     <>
       <span className="sr-only">
-        {`${String(c.sent)} sent, ${String(c.opened)} opened, ${String(c.viewed)} ${viewed}${isEvent ? `, ${String(c.going)} going` : ''}, ${String(c.joined)} joined`}
+        {`${String(c.sent)} sent, ${String(c.opened)} opened, ${String(c.viewed)} ${viewed}, ${String(c.started)} started joining${isEvent ? `, ${String(c.going)} going` : ''}, ${String(c.joined)} joined`}
       </span>
       <span
         aria-hidden="true"
-        className={`grid gap-1 ${isEvent ? 'grid-cols-5' : 'grid-cols-4'} ${className}`}
+        className={`grid gap-1 ${isEvent ? 'grid-cols-6' : 'grid-cols-5'} ${className}`}
       >
         <Count n={c.sent} of={c.sent} label="sent" />
         <Count n={c.opened} of={c.sent} label="opened" />
         <Count n={c.viewed} of={c.sent} label={viewed} />
+        <Count n={c.started} of={c.sent} label="started" />
         {isEvent ? <Count n={c.going} of={c.sent} label="going" /> : null}
         <Count n={c.joined} of={c.sent} label="joined" />
       </span>

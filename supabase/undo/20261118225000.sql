@@ -1,0 +1,3 @@
+-- Undo for 20261118225000_invites_link_clicked_started_joined.sql: drop both
+-- functions and run admin_invite_tracking from 20261114040000 and
+-- event_invite_tracking from 20261114070000 again, with their grants.

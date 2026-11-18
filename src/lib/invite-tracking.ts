@@ -22,8 +22,13 @@ export interface TrackedInvite {
   linkOpenedAt: string | null;
   /** 'no' is Can't go, from the invite email (20261114070000). */
   rsvp: 'going' | 'interested' | 'no' | null;
+  /** An account was made from the link: onboarding started (20261118225000). */
+  startedAt: string | null;
+  /** Onboarding finished: a member. */
   joinedAt: string | null;
   memberName: string | null;
+  /** For administrators, the last onboarding step reached while not yet a member. */
+  reachedStep: string | null;
 }
 
 export interface InviteGroup {
@@ -34,7 +39,14 @@ export interface InviteGroup {
   when: string | null;
   isEvent: boolean;
   invites: TrackedInvite[];
-  counts: { sent: number; opened: number; viewed: number; going: number; joined: number };
+  counts: {
+    sent: number;
+    opened: number;
+    viewed: number;
+    started: number;
+    going: number;
+    joined: number;
+  };
 }
 
 interface Row {
@@ -52,6 +64,9 @@ interface Row {
   rsvp: string | null;
   joined_at: string | null;
   member_name: string | null;
+  started_at: string | null;
+  member_joined_at: string | null;
+  reached_step: string | null;
 }
 
 type Loaded = { ok: true; value: TrackedInvite[] } | { ok: false; error: string };
@@ -88,8 +103,12 @@ async function load(fn: string, args: Record<string, unknown>): Promise<Loaded> 
         openedAt: r.opened_at ?? null,
         linkOpenedAt: r.link_opened_at ?? null,
         rsvp: r.rsvp === 'going' || r.rsvp === 'interested' || r.rsvp === 'no' ? r.rsvp : null,
-        joinedAt: r.joined_at ?? null,
+        // A database before 20261118225000 has only joined_at, the account
+        // made from the link: taken there as started and joined both.
+        startedAt: r.started_at ?? r.joined_at ?? null,
+        joinedAt: (r.member_joined_at === undefined ? r.joined_at : r.member_joined_at) ?? null,
         memberName: r.member_name ?? null,
+        reachedStep: r.reached_step ?? null,
       })),
     };
   } catch {
@@ -130,7 +149,7 @@ export function groupInvites(invites: TrackedInvite[], timeZone?: string): Invit
         when: isEvent ? (invite.eventStart ? day(invite.eventStart, timeZone) : null) : sentDay,
         isEvent,
         invites: [],
-        counts: { sent: 0, opened: 0, viewed: 0, going: 0, joined: 0 },
+        counts: { sent: 0, opened: 0, viewed: 0, started: 0, going: 0, joined: 0 },
       };
       groups.set(key, group);
     }
@@ -146,16 +165,29 @@ export function groupInvites(invites: TrackedInvite[], timeZone?: string): Invit
  * is listed but not counted.
  */
 export function countInvites(invites: TrackedInvite[]): InviteGroup['counts'] {
-  const counts = { sent: 0, opened: 0, viewed: 0, going: 0, joined: 0 };
+  const counts = { sent: 0, opened: 0, viewed: 0, started: 0, going: 0, joined: 0 };
   for (const invite of invites) {
-    const joined = invite.joinedAt !== null;
-    const going = invite.rsvp === 'going';
-    const viewed = invite.linkOpenedAt !== null || invite.rsvp !== null || joined;
+    const { opened, viewed, started, joined } = inviteSteps(invite);
     if (invite.sentAt !== null) counts.sent += 1;
-    if (invite.openedAt !== null || viewed) counts.opened += 1;
+    if (opened) counts.opened += 1;
     if (viewed) counts.viewed += 1;
-    if (going) counts.going += 1;
+    if (started) counts.started += 1;
+    if (invite.rsvp === 'going') counts.going += 1;
     if (joined) counts.joined += 1;
   }
   return counts;
+}
+
+/** Which steps an invite reached; a later one counts as the earlier ones too. */
+export function inviteSteps(invite: TrackedInvite): {
+  opened: boolean;
+  viewed: boolean;
+  started: boolean;
+  joined: boolean;
+} {
+  const joined = invite.joinedAt !== null;
+  const started = invite.startedAt !== null || joined;
+  const viewed = invite.linkOpenedAt !== null || invite.rsvp !== null || started;
+  const opened = invite.openedAt !== null || viewed;
+  return { opened, viewed, started, joined };
 }
