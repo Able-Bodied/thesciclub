@@ -179,9 +179,23 @@ export default function RoomPage() {
               {room.icon ?? roomInitial(room.name)}
             </span>
             <span className="min-w-0 flex-1">
-              <h1 className="font-extrabold font-head text-[1.125rem] text-ink leading-[1.25]">
-                {room.name}
-              </h1>
+              {/* Share and Mute beside the name only, so the description and
+                  counts below keep the column's width. */}
+              <span className="flex items-start gap-2">
+                <h1 className="min-w-0 flex-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.25]">
+                  {room.name}
+                </h1>
+                {/* A room's replies notify whoever started the topic, so muting a
+                    room means: no notifications for replies to my topics in it. */}
+                <span className="mt-0.5 flex flex-none items-start gap-1.5">
+                  {/* Not a closed room: no member could open the link. */}
+                  {closed ? null : <ShareRoomButton id={room.id} name={room.name} />}
+                  <MuteButton
+                    target={{ kind: 'room', id: room.id }}
+                    what="replies to your posts in this room"
+                  />
+                </span>
+              </span>
               <p className="mt-[3px] text-[0.78125rem] text-ink2 leading-[1.45]">
                 {room.description}
               </p>
@@ -209,16 +223,6 @@ export default function RoomPage() {
                   </p>
                 </>
               ) : null}
-            </span>
-            {/* A room's replies notify whoever started the topic, so muting a
-                room means: no notifications for replies to my topics in it. */}
-            <span className="mt-0.5 flex flex-none items-start gap-1.5">
-              {/* Not a closed room: no member could open the link. */}
-              {closed ? null : <ShareRoomButton id={room.id} name={room.name} />}
-              <MuteButton
-                target={{ kind: 'room', id: room.id }}
-                what="replies to your posts in this room"
-              />
             </span>
           </div>
 
