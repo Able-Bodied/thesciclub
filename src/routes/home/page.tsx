@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
-import { Fragment, useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { FilterButton } from '@/components/filter-button';
 import { LoadingCards } from '@/components/loading-cards';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
@@ -12,6 +12,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
 import { usePostViews } from '@/lib/chat/views';
+import { afterPaint, debugMark, debugScreenStart } from '@/lib/debug-log';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { useFilterPlace } from '@/lib/filter-place';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
@@ -89,6 +90,29 @@ const SOURCES: Record<HomeSegment, Source[]> = {
   photos: ['topics'],
   events: ['events'],
   people: ['people'],
+};
+
+/**
+ * What each source asks the club for, by debug mode's names for them: what
+ * the list was waiting on when its posts were drawn (lib/debug-log.ts).
+ */
+const SOURCE_REQUESTS: Record<Source, string[]> = {
+  topics: [
+    'rpc:home_topics_ranked',
+    'rpc:home_topics_shown',
+    'table:chat_topics',
+    'table:chat_rooms',
+  ],
+  events: [
+    'table:events',
+    'table:data_feeds',
+    'rpc:events_within_miles',
+    'rpc:map_events',
+    'rpc:map_peer_cities',
+    'rpc:map_organizations',
+    'rpc:map_home',
+  ],
+  people: ['table:browse_members', 'rpc:chat_my_threads'],
 };
 
 export default function HomePage() {
@@ -265,6 +289,29 @@ export default function HomePage() {
     [items, filters, filterContext],
   );
   const filterCount = activeFilterCount(filters) + (segment === 'everything' ? 0 : 1);
+
+  // Debug mode (the owner, 2026-11-18: "when the user sees the text of the
+  // posts", and "what are the constituent parts"): the moment the posts are
+  // painted, told apart by whether they are the ones this visit read or the
+  // ones a kept tab still had, and what the list had waited for.
+  const { pathname } = useLocation();
+  const postsDrawn =
+    settled && shown.some((item) => item.kind === 'topic' || item.kind === 'photo');
+  useEffect(() => {
+    if (pathname !== '/home' || !postsDrawn) return;
+    const reached = debugScreenStart('/home');
+    if (reached === null) return;
+    const fresh = topicRead.readAt !== null && topicRead.readAt >= reached;
+    return afterPaint(() => {
+      if (fresh) {
+        debugMark(
+          '/home',
+          'Fresh posts’ text on screen',
+          sources.flatMap((source) => SOURCE_REQUESTS[source]),
+        );
+      } else debugMark('/home', 'Earlier posts’ text still on screen');
+    });
+  }, [pathname, postsDrawn, topicRead.readAt, sources]);
   const profile = useProfileAsk(memberId);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);

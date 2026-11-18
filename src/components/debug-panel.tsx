@@ -8,6 +8,7 @@ import {
   debugMs,
   debugReport,
   debugState,
+  markParts,
   subscribeDebug,
   summarize,
 } from '@/lib/debug-log';
@@ -108,8 +109,7 @@ export function DebugPanelView({
             {/* What the columns and the bars are. */}
             <p className="mt-3 flex items-baseline gap-2 font-semibold text-[0.6875rem] text-grey uppercase tracking-[0.08em]">
               <span className="min-w-0 flex-1">
-                Request · bars from 0 to{' '}
-                {debugMs(Math.max(summary.lastReplyMs, screen.cardsMs ?? 0))}
+                Request · bars from 0 to {debugMs(wholeOf(screen))}
               </span>
               <span className="flex-none">Started</span>
               <span className="w-[4.5rem] flex-none text-right">Took</span>
@@ -118,7 +118,9 @@ export function DebugPanelView({
               {[...screen.requests]
                 .sort((a, b) => a.at - b.at)
                 .map((request, at) => {
-                  const whole = Math.max(summary.lastReplyMs, screen.cardsMs ?? 0, 1);
+                  const whole = wholeOf(screen);
+                  // Asked once the screen had loaded: marking a post seen, the badges.
+                  const later = request.at > whole;
                   return (
                     // biome-ignore lint/suspicious/noArrayIndexKey: a log, only added to
                     <li key={at}>
@@ -127,29 +129,32 @@ export function DebugPanelView({
                           {request.ok ? '' : '✕ '}
                           {request.endpoint}
                         </span>
-                        <span className="flex-none text-ink2">+{Math.round(request.at)} ms</span>
+                        <span className="flex-none text-ink2">
+                          {later
+                            ? `later, +${debugMs(request.at)}`
+                            : `+${Math.round(request.at)} ms`}
+                        </span>
                         <span
-                          className={cn(
-                            'w-[4.5rem] flex-none text-right font-bold',
-                            request === summary.slowest ? 'text-destructive' : 'text-ink',
-                          )}
+                          className={cn('w-[4.5rem] flex-none text-right font-bold', 'text-ink')}
                         >
                           {debugMs(request.ms)}
                         </span>
                       </p>
                       {/* One time line for the screen: where the bar starts is when it was asked. */}
-                      <div className="mt-0.5 h-1.5 rounded-full bg-tint">
-                        <div
-                          className={cn(
-                            'h-1.5 rounded-full',
-                            request.ok ? 'bg-emphasis' : 'bg-destructive',
-                          )}
-                          style={{
-                            marginLeft: `${(request.at / whole) * 100}%`,
-                            width: `max(3px, ${(request.ms / whole) * 100}%)`,
-                          }}
-                        />
-                      </div>
+                      {later ? null : (
+                        <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-tint">
+                          <div
+                            className={cn(
+                              'h-1.5 rounded-full',
+                              request.ok ? 'bg-emphasis' : 'bg-destructive',
+                            )}
+                            style={{
+                              marginLeft: `${(request.at / whole) * 100}%`,
+                              width: `max(3px, ${(request.ms / whole) * 100}%)`,
+                            }}
+                          />
+                        </div>
+                      )}
                       {request.detail ? (
                         <p className="mt-0.5 font-mono text-[0.6875rem] text-grey [overflow-wrap:anywhere]">
                           {request.detail}
@@ -195,52 +200,95 @@ export function DebugPanelView({
   );
 }
 
+/** The end of the time line: the screen's loading, and whatever it said was drawn. */
+function wholeOf(screen: DebugScreen): number {
+  return Math.max(
+    summarize(screen).lastReplyMs,
+    screen.cardsMs ?? 0,
+    ...screen.marks.map((mark) => mark.ms),
+    1,
+  );
+}
+
+function Parts({ parts }: { parts: readonly { label: string; ms: number }[] }) {
+  return (
+    <ol className="mt-1 space-y-0.5 font-mono text-[0.75rem] text-ink">
+      {parts.map((part, at) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a log, only added to
+        <li key={at} className="flex gap-2">
+          <span
+            className={cn(
+              'min-w-0 flex-1 [overflow-wrap:anywhere]',
+              part.label.includes(':') ? '' : 'text-ink2',
+            )}
+          >
+            {part.label}
+          </span>
+          <span className="flex-none font-bold">{Math.round(part.ms)} ms</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function Summary({ screen }: { screen: DebugScreen }) {
   const summary = summarize(screen);
   const chain = debugChain(screen);
-  const after = screen.cardsMs === null ? null : screen.cardsMs - summary.lastReplyMs;
+  const later = summary.count - summary.loadingCount;
+  const broken = screen.marks.some((mark) => markParts(screen, mark).length > 0);
   return (
     <>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.8125rem]">
-        <dt className="text-ink2">Cards shown after</dt>
-        <dd className="font-bold text-ink">
-          {screen.cardsMs === null ? 'not reported by this screen' : debugMs(screen.cardsMs)}
-          {screen.opened ? ' (from opening the app)' : ''}
-        </dd>
         <dt className="text-ink2">Requests</dt>
         <dd className="font-bold text-ink">
-          {summary.count}
+          {summary.loadingCount} while loading
+          {later > 0 ? `, ${later} later` : ''}
           {summary.failed > 0 ? `, ${summary.failed} failed` : ''}
         </dd>
-        <dt className="text-ink2">Last reply at</dt>
-        <dd className="font-bold text-ink">{debugMs(summary.lastReplyMs)}</dd>
+        <dt className="text-ink2">Last loading reply at</dt>
+        <dd className="font-bold text-ink">
+          {debugMs(summary.lastReplyMs)}
+          {screen.opened ? ' (from opening the app)' : ''}
+        </dd>
         <dt className="text-ink2">All added (they overlap)</dt>
         <dd className="font-bold text-ink">{debugMs(summary.addedMs)}</dd>
+        {screen.cardsMs === null ? null : (
+          <>
+            <dt className="text-ink2">Cards shown after</dt>
+            <dd className="font-bold text-ink">{debugMs(screen.cardsMs)}</dd>
+          </>
+        )}
       </dl>
-      {/* The answer to "why this long": the ones that waited for one another
-          (screenshot review, 2026-11-18: the slowest alone is not it). */}
-      {chain.length > 0 ? (
+      <p className="mt-1 text-[0.75rem] text-grey">
+        Every time is counted from reaching the screen
+        {screen.opened ? ', here from opening the app' : ''}.
+      </p>
+      {/* When something was on the glass, and what that time was made of (the
+          owner, 2026-11-18: "how long it takes for the posts to render and
+          what are the constituent parts"). */}
+      {screen.marks.map((mark) => {
+        const parts = markParts(screen, mark);
+        return (
+          <div
+            key={mark.label}
+            className="mt-2.5 rounded-[10px] bg-tint px-2.5 py-2 text-[0.8125rem]"
+          >
+            <p className="flex gap-2 font-bold text-ink">
+              <span className="min-w-0 flex-1">{mark.label}</span>
+              <span className="flex-none">{debugMs(mark.ms)}</span>
+            </p>
+            {parts.length > 0 ? <Parts parts={parts} /> : null}
+          </div>
+        );
+      })}
+      {/* With no such moment said: the requests that waited for one another
+          (screenshot review, 2026-11-18: the slowest alone is not the answer). */}
+      {!broken && chain.length > 0 ? (
         <div className="mt-2.5 rounded-[10px] bg-tint px-2.5 py-2 text-[0.8125rem]">
           <p className="font-bold text-ink">
             {chain.length > 1 ? 'Waited for one another, in a row' : 'The last to answer'}
           </p>
-          <ol className="mt-1 space-y-0.5 font-mono text-[0.75rem] text-ink">
-            {chain.map((request, at) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: a log, only added to
-              <li key={at} className="flex gap-2">
-                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                  {at + 1}. {request.endpoint}
-                </span>
-                <span className="flex-none font-bold">{debugMs(request.ms)}</span>
-              </li>
-            ))}
-            {after !== null && after > 0 ? (
-              <li className="flex gap-2 text-ink2">
-                <span className="min-w-0 flex-1">then, until the cards were drawn</span>
-                <span className="flex-none font-bold">{debugMs(after)}</span>
-              </li>
-            ) : null}
-          </ol>
+          <Parts parts={chain.map((request) => ({ label: request.endpoint, ms: request.ms }))} />
         </div>
       ) : null}
     </>

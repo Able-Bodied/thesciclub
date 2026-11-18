@@ -231,6 +231,8 @@ export interface HomeTopicsState {
   posts: ChatPost[];
   loading: boolean;
   error: string | null;
+  /** `performance.now()` when what is held landed, for debug mode; null until then. */
+  readAt: number | null;
 }
 
 const ATTEMPT = 'Could not load the posts.';
@@ -245,6 +247,7 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
     posts: [],
     loading: true,
     error: null,
+    readAt: null,
   });
   const kept = useKeptRead();
   const { show, sort } = view;
@@ -260,10 +263,15 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
     const aborted = () => controller.signal.aborted;
     const landed = kept.start(key);
     const chosen = show !== 'all' || sort !== 'ranking';
-    // Another choice: the last one's cards go while its own are read.
-    setState((before) => (before.loading ? before : { ...before, loading: true }));
+    // Another choice: the last one's cards go while its own are read. The
+    // same choice read again (a kept tab shown after a minute) keeps its
+    // cards until the new ones land: from 2026-11-18's filter until this,
+    // every such read blanked Home to its placeholders for a second or two.
+    if (held.current !== null && held.current !== key) {
+      setState((before) => (before.loading ? before : { ...before, loading: true }));
+    }
     const fail = (error: string) => {
-      setState({ topics: [], posts: [], loading: false, error });
+      setState({ topics: [], posts: [], loading: false, error, readAt: null });
     };
 
     async function load() {
@@ -331,7 +339,7 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
             .flatMap((row) => [row.author, ...(row.replies ?? []).map((reply) => reply.author)])
             .filter((author): author is ChatAuthorRow => Boolean(author)),
         );
-        setState({ topics, posts, loading: false, error: null });
+        setState({ topics, posts, loading: false, error: null, readAt: performance.now() });
         held.current = key;
         landed();
       } catch (e) {

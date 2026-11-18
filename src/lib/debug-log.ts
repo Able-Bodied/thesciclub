@@ -14,6 +14,8 @@
  */
 
 const KEY = 'sci-club:debug';
+
+const end = (request: DebugRequest) => request.at + request.ms;
 const SCREENS_KEPT = 6;
 const REQUESTS_KEPT = 300;
 
@@ -30,6 +32,15 @@ export interface DebugRequest {
   bytes: number | null;
 }
 
+/** A moment a screen names, and the requests it was waiting for, by endpoint. */
+export interface DebugMark {
+  label: string;
+  /** Milliseconds after the screen was reached. */
+  ms: number;
+  /** The endpoints it depended on, in the order they are asked. */
+  needs: readonly string[];
+}
+
 export interface DebugScreen {
   id: number;
   path: string;
@@ -39,6 +50,11 @@ export interface DebugScreen {
   opened: boolean;
   /** When its cards were drawn with their data, if it said. */
   cardsMs: number | null;
+  /**
+   * Moments the screen names, each once: "Posts on screen" (the owner,
+   * 2026-11-18: "when the user sees the text of the posts").
+   */
+  marks: readonly DebugMark[];
   requests: readonly DebugRequest[];
 }
 
@@ -95,6 +111,7 @@ export function debugScreen(path: string, startedAt: number, opened: boolean) {
     startedAt,
     opened,
     cardsMs: null,
+    marks: [],
     requests: [],
   };
   nextId += 1;
@@ -122,6 +139,7 @@ export function debugRequest(
             startedAt: 0,
             opened: true,
             cardsMs: null,
+            marks: [],
             requests: [],
           } satisfies DebugScreen,
         ];
@@ -141,6 +159,100 @@ export function debugRequest(
   });
 }
 
+/**
+ * A moment on the screen now shown, named by the screen: once for each name,
+ * timed from reaching the screen to now. Ask for it once what it names is
+ * painted (`afterPaint`).
+ */
+export function debugMark(path: string, label: string, needs: readonly string[] = []) {
+  if (!state.enabled) return;
+  const last = state.screens[state.screens.length - 1];
+  if (last?.path !== path || last.marks.some((mark) => mark.label === label)) return;
+  const ms = Math.max(0, performance.now() - last.startedAt);
+  set({
+    ...state,
+    screens: [
+      ...state.screens.slice(0, -1),
+      { ...last, marks: [...last.marks, { label, ms, needs }] },
+    ],
+  });
+}
+
+/**
+ * What a moment was made of (the owner, 2026-11-18: "how long it takes for
+ * the posts to render and what are the constituent parts"): the wait before
+ * the first request it waited for, each request in that chain, any wait
+ * between them, and the drawing after the last. Requests that ran beside the
+ * chain are not in it, so the parts add up to the moment's own time.
+ */
+export function markParts(screen: DebugScreen, mark: DebugMark): { label: string; ms: number }[] {
+  // What it could have been waiting for: answered by then, and one of the
+  // endpoints it names (any, if it names none).
+  const candidates = screen.requests.filter(
+    (request) =>
+      end(request) <= mark.ms && (mark.needs.length === 0 || mark.needs.includes(request.endpoint)),
+  );
+  const chain = waitedFor(candidates);
+  const parts: { label: string; ms: number }[] = [];
+  let at = 0;
+  for (const request of chain) {
+    const gap = request.at - at;
+    if (gap >= 1)
+      parts.push({ label: at === 0 ? 'before the first request' : 'between requests', ms: gap });
+    parts.push({ label: request.endpoint, ms: request.ms });
+    at = end(request);
+  }
+  if (chain.length > 0 && mark.ms - at >= 1)
+    parts.push({ label: 'rendering, after the last reply', ms: mark.ms - at });
+  return parts;
+}
+
+/**
+ * Of some requests, the ones that waited for one another, first to last:
+ * from the last to answer back, each time to the one that had answered last
+ * before this one was asked. Only one that had already answered can have
+ * been waited for; the rest ran beside these.
+ */
+function waitedFor(requests: readonly DebugRequest[]): DebugRequest[] {
+  let link = requests.reduce<DebugRequest | null>(
+    (last, request) => (last === null || end(request) > end(last) ? request : last),
+    null,
+  );
+  const chain: DebugRequest[] = [];
+  while (link) {
+    chain.unshift(link);
+    const began = link.at;
+    link = requests.reduce<DebugRequest | null>(
+      (before, request) =>
+        end(request) <= began && (before === null || end(request) > end(before)) ? request : before,
+      null,
+    );
+  }
+  return chain;
+}
+
+/** When the screen now shown was reached (`performance.now()`), or null with debug off. */
+export function debugScreenStart(path: string): number | null {
+  const last = state.screens[state.screens.length - 1];
+  return state.enabled && last?.path === path ? last.startedAt : null;
+}
+
+/** Runs `then` once what React has just drawn is on the glass: two frames on. */
+export function afterPaint(then: () => void): () => void {
+  if (typeof requestAnimationFrame !== 'function') {
+    then();
+    return () => undefined;
+  }
+  let second = 0;
+  const first = requestAnimationFrame(() => {
+    second = requestAnimationFrame(then);
+  });
+  return () => {
+    cancelAnimationFrame(first);
+    cancelAnimationFrame(second);
+  };
+}
+
 /** The screen's cards were drawn with their data, `ms` after it was reached. */
 export function debugCards(path: string, ms: number) {
   if (!state.enabled) return;
@@ -152,20 +264,46 @@ export function debugCards(path: string, ms: number) {
 export interface DebugSummary {
   count: number;
   failed: number;
-  /** From reaching the screen to the last reply. */
+  /** How many of them were the screen loading (`loading`), not something later. */
+  loadingCount: number;
+  /** From reaching the screen to the last reply of its loading. */
   lastReplyMs: number;
-  /** Every request's time added up: more than `lastReplyMs` when they overlap. */
+  /** Every loading request's time added up: more than `lastReplyMs` when they overlap. */
   addedMs: number;
-  /** The one that took longest. */
+  /** The loading request that took longest. */
   slowest: DebugRequest | null;
 }
 
+/** A second with nothing asked and nothing awaited ends the screen's loading. */
+const QUIET_MS = 1000;
+
+/**
+ * The requests that were the screen loading: from the first, for as long as
+ * each began within a second of everything before it having answered. What
+ * comes after a quiet second is something else (a post marked seen once it
+ * has been looked at, the badges' count every so often) and is not what the
+ * screen waited for: the owner's first list (2026-11-18) said "last reply
+ * after 16.66 s" of a Home that had loaded in under two.
+ */
+export function loading(screen: DebugScreen): DebugRequest[] {
+  const inOrder = [...screen.requests].sort((a, b) => a.at - b.at);
+  const first: DebugRequest[] = [];
+  let busyUntil = 0;
+  for (const request of inOrder) {
+    if (first.length > 0 && request.at > busyUntil + QUIET_MS) break;
+    first.push(request);
+    busyUntil = Math.max(busyUntil, end(request));
+  }
+  return first;
+}
+
 export function summarize(screen: DebugScreen): DebugSummary {
-  const requests = screen.requests;
+  const requests = loading(screen);
   return {
-    count: requests.length,
-    failed: requests.filter((request) => !request.ok).length,
-    lastReplyMs: requests.reduce((latest, request) => Math.max(latest, request.at + request.ms), 0),
+    count: screen.requests.length,
+    failed: screen.requests.filter((request) => !request.ok).length,
+    loadingCount: requests.length,
+    lastReplyMs: requests.reduce((latest, request) => Math.max(latest, end(request)), 0),
     addedMs: requests.reduce((sum, request) => sum + request.ms, 0),
     slowest: requests.reduce<DebugRequest | null>(
       (slow, request) => (slow === null || request.ms > slow.ms ? request : slow),
@@ -175,31 +313,14 @@ export function summarize(screen: DebugScreen): DebugSummary {
 }
 
 /**
- * The requests that waited for one another, first to last: from the last
- * reply back, each time to the request that ended last before this one
- * began. They are why the screen took as long as it did; the rest ran beside
- * them. A request counts as waited for when it ended no later than a moment
- * (30 ms) after the next began.
+ * The requests that waited for one another while the screen loaded, first to
+ * last: from its last reply back, each time to the request that had answered
+ * last before this one was asked. They are why the screen took as long as it
+ * did; the rest ran beside them. Only one that had already answered can have
+ * been waited for: a request still out when the next began was not.
  */
 export function debugChain(screen: DebugScreen): DebugRequest[] {
-  const end = (request: DebugRequest) => request.at + request.ms;
-  let link = screen.requests.reduce<DebugRequest | null>(
-    (last, request) => (last === null || end(request) > end(last) ? request : last),
-    null,
-  );
-  const chain: DebugRequest[] = [];
-  while (link) {
-    chain.unshift(link);
-    const began = link.at;
-    link = screen.requests.reduce<DebugRequest | null>(
-      (before, request) =>
-        end(request) <= began + 30 && (before === null || end(request) > end(before))
-          ? request
-          : before,
-      null,
-    );
-  }
-  return chain;
+  return waitedFor(loading(screen));
 }
 
 /** "840 ms", "2.31 s". */
@@ -216,11 +337,18 @@ export function debugReport(screen: DebugScreen): string {
       (request) =>
         `+${Math.round(request.at).toString().padStart(5)} ms  ${Math.round(request.ms).toString().padStart(5)} ms  ${request.ok ? '  ' : '✕ '}${request.endpoint}${request.bytes === null ? '' : `  ${request.bytes} bytes`}${request.detail ? `\n${' '.repeat(22)}${request.detail}` : ''}`,
     );
+  const later = summary.count - summary.loadingCount;
   return [
     `${screen.path}${screen.opened ? ' (opening the app)' : ''}`,
-    `${summary.count} requests, last reply after ${debugMs(summary.lastReplyMs)}, ${debugMs(summary.addedMs)} added up${summary.failed ? `, ${summary.failed} failed` : ''}`,
+    `loading: ${summary.loadingCount} requests, last reply after ${debugMs(summary.lastReplyMs)}, ${debugMs(summary.addedMs)} added up${later > 0 ? `; ${later} more later, in the background` : ''}${summary.failed ? `; ${summary.failed} failed` : ''}`,
+    ...screen.marks.flatMap((mark) => [
+      `${mark.label} after ${debugMs(mark.ms)}`,
+      ...markParts(screen, mark).map(
+        (part) => `    ${`${Math.round(part.ms)} ms`.padStart(8)}  ${part.label}`,
+      ),
+    ]),
     screen.cardsMs === null
-      ? 'cards shown: not reported'
+      ? 'cards shown: not reported (a tab already open shows its cards at once)'
       : `cards shown after ${debugMs(screen.cardsMs)}`,
     `waited in a row: ${debugChain(screen)
       .map((request) => `${request.endpoint} ${debugMs(request.ms)}`)

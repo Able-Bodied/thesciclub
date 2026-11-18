@@ -1,7 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { Activity } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { HOME_TOPIC_LIMIT, useHomeTopics } from '@/lib/home/topics';
+import { keptReadsStale } from '@/lib/kept-reads';
 
 const db = vi.hoisted(() => ({
   calls: [] as unknown[][],
@@ -114,4 +116,37 @@ it('brings the cards’ names and faces in the same read, ready on the first ren
   expect(unnamed).toEqual([]);
   // And nothing read for an author already known.
   expect(db.calls.filter(([kind]) => kind === 'select')).toHaveLength(1);
+});
+
+// From 2026-11-18's filter until this, every read blanked Home to its
+// placeholders, also the one a kept tab makes when it is shown again after a
+// minute: the owner saw Home go empty for over a second each time he came back.
+it('keeps its cards while it reads the same choice again', async () => {
+  const seen: boolean[] = [];
+  function Probe() {
+    seen.push(useHomeTopics().loading);
+    return null;
+  }
+  const tab = (mode: 'visible' | 'hidden') => (
+    <Activity mode={mode}>
+      <Probe />
+    </Activity>
+  );
+  const reads = () => db.calls.filter(([kind]) => kind === 'select').length;
+  const { rerender } = render(tab('visible'));
+  await waitFor(() => {
+    expect(seen.at(-1)).toBe(false);
+  });
+  expect(reads()).toBe(1);
+
+  seen.length = 0;
+  rerender(tab('hidden'));
+  act(() => {
+    keptReadsStale();
+  });
+  rerender(tab('visible'));
+  await waitFor(() => {
+    expect(reads()).toBe(2);
+  });
+  expect(seen).not.toContain(true);
 });
