@@ -250,7 +250,8 @@ export function EventCard({
           {hostBadge(<OrganizationBadge organization={organization} hostName={event.hostName} />)}
         </span>
 
-        <span className="min-w-0 flex-1 pr-5">
+        {/* A long address or link wraps inside the card, as a message does. */}
+        <span className="min-w-0 flex-1 pr-5 [overflow-wrap:anywhere]">
           <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.28] tracking-[-0.01em]">
             {event.title}
           </span>
