@@ -43,6 +43,14 @@ vi.mock('@/lib/chat/likes', async (importOriginal) => ({
     toggle: (id: string) => {
       db.liked.push(id);
     },
+    downvote: () => undefined,
+    boost: () => undefined,
+    isAdmin: false,
+    scoreOf: (id: string) => ({
+      score: (db.likes.get(id) ?? []).length,
+      myVote: (db.likes.get(id) ?? []).includes('me') ? (1 as const) : (0 as const),
+      boost: null,
+    }),
     reload: () => undefined,
   }),
 }));
@@ -165,12 +173,12 @@ describe('a discussion room', () => {
     const answered = screen.getByRole('link', { name: /Answered/ }).closest('article');
     expect(answered).toHaveTextContent(/2\s*replies/);
     expect(answered).toHaveTextContent(/0\s*views/);
-    expect(answered).toHaveTextContent('0 likes');
+    expect(answered).toHaveTextContent('Score 0');
     const unread = screen.getByRole('link', { name: /Unread/ }).closest('article');
     expect(unread).toHaveTextContent(/0\s*views/);
   });
 
-  it('sorts by replies and by views when asked', async () => {
+  it('keeps the database’s order for Top, and sorts by activity, replies and views when asked', async () => {
     db.topics = [
       topic({ id: 'a', title: 'Older', replyCount: 9, viewCount: 1, lastPostAt: '2026-09-01' }),
       topic({ id: 'b', title: 'Newer', replyCount: 1, viewCount: 9, lastPostAt: '2026-09-09' }),
@@ -182,6 +190,9 @@ describe('a discussion room', () => {
         .getAllByRole('link')
         .filter((l) => l.getAttribute('href')?.includes('/topics/'))
         .map((l) => l.textContent);
+    // Top is ranked by the database (20261118180000): the rows as read.
+    expect(titles()[0]).toContain('Older');
+    await userEvent.click(screen.getByRole('button', { name: 'Activity' }));
     expect(titles()[0]).toContain('Newer');
     await userEvent.click(screen.getByRole('button', { name: 'Replies' }));
     expect(titles()[0]).toContain('Older');
@@ -268,19 +279,18 @@ describe('a discussion room', () => {
 });
 
 // The robots, 2026-11-04: a liked post drew "Like" until its likes were read.
-it('never draws Like on a liked post before its likes are read', () => {
+it('never draws an upvote on an upvoted post before its votes are read', () => {
   db.topics = [topic({ id: '1', title: 'Travelling with a bowel programme' })];
   db.likes = new Map([['1-post', ['me']]]);
   db.likesLoading = new Set(['1-post']);
   const { rerender } = renderRoom();
-  expect(screen.queryByText(/^Liked?$/)).toBeNull();
-  expect(screen.queryByRole('button', { name: /^Like / })).toBeNull();
-  expect(
-    screen.getByRole('button', {
-      name: 'Your like on Travelling with a bowel programme is not known',
-    }),
-  ).toBeDisabled();
-  expect(screen.getByText('Likes …')).toBeVisible();
+  expect(screen.queryByRole('button', { name: /^Upvote/ })).toBeNull();
+  for (const arrow of screen.getAllByRole('button', {
+    name: 'Your vote on Travelling with a bowel programme is not known',
+  })) {
+    expect(arrow).toBeDisabled();
+  }
+  expect(screen.getByText('…')).toBeVisible();
 
   db.likesLoading = new Set();
   rerender(
@@ -292,15 +302,15 @@ it('never draws Like on a liked post before its likes are read', () => {
   );
   expect(
     screen.getByRole('button', {
-      name: 'Liked Travelling with a bowel programme. Press to take it back.',
+      name: 'Upvoted Travelling with a bowel programme. Press to take it back.',
     }),
   ).toHaveAttribute('aria-pressed', 'true');
 });
 
-it('likes the same opening post from its room row, including the author’s own topic', async () => {
+it('upvotes the same opening post from its room row, including the author’s own topic', async () => {
   db.liked = [];
   db.topics = [topic({ id: 'mine', title: 'My new post', authorId: 'me' })];
   renderRoom();
-  await userEvent.click(screen.getByRole('button', { name: 'Like My new post' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Upvote My new post' }));
   expect(db.liked).toEqual(['mine-post']);
 });

@@ -7,6 +7,7 @@ import {
   unlikePost,
   usePostLikes,
   withLike,
+  withVote,
 } from '@/lib/chat/likes';
 import { UPDATING_FAILURE } from '@/lib/describe-error';
 
@@ -150,6 +151,24 @@ describe('withLike', () => {
   it('liking twice is one like', () => {
     const once = withLike(start, 'p1', 'me', true);
     expect(withLike(once, 'p1', 'me', true).get('p1')).toEqual(['jan', 'me']);
+  });
+});
+
+// An up moved to a down is two off the score, and taking a vote back undoes only that vote.
+describe('withVote', () => {
+  const scores = new Map([['p', { score: 12, myVote: 1 as const, boost: 10 }]]);
+
+  it('moves the score by the change in the reader’s vote, and keeps the boost', () => {
+    expect(withVote(scores, 'p', 1, -1).get('p')).toEqual({ score: 10, myVote: -1, boost: 10 });
+    expect(withVote(scores, 'p', 1, 0).get('p')).toEqual({ score: 11, myVote: 0, boost: 10 });
+    expect(withVote(withVote(scores, 'p', 1, -1), 'p', -1, 1)).toEqual(scores);
+  });
+
+  it('leaves a post without a known score alone, and the old map too', () => {
+    const next = withVote(scores, 'q', 0, 1);
+    expect(next.has('q')).toBe(false);
+    expect(next).not.toBe(scores);
+    expect(scores.get('p')?.score).toBe(12);
   });
 });
 

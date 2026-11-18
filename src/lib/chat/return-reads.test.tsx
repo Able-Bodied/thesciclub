@@ -222,6 +222,7 @@ describe('back to a hidden topic', () => {
       chat_mark_topic_read_through: 1,
       chat_post_reactions: 1,
       chat_post_likes: 1,
+      chat_post_scores: 1,
       chat_post_view_counts: 1,
       my_badge_counts: 1,
     });
@@ -241,6 +242,7 @@ describe('back to a hidden topic', () => {
       chat_topic_viewed_by_me: 1,
       chat_post_reactions: 1,
       chat_post_likes: 1,
+      chat_post_scores: 1,
       my_badge_counts: 1,
     });
   });

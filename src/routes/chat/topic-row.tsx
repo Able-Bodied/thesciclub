@@ -109,13 +109,9 @@ export function TopicRow({
       {likes ? (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
           <PostLikes
-            likedBy={likes.likedBy}
-            readerId={likes.readerId}
+            {...likes}
             what={topic.title}
-            onToggle={likes.onToggle}
             className="relative min-h-[2.25rem] text-[0.8125rem]"
-            loading={likes.loading}
-            unavailable={likes.unavailable}
           />
         </div>
       ) : null}

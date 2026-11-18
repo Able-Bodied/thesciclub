@@ -159,14 +159,10 @@ export function PhotoCard({
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-line border-t pt-2">
         {opening && likes ? (
           <PostLikes
-            likedBy={likes.likedBy}
-            readerId={likes.readerId}
+            {...likes}
             what={topic.title}
-            onToggle={likes.onToggle}
             linkState={linkState}
             className="relative min-h-[2.25rem] text-[0.8125rem]"
-            loading={likes.loading}
-            unavailable={likes.unavailable}
           />
         ) : null}
         {opening ? <ViewCount count={viewCount} postId={opening.id} /> : null}

@@ -99,6 +99,14 @@ vi.mock('@/lib/chat/likes', async (importOriginal) => ({
       toggle: (id: string) => {
         db.liked.push(id);
       },
+      downvote: () => undefined,
+      boost: () => undefined,
+      isAdmin: false,
+      scoreOf: (id: string) => ({
+        score: (db.likes.get(id) ?? []).length,
+        myVote: (db.likes.get(id) ?? []).includes('me') ? (1 as const) : (0 as const),
+        boost: null,
+      }),
       reload: () => undefined,
     };
   },
@@ -315,10 +323,12 @@ describe('likes on Home', () => {
     db.posts = db.posts.map((post) => ({ ...post, authorId: 'me' }));
     db.topics = db.topics.map((topic) => ({ ...topic, authorId: 'me' }));
     renderPage();
-    await userEvent.click(screen.getByRole('button', { name: 'Like Morning or evening routine?' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Like Wheel covers I made' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Upvote Morning or evening routine?' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Upvote Wheel covers I made' }));
     expect(db.liked).toEqual(['plain-opening', 'photo-opening']);
-    expect(screen.getAllByText('0 likes')).toHaveLength(2);
+    expect(screen.getAllByText('0')).toHaveLength(2);
     expect(screen.getAllByText('0 views')).toHaveLength(2);
   });
 
@@ -344,12 +354,14 @@ describe('likes on Home', () => {
     db.likesLoading = new Set(['photo-opening', 'plain-opening']);
     renderPage();
     expect(screen.queryByText(/^Liked?$/)).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Like / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Upvote / })).toBeNull();
     expect(
-      screen.getByRole('button', { name: 'Your like on Wheel covers I made is not known' }),
+      screen.getAllByRole('button', { name: 'Your vote on Wheel covers I made is not known' })[0],
     ).toBeDisabled();
     expect(
-      screen.getByRole('button', { name: 'Your like on Morning or evening routine? is not known' }),
+      screen.getAllByRole('button', {
+        name: 'Your vote on Morning or evening routine? is not known',
+      })[0],
     ).toBeDisabled();
   });
 
@@ -357,9 +369,9 @@ describe('likes on Home', () => {
     db.likes = new Map([['photo-opening', ['kerry']]]);
     renderPage();
     expect(
-      screen.getByRole('button', { name: '1 like on Wheel covers I made. Show who.' }),
+      screen.getByRole('button', { name: 'Score 1 on Wheel covers I made. Show who upvoted.' }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Like Wheel covers I made' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Upvote Wheel covers I made' }));
     expect(db.liked).toEqual(['photo-opening']);
   });
 
@@ -367,9 +379,13 @@ describe('likes on Home', () => {
     db.likes = new Map([['plain-opening', ['kerry']]]);
     renderPage('/home?segment=topics');
     expect(
-      screen.getByRole('button', { name: '1 like on Morning or evening routine?. Show who.' }),
+      screen.getByRole('button', {
+        name: 'Score 1 on Morning or evening routine?. Show who upvoted.',
+      }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Like Morning or evening routine?' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Upvote Morning or evening routine?' }),
+    );
     expect(db.liked).toEqual(['plain-opening']);
   });
 });

@@ -4,6 +4,7 @@ import { LevelHighlight } from '@/components/injury-stage-pill';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { PartnerLabel } from '@/components/partner-label';
 import { firstClubLink } from '@/lib/chat/club-links';
+import type { PostVote } from '@/lib/chat/likes';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { useMinute } from '@/lib/chat/use-minute';
@@ -117,18 +118,7 @@ export function Post({
    * Who likes it, and what pressing Like does. Absent draws no likes at all —
    * while they have not loaded, or where a screen does not read them.
    */
-  likes?:
-    | {
-        likedBy: readonly string[];
-        /** The signed-in reader, including the post's author. */
-        readerId: string | null;
-        onToggle: () => void;
-        /** The sentence for a like that did not land on this post, or null. */
-        failure: string | null;
-        loading?: boolean | undefined;
-        unavailable?: boolean | undefined;
-      }
-    | undefined;
+  likes?: PostVote | undefined;
   /** Distinct members delivered this post, including zero. */
   viewCount?: number | null | undefined;
   reactions?: ReactElement<ReactionBarProps>;
@@ -337,17 +327,7 @@ export function Post({
       <div
         className={cn('flex flex-wrap items-center gap-x-3.5 gap-y-1', hideBody ? 'mt-0' : 'mt-2')}
       >
-        {likes ? (
-          <PostLikes
-            likedBy={likes.likedBy}
-            readerId={likes.readerId}
-            what={`${whose} post`}
-            onToggle={likes.onToggle}
-            className="text-[0.75rem]"
-            loading={likes.loading}
-            unavailable={likes.unavailable}
-          />
-        ) : null}
+        {likes ? <PostLikes {...likes} what={`${whose} post`} className="text-[0.75rem]" /> : null}
         <ViewCount count={viewCount} postId={post.id} />
         {reactions ? (
           cloneElement(reactions, { compact: true, actions: controls, reply, share })

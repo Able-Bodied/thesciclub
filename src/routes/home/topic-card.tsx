@@ -4,6 +4,7 @@ import { LevelHighlight } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useSeenOnHome } from '@/lib/chat/home-views';
+import type { PostVote } from '@/lib/chat/likes';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import { useMinute } from '@/lib/chat/use-minute';
@@ -218,15 +219,11 @@ export function TopicCard({
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
         {opening && likes ? (
           <PostLikes
-            likedBy={likes.likedBy}
-            readerId={likes.readerId}
+            {...likes}
             what={topic.title}
-            onToggle={likes.onToggle}
             linkState={linkState}
             // `relative` is what lets them be pressed. See the header.
             className="relative min-h-[2.25rem] text-[0.8125rem]"
-            loading={likes.loading}
-            unavailable={likes.unavailable}
           />
         ) : null}
         {opening ? <ViewCount count={viewCount} postId={opening.id} /> : null}
@@ -256,16 +253,8 @@ export function TopicCard({
   );
 }
 
-/** What a card's Like needs: the topic page's posts take the same. */
-export interface CardLikes {
-  likedBy: readonly string[];
-  /** The signed-in reader, including the author of this topic. */
-  readerId: string | null;
-  onToggle: () => void;
-  failure: string | null;
-  loading?: boolean | undefined;
-  unavailable?: boolean | undefined;
-}
+/** What a card's votes need: the topic page's posts take the same. */
+export type CardLikes = PostVote;
 
 /**
  * A name, "Deleted member", or an ellipsis while loading: an id not yet looked up is a current

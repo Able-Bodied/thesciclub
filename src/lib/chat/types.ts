@@ -176,7 +176,8 @@ export interface ChatTopic {
  * talked about now, and the other two are ways of asking a different question
  * of the same list.
  */
-export const ROOM_SORTS = ['activity', 'replies', 'views'] as const;
+/** Top is the database's order (20261118180000): score, last activity, and not yet seen. */
+export const ROOM_SORTS = ['top', 'activity', 'replies', 'views'] as const;
 export type RoomSort = (typeof ROOM_SORTS)[number];
 
 /**

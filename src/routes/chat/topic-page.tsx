@@ -16,7 +16,7 @@ import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/ch
 import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
-import { usePostLikes } from '@/lib/chat/likes';
+import { usePostLikes, voteFor } from '@/lib/chat/likes';
 import { PRICED_ROOM } from '@/lib/chat/listing-prices';
 import { POST_MAX } from '@/lib/chat/post-length';
 import { useReactions } from '@/lib/chat/reactions';
@@ -454,16 +454,7 @@ export default function TopicPage() {
             failure:
               saves.failure?.key === saveKey(topic.id, post.id) ? saves.failure.message : null,
           },
-    likes: {
-      likedBy: likes.byPost.get(post.id) ?? [],
-      readerId: account.userId,
-      loading: likes.loadingFor(post.id),
-      unavailable: Boolean(likes.error),
-      onToggle: () => {
-        likes.toggle(post.id);
-      },
-      failure: likes.failure?.postId === post.id ? likes.failure.message : null,
-    },
+    likes: voteFor(likes, post.id, account.userId),
   });
 
   // A question asked with no details: its first post only repeats the title,

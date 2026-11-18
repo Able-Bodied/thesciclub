@@ -156,13 +156,20 @@ describe('a topic on Home', () => {
 });
 
 describe('likes on a topic card', () => {
-  const likes = (o: Partial<NonNullable<Parameters<typeof TopicCard>[0]['likes']>> = {}) => ({
-    likedBy: [] as string[],
-    readerId: 'me',
-    onToggle: vi.fn(),
-    failure: null,
-    ...o,
-  });
+  const likes = (o: Partial<NonNullable<Parameters<typeof TopicCard>[0]['likes']>> = {}) => {
+    const likedBy = o.likedBy ?? [];
+    return {
+      likedBy,
+      readerId: 'me',
+      score: likedBy.length,
+      myVote: likedBy.includes('me') ? (1 as const) : (0 as const),
+      boost: null,
+      onToggle: vi.fn(),
+      onDownvote: vi.fn(),
+      failure: null,
+      ...o,
+    };
+  };
 
   it('draws no likes until it is handed them', () => {
     renderCard();
@@ -176,10 +183,12 @@ describe('likes on a topic card', () => {
     const user = userEvent.setup();
     const onToggle = vi.fn();
     renderCard({ likes: likes({ likedBy: ['jan'], onToggle }) });
-    const like = screen.getByRole('button', { name: 'Like Morning or evening routine?' });
+    const like = screen.getByRole('button', { name: 'Upvote Morning or evening routine?' });
     expect(like.closest('a')).toBeNull();
     expect(
-      screen.getByRole('button', { name: '1 like on Morning or evening routine?. Show who.' }),
+      screen.getByRole('button', {
+        name: 'Score 1 on Morning or evening routine?. Show who upvoted.',
+      }),
     ).toBeInTheDocument();
     await user.click(like);
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -190,7 +199,7 @@ describe('likes on a topic card', () => {
     renderCard({ likes: likes({ likedBy: ['me'] }) });
     expect(
       screen.getByRole('button', {
-        name: 'Liked Morning or evening routine?. Press to take it back.',
+        name: 'Upvoted Morning or evening routine?. Press to take it back.',
       }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
@@ -205,21 +214,24 @@ describe('likes on a topic card', () => {
     await user.tab();
     expect(screen.getByRole('link', { name: 'Alex' })).toHaveFocus();
     await user.tab();
-    expect(screen.getByRole('button', { name: 'Like Morning or evening routine?' })).toHaveFocus();
+    expect(
+      screen.getByRole('button', { name: 'Upvote Morning or evening routine?' }),
+    ).toHaveFocus();
     await user.tab();
-    expect(screen.getByRole('button', { name: /^1 like on/ })).toHaveFocus();
+    expect(screen.getByRole('button', { name: /^Score 1 on/ })).toHaveFocus();
   });
 
   it('draws Like and the count on the reader’s own topic', () => {
     renderCard({ likes: likes({ likedBy: ['jan'], readerId: 'me' }) });
-    expect(screen.getByRole('button', { name: /^Like/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^1 like on/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Upvote/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Score 1 on/ })).toBeInTheDocument();
   });
 
   it('shows zero likes on a new topic', () => {
     renderCard({ likes: likes() });
-    expect(screen.getAllByRole('button')).toHaveLength(1);
-    expect(screen.getByText('0 likes')).toBeVisible();
+    // Up and down; a score of nobody's votes is not a list to open.
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.getByText('0')).toBeVisible();
   });
 
   it('says so when a like did not land', () => {
