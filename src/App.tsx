@@ -2,6 +2,7 @@ import { Activity, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState 
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskAfterSending } from '@/components/ask-after-sending';
+import { BackLine, BackLineProvider, BackTrail } from '@/components/back-line';
 import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
@@ -11,6 +12,7 @@ import { UpdateRequired } from '@/components/update-required';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
 import { useUpdateRequired } from '@/lib/app-update';
+import { nameScreen } from '@/lib/back-trail';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { keptReadsStale } from '@/lib/kept-reads';
 import { prefetchMap } from '@/lib/map';
@@ -212,7 +214,7 @@ function AppShell() {
 function ShellContent() {
   const openDisplay = useOpenDisplaySheet();
   return (
-    <>
+    <BackLineProvider>
       {/* First in the DOM, painted last on a phone and first on a desktop —
           see the ordering note in app-nav.tsx. */}
       {/* The first thing a keyboard reaches: a way past the five tabs to the
@@ -247,6 +249,9 @@ function ShellContent() {
         {/* While a screen's script arrives the tab bar stays and the slot is
             empty; a route change keeps the old screen up meanwhile, since
             React Router changes routes in a transition. */}
+        {/* The way back, on every screen below a tab's first (the owner,
+            2026-11-18; back-line.tsx). */}
+        <BackLine />
         <Suspense fallback={<div className="flex-1" />}>
           <KeptTabs />
           <Routes>
@@ -330,7 +335,7 @@ function ShellContent() {
           ordered last there): it pushes the screen up rather than covering
           it. Phones' browsers only; see install-nudge.tsx. */}
       <InstallNudge />
-    </>
+    </BackLineProvider>
   );
 }
 
@@ -352,6 +357,7 @@ export default function App() {
         <InstalledApp />
         <NativeShell />
         <LeaveHomeScreenHandoff />
+        <BackTrail />
         <RouteChange />
         <ScreenTimer />
         <CountVisit />
@@ -395,6 +401,8 @@ export function RouteChange() {
         .find((h1) => !hidden(h1))
         ?.textContent.trim();
       document.title = heading ? `${heading} · The Sci Club` : 'The Sci Club';
+      // And what the line on the next screen calls this one (back-trail.ts).
+      nameScreen(heading);
     };
     name();
     const observer = new MutationObserver(name);

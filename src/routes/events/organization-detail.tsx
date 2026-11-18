@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { OwnBack } from '@/components/back-line';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useEvents } from '@/lib/events';
@@ -158,15 +159,17 @@ export default function OrganizationDetailPage() {
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {/* Share across from Back, as on an event (the owner, 2026-11-03). */}
           <div className="flex items-start justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                void navigate(back);
-              }}
-              className="block pb-3 text-[#B9CADF] text-[0.875rem]"
-            >
-              ← {backLabel(location)}
-            </button>
+            <OwnBack to={back} label={backLabel(location)} spacer>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigate(back);
+                }}
+                className="block pb-3 text-[#B9CADF] text-[0.875rem]"
+              >
+                ← {backLabel(location)}
+              </button>
+            </OwnBack>
             <ShareOrganizationButton id={organization.id} name={organization.name} />
           </div>
 
