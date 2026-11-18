@@ -185,7 +185,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
 
       <div className="mt-2.5">
         <label htmlFor="invite-message" className="block font-bold text-[0.75rem] text-ink">
-          Message in the email (optional)
+          Note in the email (optional)
         </label>
         <textarea
           id="invite-message"
@@ -199,7 +199,8 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
           className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] leading-[1.45] outline-none focus:border-emphasis disabled:opacity-40"
         />
         <p id="invite-message-hint" className="mt-1 text-[0.75rem] text-grey leading-[1.4]">
-          Quoted in the email, from you. Others can see an inbox, so keep it general.
+          Shown in the email as a note from you. Others may see their inbox, so leave out anything
+          private.
         </p>
       </div>
 
