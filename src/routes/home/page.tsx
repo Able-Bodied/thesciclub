@@ -15,11 +15,12 @@ import { usePostViews } from '@/lib/chat/views';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { useFilterPlace } from '@/lib/filter-place';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
-import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
+import { type FeedItem, HOME_SEGMENTS, type HomeSegment, type HomeShow } from '@/lib/home/types';
 import { useHome } from '@/lib/home-state';
 import { useMapData } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
 import { useNearHome } from '@/lib/near-home';
+import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { QuickAsk } from '@/routes/chat/quick-ask';
@@ -68,8 +69,9 @@ import type { ClubEvent, RsvpStatus } from '@/types/domain';
  *   screen. Component state, as on Events: carries across pills, a visit starts with none.
  */
 
-const SEGMENTS: [HomeSegment, string][] = [
-  ['everything', 'Everything'],
+// The kinds, under Type in the filter; Show there is whose posts (2026-11-18).
+const TYPES: [HomeSegment, string][] = [
+  ['everything', 'All'],
   ['questions', 'Questions'],
   ['topics', 'Posts'],
   ['photos', 'Photos'],
@@ -113,7 +115,13 @@ export default function HomePage() {
   // says Home and returns to this pill.
   const linkState = useMemo(() => ({ from: 'home', segment }), [segment]);
 
-  const topicRead = useHomeTopics();
+  const [filters, setFilters] = useState<FeedFilters>(EMPTY_FEED_FILTERS);
+  // Whose posts and in what order (the owner, 2026-11-18): read again for each choice.
+  const view = useMemo(
+    () => ({ show: filters.show, sort: filters.sort }),
+    [filters.show, filters.sort],
+  );
+  const topicRead = useHomeTopics(view);
   const rooms = useChatRooms();
   // Only the days Home shows (pickEvents); it once read every stored event. Fixed per visit.
   const [eventWindow] = useState(() => {
@@ -122,7 +130,6 @@ export default function HomePage() {
     return from ? { from, to } : { to };
   });
   const eventsRead = useEvents(eventWindow);
-  const [filters, setFilters] = useState<FeedFilters>(EMPTY_FEED_FILTERS);
   // Events within 100 miles unless Filter chose a distance (the owner, 2026-11-17);
   // peers, at any distance until then, as on Peers.
   const near = useNearHome(filters.withinMiles ?? HOME_EVENT_MILES);
@@ -226,9 +233,26 @@ export default function HomePage() {
     return error ? [error] : [];
   });
 
+  // My posts and My replies are posts alone; From my orgs is their members'
+  // posts and the events they hold; nobody is suggested under any of the three.
+  const { following } = useOrganizationFollows();
   const items = useMemo(
-    () => inSegment(segment, { topics, events, people }),
-    [segment, topics, events, people],
+    () =>
+      inSegment(segment, {
+        topics,
+        events:
+          filters.show === 'all'
+            ? events
+            : filters.show === 'orgs'
+              ? events.filter(
+                  (event) =>
+                    (event.organizationId !== null && following.has(event.organizationId)) ||
+                    event.cohostIds.some((id) => following.has(id)),
+                )
+              : [],
+        people: filters.show === 'all' ? people : [],
+      }),
+    [segment, topics, events, people, filters.show, following],
   );
   const filterContext = useMemo<FeedFilterContext>(
     () => ({
@@ -460,7 +484,7 @@ export default function HomePage() {
                   Nothing matches that yet. Try fewer filters.
                 </p>
               ) : (
-                <EmptyList segment={segment} />
+                <EmptyList segment={segment} show={filters.show} />
               )}
             </>
           )}
@@ -471,7 +495,7 @@ export default function HomePage() {
         <HomeFilterSheet
           chips={chipsFor(items, filters, filterContext)}
           home={{ city: home?.city ?? null, status: near.status }}
-          segments={SEGMENTS}
+          segments={TYPES}
           segment={segment}
           onSegment={setSegment}
           filters={filters}
@@ -531,7 +555,7 @@ function SeeMore({ segment }: { segment: HomeSegment }) {
 }
 
 /** Each empty pill says which emptiness it is, and links to where to go instead. */
-function EmptyList({ segment }: { segment: HomeSegment }) {
+function EmptyList({ segment, show }: { segment: HomeSegment; show: HomeShow }) {
   const empty: Record<HomeSegment, [string, [string, string] | null]> = {
     everything: ['Nothing here yet.', null],
     questions: [
@@ -552,7 +576,16 @@ function EmptyList({ segment }: { segment: HomeSegment }) {
     ],
     people: ['Nobody new to suggest today.', ['/peers', 'See everyone in Peers']],
   };
-  const [sentence, link] = empty[segment];
+  // A choice under Show with nothing in it says so in its own words.
+  const ofShow: Record<Exclude<HomeShow, 'all'>, [string, [string, string] | null]> = {
+    mine: ['You haven’t posted anything here yet.', ['/chat?segment=rooms', 'See the rooms']],
+    replied: ['You haven’t replied to anything here yet.', null],
+    orgs: [
+      'Nothing from your organizations yet.',
+      ['/events?segment=orgs', 'See the organizations'],
+    ],
+  };
+  const [sentence, link] = show === 'all' ? empty[segment] : ofShow[show];
   return (
     <div className="px-6 py-10 text-center">
       <p className="text-[0.875rem] text-grey leading-relaxed">{sentence}</p>

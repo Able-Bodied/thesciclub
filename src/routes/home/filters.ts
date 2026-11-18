@@ -1,5 +1,5 @@
 import type { ChatRoom } from '@/lib/chat/types';
-import type { FeedItem } from '@/lib/home/types';
+import type { FeedItem, HomeShow, HomeSort } from '@/lib/home/types';
 import { roomsForTopics } from '@/routes/chat/room-map';
 import { isSport } from '@/routes/events/filters';
 
@@ -26,9 +26,31 @@ export interface FeedFilters {
   rooms: string[];
   /** Of events and peers. Null is any distance. */
   withinMiles: number | null;
+  /** Whose posts: everything, the reader's own, those they replied under, their organizations'. */
+  show: HomeShow;
+  /** The posts' order. */
+  sort: HomeSort;
 }
 
-export const EMPTY_FEED_FILTERS: FeedFilters = { rooms: [], withinMiles: null };
+export const EMPTY_FEED_FILTERS: FeedFilters = {
+  rooms: [],
+  withinMiles: null,
+  show: 'all',
+  sort: 'ranking',
+};
+
+/** The chips under Show and Sort by, in order (the owner, 2026-11-18). */
+export const SHOW_CHIPS: readonly (readonly [HomeShow, string])[] = [
+  ['all', 'Everything'],
+  ['mine', 'My posts'],
+  ['replied', 'My replies'],
+  ['orgs', 'From my orgs'],
+];
+export const SORT_CHIPS: readonly (readonly [HomeSort, string])[] = [
+  ['ranking', 'Default ranking'],
+  ['replies', 'Most recent replies'],
+  ['newest', 'Most recent posts'],
+];
 
 /**
  * The room an event can be in: only Adaptive sport, and only for sport.
@@ -112,7 +134,12 @@ export function chipsFor(
 
 /** How many choices are on, for the dot on the button and Clear's count. */
 export function activeFilterCount(filters: FeedFilters): number {
-  return filters.rooms.length + (filters.withinMiles === null ? 0 : 1);
+  return (
+    filters.rooms.length +
+    (filters.withinMiles === null ? 0 : 1) +
+    (filters.show === 'all' ? 0 : 1) +
+    (filters.sort === 'ranking' ? 0 : 1)
+  );
 }
 
 /** Toggle one room. */
