@@ -2,6 +2,7 @@ import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, type Location, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { OwnBack } from '@/components/back-line';
+import { InjuryStageNote } from '@/components/injury-stage-pill';
 import { LinkedText } from '@/components/linked-text';
 import { PartnerLabel } from '@/components/partner-label';
 import { PhotoViewer } from '@/components/photo-viewer';
@@ -819,6 +820,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 <p className="mt-1 text-[0.875rem] text-white">
                   <SummaryLine member={member} />
                 </p>
+                <InjuryStageNote member={member} className="mt-1.5" />
                 {injury ? <p className="mt-1 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>
