@@ -85,7 +85,7 @@ function DidCard({ did }: { did: NonNullable<MemberStory['did']> }) {
     ['Others’ questions answered', did.questionsAnswered],
     ['Messages sent', did.messagesSent],
     ['Events viewed', did.eventsViewed],
-    ['Events RSVP’d', did.eventsGoing],
+    ['Events RSVP’d going', did.eventsGoing],
     ['Reviews written', did.reviewsWritten],
   ];
   return (
@@ -104,9 +104,8 @@ function DidCard({ did }: { did: NonNullable<MemberStory['did']> }) {
           ))}
         </dl>
         <p className="border-line border-t py-2.5 text-[0.75rem] text-grey leading-[1.45]">
-          All time, but views only since the club began counting them: posts from Oct 11, events
-          from Nov 3. Each post or event counts once, however often they opened it. Anonymous
-          reviews are not counted.
+          Totals are all-time. Views are counted from Oct 11 for posts and Nov 3 for events, each
+          post or event once, however often they opened it. Anonymous reviews are not counted.
         </p>
       </div>
     </>
