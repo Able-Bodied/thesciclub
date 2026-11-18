@@ -21,6 +21,7 @@ import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
+import { PostBody } from '@/routes/chat/post-body';
 import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backState, backToEvents } from '@/routes/events/back';
 import { CheckInCard, CheckInClosed, CheckInNotYet } from '@/routes/events/check-in-card';
@@ -326,11 +327,20 @@ export default function EventDetailPage() {
               <h2 className="mb-2 font-extrabold font-head text-[0.75rem] text-gold-ink uppercase tracking-[0.13em]">
                 Details
               </h2>
-              <EventDescription
-                html={event.descriptionHtml}
-                text={event.description}
-                className="text-[1rem] text-ink leading-[1.55] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1.125rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
-              />
+              {/* Written here: its @people and @Organizations link, as in a post
+                  (the owner, 2026-11-17). An imported one keeps its own HTML. */}
+              {event.descriptionHtml.trim() ? (
+                <EventDescription
+                  html={event.descriptionHtml}
+                  text={event.description}
+                  className="text-[1rem] text-ink leading-[1.55] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1.125rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
+                />
+              ) : (
+                <PostBody
+                  text={event.description}
+                  className="text-[1rem] text-ink leading-[1.55] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1.125rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
+                />
+              )}
               {/* The host's own page, as the details' last line (the owner,
                 2026-10-27): text, not one more button. Its tap height hangs into
                 the box's bottom padding, so the box is as deep below as above. */}

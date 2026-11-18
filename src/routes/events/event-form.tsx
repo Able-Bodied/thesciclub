@@ -738,6 +738,7 @@ function EventForm({
         </label>
         <DescriptionEditor
           id="event-description"
+          mentions
           value={draft.description}
           maxLength={DESCRIPTION_MAX}
           onChange={(next) => {

@@ -45,12 +45,48 @@ export function insertMention(
 
 export type MentionPiece =
   | { kind: 'text'; text: string }
-  | { kind: 'mention'; text: string; username: string };
+  | { kind: 'mention'; text: string; username: string }
+  | { kind: 'organization'; text: string; id: string };
+
+/** An organization as an @mention knows it: by its full name (the owner, 2026-11-17). */
+export interface MentionOrganization {
+  id: string;
+  name: string;
+}
 
 /** As the database reads them: not inside a word or an address, a trailing "." or "_" left off. */
 const MENTION = /(?<![A-Za-z0-9_.@])@([A-Za-z0-9._]+)/g;
 
-export function splitMentions(text: string): MentionPiece[] {
+/**
+ * The text's @mentions: an organization by its full name ("@NorCal SCI"),
+ * longest name first, case aside, not inside a word; then @usernames.
+ */
+export function splitMentions(
+  text: string,
+  organizations: readonly MentionOrganization[] = [],
+): MentionPiece[] {
+  if (organizations.length === 0 || !text.includes('@')) return splitUsernames(text);
+  const names = [...organizations].sort((a, b) => b.name.length - a.name.length);
+  const pieces: MentionPiece[] = [];
+  let from = 0;
+  for (let at = text.indexOf('@'); at !== -1; at = text.indexOf('@', at + 1)) {
+    if (at < from || /[A-Za-z0-9_.@]/.test(text[at - 1] ?? '')) continue;
+    const rest = text.slice(at + 1).toLowerCase();
+    const found = names.find((org) => {
+      const name = org.name.trim().toLowerCase();
+      return name !== '' && rest.startsWith(name) && !/[A-Za-z0-9]/.test(rest[name.length] ?? '');
+    });
+    if (!found) continue;
+    const end = at + 1 + found.name.trim().length;
+    pieces.push(...splitUsernames(text.slice(from, at)));
+    pieces.push({ kind: 'organization', text: text.slice(at, end), id: found.id });
+    from = end;
+  }
+  pieces.push(...splitUsernames(text.slice(from)));
+  return pieces.filter((piece) => piece.kind !== 'text' || piece.text !== '');
+}
+
+function splitUsernames(text: string): MentionPiece[] {
   const pieces: MentionPiece[] = [];
   let at = 0;
   for (const match of text.matchAll(MENTION)) {

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { findLinks } from '@/lib/links';
 import { splitMentions, useMentionedMembers } from '@/lib/mentions';
+import { useOrganizations } from '@/lib/organizations';
 import { SITE_ORIGIN } from '@/lib/site-origin';
 
 /**
@@ -37,13 +38,26 @@ export function clubPath(href: string): string | null {
  */
 export function LinkedText({ text }: { text: string }) {
   const members = useMentionedMembers(text);
+  const { organizations } = useOrganizations();
   return (
     <>
       {findLinks(text).map((piece, index) =>
         piece.kind === 'text' ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional and never reorder
           <span key={index} className="[overflow-wrap:anywhere]">
-            {splitMentions(piece.text).map((part, at) => {
+            {splitMentions(piece.text, organizations).map((part, at) => {
+              if (part.kind === 'organization') {
+                return (
+                  <Link
+                    // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional and never reorder
+                    key={at}
+                    to={`/events/organizations/${part.id}`}
+                    className="font-semibold underline decoration-1 underline-offset-2"
+                  >
+                    {part.text}
+                  </Link>
+                );
+              }
               const member = part.kind === 'mention' ? members.get(part.username) : undefined;
               return member?.hasProfile ? (
                 <Link

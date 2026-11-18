@@ -17,7 +17,10 @@ import {
   mentionAt,
   suggestMentions,
 } from '@/lib/mentions';
+import { useOrganizations } from '@/lib/organizations';
 import { cn } from '@/lib/utils';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
+import type { Organization } from '@/types/domain';
 
 /**
  * Typing "@" in a post suggests members to mention (20261029070000), as
@@ -41,6 +44,10 @@ export interface MentionSuggestions {
   /** The list, drawn where the caller puts it, and its status line. */
   list: ReactNode;
 }
+
+type Offer =
+  | { kind: 'member'; member: MentionCandidate }
+  | { kind: 'organization'; organization: Organization };
 
 function sameQuery(a: MentionQuery | null, b: MentionQuery | null): boolean {
   return a?.start === b?.start && a?.text === b?.text;
@@ -118,8 +125,25 @@ export function useMentionSuggestions({
   }, [wanted, members]);
 
   // Up to 20, in a list that scrolls (the owner, 2026-10-29).
-  const offered =
-    wanted && members ? suggestMentions(members, query.text, 20, { among, first }) : [];
+  // Organizations by full name too, everywhere members are (the owner, 2026-11-17).
+  const { organizations } = useOrganizations();
+  const orgs: Organization[] =
+    wanted && query.text !== ''
+      ? organizations
+          .filter((org) =>
+            org.name
+              .toLowerCase()
+              .split(/\s+/)
+              .some((word) => word.startsWith(query.text)),
+          )
+          .slice(0, 5)
+      : [];
+  const offered: Offer[] = [
+    ...(wanted && members ? suggestMentions(members, query.text, 20, { among, first }) : []).map(
+      (member): Offer => ({ kind: 'member', member }),
+    ),
+    ...orgs.map((organization): Offer => ({ kind: 'organization', organization })),
+  ];
   const open = offered.length > 0;
 
   // The chosen row stays in sight as the arrows move through a scrolled list.
@@ -130,15 +154,16 @@ export function useMentionSuggestions({
     if (row && 'scrollIntoView' in row) row.scrollIntoView({ block: 'nearest' });
   }, [active, listId]);
 
-  const pick = (member: MentionCandidate) => {
+  const pick = (offer: Offer) => {
     const element = box.current;
     if (!element || !query) return;
-    const next = insertMention(element.value, element.selectionStart, query, member.username);
+    const words = offer.kind === 'member' ? offer.member.username : offer.organization.name.trim();
+    const next = insertMention(element.value, element.selectionStart, query, words);
     caretTo.current = next.caret;
     setQuery(null);
     setActive(-1);
     setClosedAt(null);
-    setAdded(member.username);
+    setAdded(words);
     onChange(next.value);
   };
 
@@ -170,7 +195,7 @@ export function useMentionSuggestions({
   };
 
   const said = open
-    ? `${offered.length} ${offered.length === 1 ? 'member' : 'members'} to mention. Up and down arrows to choose, Enter to pick.`
+    ? `${offered.length} to mention. Up and down arrows to choose, Enter to pick.`
     : added
       ? `Mentioned @${added}.`
       : '';
@@ -189,46 +214,65 @@ export function useMentionSuggestions({
             ref={listRef}
             id={listId}
             role="listbox"
-            aria-label="Members to mention"
+            aria-label="Members and organizations to mention"
             // About four and a half rows, so a fifth shows there is more to scroll.
             className="max-h-[min(14.5rem,40dvh)] overflow-y-auto overscroll-contain py-1"
           >
-            {offered.map((member, index) => (
+            {offered.map((offer, index) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: the box's own keys choose it (aria-activedescendant).
               <div
-                key={member.id}
+                key={offer.kind === 'member' ? offer.member.id : offer.organization.id}
                 id={`${listId}-${index}`}
                 role="option"
                 aria-selected={index === active}
-                aria-label={`${member.displayName}, @${member.username}`}
+                aria-label={
+                  offer.kind === 'member'
+                    ? `${offer.member.displayName}, @${offer.member.username}`
+                    : `${offer.organization.name}, organization`
+                }
                 tabIndex={-1}
                 className={cn(
                   'flex min-h-[44px] cursor-pointer items-center gap-2.5 px-3 py-1.5 text-[0.9375rem] text-ink',
                   index === active && 'bg-tint outline-2 outline-emphasis -outline-offset-2',
                 )}
                 onMouseDown={(event) => {
-                  // Keeps focus in the box, so the list is not closed first.
                   event.preventDefault();
                 }}
                 onMouseEnter={() => {
                   setActive(index);
                 }}
                 onClick={() => {
-                  pick(member);
+                  pick(offer);
                 }}
               >
-                <span aria-hidden="true" className="flex-none">
-                  <MemberAvatar
-                    id={member.id}
-                    displayName={member.displayName}
-                    photoPath={member.photoPath}
-                    photoAlt={member.photoAlt}
-                  />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-bold">{member.displayName}</span>
-                  <span className="block text-[0.8125rem] text-grey">@{member.username}</span>
-                </span>
+                {offer.kind === 'member' ? (
+                  <>
+                    <span aria-hidden="true" className="flex-none">
+                      <MemberAvatar
+                        id={offer.member.id}
+                        displayName={offer.member.displayName}
+                        photoPath={offer.member.photoPath}
+                        photoAlt={offer.member.photoAlt}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-bold">{offer.member.displayName}</span>
+                      <span className="block text-[0.8125rem] text-grey">
+                        @{offer.member.username}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span aria-hidden="true" className="flex-none">
+                      <OrganizationBadge organization={offer.organization} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-bold">{offer.organization.name}</span>
+                      <span className="block text-[0.8125rem] text-grey">Organization</span>
+                    </span>
+                  </>
+                )}
               </div>
             ))}
           </div>

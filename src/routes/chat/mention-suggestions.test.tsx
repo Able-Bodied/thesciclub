@@ -50,7 +50,9 @@ describe('mentioning a member', () => {
   it('offers up to 20 in a list that scrolls, floating over the posts', async () => {
     const box = renderComposer();
     await userEvent.type(box, '@z');
-    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    const list = await screen.findByRole('listbox', {
+      name: 'Members and organizations to mention',
+    });
     expect(within(list).getAllByRole('option')).toHaveLength(20);
     expect(list).toHaveClass('overflow-y-auto');
     expect(list.parentElement).toHaveClass('absolute', 'bottom-full');
@@ -64,13 +66,17 @@ describe('mentioning a member', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole('listbox')).toBeNull();
     await userEvent.type(box, 'm');
-    expect(await screen.findByRole('listbox', { name: 'Members to mention' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('listbox', { name: 'Members and organizations to mention' }),
+    ).toBeInTheDocument();
   });
 
   it("keeps to a conversation's members", async () => {
     const box = renderComposer(true, { among: ['m2', 'm3'] });
     await userEvent.type(box, '@ma');
-    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    const list = await screen.findByRole('listbox', {
+      name: 'Members and organizations to mention',
+    });
     expect(
       within(list)
         .getAllByRole('option')
@@ -81,7 +87,9 @@ describe('mentioning a member', () => {
   it('puts the people already in a topic first', async () => {
     const box = renderComposer(true, { first: ['m2'] });
     await userEvent.type(box, '@ma');
-    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    const list = await screen.findByRole('listbox', {
+      name: 'Members and organizations to mention',
+    });
     expect(
       within(list)
         .getAllByRole('option')
@@ -92,7 +100,9 @@ describe('mentioning a member', () => {
   it('offers members after an "@", says how many, and chooses none yet', async () => {
     const box = renderComposer();
     await userEvent.type(box, 'Thanks @ma');
-    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    const list = await screen.findByRole('listbox', {
+      name: 'Members and organizations to mention',
+    });
     expect(
       within(list)
         .getAllByRole('option')
@@ -102,7 +112,7 @@ describe('mentioning a member', () => {
     expect(box).toHaveAttribute('aria-controls', list.id);
     expect(box).not.toHaveAttribute('aria-activedescendant');
     expect(screen.getByRole('status')).toHaveTextContent(
-      '2 members to mention. Up and down arrows to choose, Enter to pick.',
+      '2 to mention. Up and down arrows to choose, Enter to pick.',
     );
   });
 
