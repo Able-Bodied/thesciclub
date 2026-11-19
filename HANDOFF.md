@@ -741,6 +741,7 @@ All live. Migration headers and the files named say how and why.
   and `cardsShown` in `page-speed.ts` tell it; nothing is sent anywhere.
 - **Home startup**: Join loads in its own script. Direct visits to `/join`
   keep the prerendered welcome visible until the interactive page loads.
+  The map warms when Peers or Events opens.
 - **Home is posts alone, read in one request** (2026-11-18, "for now"): no
   event or peer cards, none of their reads, no Events or People under Type
   and no Distance in the filter; members find those in their own tabs. The
