@@ -46,6 +46,7 @@ const KEPT = [
   'injuryType',
   'exactLevel',
   'conditionName',
+  'work',
   'completeness',
   'injuryYear',
   'injuryMonth',
