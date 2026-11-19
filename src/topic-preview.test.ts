@@ -22,6 +22,12 @@ describe('a link to a question in a text message', () => {
       '<meta property="og:title" content="Cushions: &lt;Roho&gt; or &quot;Jay&quot;?" />',
     );
 
+    // A post not marked as a question asks them to see it, not to answer it.
+    expect(shared).toContain('Help answer inside');
+    expect(sharedQuestionPage({ title: 'A post', isQuestion: false }, URL)).not.toContain(
+      'Help answer',
+    );
+
     const plain = privatePostPage(URL);
     expect(plain).toContain('content="A post on The SCI Club"');
     expect(plain).not.toContain('Cushions');

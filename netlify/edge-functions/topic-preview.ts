@@ -47,10 +47,16 @@ export function questionTitle(title: string): string {
  * owner, 2026-11-16: "Help answer inside theSCIClub and contribute to our
  * knowledge base", in place of who invited them).
  */
-export function sharedQuestionPage(shared: { title: string }, url: string): string {
+export function sharedQuestionPage(
+  shared: { title: string; isQuestion?: boolean },
+  url: string,
+): string {
   const title = escaped(questionTitle(shared.title));
+  // Not marked as a question: to see it, not to answer it (the owner, 2026-11-19).
   const description = escaped(
-    'Help answer inside The SCI Club and contribute to our knowledge base.',
+    shared.isQuestion === false
+      ? 'Join The SCI Club to see this post.'
+      : 'Help answer inside The SCI Club and contribute to our knowledge base.',
   );
   return `<!doctype html>
 <html lang="en">
@@ -100,7 +106,7 @@ async function readShared(
   key: string,
   code: string,
   topic: string,
-): Promise<{ title: string } | null> {
+): Promise<{ title: string; isQuestion: boolean } | null> {
   const response = await fetch(`${base}/rest/v1/rpc/shared_topic_preview`, {
     method: 'POST',
     headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -108,9 +114,12 @@ async function readShared(
   });
   if (!response.ok) return null;
   // The title only: who shared it is never said (the owner, 2026-11-19).
-  const rows = (await response.json()) as { title?: unknown }[];
+  const rows = (await response.json()) as { title?: unknown; is_question?: unknown }[];
   const row = rows[0];
-  return typeof row?.title === 'string' ? { title: row.title } : null;
+  // A database that does not say yet is taken to mean a question.
+  return typeof row?.title === 'string'
+    ? { title: row.title, isQuestion: row.is_question !== false }
+    : null;
 }
 
 function page(html: string): Response {

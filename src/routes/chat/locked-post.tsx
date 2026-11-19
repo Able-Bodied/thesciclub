@@ -20,11 +20,12 @@ export function LockedPost({ door }: { door: string }) {
   // our knowledge base").
   // The question itself, up top, when the link was made for it (the owner,
   // 2026-11-16: "Maybe we have the question text up top, and then the button
-  // says Join to answer"): what the link's preview already showed.
+  // says Join to answer"): what the link's preview already showed. Join to see
+  // post, when it is not marked as a question (the owner, 2026-11-19).
   const { pathname } = useLocation();
   // The link lets them in: who sent it is not said (20261119140000).
   const [inviter, setInviter] = useState(false);
-  const [question, setQuestion] = useState<string | null>(null);
+  const [shared, setShared] = useState<{ title: string; isQuestion: boolean } | null>(null);
   useEffect(() => {
     const code = new URLSearchParams(door.split('?')[1] ?? '').get(QR_PARAM);
     if (!code) return;
@@ -34,8 +35,8 @@ export function LockedPost({ door }: { door: string }) {
       if (live && details?.admits) setInviter(true);
     });
     if (topic) {
-      void fetchSharedQuestion(code, topic).then((title) => {
-        if (live) setQuestion(title);
+      void fetchSharedQuestion(code, topic).then((post) => {
+        if (live) setShared(post);
       });
     }
     return () => {
@@ -77,15 +78,17 @@ export function LockedPost({ door }: { door: string }) {
 
         <section className="z-10 mx-3 my-16 self-center rounded-[16px] border border-line bg-paper px-5 py-6 text-center shadow-lg [grid-area:1/1]">
           <h1 className="line-clamp-5 text-balance font-extrabold font-display text-[1.3125rem] text-ink leading-tight">
-            {inviter && question
-              ? question
+            {inviter && shared
+              ? shared.title
               : inviter
                 ? 'Help answer inside The SCI Club'
                 : 'Please sign in or join to see this post'}
           </h1>
           <p className="mt-2 text-pretty text-[0.875rem] text-ink2 leading-[1.5]">
-            {inviter && question
-              ? 'Help answer inside The SCI Club and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life after a spinal cord injury.'
+            {inviter && shared
+              ? shared.isQuestion
+                ? 'Help answer inside The SCI Club and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life after a spinal cord injury.'
+                : 'Join The SCI Club to see this post. The SCI Club is a private community where we help each other navigate life after a spinal cord injury.'
               : inviter
                 ? 'Join to see the question and contribute to our knowledge base. The SCI Club is a private community where we help each other navigate life after a spinal cord injury.'
                 : "It's in The SCI Club, a private community where we help each other navigate life after a spinal cord injury."}
@@ -94,7 +97,11 @@ export function LockedPost({ door }: { door: string }) {
             to={door}
             className="mt-5 flex min-h-[48px] items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
           >
-            {inviter && question ? 'Join to answer' : 'Join the club'}
+            {inviter && shared
+              ? shared.isQuestion
+                ? 'Join to answer'
+                : 'Join to see post'
+              : 'Join the club'}
           </Link>
           <p className="mt-2 text-[0.8125rem] text-ink2">
             Already a member?{' '}

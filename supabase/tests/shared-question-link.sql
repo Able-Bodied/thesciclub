@@ -85,11 +85,15 @@ select public.signup_needs_an_invite(jsonb_build_object('user', jsonb_build_obje
   'user_metadata', jsonb_build_object('qr_code', :'made')))) as maker_not_admin;
 
 \echo ''
-\echo '== 6. what a link preview, and the page before Join, may show signed out (expect the title and an empty name, then nothing three times) =='
+\echo '== 6. what a link preview, and the page before Join, may show signed out (expect the title, an empty name and is_question t; then f once it is not marked a question; then nothing three times) =='
 update public.members set is_admin = true where id = 'aaaaaaaa-5a5a-0000-0000-00000000000a';
 update public.qr_codes set expires_at = now() + interval '1 hour' where code = :'made';
 set local role anon;
-select title, inviter_name from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000001');
+select title, inviter_name, is_question from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000001');
+reset role;
+update public.chat_topics set is_question = false where id = '5a5a0000-0000-0000-0000-000000000001';
+set local role anon;
+select is_question as not_marked_a_question from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000001');
 select count(*) as another_topic from public.shared_topic_preview(:'made', '5a5a0000-0000-0000-0000-000000000002');
 select count(*) as a_wrong_code from public.shared_topic_preview('not-a-code', '5a5a0000-0000-0000-0000-000000000001');
 reset role;

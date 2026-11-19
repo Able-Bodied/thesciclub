@@ -87,19 +87,26 @@ export async function fetchQrCodeDetails(code: string): Promise<QrCodeDetails | 
 }
 
 /**
- * The question a link was shared to let people in to, for somebody signed
- * out: its title while the code is live and was made for that very topic
- * (shared_topic_preview, 20261116200000); null for anything else.
+ * The post a link was shared to let people in to, for somebody signed out:
+ * its title, and whether it is marked as a question, while the code is live
+ * and was made for that very topic (shared_topic_preview, 20261116200000 and
+ * 20261119150000); null for anything else. A database that does not say yet
+ * is taken to mean a question, as every shared link was one.
  */
-export async function fetchSharedQuestion(code: string, topicId: string): Promise<string | null> {
+export async function fetchSharedQuestion(
+  code: string,
+  topicId: string,
+): Promise<{ title: string; isQuestion: boolean } | null> {
   try {
     const { data, error } = await getSupabase()
       .rpc('shared_topic_preview', { p_code: code, p_topic: topicId })
       .maybeSingle();
     const row: unknown = data;
     if (error || !row || typeof row !== 'object') return null;
-    const title = (row as Record<string, unknown>).title;
-    return typeof title === 'string' && title.trim() ? title.trim() : null;
+    const { title, is_question: isQuestion } = row as Record<string, unknown>;
+    return typeof title === 'string' && title.trim()
+      ? { title: title.trim(), isQuestion: isQuestion !== false }
+      : null;
   } catch {
     return null;
   }
