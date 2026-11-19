@@ -195,7 +195,7 @@ describe('EventsPage', () => {
       ['running', { startTime: hours(-30), endTime: hours(5), allDay: false }],
     ]);
     renderPage('/events?segment=been-to');
-    expect(state.queries.at(-1)).toEqual({ ids: ['ended'] });
+    expect(state.queries).toContainEqual({ ids: ['ended'] });
   });
 
   it('lists what is on the calendar', () => {
@@ -488,6 +488,21 @@ describe('what the member is going to', () => {
         (nodes[i]?.compareDocumentPosition(node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
+  });
+
+  // The owner, 2026-11-18: "I am not seeing events I am going to by
+  // default". The calendar's 30 days and 50 miles hid them; a search found them.
+  it('has every coming date the member is going to, however far off or away', () => {
+    state.events.push(
+      makeEvent({ id: 'pain', title: 'Pain management', startTime: soon(45), tags: [] }),
+    );
+    state.near = { status: 'ready', ids: new Set(['rugby', 'coffee', 'zoom']) };
+    state.rsvps = new Map([['pain', 'going']]);
+    renderPage();
+    expect(state.queries).toContainEqual({ ids: ['pain'] });
+    const going = screen.getByText("You're going");
+    const pain = screen.getByText('Pain management');
+    expect(going.compareDocumentPosition(pain) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('adds no headings when there is nothing to go to', () => {

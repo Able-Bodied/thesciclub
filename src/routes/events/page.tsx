@@ -205,6 +205,26 @@ export default function EventsPage() {
     ...(dateRange ?? {}),
     ...(beenTo === undefined ? {} : { ids: beenTo }),
   });
+  // Every coming date the member is going to, read by itself (the owner,
+  // 2026-11-18: "I am not seeing events I am going to by default"). Read with
+  // the calendar, one more than 30 days off or 50 miles away was not there to
+  // put on top: only a search, which lifts both, found it.
+  const goingIds = useMemo(
+    () =>
+      segment !== 'upcoming'
+        ? []
+        : viewer.loading
+          ? null
+          : [...viewer.rsvps]
+              .filter(([eventId, answer]) => {
+                if (answer !== 'going') return false;
+                const when = viewer.whens.get(eventId);
+                return when === undefined || !isEventOver(when);
+              })
+              .map(([eventId]) => eventId),
+    [segment, viewer.loading, viewer.rsvps, viewer.whens],
+  );
+  const goingRead = useEvents({ ids: goingIds });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
 
@@ -303,16 +323,27 @@ export default function EventsPage() {
   }, [visible, segment]);
   // What the member is going to, on top of the calendar (the owner,
   // 2026-11-03), each date by itself as in "I'm going", then the rest grouped.
+  // Its own dates, wherever and whenever they are: a filter narrows the rest.
   const goingFirst = useMemo(() => {
     if (segment !== 'upcoming') return null;
-    const going = visible.filter((event) => viewer.rsvps.get(event.id) === 'going');
+    // The calendar's own too, so a date answered just now stays up while
+    // the read of them all lands.
+    const byId = new Map(
+      [...(searching ? searched(goingRead.events) : goingRead.events), ...visible].map((event) => [
+        event.id,
+        event,
+      ]),
+    );
+    const going = [...byId.values()]
+      .filter((event) => viewer.rsvps.get(event.id) === 'going' && !isPastEvent(event))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
     if (going.length === 0) return null;
     const ids = new Set(going.map((event) => event.id));
     return {
       going: going.map((event) => ({ lead: event, rest: [], seriesId: event.seriesId })),
       rest: groupBySeries(visible.filter((event) => !ids.has(event.id))),
     };
-  }, [visible, segment, viewer.rsvps]);
+  }, [visible, segment, viewer.rsvps, goingRead.events, searching, searched]);
 
   // Which series are open, by series id. Reset when the segment or the window
   // changes: an expansion is about the list in front of you, and leaving it
@@ -671,7 +702,7 @@ export default function EventsPage() {
                   </div>
                 );
               })}
-              {visible.length === 0 ? <EmptyList segment={segment} /> : null}
+              {visible.length === 0 && !goingFirst ? <EmptyList segment={segment} /> : null}
             </div>
           )}
         </div>
