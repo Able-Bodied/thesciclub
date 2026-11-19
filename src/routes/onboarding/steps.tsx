@@ -360,6 +360,29 @@ export function InjuryStep({ data, set }: StepProps) {
         />
       </div>
 
+      {/* Staff say what they do and where (the owner, 2026-11-18), so a
+          member knows who is answering them. Kept as the profile's Field of
+          work, and changed there. */}
+      {data.injuryType === 'professional' ? (
+        <div className="mt-5">
+          <label htmlFor="work" className="block font-bold text-[0.8125rem] text-ink">
+            What do you do, and where?
+          </label>
+          <textarea
+            id="work"
+            rows={2}
+            maxLength={MEMBER_TEXT_MAX.field_of_work}
+            placeholder="Physical therapist at Santa Clara Valley Medical Center"
+            value={data.work}
+            onChange={(e) => {
+              set({ work: e.target.value });
+            }}
+            className="mt-2.5 w-full resize-none rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] leading-[1.4] outline-none transition-shadow focus:border-emphasis focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--navy)_18%,transparent)]"
+          />
+          <Fine>Your role and where you work, so members know who you are.</Fine>
+        </div>
+      ) : null}
+
       {noInjury ? null : (
         <div className="mt-5">
           <InjuryDate data={data} set={set} birth={birth} />

@@ -139,6 +139,16 @@ describe('submitOnboarding and the photograph', () => {
     ]);
   });
 
+  // The owner, 2026-11-18: staff say what they do and where.
+  it("writes what staff do and where as the field of work, and nobody else's", async () => {
+    await submitOnboarding(
+      data({ injuryType: 'professional', work: ' Physical therapist at Kaiser ' }),
+    );
+    // Typed, then changed to another answer: it goes with the answer it was for.
+    await submitOnboarding(data({ injuryType: 'family', work: 'Nurse' }));
+    expect(db.inserts.map((r) => r.field_of_work)).toEqual(['Physical therapist at Kaiser', null]);
+  });
+
   it('leaves the kind unsaid when it was not answered', async () => {
     await submitOnboarding(data({ injuryType: 'quad', exactLevel: null }));
     await submitOnboarding(data({ injuryType: 'condition', conditionName: ' ' }));

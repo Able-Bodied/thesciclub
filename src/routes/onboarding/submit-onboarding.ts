@@ -105,6 +105,8 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     injury_type: spinalCord ? data.injuryType : null,
     condition_name:
       spinalCord && data.injuryType === 'condition' ? data.conditionName.trim() || null : null,
+    // What a member of staff does and where: the profile's Field of work.
+    field_of_work: data.injuryType === 'professional' ? data.work.trim() || null : null,
     // Paired: members_injury_date_precision_paired requires both or neither.
     injury_date: injury?.date ?? null,
     injury_date_precision: injury?.precision ?? null,

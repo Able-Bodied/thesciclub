@@ -50,6 +50,11 @@ export interface OnboardingData {
   exactLevel: ExactLevel | null;
   /** Only for a condition: typed, so '' while blank. */
   conditionName: string;
+  /**
+   * Only for staff: what they do and where (the owner, 2026-11-18), saved as
+   * the profile's field of work. '' while blank.
+   */
+  work: string;
   completeness: Completeness;
   /** Stored as a date; asked as a year, refined only if somebody wants to. */
   injuryYear: string;
@@ -86,6 +91,7 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   injuryType: null,
   exactLevel: null,
   conditionName: '',
+  work: '',
   completeness: 'Do not know',
   injuryYear: '',
   injuryMonth: '',
