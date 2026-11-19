@@ -365,21 +365,24 @@ export function InjuryStep({ data, set }: StepProps) {
           work, and changed there. */}
       {data.injuryType === 'professional' ? (
         <div className="mt-5">
-          <label htmlFor="work" className="block font-bold text-[0.8125rem] text-ink">
+          <label
+            htmlFor="work"
+            className="mb-2 block font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+          >
             What do you do, and where?
           </label>
           <textarea
             id="work"
-            rows={2}
+            rows={3}
             maxLength={MEMBER_TEXT_MAX.field_of_work}
-            placeholder="Physical therapist at Santa Clara Valley Medical Center"
+            placeholder="Physical therapist at a spinal cord injury rehab unit"
             value={data.work}
             onChange={(e) => {
               set({ work: e.target.value });
             }}
-            className="mt-2.5 w-full resize-none rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] leading-[1.4] outline-none transition-shadow focus:border-emphasis focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--navy)_18%,transparent)]"
+            className="w-full resize-none rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] leading-[1.4] outline-none transition-shadow focus:border-emphasis focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--navy)_18%,transparent)]"
           />
-          <Fine>Your role and where you work, so members know who you are.</Fine>
+          <Fine>So members know who you are.</Fine>
         </div>
       ) : null}
 
