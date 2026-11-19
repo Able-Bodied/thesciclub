@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AccountContext } from '@/lib/account-context';
 import { AUTHOR_COLUMNS, type ChatAuthorRow, rememberChatAuthors } from '@/lib/chat/authors';
+import { type ChatRoomRow, toRoom } from '@/lib/chat/rooms';
 import { POST_COLUMNS, type PostRow, toPost } from '@/lib/chat/topics';
 import type { ChatPost, ChatRoom } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
@@ -66,6 +67,7 @@ interface TopicRow {
 
 /** A card of `home_feed`: the topic as above, with its place and the replies the ranking chose. */
 interface FeedRow extends TopicRow {
+  room?: ChatRoomRow;
   ord: number;
   /** Null for a chosen Show or Sort: the card quotes the first reply. */
   previews: HomeReplyRef[] | null;
@@ -241,6 +243,7 @@ async function readShown(view: HomeView, signal: AbortSignal): Promise<string[] 
 
 export interface HomeTopicsState {
   topics: HomeTopicSummary[];
+  rooms?: ChatRoom[];
   /** The posts each card needs, a removed opener included. See the header. */
   posts: ChatPost[];
   loading: boolean;
@@ -291,7 +294,7 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
     };
 
     /** What came back, as the state: the posts once each, and their authors remembered. */
-    function land(rows: readonly TopicRow[], topics: HomeTopicSummary[]) {
+    function land(rows: readonly TopicRow[], topics: HomeTopicSummary[], rooms?: ChatRoom[]) {
       // The opener can be in both lists; once each.
       const byId = new Map<string, ChatPost>();
       for (const row of rows) {
@@ -307,6 +310,7 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
       );
       setState({
         topics,
+        ...(rooms ? { rooms } : {}),
         posts: [...byId.values()],
         loading: false,
         error: null,
@@ -329,6 +333,15 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
           | null;
         if (aborted()) return;
         if (feed) {
+          const byRoom = new Map<string, ChatRoom>();
+          for (const row of feed) {
+            if (row.room?.id === row.room_id && !byRoom.has(row.room_id)) {
+              byRoom.set(row.room_id, toRoom(row.room));
+            }
+          }
+          const rooms = feed.every((row) => byRoom.has(row.room_id))
+            ? [...byRoom.values()].sort((a, b) => a.sortOrder - b.sortOrder)
+            : undefined;
           land(
             feed,
             feed.map((row) =>
@@ -338,6 +351,7 @@ export function useHomeTopics(view: HomeView = DEFAULT_HOME_VIEW): HomeTopicsSta
                 row.ord,
               ),
             ),
+            rooms,
           );
           return;
         }
