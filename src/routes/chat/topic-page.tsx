@@ -27,6 +27,7 @@ import {
 import { attachmentFolder, deleteAttachments } from '@/lib/chat/attachments';
 import { useAuthorPlaces } from '@/lib/chat/author-places';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { memberDraftKey } from '@/lib/chat/drafts';
 import { useEdits } from '@/lib/chat/edits';
 import { usePostLikes, voteFor } from '@/lib/chat/likes';
 import { PRICED_ROOM } from '@/lib/chat/listing-prices';
@@ -65,7 +66,6 @@ import { ListingPrice } from '@/routes/chat/listing-price';
 import { MoveTopic } from '@/routes/chat/move-topic';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
-import { PostOptions } from '@/routes/chat/post-options';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 import { SaveTopicButton } from '@/routes/chat/save-button';
@@ -599,18 +599,13 @@ export default function TopicPage() {
     return (
       <Suspense fallback={loadingReplyEditor}>
         <PostComposer
-          key={`reply-${to.id}`}
-          options={
-            canGoAnonymous ? (
-              <PostOptions
-                id={`reply-${to.id}`}
-                className="mt-1"
-                noun="reply"
-                anonymous={{ checked: replyAnonymously, onChange: chooseAnonymous }}
-              />
-            ) : undefined
+          key={`${account.userId}:reply-${to.id}`}
+          anonymousOption={
+            canGoAnonymous ? { checked: replyAnonymously, onChange: chooseAnonymous } : undefined
           }
-          draftKey={topicId ? `topic:${topicId}:reply:${to.id}` : undefined}
+          draftKey={
+            topicId ? memberDraftKey(account.userId, `topic:${topicId}:reply:${to.id}`) : undefined
+          }
           // Plain: the bar over it already names who is answered.
           placeholder="Write your reply"
           maxLength={POST_MAX}
@@ -624,7 +619,7 @@ export default function TopicPage() {
               setReplyingTo(null);
             },
           }}
-          onSend={async (body, paths) => {
+          onSend={async (body, paths, anonymous) => {
             if (!account.userId) return 'You are signed out.';
             const result = await sendPost(
               replyTopic,
@@ -632,7 +627,7 @@ export default function TopicPage() {
               body,
               paths,
               to.id,
-              replyAnonymously,
+              anonymous,
             );
             if (!result.ok) return result.error;
             setReplyingTo(null);
@@ -857,18 +852,15 @@ export default function TopicPage() {
               <Suspense fallback={loadingReplyEditor}>
                 <PostComposer
                   // A new topic is a new box, with that topic's draft.
-                  key={topicId}
-                  options={
-                    canGoAnonymous && !edited ? (
-                      <PostOptions
-                        id="reply"
-                        className="mt-1"
-                        noun="reply"
-                        anonymous={{ checked: replyAnonymously, onChange: chooseAnonymous }}
-                      />
-                    ) : undefined
+                  key={`${account.userId}:${topicId}`}
+                  anonymousOption={
+                    canGoAnonymous
+                      ? { checked: replyAnonymously, onChange: chooseAnonymous }
+                      : undefined
                   }
-                  draftKey={topicId ? `topic:${topicId}` : undefined}
+                  draftKey={
+                    topicId ? memberDraftKey(account.userId, `topic:${topicId}`) : undefined
+                  }
                   placeholder={isQuestion ? 'Reply to this question' : 'Reply to this post'}
                   maxLength={POST_MAX}
                   sendLabel="Post this reply"
@@ -895,7 +887,7 @@ export default function TopicPage() {
                         }
                       : null
                   }
-                  onSend={async (body, paths) => {
+                  onSend={async (body, paths, anonymous) => {
                     if (!account.userId) return 'You are signed out.';
                     // The photographs are up already, under the room's folder,
                     // which is what the read policy checks; a refused row takes
@@ -907,7 +899,7 @@ export default function TopicPage() {
                       body,
                       paths,
                       null,
-                      replyAnonymously,
+                      anonymous,
                     );
                     if (!result.ok) return result.error;
                     reload();
