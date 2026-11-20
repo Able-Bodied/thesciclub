@@ -22,6 +22,7 @@ import {
   saveEventSeries,
   saveMorePhotos,
   setEventMeetingLink,
+  setEventPostalCode,
   useEvents,
 } from '@/lib/events';
 import { useMemberOrganizations } from '@/lib/organization-members';
@@ -375,6 +376,8 @@ function EventForm({
   const chosenAudience = audience;
   const audienceChanged = isNew || !sameAudience(chosenAudience, initialChoice);
   const meetingChanged = reading.ok && reading.meetingUrl !== initial.meetingUrl.trim();
+  // An imported event's ZIP code is its calendar's.
+  const postalChanged = !imported && reading.ok && reading.postalCode !== initial.postalCode.trim();
 
   function submit() {
     if (!reading.ok || saving || !audienceReady(chosenAudience)) return;
@@ -418,6 +421,16 @@ function EventForm({
       }
       if (meetingChanged) {
         const saved = await setEventMeetingLink(result.id, reading.meetingUrl);
+        if (!saved.ok) {
+          void navigate(`/events/${result.id}/edit`, {
+            replace: true,
+            state: { coverFailure: `The event is saved. ${saved.error}` },
+          });
+          return;
+        }
+      }
+      if (postalChanged) {
+        const saved = await setEventPostalCode(result.id, reading.postalCode);
         if (!saved.ok) {
           void navigate(`/events/${result.id}/edit`, {
             replace: true,
@@ -657,6 +670,7 @@ function EventForm({
             const where = found.name ? `${found.name}, ${found.street}` : found.street;
             set('location', where.slice(0, LOCATION_MAX));
             set('city', found.city.slice(0, CITY_MAX));
+            if (found.postalCode) set('postalCode', found.postalCode);
             // A picked place's state is a choice: the host no longer moves it.
             setStateChosen(true);
             set('state', found.state);
@@ -712,6 +726,27 @@ function EventForm({
         <p id="event-city-hint" className={HINT}>
           So members can find it by place.
         </p>
+
+        {/* The owner, 2026-11-20: optional, and a picked address fills it. */}
+        {draft.format !== 'online' ? (
+          <>
+            <label htmlFor="event-zip" className={LABEL}>
+              ZIP code (optional)
+            </label>
+            <input
+              id="event-zip"
+              value={draft.postalCode}
+              maxLength={10}
+              inputMode="numeric"
+              autoComplete="postal-code"
+              onChange={(e) => {
+                set('postalCode', e.target.value);
+              }}
+              placeholder="94404"
+              className={FIELD}
+            />
+          </>
+        ) : null}
 
         <label htmlFor="event-state" className={LABEL}>
           State
