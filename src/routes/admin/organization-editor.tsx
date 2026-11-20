@@ -16,6 +16,7 @@ import {
   requestOrganization,
 } from '@/lib/organization-requests';
 import { usePhotoUrl } from '@/lib/photos';
+import { useDraftMedia } from '@/lib/use-draft-media';
 import { OrganizationGrantsEditor } from '@/routes/admin/organization-grants-editor';
 import {
   newPlace,
@@ -29,6 +30,8 @@ import type { Organization } from '@/types/domain';
 
 /** What Save does to the logo: leave it, replace it, or take it away. */
 type LogoChange = { kind: 'keep' } | { kind: 'new'; file: File } | { kind: 'remove' };
+
+const hasLogoFile = (logo: LogoChange) => logo.kind === 'new';
 
 const field =
   'mt-1 min-h-[44px] w-full rounded-[11px] border border-line bg-paper px-3 py-2 text-[1rem] text-ink';
@@ -56,6 +59,7 @@ export function OrganizationEditor({
   onCancel: () => void;
 }) {
   const asking = !organization && !administrator;
+  const newDraftKey = organization || request ? undefined : draftKey;
   const {
     value: { fields: draft, tags, places },
     setValue: setForm,
@@ -63,7 +67,7 @@ export function OrganizationEditor({
     restored,
     finish,
   } = useFormDraft(
-    organization || request ? undefined : draftKey,
+    newDraftKey,
     () => {
       const fields: OrganizationDraft = organization ??
         request?.draft ?? {
@@ -91,7 +95,12 @@ export function OrganizationEditor({
   }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [logo, setLogo] = useState<LogoChange>({ kind: 'keep' });
+  const logoDraft = useDraftMedia<LogoChange>(
+    asking ? undefined : newDraftKey,
+    () => ({ kind: 'keep' }),
+    hasLogoFile,
+  );
+  const { value: logo, setValue: setLogo } = logoDraft;
   const [preview, setPreview] = useState<string | null>(null);
   const savedLogo = usePhotoUrl(organization?.logoPath);
   const shown = logo.kind === 'new' ? preview : logo.kind === 'remove' ? null : savedLogo;
@@ -156,6 +165,7 @@ export function OrganizationEditor({
       return;
     }
     finish();
+    if (newDraftKey) logoDraft.clear();
     const placed = await saveOrganizationPlaces(result.id, toSave);
     if (!placed.ok) {
       onSaved(`${draft.name.trim()} was saved, but its locations were not: ${placed.error}`);
@@ -189,7 +199,7 @@ export function OrganizationEditor({
         className="mt-3 scroll-mt-20 rounded-[14px] border border-line bg-paper p-3"
         onSubmit={(event) => {
           event.preventDefault();
-          if (saving) return;
+          if (saving || logoDraft.loading) return;
           setSaving(true);
           setError(null);
           void save().finally(() => {
@@ -204,13 +214,18 @@ export function OrganizationEditor({
               ? 'Review this organization'
               : 'Add organization'}
         </h3>
-        <DraftStatus storage={storage} restored={restored} className="mt-1" />
+        <DraftStatus
+          storage={storage}
+          restored={restored}
+          media={logoDraft.status}
+          className="mt-1"
+        />
         {asking ? (
           <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
             An administrator checks it before it is listed, and you will be told.
           </p>
         ) : null}
-        <fieldset disabled={saving} className="mt-2 grid gap-3">
+        <fieldset disabled={saving || logoDraft.loading} className="mt-2 grid gap-3">
           <div hidden={asking}>
             <p id="organization-logo-label" className="text-ink">
               Logo
@@ -420,11 +435,12 @@ export function OrganizationEditor({
               type="button"
               onClick={() => {
                 finish();
+                logoDraft.clear();
                 onCancel();
               }}
               className="min-h-[44px] rounded-lg border border-line px-4 font-bold text-ink"
             >
-              {storage ? 'Discard draft' : 'Cancel'}
+              {storage || logoDraft.status !== 'idle' ? 'Discard draft' : 'Cancel'}
             </button>
           </div>
         </fieldset>
