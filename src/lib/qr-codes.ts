@@ -90,7 +90,7 @@ export async function fetchQrCodeDetails(code: string): Promise<QrCodeDetails | 
  * The post a link was shared to let people in to, for somebody signed out:
  * its title, and whether it is marked as a question, while the code is live
  * and was made for that very topic (shared_topic_preview, 20261116200000 and
- * 20261119150000); null for anything else. A database that does not say yet
+ * 20261119180000); null for anything else. A database that does not say yet
  * is taken to mean a question, as every shared link was one.
  */
 export async function fetchSharedQuestion(

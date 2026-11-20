@@ -32,7 +32,7 @@ as $$
 $$;
 
 comment on function public.shared_topic_preview(text, uuid) is
-  'For a link preview: the title of a topic shared to let people in, and whether it is a question, while its code is live. Never who shared it (inviter_name is always empty). See 20261116200000, 20261119140000 and 20261119150000.';
+  'For a link preview: the title of a topic shared to let people in, and whether it is a question, while its code is live. Never who shared it (inviter_name is always empty). See 20261116200000, 20261119140000 and 20261119180000.';
 
 revoke all on function public.shared_topic_preview(text, uuid) from public;
 grant execute on function public.shared_topic_preview(text, uuid) to anon, authenticated;
