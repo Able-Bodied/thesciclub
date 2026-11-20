@@ -34,6 +34,8 @@ export interface EventDraft {
   registrationUrl: string;
   /** The video call to join, for an online or hybrid event (20261106070000). */
   meetingUrl: string;
+  /** Optional, as typed; a picked address fills it (20261121030000). */
+  postalCode: string;
   /** Only offered when adding an event; a date already made is changed alone. */
   repeat: RepeatChoice;
   /** Custom only, as typed. */
@@ -111,6 +113,7 @@ export function emptyDraft(onlyHost: string | null, hostState = ''): EventDraft 
     url: '',
     registrationUrl: '',
     meetingUrl: '',
+    postalCode: '',
     ...NO_REPEAT,
   };
 }
@@ -147,6 +150,7 @@ export function draftFromEvent(event: ClubEvent): EventDraft {
     url: event.url ?? '',
     registrationUrl: event.registrationUrl ?? '',
     meetingUrl: event.meetingUrl ?? '',
+    postalCode: event.postalCode ?? '',
     ...NO_REPEAT,
   };
 }
@@ -409,6 +413,8 @@ export type DraftReading =
       repeat: RepeatRule | null;
       /** Saved on its own after the event (set_event_meeting_link); '' for none. */
       meetingUrl: string;
+      /** Saved on its own after the event (set_event_postal_code); '' for none. */
+      postalCode: string;
     }
   | { ok: false; problem: string };
 
@@ -506,6 +512,12 @@ export function readDraft(
     };
   }
 
+  // Only a place someone goes to has one.
+  const postalCode = draft.format === 'online' ? '' : draft.postalCode.trim();
+  if (postalCode !== '' && !/^\d{5}(-\d{4})?$/.test(postalCode)) {
+    return { ok: false, problem: 'A ZIP code is five digits, like 94404.' };
+  }
+
   return {
     ok: true,
     payload: {
@@ -525,5 +537,6 @@ export function readDraft(
     },
     repeat: repeat.rule,
     meetingUrl: meeting.url,
+    postalCode,
   };
 }
