@@ -776,8 +776,7 @@ function EventForm({
           onPick={(found) => {
             set('city', found.city.slice(0, CITY_MAX));
             // A picked city's state is a choice: the host no longer moves it.
-            setStateChosen(true);
-            set('state', found.state);
+            chooseState(found.state);
           }}
           placeholder="Oakland"
           describedBy="event-city-hint"

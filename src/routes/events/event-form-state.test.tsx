@@ -120,6 +120,20 @@ describe("an event's state on its form", () => {
     expect(screen.getByLabelText('State')).toHaveValue('OR');
   });
 
+  it('remembers the state chosen from a city suggestion when the draft is reopened', async () => {
+    const user = userEvent.setup();
+    const first = renderForm();
+    await user.type(screen.getByRole('combobox', { name: 'City (optional)' }), 'Ben');
+    await user.click(await screen.findByRole('option', { name: /Bend, OR/ }));
+    first.unmount();
+
+    renderForm();
+    const host = await screen.findByLabelText('Who is hosting it?');
+    await user.selectOptions(host, 'borp');
+    expect(screen.getByLabelText('City (optional)')).toHaveValue('Bend');
+    expect(screen.getByLabelText('State')).toHaveValue('OR');
+  });
+
   it('lists the organizations they belong to, and finds the rest by search', async () => {
     renderForm();
     const host = await screen.findByLabelText('Who is hosting it?');
