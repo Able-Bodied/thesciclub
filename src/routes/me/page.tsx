@@ -190,6 +190,7 @@ export default function MePage() {
   // Null until they arrive, so the card does not say "Good standing" for a
   // moment to somebody who is on two and then correct itself.
   const [strikes, setStrikes] = useState<MyStrike[] | null>(null);
+  const [afterPause, setAfterPause] = useState(false);
 
   // What the member has coming up, not what they have ever said yes to. These
   // two numbers are the whole of the row, and a count that keeps climbing as
@@ -230,6 +231,7 @@ export default function MePage() {
       void loadMyStrikes(userId).then((result) => {
         if (!result.ok) return;
         setStrikes(result.strikes);
+        setAfterPause(result.afterPause);
         landed();
       });
     }
@@ -435,7 +437,7 @@ export default function MePage() {
                 ) : null}
                 <section aria-labelledby="me-standing-heading">
                   <SectionHeading id="me-standing-heading">Standing</SectionHeading>
-                  <StandingCard invitedBy={invitedBy} strikes={strikes} />
+                  <StandingCard invitedBy={invitedBy} strikes={strikes} afterPause={afterPause} />
                 </section>
               </div>
             </div>
