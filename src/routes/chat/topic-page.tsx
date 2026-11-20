@@ -598,16 +598,18 @@ export default function TopicPage() {
   function replyBox(to: ChatPost): ReactNode {
     return (
       <Suspense fallback={loadingReplyEditor}>
-        {canGoAnonymous ? (
-          <PostOptions
-            id={`reply-${to.id}`}
-            className="mt-0"
-            noun="reply"
-            anonymous={{ checked: replyAnonymously, onChange: chooseAnonymous }}
-          />
-        ) : null}
         <PostComposer
           key={`reply-${to.id}`}
+          options={
+            canGoAnonymous ? (
+              <PostOptions
+                id={`reply-${to.id}`}
+                className="mt-0 pb-1"
+                noun="reply"
+                anonymous={{ checked: replyAnonymously, onChange: chooseAnonymous }}
+              />
+            ) : undefined
+          }
           draftKey={topicId ? `topic:${topicId}:reply:${to.id}` : undefined}
           // Plain: the bar over it already names who is answered.
           placeholder="Write your reply"
@@ -853,17 +855,19 @@ export default function TopicPage() {
           <div className="mx-auto w-full max-w-[720px]" hidden={replyingUnder !== null}>
             {canPost ? (
               <Suspense fallback={loadingReplyEditor}>
-                {canGoAnonymous && !edited ? (
-                  <PostOptions
-                    id="reply"
-                    className="mt-0"
-                    noun="reply"
-                    anonymous={{ checked: replyAnonymously, onChange: chooseAnonymous }}
-                  />
-                ) : null}
                 <PostComposer
                   // A new topic is a new box, with that topic's draft.
                   key={topicId}
+                  options={
+                    canGoAnonymous && !edited ? (
+                      <PostOptions
+                        id="reply"
+                        className="mt-0 pb-1"
+                        noun="reply"
+                        anonymous={{ checked: replyAnonymously, onChange: chooseAnonymous }}
+                      />
+                    ) : undefined
+                  }
                   draftKey={topicId ? `topic:${topicId}` : undefined}
                   placeholder={isQuestion ? 'Reply to this question' : 'Reply to this post'}
                   maxLength={POST_MAX}
