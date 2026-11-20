@@ -1,6 +1,6 @@
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, type Location, useLocation } from 'react-router-dom';
 import { litTab } from '@/components/lit-tab';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
@@ -63,13 +63,21 @@ const TAB_SPIN_MAX_MS = 10_000;
  * landed, failed or been dropped (lib/kept-reads.ts counts them), for at
  * least TAB_SPIN_MIN_MS and at most TAB_SPIN_MAX_MS.
  */
-export function useTabSpinner(): {
+function useTabSpinner(location: Location): {
   spinning: string | null;
   tapped: (tab: string, destination: string) => boolean;
 } {
   const pending = useRef<{ tab: string; at: number; destination: string } | null>(null);
   const [tap, setTap] = useState<typeof pending.current>(null);
   const [spinning, setSpinning] = useState<string | null>(null);
+  useEffect(() => {
+    // Back or a link elsewhere ends the pending tap, even if its reads are still out.
+    if (pending.current && pending.current.destination !== location.pathname + location.search) {
+      pending.current = null;
+      setTap(null);
+      setSpinning(null);
+    }
+  }, [location]);
   useEffect(() => {
     if (!tap) return;
     setSpinning(tap.tab);
@@ -134,7 +142,7 @@ export function AppNav() {
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
-  const { spinning, tapped } = useTabSpinner();
+  const { spinning, tapped } = useTabSpinner(location);
   // The bar stays still on every screen, Home's feed included, while people
   // get used to the app (the owner, 2026-11-15). It slid away on a scroll
   // from 2026-11-01, on Home's feed only from 2026-11-09.
