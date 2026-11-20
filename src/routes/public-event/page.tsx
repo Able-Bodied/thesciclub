@@ -8,6 +8,7 @@ import { type EventInvite, fetchEventInvite, inviteAnswerFrom } from '@/lib/even
 import { isEventOver } from '@/lib/event-over';
 import { recordRsvpClick, useRecordEventView } from '@/lib/event-views';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
+import { EventAccessDetails } from '@/routes/events/event-access-details';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { longWhen, timeRange } from '@/routes/events/format';
@@ -232,6 +233,8 @@ export default function PublicEventPage() {
               </button>
             </div>
           )}
+
+          <EventAccessDetails details={event.accessDetails} />
 
           <EventDescription
             html={event.descriptionHtml}
