@@ -55,7 +55,7 @@ export function attachmentProblem(files: File[], alreadyAttached: number): strin
   return null;
 }
 
-export function photosFromLibrary(chosen: FileList | null, remaining: number) {
+export function photosFromLibrary(chosen: ArrayLike<File> | null, remaining: number) {
   const selected = Array.from(chosen ?? []);
   const photos = selected.slice(0, remaining);
   return {

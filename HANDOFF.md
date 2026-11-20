@@ -102,6 +102,9 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   apple-app-site-association` (`src/universal-links.test.ts` says which
   paths and why). Fake it in a browser with
   `window.CapacitorCustomPlatform = { name: 'ios' }`.
+  The iPhone's Photo Library picker caps selections at the open attachment
+  slots (`PhotoSelectionPlugin.swift`). Draft photos stay on the device
+  until the member submits.
   YouTube cards in the app frame the club's player page
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link

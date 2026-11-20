@@ -1,8 +1,9 @@
 import { ImagePlus, X } from 'lucide-react';
 import { type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import { PhotoViewer } from '@/components/photo-viewer';
-import { attachmentProblem, MAX_ATTACHMENTS, photosFromLibrary } from '@/lib/chat/attachments';
+import { attachmentProblem, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import type { PhotoTarget } from '@/lib/paste-photos';
+import { usePhotoPicker } from '@/lib/use-photo-picker';
 
 /**
  * Choosing photographs to go with a message, a reply or a new topic.
@@ -56,7 +57,6 @@ export function PhotoPicker({
   /** For pictures pasted into the text beside it. */
   ref?: Ref<PhotoTarget>;
 }) {
-  const input = useRef<HTMLInputElement | null>(null);
   const slotsId = useId();
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -72,11 +72,12 @@ export function PhotoPicker({
   }
 
   useImperativeHandle(ref, () => ({ add }));
+  const picker = usePhotoPicker({ remaining, disabled, add, onError: setProblem });
 
   return (
     <>
       <input
-        ref={input}
+        ref={picker.input}
         type="file"
         accept="image/*"
         multiple={remaining > 1}
@@ -84,19 +85,12 @@ export function PhotoPicker({
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
-        onChange={(event) => {
-          const { photos, overflow } = photosFromLibrary(event.target.files, remaining);
-          if (photos.length) add(photos, overflow);
-          // So the same photograph can be chosen again after being taken back.
-          event.target.value = '';
-        }}
+        onChange={picker.onChange}
       />
       <button
         type="button"
-        disabled={disabled || full}
-        onClick={() => {
-          input.current?.click();
-        }}
+        disabled={disabled || full || picker.picking}
+        onClick={picker.open}
         aria-label={full ? `${MAX_ATTACHMENTS} photographs is the most` : addLabel}
         aria-describedby={full ? undefined : slotsId}
         title={full ? `${MAX_ATTACHMENTS} photographs is the most` : addLabel}

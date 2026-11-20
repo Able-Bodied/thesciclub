@@ -1,8 +1,9 @@
 import { ImagePlus } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
-import { attachmentProblem, photosFromLibrary } from '@/lib/chat/attachments';
+import { useEffect, useId, useState } from 'react';
+import { attachmentProblem } from '@/lib/chat/attachments';
 import { MAX_MORE_PHOTOS, type MorePhotoChange } from '@/lib/events';
 import { usePhotoUrl } from '@/lib/photos';
+import { usePhotoPicker } from '@/lib/use-photo-picker';
 
 /**
  * The event form's other pictures (the owner, 2026-10-31), under the cover and
@@ -31,7 +32,6 @@ export function MorePicturesField({
   hintClassName: string;
   fieldClassName: string;
 }) {
-  const input = useRef<HTMLInputElement | null>(null);
   const slotsId = useId();
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -52,13 +52,14 @@ export function MorePicturesField({
       })),
     ]);
   }
+  const picker = usePhotoPicker({ remaining, add, onError: setProblem });
 
   return (
     <>
       <p className={labelClassName}>{label}</p>
       <p className={hintClassName}>{hint}</p>
       <input
-        ref={input}
+        ref={picker.input}
         type="file"
         accept="image/*"
         multiple={remaining > 1}
@@ -66,11 +67,7 @@ export function MorePicturesField({
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
-        onChange={(e) => {
-          const { photos, overflow } = photosFromLibrary(e.target.files, remaining);
-          add(photos, overflow);
-          e.target.value = '';
-        }}
+        onChange={picker.onChange}
       />
 
       {value.length > 0 ? (
@@ -96,7 +93,8 @@ export function MorePicturesField({
       {remaining > 0 ? (
         <button
           type="button"
-          onClick={() => input.current?.click()}
+          disabled={picker.picking}
+          onClick={picker.open}
           aria-label={addLabel}
           aria-describedby={slotsId}
           className="mt-2 inline-flex min-h-[44px] items-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint"

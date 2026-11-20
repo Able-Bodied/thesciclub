@@ -16,7 +16,6 @@ import {
   attachmentProblem,
   deleteAttachments,
   MAX_ATTACHMENTS,
-  photosFromLibrary,
   uploadAttachments,
   useSmallCopies,
 } from '@/lib/chat/attachments';
@@ -27,6 +26,7 @@ import type { MentionScope } from '@/lib/mentions';
 import { pastedImages } from '@/lib/paste-photos';
 import { noteSent } from '@/lib/push/notifications';
 import { useDraftMedia } from '@/lib/use-draft-media';
+import { usePhotoPicker } from '@/lib/use-photo-picker';
 import { cn } from '@/lib/utils';
 import {
   type ComposerEditing,
@@ -175,7 +175,6 @@ export function PostComposer({
   const rich = useRef<RichEditorHandle | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
   const section = useRef<HTMLElement | null>(null);
-  const picker = useRef<HTMLInputElement | null>(null);
   const linkField = useRef<HTMLInputElement | null>(null);
   // Where the caret goes in the Markdown box once the new words are drawn.
   const caretTo = useRef<{ start: number; end: number } | null>(null);
@@ -399,6 +398,13 @@ export function PostComposer({
     caretTo.current = { start: before.length + middle.length, end: before.length + middle.length };
     change(next);
   }
+
+  const picker = usePhotoPicker({
+    remaining,
+    disabled: sending || loadingPhotos,
+    add: putPhotos,
+    onError: setPhotoProblem,
+  });
 
   function switchMode() {
     const next = shown === 'rich' ? 'markdown' : 'rich';
@@ -809,13 +815,11 @@ export function PostComposer({
       <div className="flex items-center gap-1 border-line border-t px-2 py-2">
         <button
           type="button"
-          disabled={sending || loadingPhotos || full}
+          disabled={sending || loadingPhotos || full || picker.picking}
           onMouseDown={(event) => {
             event.preventDefault();
           }}
-          onClick={() => {
-            picker.current?.click();
-          }}
+          onClick={picker.open}
           title={full ? `${MAX_ATTACHMENTS} photographs is the most` : 'Add a photograph'}
           aria-label={full ? undefined : 'Photo'}
           aria-describedby={full ? undefined : `${id}-photo-slots`}
@@ -830,7 +834,7 @@ export function PostComposer({
           ) : null}
         </button>
         <input
-          ref={picker}
+          ref={picker.input}
           type="file"
           accept="image/*"
           multiple={remaining > 1}
@@ -838,11 +842,7 @@ export function PostComposer({
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
-          onChange={(event) => {
-            const { photos, overflow } = photosFromLibrary(event.target.files, remaining);
-            event.target.value = '';
-            if (photos.length) putPhotos(photos, overflow);
-          }}
+          onChange={picker.onChange}
         />
         <button
           type="button"
