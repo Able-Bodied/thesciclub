@@ -2,6 +2,7 @@ import { forgetPartnerTitles } from '@/lib/club-partners';
 import { describeError } from '@/lib/describe-error';
 import { setInvitesMentor } from '@/lib/organization-mentors';
 import { addedButNotSent, SEND_FAILED, sendInvite } from '@/lib/send-invite';
+import type { StrikeRule } from '@/lib/strike-rules';
 import { getSupabase } from '@/lib/supabase';
 import { memberType } from '@/types/domain';
 
@@ -891,6 +892,8 @@ export function canRevoke(invite: AdminInvite): boolean {
 export interface Strike {
   id: string;
   memberId: string;
+  /** Which rule (strike-rules.ts), or null for one from before rules. */
+  rule: string | null;
   reason: string;
   issuedAt: string;
   issuedByName: string | null;
@@ -903,6 +906,7 @@ export interface Strike {
 interface StrikeRow {
   id: string;
   member_id: string;
+  rule?: string | null;
   reason: string;
   issued_at: string;
   issued_by_name: string | null;
@@ -915,6 +919,7 @@ function toStrike(row: StrikeRow): Strike {
   return {
     id: row.id,
     memberId: row.member_id,
+    rule: row.rule ?? null,
     reason: row.reason,
     issuedAt: row.issued_at,
     issuedByName: row.issued_by_name,
@@ -946,6 +951,7 @@ export async function fetchStrikes(): Promise<
 export async function addStrike(
   target: string,
   reason: string,
+  rule: StrikeRule,
 ): Promise<{
   ok: boolean;
   error?: string;
@@ -956,6 +962,7 @@ export async function addStrike(
   const result = await getSupabase().rpc('admin_strike_member', {
     target,
     strike_reason: reason,
+    strike_rule: rule,
   });
   if (result.error)
     return { ok: false, error: describeError(result.error, 'The strike was not added.') };
