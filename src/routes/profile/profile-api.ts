@@ -121,7 +121,7 @@ export async function loadAnswers({
   return answersFrom((result.data ?? {}) as Record<string, unknown>);
 }
 
-function answersFrom(row: Record<string, unknown>): {
+export function answersFrom(row: Record<string, unknown>): {
   ok: true;
   answers: Answers;
   declined: Set<string>;
