@@ -623,6 +623,7 @@ export default function AdminPage() {
                     )}
                   >
                     <OrganizationsSection
+                      memberId={account.userId}
                       onChange={() => {
                         setOrganizationRevision((value) => value + 1);
                       }}

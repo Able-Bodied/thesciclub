@@ -8,6 +8,7 @@ import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { EVENTS_ADDRESS } from '@/lib/calendar-invites';
+import { memberDraftKey } from '@/lib/chat/drafts';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
 import { fetchEventVisibility, setEventVisibility } from '@/lib/event-audience';
@@ -25,11 +26,13 @@ import {
   setEventPostalCode,
   useEvents,
 } from '@/lib/events';
+import { useFormDraft } from '@/lib/form-draft';
 import { useMemberOrganizations } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { OrganizationEditor } from '@/routes/admin/organization-editor';
+import { DraftStatus } from '@/routes/chat/draft-status';
 import {
   type AudienceChoice,
   AudienceField,
@@ -153,7 +156,8 @@ export default function EventFormPage() {
     !id && !mayAdd ? null : (
       <EventForm
         // A different event is a different form, not this one's state carried over.
-        key={existing?.id ?? 'new'}
+        key={`${memberId}:${existing?.id ?? 'new'}`}
+        draftKey={existing ? undefined : memberDraftKey(memberId, 'new-event')}
         hidden={addingOrganization}
         top={kindToggle}
         eventId={existing?.id ?? null}
@@ -209,6 +213,8 @@ export default function EventFormPage() {
               </p>
             ) : (
               <OrganizationEditor
+                key={memberId}
+                draftKey={memberDraftKey(memberId, 'new-organization')}
                 organization={null}
                 administrator={account.isAdmin}
                 onCancel={() => {
@@ -250,6 +256,7 @@ const HINT = 'mt-1 text-[0.71875rem] text-grey leading-[1.45]';
 
 function EventForm({
   eventId,
+  draftKey,
   initial,
   initialCover,
   initialMore,
@@ -275,6 +282,7 @@ function EventForm({
    */
   imported: { changed: string[]; calendar: Record<string, unknown>; timezone: string } | null;
   eventId: string | null;
+  draftKey: string | undefined;
   initial: EventDraft;
   /** The picture the event has, and its words, before anything is changed. */
   initialCover: { path: string | null; alt: string };
@@ -294,7 +302,6 @@ function EventForm({
 }) {
   const navigate = useNavigate();
   const announce = useAnnounce();
-  const [draft, setDraft] = useState<EventDraft>(initial);
   const [cover, setCover] = useState<CoverChange>({ kind: 'keep', ...initialCover });
   const [more, setMore] = useState<MorePhotoChange[]>(
     initialMore.map((photo) => ({ kind: 'keep', ...photo })),
@@ -306,7 +313,18 @@ function EventForm({
     organizations: initialAudience === 'followers' && initial.host ? [initial.host] : [],
     people: [],
   };
-  const [audience, setAudience] = useState<AudienceChoice>(startingAudience);
+  const {
+    value: { fields: draft, audience, stateChosen },
+    setValue: setForm,
+    storage,
+    restored,
+    discard,
+    finish,
+  } = useFormDraft(draftKey, () => ({
+    fields: initial,
+    audience: startingAudience,
+    stateChosen: false,
+  }));
   const [initialChoice, setInitialChoice] = useState<AudienceChoice>(startingAudience);
   // Which groups, organizations or people it is for, read for the organizer who changes it.
   useEffect(() => {
@@ -325,12 +343,12 @@ function EventForm({
         people: (read.invitees ?? []).map((m) => ({ ...m, photoAlt: null })),
       };
       setInitialChoice(loaded);
-      setAudience(loaded);
+      setForm((current) => ({ ...current, audience: loaded }));
     });
     return () => {
       cancelled = true;
     };
-  }, [eventId, initialAudience, initial.host]);
+  }, [eventId, initialAudience, initial.host, setForm]);
   // A picture pasted into the description becomes the cover (lib/paste-photos.ts).
   const coverTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
@@ -345,13 +363,17 @@ function EventForm({
   const startReading = readTime(draft.startTime);
   const endReading = readTime(draft.endTime);
 
-  const [stateChosen, setStateChosen] = useState(false);
   const directory = useOrganizations().organizations;
   const stateOfHost = (id: string) => directory.find((o) => o.id === id)?.state ?? null;
 
   function set<K extends keyof EventDraft>(key: K, value: EventDraft[K]) {
-    setDraft((current) => ({ ...current, [key]: value }));
+    setForm((current) => ({ ...current, fields: { ...current.fields, [key]: value } }));
     // A failure is about what was sent; once the form changes it no longer is.
+    setFailure(null);
+  }
+
+  function chooseState(state: string) {
+    setForm((current) => ({ ...current, stateChosen: true, fields: { ...current.fields, state } }));
     setFailure(null);
   }
 
@@ -400,6 +422,7 @@ function EventForm({
         setFailure(result.error);
         return;
       }
+      finish();
       // The picture after the event, because it is filed under the event's
       // id. The event is saved either way; a picture that did not go up
       // reopens this form on the saved event, saying so, rather than leaving
@@ -509,6 +532,24 @@ function EventForm({
           {isNew ? 'It goes on the calendar as soon as you add it. ' : ''}
           Who can see it is chosen below.
         </p>
+        {storage ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3">
+            <DraftStatus storage={storage} restored={restored} />
+            <button
+              type="button"
+              disabled={saving}
+              className="min-h-11 font-semibold text-[0.8125rem] text-emphasis underline disabled:opacity-50"
+              onClick={() => {
+                discard();
+                setCover({ kind: 'keep', ...initialCover });
+                setMore([]);
+                setFailure(null);
+              }}
+            >
+              Discard draft
+            </button>
+          </div>
+        ) : null}
         {/* The other way in (20261022220000): an invitation from the
             organization's own calendar. */}
         {isNew ? (
@@ -677,8 +718,7 @@ function EventForm({
             set('city', found.city.slice(0, CITY_MAX));
             if (found.postalCode) set('postalCode', found.postalCode);
             // A picked place's state is a choice: the host no longer moves it.
-            setStateChosen(true);
-            set('state', found.state);
+            chooseState(found.state);
           }}
           placeholder={draft.format === 'online' ? 'On Zoom' : 'Lakeside Park, 666 Bellevue Ave'}
           className={FIELD}
@@ -760,8 +800,7 @@ function EventForm({
           id="event-state"
           value={draft.state}
           onChange={(e) => {
-            setStateChosen(true);
-            set('state', e.target.value);
+            chooseState(e.target.value);
           }}
           aria-describedby="event-state-hint"
           className={FIELD}
@@ -846,7 +885,7 @@ function EventForm({
         <AudienceField
           value={chosenAudience}
           onChange={(next) => {
-            setAudience(next);
+            setForm((current) => ({ ...current, audience: next }));
             setFailure(null);
           }}
           organizations={audienceOrganizations}
