@@ -16,7 +16,7 @@ final class PhotoSelectionPlugin: CAPPlugin, CAPBridgedPlugin, PHPickerViewContr
     UIAdaptivePresentationControllerDelegate {
     let identifier = "PhotoSelectionPlugin"
     let jsName = "PhotoSelection"
-    let pluginMethods = [
+    let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "pick", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "release", returnType: CAPPluginReturnPromise)
     ]
