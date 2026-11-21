@@ -145,7 +145,11 @@ export function ProfileCard({
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
-            to={ask.kind === 'photo' ? '/profile/details' : `/profile?screen=${ask.screen}`}
+            to={
+              ask.kind === 'photo'
+                ? '/profile/details?part=photo&only=1'
+                : `/profile?screen=${ask.screen}`
+            }
             state={{ oneScreen: true }}
             className="flex min-h-11 items-center justify-center rounded-[13px] bg-action px-4 font-bold font-head text-[0.875rem] text-white hover:bg-action-hi"
           >

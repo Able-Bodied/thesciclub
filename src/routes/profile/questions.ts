@@ -664,15 +664,18 @@ export function answerInWords(
 }
 
 /**
- * The first screen with a question that applies and is neither answered nor
- * declined, or null when every one is dealt with — where "Carry on" goes.
+ * The first screen (from `from` on) with a question that applies and is neither
+ * answered nor declined, or null when every one is dealt with — where "Next" goes.
  */
 export function firstOpenScreen(
   answers: Answers,
   declined: ReadonlySet<string> = EMPTY_DECLINED,
+  from = 0,
 ): number | null {
-  const index = SCREENS.findIndex((screen) =>
-    questionsOn(screen, answers).some((q) => !q.uncounted && !isAnswered(q, answers, declined)),
+  const index = SCREENS.findIndex(
+    (screen, at) =>
+      at >= from &&
+      questionsOn(screen, answers).some((q) => !q.uncounted && !isAnswered(q, answers, declined)),
   );
   return index === -1 ? null : index;
 }

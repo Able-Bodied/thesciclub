@@ -180,32 +180,34 @@ export async function loadDetails({
     row = result.data;
   }
   if (!row) return { ok: false, error: 'Your profile could not be found.' };
+  return { ok: true, details: detailsFrom(row) };
+}
+
+/** A members row, or the part of one admin_member_profiles sends, as details. */
+export function detailsFrom(row: Record<string, unknown>): MemberDetails {
   return {
-    ok: true,
-    details: {
-      displayName: asText(row.display_name),
-      birthDate: asText(row.birth_date),
-      exactLevel: asNullableText(row.exact_level) as ExactLevel | null,
-      // Somebody who joined before the kind was asked starts from their level.
-      injuryType:
-        injuryTypeOf(row.injury_type) ??
-        typeForLevel(asNullableText(row.exact_level) as ExactLevel | null),
-      conditionName: asNullableText(row.condition_name) ?? '',
-      completeness: (asNullableText(row.completeness) ?? 'Do not know') as Completeness,
-      injuryDate: asNullableText(row.injury_date),
-      injuryDatePrecision: asNullableText(row.injury_date_precision) as DatePrecision | null,
-      showInjuryDate: row.show_injury_date === true,
-      city: asNullableText(row.city),
-      state: asText(row.state),
-      zip: asNullableText(row.zip) ?? '',
-      photoPath: asNullableText(row.photo_path),
-      photoAlt: asNullableText(row.photo_alt),
-      showInBrowse: row.show_in_browse !== false,
-      showOnMap: row.show_on_map !== false,
-      declined: Array.isArray(row.declined)
-        ? row.declined.filter((v): v is string => typeof v === 'string')
-        : [],
-    },
+    displayName: asText(row.display_name),
+    birthDate: asText(row.birth_date),
+    exactLevel: asNullableText(row.exact_level) as ExactLevel | null,
+    // Somebody who joined before the kind was asked starts from their level.
+    injuryType:
+      injuryTypeOf(row.injury_type) ??
+      typeForLevel(asNullableText(row.exact_level) as ExactLevel | null),
+    conditionName: asNullableText(row.condition_name) ?? '',
+    completeness: (asNullableText(row.completeness) ?? 'Do not know') as Completeness,
+    injuryDate: asNullableText(row.injury_date),
+    injuryDatePrecision: asNullableText(row.injury_date_precision) as DatePrecision | null,
+    showInjuryDate: row.show_injury_date === true,
+    city: asNullableText(row.city),
+    state: asText(row.state),
+    zip: asNullableText(row.zip) ?? '',
+    photoPath: asNullableText(row.photo_path),
+    photoAlt: asNullableText(row.photo_alt),
+    showInBrowse: row.show_in_browse !== false,
+    showOnMap: row.show_on_map !== false,
+    declined: Array.isArray(row.declined)
+      ? row.declined.filter((v): v is string => typeof v === 'string')
+      : [],
   };
 }
 

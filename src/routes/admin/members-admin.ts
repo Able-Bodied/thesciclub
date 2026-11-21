@@ -4,6 +4,9 @@ import { setInvitesMentor } from '@/lib/organization-mentors';
 import { addedButNotSent, SEND_FAILED, sendInvite } from '@/lib/send-invite';
 import type { StrikeRule } from '@/lib/strike-rules';
 import { getSupabase } from '@/lib/supabase';
+import { detailsFrom } from '@/routes/profile/details-api';
+import { answersFrom } from '@/routes/profile/profile-api';
+import { nextStep, profilePercent, stepAction } from '@/routes/profile/progress';
 import { memberType } from '@/types/domain';
 
 /**
@@ -1029,4 +1032,36 @@ export async function fetchJoinTally(): Promise<
       })),
     })),
   };
+}
+
+/** How far a member's profile is: what their own Me card says. */
+export interface ProfileProgress {
+  percent: number;
+  /** "Add a profile photo"; null once nothing is left. */
+  next: string | null;
+}
+
+/**
+ * Every joined member's profile percentage and next step (20261115090000), as
+ * the app works them out for the member themselves.
+ */
+export async function fetchProfileProgress(): Promise<
+  { ok: true; byMember: Map<string, ProfileProgress> } | { ok: false; error: string }
+> {
+  const result = await getSupabase().rpc('admin_member_profiles');
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not read the profiles.') };
+  const rows = (result.data ?? []) as { id: string; profile: Record<string, unknown> | null }[];
+  const byMember = new Map<string, ProfileProgress>();
+  for (const row of rows) {
+    const profile = row.profile ?? {};
+    const details = detailsFrom(profile);
+    const { answers, declined } = answersFrom(profile);
+    const step = nextStep(details, answers, declined);
+    byMember.set(row.id, {
+      percent: profilePercent(details, answers, declined),
+      next: step ? stepAction(step) : null,
+    });
+  }
+  return { ok: true, byMember };
 }

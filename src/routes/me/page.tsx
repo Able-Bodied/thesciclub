@@ -36,14 +36,10 @@ import { SignInSection } from '@/routes/me/sign-in-section';
 import { StandingCard } from '@/routes/me/standing';
 import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
 import { MeStats } from '@/routes/me/stats';
-import {
-  detailsPercent,
-  listInWords,
-  loadDetails,
-  missingDetails,
-} from '@/routes/profile/details-api';
+import { loadDetails, type MemberDetails } from '@/routes/profile/details-api';
 import { loadAnswers } from '@/routes/profile/profile-api';
-import { progressOf } from '@/routes/profile/questions';
+import { nextStep, profilePercent, stepAction, stepHref } from '@/routes/profile/progress';
+import type { Answers } from '@/routes/profile/questions';
 import type { RsvpStatus } from '@/types/domain';
 
 /**
@@ -114,6 +110,41 @@ function ProfileLink({
     </Link>
   );
 }
+/**
+ * The profile card while it is unfinished (the owner, 2026-11-15): the same
+ * card, saying the next step and opening it, with Edit profile for the list.
+ * The title is stretched over the card, so the card is one target and Edit
+ * profile a second, separate one.
+ */
+function ProfileNextCard({ to, next, percent }: { to: string; next: string; percent: number }) {
+  const descriptionId = useId();
+  return (
+    <div className="relative flex min-h-[64px] items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 transition-colors hover:bg-tint">
+      <ProgressRing percent={percent} />
+      <span className="min-w-0 flex-1">
+        <Link
+          to={to}
+          aria-describedby={descriptionId}
+          className="block font-extrabold font-head text-[0.96875rem] text-ink after:absolute after:inset-0 after:rounded-[14px]"
+        >
+          Complete your profile
+        </Link>
+        <span id={descriptionId} className="mt-1 block text-[0.8125rem] text-ink2 leading-[1.5]">
+          Next: {next}
+        </span>
+        <Link
+          to="/profile/answers"
+          data-target="small"
+          className="relative z-10 mt-1.5 inline-block font-semibold text-[0.8125rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
+        >
+          Edit profile
+        </Link>
+      </span>
+      <ChevronRight aria-hidden="true" className="h-5 w-5 flex-none text-emphasis" />
+    </div>
+  );
+}
+
 /** A ring rather than a bar: it sits beside a line of text, not under one. */
 function ProgressRing({ percent }: { percent: number }) {
   // r and the stroke decide how much room is left *inside* the ring, which is
@@ -178,11 +209,10 @@ export default function MePage() {
   const [changedUsername, setChangedUsername] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [percent, setPercent] = useState<number | null>(null);
-  const [missing, setMissing] = useState<string[]>([]);
-  // Null until the details load, so the badge does not flash 0% at somebody
-  // whose profile is finished.
-  const [detailsDone, setDetailsDone] = useState<number | null>(null);
+  // Null until both load, so the ring does not flash 0% at somebody whose
+  // profile is finished.
+  const [survey, setSurvey] = useState<{ answers: Answers; declined: Set<string> } | null>(null);
+  const [details, setDetails] = useState<MemberDetails | null>(null);
   // Null until the details load, so the switch is not drawn in the wrong
   // position for a moment and then corrected under the reader's eye.
   const [showInBrowse, setShowInBrowse] = useState<boolean | null>(null);
@@ -224,7 +254,7 @@ export default function MePage() {
       // With the declines, so "rather not say" counts towards the ring the way
       // an answer does. Without them somebody who has decided is shown an
       // unfinished profile for ever — see 20260917030000.
-      if (result.ok) setPercent(progressOf(result.answers, result.declined).percent);
+      if (result.ok) setSurvey({ answers: result.answers, declined: result.declined });
     });
     if (userId && !strikesKept.fresh(userId)) {
       const landed = strikesKept.start(userId);
@@ -237,13 +267,17 @@ export default function MePage() {
     }
     void loadDetails().then((result) => {
       if (result.ok) {
-        setMissing(missingDetails(result.details));
-        setDetailsDone(detailsPercent(result.details));
+        setDetails(result.details);
         setShowInBrowse(result.details.showInBrowse);
         setShowOnMap(result.details.showOnMap);
       }
     });
   }, [userId, strikesKept]);
+
+  // One card for the details and the survey: their average, once both load.
+  const profileDone =
+    survey && details ? profilePercent(details, survey.answers, survey.declined) : null;
+  const next = survey && details ? nextStep(details, survey.answers, survey.declined) : null;
 
   const feedbackRoom = appFeedbackRoom(useChatRooms().rooms);
   // An org admin makes QR codes for their organization (20261028960000).
@@ -310,22 +344,20 @@ export default function MePage() {
               <section aria-labelledby="me-profile-heading" className="min-w-0">
                 <SectionHeading id="me-profile-heading">Your profile</SectionHeading>
                 <div className="space-y-2.5">
-                  <ProfileLink
-                    to={percent ? '/profile/answers' : '/profile'}
-                    title={percent === 100 ? 'Profile complete' : 'Complete your profile'}
-                    description="Your interests, experience and what you want to share."
-                    percent={percent}
-                  />
-                  <ProfileLink
-                    to="/profile/details"
-                    title="Your details"
-                    description={
-                      missing.length > 0
-                        ? `Still to add: ${listInWords(missing)}.`
-                        : 'Your name, photo, injury and location.'
-                    }
-                    percent={detailsDone}
-                  />
+                  {next && profileDone !== null ? (
+                    <ProfileNextCard
+                      to={stepHref(next, true)}
+                      next={stepAction(next)}
+                      percent={profileDone}
+                    />
+                  ) : (
+                    <ProfileLink
+                      to="/profile/answers"
+                      title={profileDone === 100 ? 'Profile complete' : 'Complete your profile'}
+                      description="Your name, photo, injury, location, interests and experience."
+                      percent={profileDone}
+                    />
+                  )}
                   <ProfileLink
                     to="/me/posts"
                     title="My posts"

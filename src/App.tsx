@@ -86,6 +86,7 @@ const AboutProfilePage = lazy(() => import('@/routes/about/profile'));
 const ProfileAnswersPage = lazy(() => import('@/routes/profile/answers'));
 const ProfileDetailsPage = lazy(() => import('@/routes/profile/details'));
 const ProfileSurveyPage = lazy(() => import('@/routes/profile/page'));
+const ProfileNextPage = lazy(() => import('@/routes/profile/next'));
 const RequestInvitePage = lazy(() => import('@/routes/request-invite/page'));
 const ResetPasswordPage = lazy(() => import('@/routes/reset-password/page'));
 
@@ -586,6 +587,7 @@ function AppRoutes() {
         />
         {/* Outside the shell: its own footer, no tab bar. */}
         <Route path="/profile" element={<ProfileSurveyPage />} />
+        <Route path="/profile/next" element={<ProfileNextPage />} />
         {/* Development only: signs in the accounts the local seed makes. In a
           build the condition is false, so the route and the page itself are
           dropped from the bundle. See the page's file header. */}

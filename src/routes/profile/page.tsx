@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
+import { Check, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
@@ -9,8 +9,10 @@ import { describeThrown } from '@/lib/describe-error';
 import { MEMBER_LIST_ITEM_MAX, memberTextMax } from '@/lib/member-limits';
 import { signInDoor } from '@/lib/sign-in-destination';
 import { cn } from '@/lib/utils';
+import { loadDetails, type MemberDetails } from '@/routes/profile/details-api';
 import { OrganizationsPicker } from '@/routes/profile/organizations-picker';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
+import { profilePercent, stepBeside, stepHref, stepPosition } from '@/routes/profile/progress';
 import {
   type Answer,
   type Answers,
@@ -18,14 +20,13 @@ import {
   canDecline,
   firstOpenScreen,
   isAnswered,
-  progressOf,
   type Question,
   questionsOn,
   SCREENS,
-  screensThatApply,
   stepFrom,
   toggleMany,
 } from '@/routes/profile/questions';
+import { StepTop } from '@/routes/profile/step-top';
 
 /**
  * The profile survey.
@@ -55,6 +56,10 @@ export default function ProfileSurveyPage() {
   const resume = params.has('resume');
   // From Home's card: the one screen it asked about, then back there.
   const oneScreen = Boolean((location.state as { oneScreen?: boolean } | null)?.oneScreen);
+  // From Your profile (the owner, 2026-11-12): Next walks the open screens only,
+  // skipping answered ones; Change is that one screen, then back.
+  const walk = params.has('walk');
+  const only = params.has('only');
   const exitTo = oneScreen ? '/home' : fromAnswers ? '/profile/answers' : '/me';
   const [index, setIndex] = useState(() => screenFrom(params.get('screen')));
   const [answers, setAnswers] = useState<Answers>({});
@@ -65,9 +70,14 @@ export default function ProfileSurveyPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // For the one percentage and the way back to the details.
+  const [details, setDetails] = useState<MemberDetails | null>(null);
 
   useEffect(() => {
     if (account.status !== 'member') return;
+    void loadDetails().then((result) => {
+      if (result.ok) setDetails(result.details);
+    });
     // Saved over screen by screen: the row as it is now.
     void loadAnswers({ fresh: true }).then((result) => {
       if (result.ok) {
@@ -96,8 +106,13 @@ export default function ProfileSurveyPage() {
           // Forward steps over a screen with nothing to ask (stepFrom), so
           // every way onward — Continue, Skip, Rather not say, an answer that
           // moves on by itself — lands on one that has.
-          const target = next >= SCREENS.length ? next : stepFrom(next, 1, answers);
-          if (target >= SCREENS.length || oneScreen) {
+          const target =
+            next >= SCREENS.length
+              ? next
+              : walk
+                ? (firstOpenScreen(answers, declined, next) ?? SCREENS.length)
+                : stepFrom(next, 1, answers);
+          if (target >= SCREENS.length || oneScreen || only) {
             announce('Your answers are saved.');
             void navigate(exitTo, { replace: true });
             return;
@@ -112,7 +127,7 @@ export default function ProfileSurveyPage() {
           setSaving(false);
         });
     },
-    [screen, account.userId, answers, navigate, announce, exitTo, oneScreen],
+    [screen, account.userId, answers, declined, navigate, announce, exitTo, oneScreen, walk, only],
   );
 
   /**
@@ -219,14 +234,18 @@ export default function ProfileSurveyPage() {
     return (
       <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
     );
+  // A reminder or an old link: where the profile was left, details included.
+  if (resume) return <Navigate to={`/profile/next${notificationParam(location.search)}`} replace />;
   if (!screen) return <Navigate to="/me" replace />;
 
   const questions = questionsOn(screen, answers);
-  const progress = progressOf(answers, declined);
-  // Counted over the screens this member will see, not all of them.
-  const shown = screensThatApply(answers);
-  const position = shown.filter((i) => i <= index).length;
-  const isLast = stepFrom(index + 1, 1, answers) >= SCREENS.length;
+  const here = { kind: 'survey', screen: index } as const;
+  const { position, total } = stepPosition(here, answers);
+  const before = only ? null : stepBeside(here, -1, answers);
+  const percent = details ? profilePercent(details, answers, declined) : null;
+  const isLast = walk
+    ? firstOpenScreen(answers, declined, index + 1) === null
+    : stepFrom(index + 1, 1, answers) >= SCREENS.length;
   const declinable = questions.filter((q) => canDecline(q.key));
   const alreadyDeclined = declinable.length > 0 && declinable.every((q) => declined.has(q.key));
 
@@ -255,53 +274,31 @@ export default function ProfileSurveyPage() {
         <AppNav />
       </div>
       <main className="mx-auto flex min-h-0 w-full max-w-[520px] flex-1 flex-col">
-        <div className="flex-none px-[18px] pt-4">
-          <div className="flex min-h-[30px] items-center justify-between gap-3">
-            {index > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setIndex(stepFrom(index - 1, -1, answers));
-                }}
-                className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </button>
-            ) : (
-              <span />
-            )}
-            {/* The way out, on every screen and not only the first.
-              
-              Twelve screens with Back was the only exit, so somebody eight
-              questions in who wanted to stop had to walk back through all of
-              them. It commits first — `commit` past the last screen is the same
-              path Finish takes — so leaving keeps the answers on the screen
-              you are looking at, which pressing Back never did. */}
-            <button
-              type="button"
-              disabled={saving || loading}
-              onClick={() => {
-                commit(SCREENS.length);
-              }}
-              className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
-            >
-              {fromAnswers ? 'Finish' : 'Finish later'}
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
-            <div
-              className="h-full rounded-full bg-emphasis transition-[width] duration-300"
-              style={{ width: `${(position / shown.length) * 100}%` }}
-            />
-          </div>
-          {/* Under the bar it describes, rather than beside the buttons, which
-            now hold the two ways out. */}
-          <p className="mt-1.5 text-right text-[0.78125rem] text-grey">
-            {position} of {shown.length} · {progress.percent}% complete
-          </p>
-        </div>
+        {/* The way out is on every screen: it saves this one first. */}
+        <StepTop
+          onBack={
+            before
+              ? () => {
+                  if (before.kind === 'survey') {
+                    setIndex(before.screen);
+                    return;
+                  }
+                  // Back into the details: this screen's answers go first.
+                  if (account.userId)
+                    void saveAnswers(account.userId, screen.keys, answers).catch(() => undefined);
+                  void navigate(stepHref(before, walk));
+                }
+              : null
+          }
+          doneLabel={walk ? 'Done for now' : fromAnswers ? 'Finish' : 'Finish later'}
+          onDone={() => {
+            commit(SCREENS.length);
+          }}
+          disabled={saving || loading}
+          position={position}
+          total={total}
+          percent={percent}
+        />
 
         <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">
           <h1 className="font-extrabold font-display text-[1.4375rem] text-ink leading-tight tracking-[-0.01em]">
@@ -360,7 +357,15 @@ export default function ProfileSurveyPage() {
             }}
             className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? 'Finish' : 'Continue'}
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : only ? (
+              'Save'
+            ) : isLast ? (
+              'Finish'
+            ) : (
+              'Continue'
+            )}
           </button>
           {/* Two different things, and the difference is the point.
 
@@ -632,6 +637,12 @@ function QuestionBlock({
       ) : null}
     </section>
   );
+}
+
+/** A pressed notification's `?n=`, kept through the redirect so it is marked read. */
+function notificationParam(search: string): string {
+  const n = new URLSearchParams(search).get('n');
+  return n === null ? '' : `?n=${encodeURIComponent(n)}`;
 }
 
 /** The screen `?screen=` names, or the first when it names none. */

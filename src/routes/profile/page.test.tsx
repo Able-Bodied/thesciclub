@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
@@ -28,6 +28,10 @@ vi.mock('@/components/app-nav', () => ({
     </nav>
   ),
 }));
+// The details count toward the percentage; none here, so it is the answers'.
+vi.mock('@/routes/profile/details-api', () => ({
+  loadDetails: () => Promise.resolve({ ok: false as const, error: 'none' }),
+}));
 vi.mock('@/routes/profile/organizations-picker', () => ({
   OrganizationsPicker: () => <p>The organizations</p>,
 }));
@@ -47,6 +51,7 @@ vi.mock('@/routes/profile/profile-api', () => ({
   },
 }));
 
+const { DETAIL_PARTS } = await import('@/routes/profile/progress');
 const { default: ProfileSurveyPage } = await import('@/routes/profile/page');
 
 function renderSurvey() {
@@ -99,22 +104,43 @@ beforeEach(() => {
 });
 
 // A reminder to finish the profile opens /profile?resume (20261022040000).
+// The owner, 2026-11-12: a reminder goes where the profile was left, details
+// included, and Next walks only what is still open.
 describe('opened from a reminder', () => {
-  it('starts on the first screen with something left to answer', async () => {
-    const first = SCREENS[0];
-    if (!first) throw new Error('no screens');
-    api.declined = new Set(first.keys);
-    const open = firstOpenScreen({}, api.declined);
-    const title = open === null ? undefined : SCREENS[open]?.title;
-    if (!title || open === 0) throw new Error('declining the first screen left it open');
+  it('goes to the next open step, keeping the notification to mark read', async () => {
+    function Next() {
+      return <p>Next step {useLocation().search}</p>;
+    }
     render(
-      <MemoryRouter initialEntries={['/profile?resume']}>
+      <MemoryRouter initialEntries={['/profile?resume&n=profile%3Aprofile']}>
+        <Routes>
+          <Route path="/profile" element={<ProfileSurveyPage />} />
+          <Route path="/profile/next" element={<Next />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Next step ?n=profile%3Aprofile')).toBeInTheDocument();
+  });
+});
+
+describe('walking what is open', () => {
+  it('skips a screen already answered', async () => {
+    api.answers = { bio: 'Rugby on Tuesdays.' };
+    render(
+      <MemoryRouter initialEntries={['/profile?screen=0&walk=1']}>
         <Routes>
           <Route path="/profile" element={<ProfileSurveyPage />} />
         </Routes>
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    await screen.findByRole('heading', { name: SCREENS[0]?.title ?? '' });
+    await userEvent.click(screen.getByRole('button', { name: 'Skip this one' }));
+    const after = firstOpenScreen({ bio: 'Rugby on Tuesdays.' }, new Set(), 1);
+    expect(SCREENS[1]?.title).toBe('Brief bio');
+    expect(after).toBe(2);
+    expect(
+      await screen.findByRole('heading', { name: SCREENS[2]?.title ?? '' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -135,7 +161,10 @@ describe('opened from Your answers', () => {
     renderAt(`/profile?screen=${at('Family')}`);
     expect(await screen.findByRole('heading', { name: 'Family' })).toBeInTheDocument();
     expect(
-      screen.getByText(`${SHOWN.indexOf(at('Family')) + 1} of ${SHOWN.length}`, { exact: false }),
+      screen.getByText(
+        `${DETAIL_PARTS.length + SHOWN.indexOf(at('Family')) + 1} of ${DETAIL_PARTS.length + SHOWN.length}`,
+        { exact: false },
+      ),
     ).toBeInTheDocument();
   });
 
@@ -170,7 +199,11 @@ describe('the profile survey', () => {
   it('starts on the first screen and says where you are', async () => {
     renderSurvey();
     expect(await screen.findByText('About you')).toBeInTheDocument();
-    expect(screen.getByText(`1 of ${SHOWN.length}`, { exact: false })).toBeInTheDocument();
+    expect(
+      screen.getByText(`${DETAIL_PARTS.length + 1} of ${DETAIL_PARTS.length + SHOWN.length}`, {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
   });
 
   describe('the specifics', () => {
@@ -182,7 +215,9 @@ describe('the profile survey', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
       expect(await screen.findByRole('heading', { name: 'The specifics' })).toBeInTheDocument();
       // One more screen than a blank member is shown.
-      expect(screen.getByText(`of ${SHOWN.length + 1}`, { exact: false })).toBeInTheDocument();
+      expect(
+        screen.getByText(`of ${DETAIL_PARTS.length + SHOWN.length + 1}`, { exact: false }),
+      ).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Back' }));
       expect(await screen.findByRole('heading', { name: 'Self-care devices' })).toBeInTheDocument();
     });
