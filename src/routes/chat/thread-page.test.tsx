@@ -589,12 +589,16 @@ describe('a long conversation', () => {
 // a photograph loading is the ResizeObserver firing.
 describe('staying on the newest message while photographs load', () => {
   it('follows the list down as it grows, until the reader scrolls', async () => {
-    let resized: (() => void) | null = null;
+    // The page watches the list's content and its own height: both fire.
+    const observers: (() => void)[] = [];
+    const resized = () => {
+      for (const callback of observers) callback();
+    };
     vi.stubGlobal(
       'ResizeObserver',
       class {
         constructor(callback: () => void) {
-          resized = callback;
+          observers.push(callback);
         }
         observe() {
           // The test calls `resized` itself.
@@ -612,7 +616,7 @@ describe('staying on the newest message while photographs load', () => {
 
     height = 1400;
     act(() => {
-      resized?.();
+      resized();
     });
     expect(box.scrollTop).toBe(1400);
 
@@ -621,7 +625,7 @@ describe('staying on the newest message while photographs load', () => {
     box.scrollTop = 300;
     height = 1800;
     act(() => {
-      resized?.();
+      resized();
     });
     expect(box.scrollTop).toBe(300);
     vi.unstubAllGlobals();
@@ -630,12 +634,16 @@ describe('staying on the newest message while photographs load', () => {
   // The owner, 2026-10-26: on a computer a small scroll up was pulled back
   // down, because it stayed within the slack that takes the hold up again.
   it('leaves a small scroll up where it is, and holds again on the way back down', async () => {
-    let resized: (() => void) | null = null;
+    // The page watches the list's content and its own height: both fire.
+    const observers: (() => void)[] = [];
+    const resized = () => {
+      for (const callback of observers) callback();
+    };
     vi.stubGlobal(
       'ResizeObserver',
       class {
         constructor(callback: () => void) {
-          resized = callback;
+          observers.push(callback);
         }
         observe() {
           // The test calls `resized` itself.
@@ -651,7 +659,7 @@ describe('staying on the newest message while photographs load', () => {
     let height = 1400;
     Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => height });
     act(() => {
-      resized?.();
+      resized();
     });
     expect(box.scrollTop).toBe(1400);
     fireEvent.scroll(box);
@@ -663,7 +671,7 @@ describe('staying on the newest message while photographs load', () => {
     expect(box.scrollTop).toBe(1360);
     height = 1800;
     act(() => {
-      resized?.();
+      resized();
     });
     expect(box.scrollTop).toBe(1360);
 
@@ -673,9 +681,75 @@ describe('staying on the newest message while photographs load', () => {
     fireEvent.scroll(box);
     height = 2200;
     act(() => {
-      resized?.();
+      resized();
     });
     expect(box.scrollTop).toBe(2200);
+    vi.unstubAllGlobals();
+  });
+});
+
+// The owner, 2026-11-20: "every time I type a message I have to scroll to the
+// bottom". The keyboard had made the list shorter, so the reader was no longer
+// at its bottom, and their own message was announced like anybody else's.
+describe('staying with what the reader is writing', () => {
+  it('keeps the bottom when the list gets shorter, and goes down to what the reader sent', async () => {
+    const resized: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resized.push(callback);
+        }
+        observe() {
+          // The test calls `resized` itself.
+        }
+        disconnect() {
+          // Nothing was watched.
+        }
+      },
+    );
+    // A new element each time, or React keeps the render it has.
+    const page = () => (
+      <MemoryRouter initialEntries={['/chat/t/th1']}>
+        <Routes>
+          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    const resize = () => {
+      act(() => {
+        for (const callback of resized) callback();
+      });
+    };
+    db.messages = [message({ id: 'm1' })];
+    const view = render(page());
+    const box = (await screen.findByRole('log')).parentElement;
+    if (!box) throw new Error('The log has no scrolling box around it.');
+    let tall = 600;
+    Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => 2000 });
+    Object.defineProperty(box, 'clientHeight', { configurable: true, get: () => tall });
+    resize();
+
+    // A tap on the list lets go of it; then the keyboard takes half the list.
+    fireEvent.pointerDown(box);
+    box.scrollTop = 1400;
+    tall = 300;
+    resize();
+    expect(box.scrollTop).toBe(2000);
+
+    // Reading further up, somebody else's message is only said to be there.
+    fireEvent.wheel(box);
+    box.scrollTop = 300;
+    db.messages = [...db.messages, message({ id: 'm2' })];
+    view.rerender(page());
+    expect(box.scrollTop).toBe(300);
+    expect(screen.getByRole('button', { name: /New messages/ })).toBeInTheDocument();
+
+    // Their own takes them down to it.
+    db.messages = [...db.messages, message({ id: 'pending:1', authorId: 'me' })];
+    view.rerender(page());
+    expect(box.scrollTop).toBe(2000);
+    expect(screen.queryByRole('button', { name: /New messages/ })).toBeNull();
     vi.unstubAllGlobals();
   });
 });
