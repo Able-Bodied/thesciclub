@@ -70,6 +70,16 @@ reload, and several in a day felt slow and unstable. So:
   Admin › Page speed shows each release's times, and
   .github/workflows/release-speed.yml compares the day's releases each night.
 
+## The admin site (owner, 2026-11-22)
+
+admin.thesciclub.com (admin/, cloudflare/admin/, vite.admin.config.ts) is
+used only by the club's administrators, so it has no test copy: its changes
+go straight to `main`, with the word of the person you are working for, and
+do not wait for the day's release. A push that changes only those files does
+not rebuild the app (.github/workflows/site.yml), so installed apps do not
+reload for it. Two exceptions go the usual way, through `tests`: the screens
+it shares with the app's Admin tab (src/routes/admin/) and database changes.
+
 ## Installed apps must keep updating (owner, 2026-11-21)
 
 The site is on Cloudflare (since 2026-11-20). Installed apps find a new
