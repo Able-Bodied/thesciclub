@@ -1,8 +1,10 @@
 import type { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { Route, Routes, useParams } from 'react-router-dom';
+import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { StatsSection } from '@/routes/admin/stats-section';
 import { getSupabase } from './supabase';
+import { Crashes, Health, Releases, Sent } from './watch';
 
 /**
  * admin.thesciclub.com (the owner, 2026-11-22): the club's stats, speed and server logs on their
@@ -279,9 +281,49 @@ function Dashboard({ name }: { name: string | null }) {
       </header>
       <main className="mx-auto w-full max-w-[960px] px-4 pt-3">
         <AppCheck />
-        <StatsSection />
+        <Views />
       </main>
     </div>
+  );
+}
+
+type View = 'health' | 'stats' | 'crashes' | 'sent' | 'releases';
+const VIEWS: readonly View[] = ['health', 'stats', 'crashes', 'sent', 'releases'];
+
+/** The site's parts: its own (admin/watch.tsx) and the Stats it shares with the app. */
+function Views() {
+  const [view, setView] = useTabParam(VIEWS, 'health', undefined, 'view');
+  return (
+    <>
+      <PageTabs
+        id="admin-site"
+        label="Parts of the admin site"
+        value={view}
+        onChange={setView}
+        tabs={[
+          { value: 'health', label: 'Health' },
+          { value: 'stats', label: 'Stats' },
+          { value: 'crashes', label: 'Crashes' },
+          { value: 'sent', label: 'Sent' },
+          { value: 'releases', label: 'Releases' },
+        ]}
+      />
+      <TabPanel id="admin-site" value={view} className="pt-1 pb-6">
+        {view === 'health' ? (
+          <Health />
+        ) : view === 'stats' ? (
+          <div className="pt-3">
+            <StatsSection />
+          </div>
+        ) : view === 'crashes' ? (
+          <Crashes />
+        ) : view === 'sent' ? (
+          <Sent />
+        ) : (
+          <Releases />
+        )}
+      </TabPanel>
+    </>
   );
 }
 

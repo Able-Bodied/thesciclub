@@ -32,6 +32,12 @@ vi.mock('./supabase', () => ({
 vi.mock('@/routes/admin/stats-section', () => ({
   StatsSection: () => <p>The club’s stats</p>,
 }));
+vi.mock('./watch', () => ({
+  Health: () => <p>The club’s health</p>,
+  Crashes: () => null,
+  Sent: () => null,
+  Releases: () => null,
+}));
 
 beforeEach(() => {
   state.signOut.mockClear();
@@ -56,14 +62,14 @@ describe('the admin site', () => {
       </MemoryRouter>,
     );
     if (admitted) {
-      await screen.findByText('The club’s stats');
+      await screen.findByText('The club’s health');
       expect(state.signOut).not.toHaveBeenCalled();
     } else {
       await screen.findByText('This site is for the club’s administrators only.');
       await waitFor(() => {
         expect(state.signOut).toHaveBeenCalledTimes(1);
       });
-      expect(screen.queryByText('The club’s stats')).toBeNull();
+      expect(screen.queryByText('The club’s health')).toBeNull();
     }
   });
 });
