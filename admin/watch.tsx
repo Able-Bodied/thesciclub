@@ -637,7 +637,7 @@ export function Releases() {
                   </p>
                   <p className="mt-0.5 text-[0.75rem] text-ink2">
                     {s
-                      ? `Opening ${ms(s.opening_p50_ms)} · screens ${ms(s.cards_p50_ms)} · requests ${ms(s.request_p50_ms)} · ${String(s.visits)} visits${s.failed ? ` · ${String(s.failed)} failed` : ''}`
+                      ? `Opening ${ms(s.opening_p50_ms)} · screens ${ms(s.cards_p50_ms)} · requests ${ms(s.request_p50_ms)} · ${String(s.visits)} ${s.visits === 1 ? 'visit' : 'visits'}${s.failed ? ` · ${String(s.failed)} failed` : ''}`
                       : 'No page speed for it yet.'}
                   </p>
                   {r.commits.length > 0 ? (
