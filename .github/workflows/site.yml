@@ -139,7 +139,11 @@ jobs:
   # admin.thesciclub.com is a route on that Worker. Live only: the owner, 2026-11-22, "we don't
   # need a test site for the admin site", so its changes go straight to main.
   admin:
+    # After the app's job, whatever became of it, so its release tag is there for the list of
+    # releases; a failed app deploy still deploys the admin site.
+    needs: deploy
     if: >-
+      always() &&
       github.repository == 'Alfredx48/TheSciClub' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -149,6 +153,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -180,6 +185,9 @@ jobs:
             export VITE_APP_ORIGIN=https://tests.thesciclub.com
           fi
           pnpm vite build --config vite.admin.config.ts
+          # The release the app's job just tagged, then the list of releases.
+          git fetch --quiet --tags origin
+          node admin/releases.mjs dist-admin/releases.json
 
       - name: Deploy
         env:

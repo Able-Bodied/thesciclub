@@ -602,7 +602,8 @@ function ms(value: number | null | undefined): string {
 export function Releases() {
   const list = useRead(async (): Promise<Read<Release[]>> => {
     try {
-      const response = await fetch('/releases');
+      // Written into the site's build from the release tags (admin/releases.mjs).
+      const response = await fetch('/releases.json', { cache: 'no-store' });
       const body = (await response.json()) as Release[] | { error: string };
       return Array.isArray(body) ? { ok: true, value: body } : { ok: false, error: body.error };
     } catch (thrown) {

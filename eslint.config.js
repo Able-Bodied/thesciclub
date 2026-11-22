@@ -11,6 +11,7 @@ export default tseslint.config(
       'dist',
       'dist-native',
       'dist-admin',
+      '**/.wrangler',
       'ios',
       'android',
       'coverage',
