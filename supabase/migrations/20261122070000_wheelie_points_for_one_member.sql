@@ -16,7 +16,7 @@
 -- member_wheelie_points as 20261121080000 left it, but for its ledger line.
 --
 -- Probe: supabase/tests/wheelie-points-for-one-member.sql.
--- Undo: supabase/undo/20261121090000.sql.
+-- Undo: supabase/undo/20261122070000.sql.
 -- ============================================================================
 
 create function private.wheelie_ledger(p_member uuid)

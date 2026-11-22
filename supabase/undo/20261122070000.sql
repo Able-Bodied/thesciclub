@@ -1,4 +1,4 @@
--- Undo 20261121090000: the card works out everybody's points again, and the
+-- Undo 20261122070000: the card works out everybody's points again, and the
 -- one-member ledger goes.
 CREATE OR REPLACE FUNCTION public.member_wheelie_points(p_member uuid)
  RETURNS jsonb
