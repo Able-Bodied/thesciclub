@@ -206,7 +206,7 @@ export default function HomePage() {
     return voteFor(likes, opening.id, memberId);
   }
 
-  function draw(item: FeedItem) {
+  function draw(item: FeedItem, index: number) {
     switch (item.kind) {
       case 'topic':
         return (
@@ -245,6 +245,7 @@ export default function HomePage() {
       case 'photo':
         return (
           <PhotoCard
+            first={index < FIRST_CARDS}
             topic={item.topic}
             author={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
             linkState={linkState}
@@ -346,7 +347,7 @@ export default function HomePage() {
                   <ul className="arrive">
                     {drawn.map((item, index) => (
                       <Fragment key={item.key}>
-                        <li className="mb-[11px]">{draw(item)}</li>
+                        <li className="mb-[11px]">{draw(item, index)}</li>
                         {/* Below the first card (the owner, 2026-10-28): what
                             members think of the app. */}
                         {index === 0 ? (
