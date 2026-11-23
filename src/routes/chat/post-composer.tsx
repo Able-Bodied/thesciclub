@@ -56,7 +56,7 @@ import { readLink } from '@/routes/events/event-draft';
  *
  * Photographs go in the words, where they were pasted, dropped or chosen
  * ("They stay where you pasted them in"), as a line `![Photo](path)` naming
- * one of the post's attachments, still four at most. Until Send they are the
+ * one of the post's attachments (MAX_ATTACHMENTS at most). Until Send they are the
  * member's files, named "local:1"…; Send uploads those still in the words, in
  * order, to `folder`, names them by their paths, and only then writes the
  * post; a refused post takes them back out.
@@ -579,14 +579,15 @@ export function PostComposer({
           <span className="min-w-0 truncate text-[0.78125rem] text-ink2">
             Replying to <span className="font-semibold text-ink">{replyingTo.name}</span>
           </span>
+          {/* A full-size target to close the box (the owner, 2026-11-22: no
+            easy way to x it out); the words stay as a draft. */}
           <button
             type="button"
             onClick={replyingTo.onCancel}
             aria-label="Stop replying"
-            data-target="small"
-            className="grid h-7 w-7 flex-none place-items-center rounded-full text-ink2 hover:bg-line"
+            className="-my-2 -mr-2 grid h-11 w-11 flex-none place-items-center rounded-full text-ink2 hover:bg-line"
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       ) : null}
@@ -815,7 +816,7 @@ export function PostComposer({
           {photoProblem}
         </p>
       ) : null}
-      <div className="flex items-center gap-1 border-line border-t px-2 py-2">
+      <div className="flex items-center gap-1 border-line border-t py-2 pr-3 pl-2">
         <button
           type="button"
           disabled={sending || loadingPhotos || full || picker.picking}
@@ -824,17 +825,11 @@ export function PostComposer({
           }}
           onClick={picker.open}
           title={full ? `${MAX_ATTACHMENTS} photographs is the most` : 'Add a photograph'}
-          aria-label={full ? undefined : 'Photo'}
-          aria-describedby={full ? undefined : `${id}-photo-slots`}
+          aria-label={full ? `${MAX_ATTACHMENTS} photographs is the most` : 'Photo'}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] px-2.5 font-semibold text-[0.84375rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-35"
         >
           <ImagePlus className="h-[18px] w-[18px]" aria-hidden="true" />
-          {full ? 'Four is the most' : 'Photo'}
-          {!full ? (
-            <span id={`${id}-photo-slots`} className="text-[0.75rem] text-ink2">
-              {remaining} left
-            </span>
-          ) : null}
+          Photo
         </button>
         <input
           ref={picker.input}
@@ -864,7 +859,7 @@ export function PostComposer({
           onClick={send}
           disabled={cannotSend}
           aria-label={editing ? 'Save changes' : sendLabel}
-          className="min-h-11 rounded-full bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-opacity disabled:opacity-35"
+          className="min-h-11 whitespace-nowrap rounded-full bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-opacity disabled:opacity-35"
         >
           {sending ? (editing ? 'Saving…' : 'Posting…') : editing ? 'Save' : 'Post reply'}
         </button>

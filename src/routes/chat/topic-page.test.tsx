@@ -1,4 +1,3 @@
-import { Capacitor } from '@capacitor/core';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren, useImperativeHandle, useRef } from 'react';
@@ -511,8 +510,10 @@ describe('opening on the post a notification was about', () => {
   });
 });
 
-it('scrolls the focused reply back into view after the native keyboard shrinks the page', async () => {
-  const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+// The store app (2026-11-19), and the Home Screen app since 2026-11-22: both
+// mark the keyboard, native-shell.ts from its height, keyboard-room.ts from
+// what Safari hides.
+it('scrolls the focused reply back into view after the keyboard shrinks the page', async () => {
   const scroll = vi.fn();
   const resize: (() => void)[] = [];
   vi.stubGlobal(
@@ -528,6 +529,9 @@ it('scrolls the focused reply back into view after the native keyboard shrinks t
       disconnect = vi.fn();
     },
   );
+  const shrink = () => {
+    for (const callback of resize) callback();
+  };
   try {
     Element.prototype.scrollIntoView = scroll;
     renderTopic();
@@ -535,17 +539,16 @@ it('scrolls the focused reply back into view after the native keyboard shrinks t
     box.focus();
     // Opening the box brings it into view once; the keyboard's resize is what is tested.
     scroll.mockClear();
-    expect(resize).toHaveLength(1);
-    resize[0]?.();
+    expect(resize.length).toBeGreaterThan(0);
+    shrink();
     expect(scroll).not.toHaveBeenCalled();
     document.documentElement.dataset.keyboard = '';
-    resize[0]?.();
+    shrink();
     expect(scroll.mock.contexts).toContain(box);
   } finally {
     delete document.documentElement.dataset.keyboard;
     Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
     vi.unstubAllGlobals();
-    native.mockRestore();
   }
 });
 

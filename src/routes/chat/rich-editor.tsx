@@ -33,7 +33,7 @@ import { type MentionField, useMentionSuggestions } from '@/routes/chat/mention-
  *
  * A picture pasted or dropped in, or chosen with the toolbar, goes in where
  * the caret is (the owner, 2026-11-19: "They stay where you pasted them in").
- * The composer decides whether it may (`onPhotos`, four at most) and says
+ * The composer decides whether it may (`onPhotos`, MAX_ATTACHMENTS at most) and says
  * what to call it until it is uploaded ("local:…"); it is drawn from the
  * file until then, and from storage once it has a path.
  *
@@ -320,6 +320,10 @@ const Photo = Image.extend({
   },
 }).configure({ inline: false, allowBase64: false });
 
+/**
+ * Small while writing (8rem, it was 14rem): with no limit on photographs two filled a phone and
+ * pushed Post reply off it (the owner, 2026-11-22). Preview and the post draw them full size.
+ */
 function PhotoView({ node, selected, deleteNode, editor }: ReactNodeViewProps) {
   const path = typeof node.attrs.path === 'string' ? node.attrs.path : '';
   const local = useContext(LocalPhotos);
@@ -333,7 +337,7 @@ function PhotoView({ node, selected, deleteNode, editor }: ReactNodeViewProps) {
         <img
           src={url}
           alt="Photograph"
-          className="block h-auto max-h-[14rem] w-auto max-w-full rounded-[10px]"
+          className="block h-auto max-h-[8rem] w-auto max-w-full rounded-[10px]"
         />
       ) : (
         <div className="grid h-24 w-32 place-items-center rounded-[10px] bg-tint text-[0.75rem] text-grey">
