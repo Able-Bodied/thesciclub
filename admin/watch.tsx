@@ -441,6 +441,10 @@ interface Deliveries {
   /** Pushes only; missing before 20261123020000. */
   by_device?: { device: string | null; outcome: string; count: number }[];
   latest: {
+    /** Missing before 20261123150000. */
+    id?: number;
+    /** An email Resend can be asked about (admin-email). */
+    readable?: boolean;
     at: string;
     channel: string;
     kind: string | null;
@@ -463,10 +467,79 @@ const PUSH_KINDS: Record<string, string> = {
   reply_participant: 'reply in a topic',
 };
 
+interface SentEmail {
+  subject: string | null;
+  from: string | null;
+  at: string | null;
+  last_event: string | null;
+  html: string | null;
+  text: string | null;
+}
+
+async function readEmail(id: number): Promise<Read<SentEmail>> {
+  try {
+    const supabase = getSupabase();
+    const { data } = await supabase.auth.getSession();
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/admin-email`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+          Authorization: `Bearer ${data.session?.access_token ?? ''}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      },
+    );
+    const body = (await response.json()) as SentEmail & { error?: string };
+    if (!response.ok)
+      return { ok: false, error: body.error ?? `Answered ${String(response.status)}` };
+    return { ok: true, value: body };
+  } catch (thrown) {
+    return { ok: false, error: thrown instanceof Error ? thrown.message : String(thrown) };
+  }
+}
+
+/** What an email said, from Resend; codes and one-time links hidden (admin-email). */
+function EmailMessage({ id }: { id: number }) {
+  const read = useRead(() => readEmail(id), String(id));
+  return (
+    <div className="mt-2">
+      <Waiting read={read}>
+        {(e) => (
+          <>
+            <p className="font-semibold text-ink">{e.subject ?? '(no subject)'}</p>
+            <p className="text-[0.71875rem] text-grey">
+              {[e.from, e.at ? when(e.at) : null].filter(Boolean).join(' · ')}
+            </p>
+            {e.html ? (
+              <iframe
+                title={e.subject ?? 'The email'}
+                sandbox=""
+                srcDoc={e.html}
+                className="mt-2 h-[28rem] w-full rounded-[10px] border border-line bg-white"
+              />
+            ) : (
+              <pre className="mt-2 whitespace-pre-wrap break-words rounded-[10px] border border-line p-2 font-sans text-[0.78125rem] text-ink">
+                {e.text ?? '(empty)'}
+              </pre>
+            )}
+            <p className="mt-1 text-[0.71875rem] text-grey">
+              Sign-in codes and one-time links are hidden; pictures are not loaded.
+            </p>
+          </>
+        )}
+      </Waiting>
+    </div>
+  );
+}
+
 export function Sent() {
   const [days, setDays] = useState('7');
   const [typed, setTyped] = useState('');
   const [email, setEmail] = useState('');
+  const [open, setOpen] = useState<number | null>(null);
   const read = useRead(
     () => call<Deliveries>('admin_deliveries', { p_days: Number(days), p_email: email || null }),
     `${days}|${email}`,
@@ -598,34 +671,61 @@ export function Sent() {
               </Note>
             ) : (
               <ul className="mt-1 divide-y divide-line rounded-[12px] border border-line bg-paper text-[0.8125rem]">
-                {d.latest.map((r, i) => (
-                  <li key={`${r.at}-${String(i)}`} className="px-2.5 py-1.5">
-                    <span
-                      className={
-                        GOOD.has(r.outcome)
-                          ? 'font-semibold text-ink'
-                          : 'font-semibold text-destructive'
-                      }
-                    >
-                      {r.outcome}
-                    </span>{' '}
-                    <span className="text-ink">
-                      {r.channel === 'push'
-                        ? `push: ${PUSH_KINDS[r.kind ?? ''] ?? r.kind ?? ''}`
-                        : r.kind}
-                    </span>
-                    <span className="block text-[0.71875rem] text-grey">
-                      {when(r.at)}
-                      {r.service ? ` · ${r.service}` : ''}
-                      {r.reason ? ` · ${r.reason}` : ''}
-                    </span>
-                    {r.channel === 'push' ? (
-                      <span className="block text-[0.71875rem] text-grey">
-                        {deviceLine(r.device ?? null, r.release ?? null, r.app_version ?? null)}
+                {d.latest.map((r, i) => {
+                  const id = r.channel === 'email' && r.readable ? r.id : undefined;
+                  const row = (
+                    <>
+                      <span
+                        className={
+                          GOOD.has(r.outcome)
+                            ? 'font-semibold text-ink'
+                            : 'font-semibold text-destructive'
+                        }
+                      >
+                        {r.outcome}
+                      </span>{' '}
+                      <span className="text-ink">
+                        {r.channel === 'push'
+                          ? `push: ${PUSH_KINDS[r.kind ?? ''] ?? r.kind ?? ''}`
+                          : r.kind}
                       </span>
-                    ) : null}
-                  </li>
-                ))}
+                      <span className="block text-[0.71875rem] text-grey">
+                        {when(r.at)}
+                        {r.service ? ` · ${r.service}` : ''}
+                        {r.reason ? ` · ${r.reason}` : ''}
+                      </span>
+                      {r.channel === 'push' ? (
+                        <span className="block text-[0.71875rem] text-grey">
+                          {deviceLine(r.device ?? null, r.release ?? null, r.app_version ?? null)}
+                        </span>
+                      ) : null}
+                    </>
+                  );
+                  return (
+                    <li key={`${r.at}-${String(i)}`} className="px-2.5 py-1.5">
+                      {id !== undefined ? (
+                        <>
+                          <button
+                            type="button"
+                            aria-expanded={open === id}
+                            onClick={() => {
+                              setOpen(open === id ? null : id);
+                            }}
+                            className="block w-full text-left"
+                          >
+                            {row}
+                            <span className="block font-semibold text-[0.71875rem] text-action underline underline-offset-2">
+                              {open === id ? 'Hide the message' : 'Show the message'}
+                            </span>
+                          </button>
+                          {open === id ? <EmailMessage id={id} /> : null}
+                        </>
+                      ) : (
+                        row
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </>
