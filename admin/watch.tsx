@@ -342,6 +342,7 @@ interface CrashRow {
   screens: string[] | null;
   releases: string[] | null;
   devices: string[] | null;
+  app_versions: string[] | null;
   first_at: string;
   last_at: string;
 }
@@ -353,13 +354,31 @@ const CRASH_KINDS: Record<string, string> = {
 };
 
 const DEVICE_NAMES: Record<string, string> = {
-  iphone: 'iPhone browser',
-  'iphone-app': 'iPhone app',
+  'iphone-store-app': 'iPhone App Store app',
+  'iphone-app': 'iPhone Home Screen app',
+  iphone: 'iPhone Safari',
+  'ipad-store-app': 'iPad App Store app',
+  'ipad-app': 'iPad Home Screen app',
+  ipad: 'iPad Safari',
+  'android-store-app': 'Android Play Store app',
+  'android-app': 'Android installed web app',
   android: 'Android browser',
-  'android-app': 'Android app',
-  computer: 'Computer',
-  'computer-app': 'Computer app',
+  'computer-app': 'Computer installed web app',
+  computer: 'Computer browser',
 };
+
+/** A device's kind, and its versions where known: "iPhone App Store app 1.4 (52), release 11-22 00:40". */
+function deviceLine(
+  device: string | null,
+  release: string | null,
+  appVersion: string | null,
+): string {
+  if (!device) return 'device not known yet';
+  const name = DEVICE_NAMES[device] ?? device;
+  const parts = [appVersion ? `${name} ${appVersion}` : name];
+  if (release) parts.push(`release ${release.slice(5).replace('T', ' ')}`);
+  return parts.join(', ');
+}
 
 export function Crashes() {
   const [days, setDays] = useState('7');
@@ -397,7 +416,9 @@ export function Crashes() {
                     {(c.screens ?? []).join(', ') || 'no screen'} ·{' '}
                     {(c.devices ?? []).map((d) => DEVICE_NAMES[d] ?? d).join(', ')}
                     <br />
-                    Releases {(c.releases ?? []).join(', ') || 'unknown'} · last {when(c.last_at)}
+                    Releases {(c.releases ?? []).join(', ') || 'unknown'}
+                    {c.app_versions?.length ? ` · app ${c.app_versions.join(', ')}` : ''} · last{' '}
+                    {when(c.last_at)}
                     {c.first_at !== c.last_at ? `, first ${when(c.first_at)}` : ''}
                   </p>
                 </li>
@@ -416,6 +437,8 @@ export function Crashes() {
 
 interface Deliveries {
   by_outcome: { channel: string; kind: string | null; outcome: string; count: number }[];
+  /** Pushes only; missing before 20261123020000. */
+  by_device?: { device: string | null; outcome: string; count: number }[];
   latest: {
     at: string;
     channel: string;
@@ -423,6 +446,9 @@ interface Deliveries {
     outcome: string;
     reason: string | null;
     service: string | null;
+    device?: string | null;
+    release?: string | null;
+    app_version?: string | null;
   }[];
 }
 
@@ -531,6 +557,35 @@ export function Sent() {
                     </table>
                   </div>
                 )}
+                {d.by_device?.length ? (
+                  <>
+                    <p className="mt-3 font-semibold text-[0.8125rem] text-ink">Pushes by device</p>
+                    <div className="mt-1 overflow-x-auto rounded-[12px] border border-line bg-paper">
+                      <table className="w-full text-[0.78125rem]">
+                        <tbody>
+                          {d.by_device.map((r) => (
+                            <tr
+                              key={`${r.device ?? ''}|${r.outcome}`}
+                              className="border-line border-t first:border-t-0"
+                            >
+                              <td className="px-2 py-1.5 text-ink">
+                                {r.device ? (DEVICE_NAMES[r.device] ?? r.device) : 'Not known yet'}
+                              </td>
+                              <td
+                                className={`px-2 py-1.5 ${GOOD.has(r.outcome) ? 'text-ink2' : 'font-semibold text-destructive'}`}
+                              >
+                                {r.outcome}
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-bold tabular-nums">
+                                {r.count}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : null}
               </>
             )}
             <p className="mt-3 font-semibold text-[0.8125rem] text-ink">
@@ -563,6 +618,11 @@ export function Sent() {
                       {r.service ? ` · ${r.service}` : ''}
                       {r.reason ? ` · ${r.reason}` : ''}
                     </span>
+                    {r.channel === 'push' ? (
+                      <span className="block text-[0.71875rem] text-grey">
+                        {deviceLine(r.device ?? null, r.release ?? null, r.app_version ?? null)}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
