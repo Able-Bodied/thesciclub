@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { SegmentPills } from '@/components/segment-pills';
+import { type PlatformSpeedRow, ReleasePlatformSpeed } from './release-platform-speed';
 import { getSupabase } from './supabase';
 
 /**
@@ -9,15 +10,15 @@ import { getSupabase } from './supabase';
  * admin_* functions of 20261122090000, refused to anybody but an administrator.
  */
 
-type Read<T> = { ok: true; value: T } | { ok: false; error: string };
+type Read<T> = { ok: true; value: T } | { ok: false; error: string; code?: string };
 
 async function call<T>(name: string, args: Record<string, unknown> = {}): Promise<Read<T>> {
   try {
     const { data, error } = (await getSupabase().rpc(name, args)) as {
       data: T | null;
-      error: { message: string } | null;
+      error: { message: string; code: string } | null;
     };
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: error.message, code: error.code };
     return { ok: true, value: data as T };
   } catch (thrown) {
     return { ok: false, error: thrown instanceof Error ? thrown.message : String(thrown) };
@@ -675,6 +676,10 @@ export function Releases() {
     'speed',
   );
   const speedOf = new Map((speed?.ok ? speed.value : []).map((s) => [s.release, s]));
+  const platformSpeed = useRead(
+    () => call<PlatformSpeedRow[]>('admin_page_speed_by_platform', { days: 30 }),
+    'platform-speed',
+  );
 
   return (
     <div>
@@ -683,6 +688,17 @@ export function Releases() {
         Each time the app went out, what was in it, and how fast phones found it (typical times,
         from page speed). A release that is slower than the one before is the first place to look.
       </Note>
+      {platformSpeed && !platformSpeed.ok && platformSpeed.code === 'PGRST202' ? (
+        <div className="mt-3 rounded-[14px] border border-line bg-paper p-3">
+          <h3 className="font-semibold text-ink">Speed by platform</h3>
+          <Note>
+            Platform measurements will appear after the database update and new app builds report
+            them.
+          </Note>
+        </div>
+      ) : (
+        <Waiting read={platformSpeed}>{(rows) => <ReleasePlatformSpeed rows={rows} />}</Waiting>
+      )}
       <Waiting read={list}>
         {(releases) => (
           <ul className="mt-2 space-y-2">
