@@ -663,11 +663,13 @@ export function Sent() {
               </>
             )}
             <p className="mt-3 font-semibold text-[0.8125rem] text-ink">
-              {email ? `Emails to ${email}` : 'Latest that did not arrive'}
+              {email ? `Emails to ${email}` : 'Latest emails, and pushes that did not arrive'}
             </p>
             {d.latest.length === 0 ? (
               <Note>
-                {email ? 'No emails to that address in this time.' : 'None: everything arrived.'}
+                {email
+                  ? 'No emails to that address in this time.'
+                  : 'No emails, and every push arrived.'}
               </Note>
             ) : (
               <ul className="mt-1 divide-y divide-line rounded-[12px] border border-line bg-paper text-[0.8125rem]">
