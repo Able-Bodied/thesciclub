@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-rou
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
 import type * as Attachments from '@/lib/chat/attachments';
+import { memberDraftKey, writeDraft } from '@/lib/chat/drafts';
 import type * as Likes from '@/lib/chat/likes';
 import type * as Reactions from '@/lib/chat/reactions';
 import type * as Reports from '@/lib/chat/reports';
@@ -294,6 +295,14 @@ function RepeatNotification() {
   );
 }
 
+/** The reply box at the bottom, opened: it is drawn closed until tapped (topic-page.tsx). */
+async function openReplyBox(by: 'label' | 'textbox' = 'label') {
+  await userEvent.click(await screen.findByRole('button', { name: 'Reply to this post' }));
+  return by === 'textbox'
+    ? screen.findByRole('textbox', { name: 'Reply to this post' })
+    : screen.findByLabelText('Reply to this post');
+}
+
 function renderTopic(path = '/chat/rooms/bowel/topics/t', repeatNotification = false) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -522,8 +531,10 @@ it('scrolls the focused reply back into view after the native keyboard shrinks t
   try {
     Element.prototype.scrollIntoView = scroll;
     renderTopic();
-    const box = await screen.findByRole('textbox', { name: 'Reply to this post' });
+    const box = await openReplyBox('textbox');
     box.focus();
+    // Opening the box brings it into view once; the keyboard's resize is what is tested.
+    scroll.mockClear();
     expect(resize).toHaveLength(1);
     resize[0]?.();
     expect(scroll).not.toHaveBeenCalled();
@@ -871,7 +882,7 @@ describe('a topic', () => {
     it('puts the words in the reply composer, and Send saves them', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
-      await userEvent.type(await screen.findByLabelText('Reply to this post'), 'Half a reply');
+      await userEvent.type(await openReplyBox(), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       const box = await screen.findByLabelText('Edit your post');
       expect(box).toHaveValue('First draft.');
@@ -904,7 +915,7 @@ describe('a topic', () => {
     it('is cancelled by the button and by Escape, with nothing saved', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
-      await userEvent.type(await screen.findByLabelText('Reply to this post'), 'Half a reply');
+      await userEvent.type(await openReplyBox(), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       await userEvent.click(screen.getByRole('button', { name: 'Cancel editing' }));
       expect(await screen.findByLabelText('Reply to this post')).toHaveValue('Half a reply');
@@ -918,7 +929,7 @@ describe('a topic', () => {
     it('ends when the post is removed', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
-      await userEvent.type(await screen.findByLabelText('Reply to this post'), 'Half a reply');
+      await userEvent.type(await openReplyBox(), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
       // What the next read brings, drawn on the re-render Remove causes.
       db.posts = [
@@ -1050,7 +1061,9 @@ describe('a topic', () => {
       if (!question) throw new Error('no question');
       expect(question).toContainElement(box);
       expect(box).toHaveFocus();
-      expect(screen.getByLabelText('Reply to this post')).not.toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'Reply to this post', hidden: true }),
+      ).not.toBeVisible();
       await userEvent.type(box, 'Under the question.');
       await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
       await waitFor(() => {
@@ -1059,7 +1072,9 @@ describe('a topic', () => {
       await waitFor(() => {
         expect(screen.queryByText(/Replying to/)).toBeNull();
       });
-      expect(screen.getByLabelText('Reply to this post')).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'Reply to this post', hidden: true }),
+      ).toBeVisible();
     });
 
     // Reply on a reply names and answers that particular reply.
@@ -1088,7 +1103,7 @@ describe('a topic', () => {
       await userEvent.click(screen.getByRole('button', { name: "Reply to Nicole's post" }));
       await userEvent.click(screen.getByRole('button', { name: 'Stop replying' }));
       expect(screen.queryByText(/Replying to/)).toBeNull();
-      await userEvent.type(await screen.findByLabelText('Reply to this post'), 'On its own.');
+      await userEvent.type(await openReplyBox(), 'On its own.');
       await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
       await waitFor(() => {
         expect(db.sent).toEqual([['On its own.', null]]);
@@ -1253,9 +1268,22 @@ describe('a topic', () => {
 
   // Enter is a paragraph break here and not a send. A member dictating a post
   // will pause, and a send bound to Enter would publish the first sentence.
+  // The box is drawn closed until tapped, so the editor's code is not fetched
+  // to read a topic; words left in it must still be there on the way back.
+  it('opens the reply box at once when words were left in it', async () => {
+    const key = memberDraftKey('me', 'topic:t') ?? '';
+    writeDraft(key, 'Left from before.');
+    try {
+      renderTopic();
+      expect(await screen.findByLabelText('Reply to this post')).toHaveValue('Left from before.');
+    } finally {
+      writeDraft(key, '');
+    }
+  });
+
   it('breaks a line on Enter rather than posting', async () => {
     renderTopic();
-    const box = await screen.findByLabelText('Reply to this post');
+    const box = await openReplyBox();
     await userEvent.type(box, 'First line{Enter}second line');
     expect(db.sent).toEqual([]);
     expect(box).toHaveValue('First line\nsecond line');
@@ -1263,10 +1291,7 @@ describe('a topic', () => {
 
   it('posts what was typed when the button is pressed', async () => {
     renderTopic();
-    await userEvent.type(
-      await screen.findByLabelText('Reply to this post'),
-      'That worked for me too.',
-    );
+    await userEvent.type(await openReplyBox(), 'That worked for me too.');
     await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
     await waitFor(() => {
       expect(db.sent).toEqual([['That worked for me too.', null]]);
@@ -1278,7 +1303,7 @@ describe('a topic', () => {
   it('keeps the draft when the post is refused, and says what happened', async () => {
     db.sendFails = 'new row violates row-level security policy';
     renderTopic();
-    const box = await screen.findByLabelText('Reply to this post');
+    const box = await openReplyBox();
     await userEvent.type(box, 'Four paragraphs of this.');
     await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
     await waitFor(() => {
@@ -1291,7 +1316,7 @@ describe('a topic', () => {
   // there for somebody who has joined nothing, and there is no Join.
   it('offers the composer to somebody who has joined nothing, and no Join', async () => {
     renderTopic();
-    expect(await screen.findByLabelText('Reply to this post')).toBeInTheDocument();
+    expect(await openReplyBox()).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Join/ })).toBeNull();
   });
 
