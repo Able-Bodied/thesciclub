@@ -4,6 +4,7 @@ import { Route, Routes, useParams } from 'react-router-dom';
 import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { StatsSection } from '@/routes/admin/stats-section';
 import { ChangeLog } from './change-log';
+import { InviteLogSection } from './invite-log';
 import { getSupabase } from './supabase';
 import { Crashes, Health, Releases, Sent } from './watch';
 
@@ -288,8 +289,16 @@ function Dashboard({ name }: { name: string | null }) {
   );
 }
 
-type View = 'health' | 'stats' | 'crashes' | 'sent' | 'releases' | 'changes';
-const VIEWS: readonly View[] = ['health', 'stats', 'crashes', 'sent', 'releases', 'changes'];
+type View = 'health' | 'stats' | 'invites' | 'crashes' | 'sent' | 'releases' | 'changes';
+const VIEWS: readonly View[] = [
+  'health',
+  'stats',
+  'invites',
+  'crashes',
+  'sent',
+  'releases',
+  'changes',
+];
 
 /** The site's parts: its own (admin/watch.tsx) and the Stats it shares with the app. */
 function Views() {
@@ -304,6 +313,8 @@ function Views() {
         tabs={[
           { value: 'health', label: 'Health' },
           { value: 'stats', label: 'Stats' },
+          // Every invite email, QR code and invite link (the owner, 2026-11-25).
+          { value: 'invites', label: 'Invites' },
           { value: 'crashes', label: 'Crashes' },
           { value: 'sent', label: 'Sent' },
           { value: 'releases', label: 'Releases' },
@@ -317,6 +328,8 @@ function Views() {
           <div className="pt-3">
             <StatsSection />
           </div>
+        ) : view === 'invites' ? (
+          <InviteLogSection />
         ) : view === 'crashes' ? (
           <Crashes />
         ) : view === 'sent' ? (
