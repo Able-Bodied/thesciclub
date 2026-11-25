@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Route, Routes, useParams } from 'react-router-dom';
 import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { StatsSection } from '@/routes/admin/stats-section';
+import { ChangeLog } from './change-log';
 import { getSupabase } from './supabase';
 import { Crashes, Health, Releases, Sent } from './watch';
 
@@ -287,8 +288,8 @@ function Dashboard({ name }: { name: string | null }) {
   );
 }
 
-type View = 'health' | 'stats' | 'crashes' | 'sent' | 'releases';
-const VIEWS: readonly View[] = ['health', 'stats', 'crashes', 'sent', 'releases'];
+type View = 'health' | 'stats' | 'crashes' | 'sent' | 'releases' | 'changes';
+const VIEWS: readonly View[] = ['health', 'stats', 'crashes', 'sent', 'releases', 'changes'];
 
 /** The site's parts: its own (admin/watch.tsx) and the Stats it shares with the app. */
 function Views() {
@@ -306,6 +307,7 @@ function Views() {
           { value: 'crashes', label: 'Crashes' },
           { value: 'sent', label: 'Sent' },
           { value: 'releases', label: 'Releases' },
+          { value: 'changes', label: 'Change log' },
         ]}
       />
       <TabPanel id="admin-site" value={view} className="pt-1 pb-6">
@@ -319,8 +321,10 @@ function Views() {
           <Crashes />
         ) : view === 'sent' ? (
           <Sent />
-        ) : (
+        ) : view === 'releases' ? (
           <Releases />
+        ) : (
+          <ChangeLog />
         )}
       </TabPanel>
     </>
