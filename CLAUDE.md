@@ -58,9 +58,15 @@ HEAD:staging`. Only what was on tests; never merge `tests` into it, never
 force-push it. In the commit message, say what live will need: a migration
 to apply, an edge function to deploy.
 
-**3. live** (`main`): only the owner releases. Only they, or Claude at their
-word, push `main`, change the live database or deploy edge functions to
+**3. live** (`main`): the owner releases, at night when hardly anybody is
+using the app, so live changes as seldom as it can. They, or Claude at their
+word, push `main`, change the live database and deploy edge functions to
 live. Everybody else stops at `staging` and tells them it is there.
+
+One exception: anatol may release his own work when he explicitly asks to.
+Before doing it, recommend once that it go to `staging` for the owner's
+release instead, to keep pushes few and at night. If he still asks, release
+it as the owner would (the steps below).
 
 To release (the owner's sessions):
 
