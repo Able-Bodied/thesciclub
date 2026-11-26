@@ -30,8 +30,14 @@ export interface Change {
   title: string;
   surface: string;
   entry?: { title: string; type?: 'new' | 'improved' | 'fix'; summary: string; shots: Shot[] };
+  /** What the person typed that led to it, in order. From its entry, or the past's list. */
+  prompts?: string[];
   /** The iPhone app version built at this change: it has this and everything before it. */
   ios?: string;
+  /** Lines of code it added and took out, and the surfaces its files belong to (changes-lib). */
+  size?: { lines: number; surfaces: string[] };
+  /** Tests it added, less any it took out. */
+  tests?: number;
 }
 
 export interface Release {
@@ -258,6 +264,138 @@ const TYPES = { new: 'New', improved: 'Improved', fix: 'Fix' } as const;
 const ENTRIES_FROM = '2026-11-26T08:00:00.000Z';
 const TAG = 'mr-1.5 rounded-full border border-line px-1.5 py-px font-semibold text-[0.6875rem]';
 
+/**
+ * How big a change is and how many tests it added, each a coloured pill (the owner, 2026-11-25:
+ * "a couple details, maybe with some color coding. One for change size (lines of code and number
+ * of surfaces/tabs impacted), the other for number of tests added"). Green, yellow, orange and
+ * red, far enough apart to tell at a glance in light and dark; the words say the same, so the
+ * colour is never all there is to go on.
+ */
+type Level = 0 | 1 | 2 | 3;
+const LEVEL_COLOUR: Record<Level, string> = {
+  0: '#3fa34d',
+  1: '#d9a300',
+  2: '#ea6c14',
+  3: '#d1302a',
+};
+const SIZE_NAMES = ['Small', 'Medium', 'Large', 'Huge'] as const;
+/** Lines of code up to which a change is small, medium and large; beyond, huge. */
+const SIZE_LINES = [50, 250, 1000] as const;
+/** From this many surfaces a change is one size bigger than its lines say. */
+const MANY_SURFACES = 3;
+
+export function sizeLevel(size: { lines: number; surfaces: string[] }): Level {
+  const byLines = SIZE_LINES.filter((most) => size.lines >= most).length;
+  return Math.min(3, byLines + (size.surfaces.length >= MANY_SURFACES ? 1 : 0)) as Level;
+}
+
+/** Tests added: the rule is usually one a change (CLAUDE.md, Tests), so more is yellow, then orange. */
+function testsLevel(tests: number): Level | null {
+  if (tests <= 0) return null;
+  return tests <= 2 ? 0 : tests <= 5 ? 1 : 2;
+}
+
+function Dot({ level }: { level: Level | null }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block h-2 w-2 flex-none rounded-full"
+      style={{ backgroundColor: level === null ? 'var(--grey)' : LEVEL_COLOUR[level] }}
+    />
+  );
+}
+
+function Pill({ level, children }: { level: Level | null; children: ReactNode }) {
+  const colour = level === null ? 'var(--grey)' : LEVEL_COLOUR[level];
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1.5 rounded-[9px] border px-2 py-px font-semibold text-[0.6875rem] text-ink"
+      style={{
+        backgroundColor: `color-mix(in srgb, ${colour} ${level === null ? 8 : 18}%, transparent)`,
+        borderColor: `color-mix(in srgb, ${colour} ${level === null ? 40 : 65}%, transparent)`,
+      }}
+    >
+      <Dot level={level} />
+      {children}
+    </span>
+  );
+}
+
+const lines = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'line' : 'lines'}`;
+
+function list(names: string[]): string {
+  return names.length <= 2
+    ? names.join(' and ')
+    : `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`;
+}
+
+/** "Large · 232 lines across 3 surfaces (one size up): Events, Home and Chat" and "1 test added". */
+function SizeAndTests({ change }: { change: Change }) {
+  const { size, tests } = change;
+  if (!size && tests === undefined) return null;
+  return (
+    <p className="mt-1.5 flex flex-wrap gap-1.5">
+      {size ? <Pill level={sizeLevel(size)}>{sizeWords(size, change.surface)}</Pill> : null}
+      {tests !== undefined ? (
+        <Pill level={testsLevel(tests)}>
+          {tests === 0
+            ? 'No tests added'
+            : tests > 0
+              ? `${count(tests, 'test')} added`
+              : `${count(-tests, 'test')} taken out`}
+        </Pill>
+      ) : null}
+    </p>
+  );
+}
+
+function sizeWords(size: { lines: number; surfaces: string[] }, surface: string): string {
+  const name = SIZE_NAMES[sizeLevel(size)];
+  if (size.lines === 0) return `${name} · no lines of code`;
+  const surfaces = size.surfaces.length;
+  if (surfaces === 0) {
+    return `${name} · ${lines(size.lines)} ${surface === 'Other' ? 'of shared code' : 'behind the scenes'}`;
+  }
+  if (surfaces === 1) return `${name} · ${lines(size.lines)} in ${size.surfaces[0] ?? ''}`;
+  // The surface it is listed under first, as the line above names it.
+  const named = [...size.surfaces].sort((a, b) => Number(b === surface) - Number(a === surface));
+  // Bigger than its lines alone make it: said, so it does not read as a mistake against the key.
+  const bumped = surfaces >= MANY_SURFACES && size.lines < SIZE_LINES[2] ? ' (one size up)' : '';
+  return `${name} · ${lines(size.lines)} across ${String(surfaces)} surfaces${bumped}: ${list(named)}`;
+}
+
+/** What the pills' colours mean, under On tests' summary. */
+function SizeKey() {
+  const item = (level: Level | null, text: string) => (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <Dot level={level} />
+      {text}
+    </span>
+  );
+  return (
+    <div className="mt-2.5 space-y-1 border-line border-t pt-2.5 text-[0.75rem] text-ink2 leading-[1.45]">
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold text-grey">Size</span>
+        {item(0, `Small, under ${String(SIZE_LINES[0])} lines`)}
+        {item(1, `Medium, under ${String(SIZE_LINES[1])}`)}
+        {item(2, `Large, under ${SIZE_LINES[2].toLocaleString('en-US')}`)}
+        {item(3, `Huge, ${SIZE_LINES[2].toLocaleString('en-US')} or more`)}
+      </p>
+      <p className="text-grey">
+        Lines of code added and taken out; tests, notes and pictures are not counted. A change that
+        touches {String(MANY_SURFACES)} or more surfaces is one size up.
+      </p>
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold text-grey">Tests</span>
+        {item(0, '1 or 2, the usual')}
+        {item(1, '3 to 5')}
+        {item(2, '6 or more')}
+        {item(null, 'None, or taken out')}
+      </p>
+    </div>
+  );
+}
+
 /** One change: its entry's title and summary where it has one, else its commit's first line. */
 function ChangeRow({
   change,
@@ -343,7 +481,62 @@ function ChangeBody({
           code
         </a>
       </p>
+      <SizeAndTests change={change} />
+      {change.prompts && change.prompts.length > 0 ? (
+        <Prompts prompts={change.prompts} by={change.by} />
+      ) : null}
     </>
+  );
+}
+
+/**
+ * What was typed to get a change made (the owner, 2026-11-25: "add all the prompts used for
+ * each change ... in an expandable view"): closed, how many; open, each as it was typed, in
+ * order. Drawn only once opened: a week is hundreds of changes.
+ */
+function Prompts({ prompts, by }: { prompts: string[]; by: string }) {
+  const [open, setOpen] = useState(false);
+  const numbered = prompts.map((text, at) => ({ text, at }));
+  return (
+    <details
+      className="mt-0.5"
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
+      {/* The whole line is pressed, and on a phone it is as tall as a finger needs. */}
+      <summary className="min-h-11 cursor-pointer content-center font-semibold text-[0.8125rem] text-ink2 md:min-h-8">
+        {count(prompts.length, 'prompt')}
+      </summary>
+      {open ? (
+        <>
+          <p className="text-[0.75rem] text-ink2 leading-[1.45]">
+            What {by} typed in the conversation behind this change. Changes that came out of the
+            same conversation show the same prompts. Other people’s names and anything private are
+            left out.
+          </p>
+          <ol className="mt-1.5 mb-3 space-y-2">
+            {numbered.map((prompt) => (
+              <li key={prompt.at} className="flex gap-2">
+                {/* Which came first, where there is more than one. */}
+                {prompts.length > 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className="w-4 flex-none pt-1.5 text-right font-semibold text-[0.75rem] text-grey"
+                  >
+                    {prompt.at + 1}
+                  </span>
+                ) : null}
+                {/* As typed, line breaks and all; a run of spaces shows as one. */}
+                <p className="max-h-72 min-w-0 flex-1 overflow-y-auto whitespace-pre-line break-words rounded-[8px] border-line border-l-[3px] bg-canvas px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+                  {prompt.text}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : null}
+    </details>
   );
 }
 
@@ -436,6 +629,10 @@ function OnTests({
   const ticked =
     ready instanceof Map ? changes.filter((change) => ready.has(change.key)).length : 0;
   const unwritten = changes.filter((c) => !c.entry && c.at >= ENTRIES_FROM).length;
+  const sized = changes.flatMap((change) => (change.size ? [change.size] : []));
+  const testsTotal = changes.reduce((sum, change) => sum + Math.max(0, change.tests ?? 0), 0);
+  const withTests = changes.filter((change) => (change.tests ?? 0) > 0).length;
+  const takenOut = changes.reduce((sum, change) => sum + Math.max(0, -(change.tests ?? 0)), 0);
   const oldest = changes.reduce<string | null>(
     (first, change) => (first === null || change.at < first ? change.at : first),
     null,
@@ -486,6 +683,60 @@ function OnTests({
               <dd>{shares(changes, (change) => change.by)}</dd>
               <dt className="text-grey">Surfaces</dt>
               <dd>{shares(changes, (change) => change.surface)}</dd>
+              {sized.length > 0 ? (
+                <>
+                  <dt className="text-grey">Size</dt>
+                  <dd>
+                    {lines(sized.reduce((sum, size) => sum + size.lines, 0))} of code:{' '}
+                    {SIZE_NAMES.map((name, level) => ({
+                      name,
+                      level: level as Level,
+                      n: sized.filter((size) => sizeLevel(size) === level).length,
+                    }))
+                      .filter(({ n }) => n > 0)
+                      .map(({ name, level, n }, at) => (
+                        <span key={name} className="whitespace-nowrap">
+                          {at > 0 ? ', ' : ''}
+                          <span className="mr-1 inline-flex align-middle">
+                            <Dot level={level} />
+                          </span>
+                          {String(n)} {name.toLowerCase()}
+                        </span>
+                      ))}
+                  </dd>
+                  <dt className="text-grey">Tests</dt>
+                  <dd>
+                    {testsTotal === 0
+                      ? 'None added'
+                      : `${String(testsTotal)} added, in ${String(withTests)} of the ${count(changes.length, 'change')}`}
+                    {testsTotal > 0 ? ': ' : null}
+                    {(
+                      [
+                        [0, '1 or 2'],
+                        [1, '3 to 5'],
+                        [2, '6 or more'],
+                      ] as const
+                    )
+                      .map(([level, words]) => ({
+                        level,
+                        words,
+                        n: changes.filter((change) => testsLevel(change.tests ?? 0) === level)
+                          .length,
+                      }))
+                      .filter(({ n }) => n > 0)
+                      .map(({ level, words, n }, at) => (
+                        <span key={level} className="whitespace-nowrap">
+                          {at > 0 ? ', ' : ''}
+                          <span className="mr-1 inline-flex align-middle">
+                            <Dot level={level} />
+                          </span>
+                          {String(n)} with {words}
+                        </span>
+                      ))}
+                    {takenOut > 0 ? `; ${count(takenOut, 'test')} taken out` : null}
+                  </dd>
+                </>
+              ) : null}
               {newest ? (
                 <>
                   <dt className="text-grey">Newest</dt>
@@ -513,6 +764,7 @@ function OnTests({
                 </>
               ) : null}
             </dl>
+            {sized.length > 0 ? <SizeKey /> : null}
           </section>
           {problem ? (
             <p role="alert" className="mt-2 text-[0.8125rem] text-destructive">
