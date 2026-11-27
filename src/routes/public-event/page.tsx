@@ -8,6 +8,7 @@ import { type EventInvite, fetchEventInvite, inviteAnswerFrom } from '@/lib/even
 import { isEventOver } from '@/lib/event-over';
 import { recordRsvpClick, useRecordEventView } from '@/lib/event-views';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
+import { CancelledChip } from '@/routes/events/cancelled-chip';
 import { EventAccessDetails } from '@/routes/events/event-access-details';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
@@ -110,7 +111,9 @@ export default function PublicEventPage() {
   if (account.status === 'member' && id) return <Navigate to={`/events/${id}`} replace />;
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
-  const over = event ? isEventOver(event) : false;
+  // A cancelled one is as over: no RSVP, no call to join (20261127100000).
+  const cancelled = event?.cancelled === true;
+  const over = event ? isEventOver(event) || cancelled : false;
   const place = event ? placeLine(event) : null;
   const registerHref = safeHref(event?.registrationUrl ?? null);
   const pageHref = safeHref(event?.url ?? null);
@@ -171,6 +174,7 @@ export default function PublicEventPage() {
             <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
             {longWhen(event.startTime, timezone, event.allDay)}
           </p>
+          {cancelled ? <CancelledChip className="mt-2 inline-block" /> : null}
           <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink leading-[1.25] tracking-[-0.01em]">
             {event.title}
           </h1>
@@ -216,7 +220,9 @@ export default function PublicEventPage() {
           ) : null}
 
           {over ? (
-            <p className="mt-4 text-[0.875rem] text-grey">This event is over.</p>
+            <p className="mt-4 text-[0.875rem] text-grey">
+              {cancelled ? 'This event was cancelled by its organizer.' : 'This event is over.'}
+            </p>
           ) : invite ? null : (
             <div className="mt-4 flex gap-2.5">
               {/* Every event, also one whose host takes no RSVPs here: the form

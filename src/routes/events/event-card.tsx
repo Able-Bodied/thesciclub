@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CancelledChip } from '@/routes/events/cancelled-chip';
 import { EventCover } from '@/routes/events/event-cover';
 import { isOnline } from '@/routes/events/filters';
 import { dateTileParts, rsvpReachesHost, shortWeekday, timeRange } from '@/routes/events/format';
@@ -197,6 +198,7 @@ export function EventCard({
             {shortWeekday(event.startTime, event.timezone)}
             {whenLine ? ` · ${whenLine}` : ''}
           </span>
+          {event.cancelled ? <CancelledChip /> : null}
         </button>
       </div>
     );
@@ -284,6 +286,7 @@ export function EventCard({
             {/* Format first and in gold, matching the mock: "can I get to this"
                 is the question that decides whether the rest of the card is
                 worth reading. */}
+            {event.cancelled ? <CancelledChip /> : null}
             <PrivacyChip audience={event.audience} />
             {isOnline(event) ? (
               <span className="rounded-full bg-gold-lt px-2.5 py-[5px] font-semibold text-[0.7375rem] text-gold-dp leading-[1.25]">
@@ -334,61 +337,66 @@ export function EventCard({
         ) : null}
       </button>
 
-      {/* Beside the card's button, not in it: it is a button of its own. */}
-      <GoingCount
-        eventId={event.id}
-        going={event.goingCount}
-        interested={event.interestedCount}
-        onOpenMember={onOpenMember}
-      />
+      {/* A cancelled date takes no answers (20261127100000). */}
+      {event.cancelled ? null : (
+        <>
+          {/* Beside the card's button, not in it: it is a button of its own. */}
+          <GoingCount
+            eventId={event.id}
+            going={event.goingCount}
+            interested={event.interestedCount}
+            onOpenMember={onOpenMember}
+          />
 
-      {/* Only as wide as their words, and quiet until chosen (the owner,
+          {/* Only as wide as their words, and quiet until chosen (the owner,
           2026-10-27): the card is for reading what the event is. Still a
           full 44px tall, for hands that need the room. What Going shares is
           said once it is pressed (rsvp-sheet.tsx). */}
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          // Pressing the button you are already on takes the RSVP back, which
-          // is the only way to undo one from the list.
-          onClick={() => {
-            onRsvp(interested ? null : 'interested');
-          }}
-          aria-pressed={interested}
-          className={cn(RSVP_BUTTON, interested ? RSVP_CHOSEN : RSVP_OPEN)}
-        >
-          {interested ? 'Interested ✓' : 'Interested'}
-        </button>
-        {/* As on the event's page (the owner, 2026-10-27): with a sign-up of
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              // Pressing the button you are already on takes the RSVP back, which
+              // is the only way to undo one from the list.
+              onClick={() => {
+                onRsvp(interested ? null : 'interested');
+              }}
+              aria-pressed={interested}
+              className={cn(RSVP_BUTTON, interested ? RSVP_CHOSEN : RSVP_OPEN)}
+            >
+              {interested ? 'Interested ✓' : 'Interested'}
+            </button>
+            {/* As on the event's page (the owner, 2026-10-27): with a sign-up of
             the host's own, Register stands for Going, marks them going and
             opens it. Once going, Going ✓ takes it back. */}
-        {registerHref && !going ? (
-          <a
-            href={registerHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              onRsvp('going');
-            }}
-            className={cn(RSVP_BUTTON, RSVP_OPEN, 'gap-1.5')}
-          >
-            Register
-            <span className="sr-only">, opens the host’s sign-up and marks you as going</span>
-            <ExternalLink className="h-[14px] w-[14px] flex-none" aria-hidden="true" />
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              onRsvp(going ? null : 'going');
-            }}
-            aria-pressed={going}
-            className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
-          >
-            {going ? 'Going ✓' : rsvpReachesHost(event, organization) ? 'RSVP' : 'Going'}
-          </button>
-        )}
-      </div>
+            {registerHref && !going ? (
+              <a
+                href={registerHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  onRsvp('going');
+                }}
+                className={cn(RSVP_BUTTON, RSVP_OPEN, 'gap-1.5')}
+              >
+                Register
+                <span className="sr-only">, opens the host’s sign-up and marks you as going</span>
+                <ExternalLink className="h-[14px] w-[14px] flex-none" aria-hidden="true" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  onRsvp(going ? null : 'going');
+                }}
+                aria-pressed={going}
+                className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
+              >
+                {going ? 'Going ✓' : rsvpReachesHost(event, organization) ? 'RSVP' : 'Going'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
       {/* Beside the card's own button, never inside it. */}
       {mapHref ? <ViewOnMap title={event.title} to={mapHref} className="mt-2.5" /> : null}
 
